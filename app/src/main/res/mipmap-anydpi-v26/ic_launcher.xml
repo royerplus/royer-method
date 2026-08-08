@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  El diseno completo va en la capa de fondo, ya encuadrado dentro de la zona
+  que el lanzador deja ver. La capa de delante va vacia a proposito: el
+  dibujo es uno solo y separarlo en dos capas solo serviria para que el
+  efecto de parallax lo despegara.
+-->
+<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <background android:drawable="@mipmap/ic_launcher_fondo" />
+    <foreground android:drawable="@drawable/splash_vacio" />
+    <!-- La monocroma sigue siendo vectorial: en los iconos tematizados el
+         sistema pinta todo de un color y una foto no sirve. -->
+    <monochrome android:drawable="@drawable/ic_logo_mono" />
+</adaptive-icon>

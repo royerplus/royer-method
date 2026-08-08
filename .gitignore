@@ -1,0 +1,34 @@
+# --- Resultados de compilacion ---
+build/
+app/build/
+.gradle/
+.cxx/
+.kotlin/
+*.apk
+*.aab
+
+# Ruta absoluta del SDK de quien compila. Cada maquina tiene la suya.
+local.properties
+
+# --- Material de pruebas ---
+#
+# En la carpeta hay unos 300 MB de videos e imagenes que se usaron para medir
+# calidad y compresion. No forman parte del proyecto y no tiene sentido que
+# viajen con el.
+/*.mp4
+/*.jpg
+/*.png
+/*.html
+/*.log
+/*.mbtree
+
+# --- Dependencias nativas de terceros ---
+#
+# ncnn precompilado y los pesos de los modelos: unos 40 MB de binarios que no
+# son nuestros. Se traen con tools/traer_dependencias.ps1, que descarga
+# exactamente las mismas versiones. Lo que si va en el repo es el codigo de
+# rife y waifu2x, porque lleva parches nuestros sin los cuales no compila ni
+# funciona con ncnn moderno.
+app/src/main/cpp/ncnn/
+app/src/main/assets/rife-v4.6/*.bin
+app/src/main/assets/waifu2x/*.bin
