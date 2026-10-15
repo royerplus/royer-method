@@ -34,6 +34,15 @@ import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Direccion
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Transicion
+import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.Deslizador
+import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.Mosaico
+import com.royermethod.app.ui.components.Muestras
+import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
 

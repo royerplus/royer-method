@@ -25,13 +25,17 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -42,6 +46,8 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.Ajuste
@@ -59,6 +65,23 @@ import com.royermethod.app.editor.modelo.Fuente
 import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Recorte
 import com.royermethod.app.editor.modelo.Texto
+import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.BotonLleno
+import com.royermethod.app.ui.components.Chip
+import com.royermethod.app.ui.components.Deslizador
+import com.royermethod.app.ui.components.Escala
+import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Interruptor
+import com.royermethod.app.ui.components.LocalGestos
+import com.royermethod.app.ui.components.Mosaico
+import com.royermethod.app.ui.components.Muestras
+import com.royermethod.app.ui.components.Nota
+import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Pestanas
+import com.royermethod.app.ui.components.esquinas
+import com.royermethod.app.ui.components.segundos
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.max
 import kotlin.math.min
@@ -107,12 +130,12 @@ fun PanelVelocidad(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
     Deslizador(
         "Velocidad", c.velocidad, 0.1f, 10f,
-        onCambio = { v -> estado.cambiarClip(arrastre = true) { it.copy(velocidad = v) } },
+        onCambio = { v -> estado.cambiarClip(arrastre = true) { it.conVelocidad(v) } },
         neutro = 1f, escala = Escala.LOGARITMICA,
         texto = { "%.2gx".format(it) }
     )
     Opciones(listOf(0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 5f), c.velocidad, { "%.2gx".format(it) }, { v ->
-        estado.cambiarClip { it.copy(velocidad = v) }
+        estado.cambiarClip { it.conVelocidad(v) }
     })
     Hueco(4)
     Text("Dura ${segundos(c.duracionUs)}", style = MaterialTheme.typography.bodyMedium, color = Ink.White50)
@@ -275,14 +298,30 @@ val COLORES_TEXTO = listOf(
     0xFF2EC4FF, 0xFF7B61FF, 0xFFFF6AD5, 0xFF8D99AE
 ).map { it.toInt() }
 
+/** Lo que lleva un texto recien puesto, hasta que se escribe encima. */
+internal const val TEXTO_NUEVO = "Tu texto"
+
 @Composable
 fun PanelTexto(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
     val t = c.texto ?: return
     fun cambiar(arrastre: Boolean = false, f: (Texto) -> Texto) = estado.cambiarClip(arrastre) { it.copy(texto = f(it.texto!!)) }
+    // Un texto recien puesto llega con el cursor dentro y todo elegido:
+    // se escribe encima sin tener que borrar nada.
+    val nuevo = t.contenido == TEXTO_NUEVO
+    val foco = remember { FocusRequester() }
+    var valor by remember(c.id) {
+        mutableStateOf(TextFieldValue(t.contenido, if (nuevo) TextRange(0, t.contenido.length) else TextRange(t.contenido.length)))
+    }
+    // Si cambio por fuera (deshacer), se sigue al proyecto
+    if (valor.text != t.contenido) valor = TextFieldValue(t.contenido, TextRange(t.contenido.length))
+    LaunchedEffect(c.id) { if (nuevo) runCatching { foco.requestFocus() } }
     BasicTextField(
-        value = t.contenido,
-        onValueChange = { s -> cambiar(true) { it.copy(contenido = s) } },
+        value = valor,
+        onValueChange = { v ->
+            valor = v
+            if (v.text != t.contenido) cambiar(true) { it.copy(contenido = v.text) }
+        },
         textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink.White),
         cursorBrush = SolidColor(Ink.White),
         modifier = Modifier
@@ -290,6 +329,7 @@ fun PanelTexto(estado: EstadoEditor) {
             .heightIn(min = 52.dp)
             .border(1.dp, Ink.White30, esquinas(12.dp))
             .padding(12.dp)
+            .focusRequester(foco)
             .onFocusChanged { if (it.isFocused) estado.empezarGesto() else estado.terminarGesto() }
     )
     Hueco(8)
@@ -332,18 +372,24 @@ fun PanelFormato(estado: EstadoEditor) {
     }
     Etiqueta("Fondo donde el video no llega")
     Opciones(Fondo.values().toList(), p.fondo, { it.nombre }, { f -> estado.hacer { it.copy(fondo = f) } })
-    Hueco()
-    Interruptor(
-        "Imanes", AjustesEditor.imanes, { AjustesEditor.imanes = it; AjustesEditor.alCambiar() },
-        "Al mover o recortar, los bloques se pegan al cabezal y a los cortes"
-    )
-    Hueco()
-    BotonBorde("Empezar proyecto nuevo", {
-        estado.hacer { AjustesEditor.proyectoNuevo() }
-        estado.panel = null
-        estado.irA(0)
-        estado.avisar("Proyecto nuevo. Si fue sin querer, deshaz")
-    }, glifo = Glifos.mas)
+    Hueco(20)
+    // Empezar de cero borra todo lo que hay: pide un segundo toque
+    var seguro by remember { mutableStateOf(false) }
+    if (!seguro) {
+        BotonBorde("Empezar proyecto nuevo", { seguro = true }, glifo = Glifos.mas)
+    } else {
+        Nota("Se quita todo lo que hay en este proyecto.")
+        Hueco(6)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            BotonLleno("Si, empezar de cero", {
+                estado.hacer { AjustesEditor.proyectoNuevo() }
+                estado.panel = null
+                estado.irA(0)
+                estado.avisar("Proyecto nuevo. Si fue sin querer, deshaz")
+            })
+            BotonBorde("No", { seguro = false })
+        }
+    }
 }
 
 // ----------------------------------------------------------------------

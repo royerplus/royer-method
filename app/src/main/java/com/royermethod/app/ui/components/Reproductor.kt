@@ -457,7 +457,7 @@ fun VisorCompleto(
             }
 
             BotonRedondo(
-                glifo = Glifo.Cerrar,
+                glifo = Simbolo.Cerrar,
                 onClick = onCerrar,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -468,7 +468,7 @@ fun VisorCompleto(
     }
 }
 
-enum class Glifo { Cerrar, Lupa, Sonido, Silencio, Girar }
+enum class Simbolo { Cerrar, Lupa, Sonido, Silencio, Girar }
 
 /**
  * Hace que una ventana emergente ocupe la pantalla de verdad.
@@ -508,7 +508,7 @@ fun VentanaCompleta() {
  */
 @Composable
 fun BotonRedondo(
-    glifo: Glifo,
+    glifo: Simbolo,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     encendido: Boolean = true
@@ -538,13 +538,13 @@ fun BotonRedondo(
                     // llegan mas lejos y el trazo es mas delgado: se lee mejor
                     // y no compite con el resto de la interfaz, que es toda de
                     // linea fina.
-                    Glifo.Cerrar -> {
+                    Simbolo.Cerrar -> {
                         val r = size.width * 0.26f
                         raya(tinta, c - r, c - r, c + r, c + r, 1.4.dp.toPx())
                         raya(tinta, c + r, c - r, c - r, c + r, 1.4.dp.toPx())
                     }
 
-                    Glifo.Lupa -> {
+                    Simbolo.Lupa -> {
                         drawCircle(
                             tinta, radius = u * 0.78f,
                             center = Offset(c - u * 0.14f, c - u * 0.14f),
@@ -559,7 +559,7 @@ fun BotonRedondo(
 
                     // Rectangulo de pie con una flecha curva: cambiar la forma
                     // del marco entre tumbado y de pie.
-                    Glifo.Girar -> {
+                    Simbolo.Girar -> {
                         drawRoundRect(
                             color = tinta,
                             topLeft = Offset(c - u * 0.48f, c - u * 0.8f),
@@ -578,7 +578,7 @@ fun BotonRedondo(
                         )
                     }
 
-                    Glifo.Sonido, Glifo.Silencio -> {
+                    Simbolo.Sonido, Simbolo.Silencio -> {
                         // altavoz: cuerpo cuadrado mas la boca triangular
                         val p = Path().apply {
                             moveTo(c - u * 0.85f, c - u * 0.32f)
@@ -590,7 +590,7 @@ fun BotonRedondo(
                             close()
                         }
                         drawPath(p, tinta)
-                        if (glifo == Glifo.Sonido) {
+                        if (glifo == Simbolo.Sonido) {
                             for (r in listOf(0.45f, 0.8f)) {
                                 drawArc(
                                     color = tinta,

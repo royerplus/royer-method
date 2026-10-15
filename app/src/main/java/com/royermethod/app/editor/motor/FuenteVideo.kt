@@ -68,34 +68,54 @@ class FuenteVideo(
     var usadaEn = -1L
 
     init {
-        extractor.setDataSource(context, uri, null)
-        var pista = -1
-        for (i in 0 until extractor.trackCount) {
-            val mime = extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: continue
-            if (mime.startsWith("video/")) { pista = i; break }
+        // Si algo falla a mitad (archivo borrado, sin decodificadores libres),
+        // se suelta lo que ya se hubiera creado: el compositor lo vuelve a
+        // intentar y cada intento dejaria una textura y un codec perdidos.
+        var textura = 0
+        var st: SurfaceTexture? = null
+        var sup: Surface? = null
+        var codec: MediaCodec? = null
+        try {
+            extractor.setDataSource(context, uri, null)
+            var pista = -1
+            for (i in 0 until extractor.trackCount) {
+                val mime = extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: continue
+                if (mime.startsWith("video/")) { pista = i; break }
+            }
+            require(pista >= 0) { "el archivo no tiene video" }
+            extractor.selectTrack(pista)
+            val formato = extractor.getTrackFormat(pista)
+            anchoCrudo = formato.getInteger(MediaFormat.KEY_WIDTH)
+            altoCrudo = formato.getInteger(MediaFormat.KEY_HEIGHT)
+            // El giro lo aplicamos nosotros al copiar. Si se lo dejamos al
+            // decodificador, unos moviles lo meten en la matriz de la textura y
+            // otros no, y el video saldria girado dos veces o ninguna.
+            if (formato.containsKey(MediaFormat.KEY_ROTATION)) formato.setInteger(MediaFormat.KEY_ROTATION, 0)
+
+            val ids = IntArray(1)
+            GLES20.glGenTextures(1, ids, 0)
+            textura = ids[0]
+            GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textura)
+            Lamina.filtros(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
+            st = SurfaceTexture(textura)
+            st.setOnFrameAvailableListener({ hayFotograma.release() }, avisos)
+            sup = Surface(st)
+
+            codec = MediaCodec.createDecoderByType(formato.getString(MediaFormat.KEY_MIME)!!)
+            codec.configure(formato, sup, null, 0)
+            codec.start()
+        } catch (e: Exception) {
+            runCatching { codec?.release() }
+            runCatching { sup?.release() }
+            runCatching { st?.release() }
+            if (textura != 0) GLES20.glDeleteTextures(1, intArrayOf(textura), 0)
+            runCatching { extractor.release() }
+            throw e
         }
-        require(pista >= 0) { "el archivo no tiene video" }
-        extractor.selectTrack(pista)
-        val formato = extractor.getTrackFormat(pista)
-        anchoCrudo = formato.getInteger(MediaFormat.KEY_WIDTH)
-        altoCrudo = formato.getInteger(MediaFormat.KEY_HEIGHT)
-        // El giro lo aplicamos nosotros al copiar. Si se lo dejamos al
-        // decodificador, unos moviles lo meten en la matriz de la textura y
-        // otros no, y el video saldria girado dos veces o ninguna.
-        if (formato.containsKey(MediaFormat.KEY_ROTATION)) formato.setInteger(MediaFormat.KEY_ROTATION, 0)
-
-        val ids = IntArray(1)
-        GLES20.glGenTextures(1, ids, 0)
-        texturaOes = ids[0]
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texturaOes)
-        Lamina.filtros(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
-        superficieTextura = SurfaceTexture(texturaOes)
-        superficieTextura.setOnFrameAvailableListener({ hayFotograma.release() }, avisos)
-        superficie = Surface(superficieTextura)
-
-        decodificador = MediaCodec.createDecoderByType(formato.getString(MediaFormat.KEY_MIME)!!)
-        decodificador.configure(formato, superficie, null, 0)
-        decodificador.start()
+        texturaOes = textura
+        superficieTextura = st
+        superficie = sup
+        decodificador = codec
     }
 
     /** Ancho y alto tal y como se ve, ya girado. */

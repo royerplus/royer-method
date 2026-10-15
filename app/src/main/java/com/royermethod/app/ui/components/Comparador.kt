@@ -175,13 +175,13 @@ fun ComparadorCompleto(
             ) {
                 if (escala > 1.001f) {
                     BotonRedondo(
-                        glifo = Glifo.Lupa,
+                        glifo = Simbolo.Lupa,
                         onClick = { escala = 1f; mover = Offset.Zero },
                         modifier = Modifier.size(40.dp)
                     )
                 }
                 BotonRedondo(
-                    glifo = Glifo.Cerrar,
+                    glifo = Simbolo.Cerrar,
                     onClick = onCerrar,
                     modifier = Modifier.size(40.dp)
                 )
@@ -311,13 +311,13 @@ fun ComparadorImagenes(
             ) {
                 if (escala > 1.001f) {
                     BotonRedondo(
-                        glifo = Glifo.Lupa,
+                        glifo = Simbolo.Lupa,
                         onClick = { escala = 1f; mover = Offset.Zero },
                         modifier = Modifier.size(40.dp)
                     )
                 }
                 BotonRedondo(
-                    glifo = Glifo.Cerrar,
+                    glifo = Simbolo.Cerrar,
                     onClick = onCerrar,
                     modifier = Modifier.size(40.dp)
                 )

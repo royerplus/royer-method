@@ -331,7 +331,7 @@ fun ActionCard(
         // titulo: ahi se quedaba sin ancho y se partia en vertical, una letra
         // por linea.
         if (etiqueta != null) {
-            Etiqueta(
+            Distintivo(
                 texto = etiqueta,
                 modifier = Modifier
                     .align(Alignment.TopEnd)
@@ -343,7 +343,7 @@ fun ActionCard(
 
 /** Distintivo pequeno, para marcar lo que aun no esta hecho. */
 @Composable
-private fun Etiqueta(texto: String, modifier: Modifier = Modifier) {
+private fun Distintivo(texto: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(radio(6.dp)))

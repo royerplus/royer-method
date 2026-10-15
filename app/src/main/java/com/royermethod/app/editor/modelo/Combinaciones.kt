@@ -32,9 +32,6 @@ object Combinaciones {
         Combinacion("Parpadeo", listOf(m(Animacion.PARPADEO, c = Curva.LINEAL)))
     )
 
-    /** Las de salida son las mismas piezas: se recorren al reves. */
-    val salida: List<Combinacion> = entrada
-
     val continuas: List<Pair<String, List<Continuo>>> = listOf(
         "Acercamiento" to listOf(Continuo(AnimacionContinua.ACERCAMIENTO)),
         "Alejamiento" to listOf(Continuo(AnimacionContinua.ALEJAMIENTO)),

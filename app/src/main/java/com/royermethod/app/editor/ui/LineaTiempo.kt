@@ -52,16 +52,18 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.PistaAudio
 import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.Transicion
+import com.royermethod.app.ui.components.Gestos
+import com.royermethod.app.ui.components.segundos
 import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 /*
  * La linea de tiempo.
@@ -220,7 +222,7 @@ fun LineaTiempo(
                         // Botones de transicion entre bloques
                         val yBoton = (PRINCIPAL_Y + PRINCIPAL_H / 2).dp.toPx()
                         g.pasos.forEach { (c, t) ->
-                            if (abs(pos.x - xDe(t)) < 16.dp.toPx() && abs(pos.y - yBoton) < 18.dp.toPx()) return@run Objetivo.Paso(c)
+                            if (abs(pos.x - xDe(t)) < 20.dp.toPx() && abs(pos.y - yBoton) < 20.dp.toPx()) return@run Objetivo.Paso(c)
                         }
                         // El "+" del final
                         val xMas = xDe(g.finPrincipal) + 14.dp.toPx()
@@ -317,54 +319,69 @@ fun LineaTiempo(
                                 val pz = asa.pieza
                                 val puntos = imanes(pz.id)
                                 var acumulado = 0f
-                                arrastrar(abajo.id) { dx ->
-                                    acumulado += dx
-                                    var d = (acumulado / pxUs).toLong()
-                                    val borde = if (asa.derecha) pz.hasta else pz.desde
-                                    d = pegar(borde + d, puntos) - borde
-                                    estado.ajustar { recorte(base, pz, asa.derecha, d) }
+                                try {
+                                    arrastrar(abajo.id) { dx ->
+                                        acumulado += dx
+                                        var d = (acumulado / pxUs).toLong()
+                                        val borde = if (asa.derecha) pz.hasta else pz.desde
+                                        d = pegar(borde + d, puntos) - borde
+                                        estado.ajustar { recorte(base, pz, asa.derecha, d) }
+                                    }
+                                } finally {
+                                    estado.terminarGesto()
                                 }
-                                estado.terminarGesto()
                             } else if (bloque != null) {
                                 // ---- Llevar a otro sitio ----
                                 val pz = bloque.pieza
                                 estado.elegir(if (pz.pista == Pista.AUDIO) Seleccion.Sonido(pz.id) else Seleccion.Bloque(pz.id))
                                 estado.empezarGesto()
-                                val puntos = imanes(pz.id)
-                                var dx = 0f
-                                var dy = 0f
-                                var x = abajo.position.x
-                                when (pz.pista) {
-                                    Pista.PRINCIPAL -> {
-                                        val sin = base.copy(principal = base.principal.filter { it.id != pz.id })
-                                        fun destino() = Edicion.puntoDeInsercion(sin, tiempoEnX(x))
-                                        cogido = Cogido(pz, x, abajo.position.y, destino())
-                                        arrastrar(abajo.id) { d ->
-                                            x += d
+                                try {
+                                    val puntos = imanes(pz.id)
+                                    var dx = 0f
+                                    var dy = 0f
+                                    var x = abajo.position.x
+                                    when (pz.pista) {
+                                        Pista.PRINCIPAL -> {
+                                            // Se queda donde estaba hasta que el dedo pasa la mitad
+                                            // de un vecino; cada mitad pasada lo corre un sitio.
+                                            val fila = g.piezas.filter { it.pista == Pista.PRINCIPAL }
+                                            val original = fila.indexOfFirst { it.id == pz.id }
+                                            fun destino(): Int {
+                                                val t = tiempoEnX(x)
+                                                val antes = fila.subList(0, original).count { (it.desde + it.hasta) / 2 > t }
+                                                val despues = fila.subList(original + 1, fila.size).count { (it.desde + it.hasta) / 2 < t }
+                                                return original - antes + despues
+                                            }
                                             cogido = Cogido(pz, x, abajo.position.y, destino())
+                                            arrastrar(abajo.id) { d ->
+                                                x += d
+                                                cogido = Cogido(pz, x, abajo.position.y, destino())
+                                            }
+                                            val a = destino()
+                                            cogido = null
+                                            estado.ajustar { Edicion.moverPrincipal(base, pz.id, a) }
                                         }
-                                        val a = destino()
-                                        cogido = null
-                                        estado.ajustar { Edicion.moverPrincipal(base, pz.id, a) }
+                                        Pista.CAPA -> arrastrar(abajo.id, vertical = { dy += it }) { d ->
+                                            dx += d
+                                            val dur = pz.hasta - pz.desde
+                                            var ini = pz.desde + (dx / pxUs).toLong()
+                                            // Se pega por el principio o por el final, lo que quede mas cerca
+                                            val a = pegar(ini, puntos)
+                                            val b = pegar(ini + dur, puntos) - dur
+                                            ini = if (abs(a - ini) <= abs(b - ini) && a != ini) a else if (b != ini) b else ini
+                                            val fila = (pz.fila + (dy / CAPA_PASO.dp.toPx()).roundToInt()).coerceAtLeast(0)
+                                            estado.ajustar { Edicion.moverCapa(base, pz.id, ini.coerceAtLeast(0), fila) }
+                                        }
+                                        Pista.AUDIO -> arrastrar(abajo.id) { d ->
+                                            dx += d
+                                            val ini = pegar(pz.desde + (dx / pxUs).toLong(), puntos).coerceAtLeast(0)
+                                            estado.ajustar { Edicion.cambiarAudio(base, pz.id) { it.copy(inicioUs = ini) } }
+                                        }
                                     }
-                                    Pista.CAPA -> arrastrar(abajo.id, vertical = { dy += it }) { d ->
-                                        dx += d
-                                        val dur = pz.hasta - pz.desde
-                                        var ini = pz.desde + (dx / pxUs).toLong()
-                                        // Se pega por el principio o por el final, lo que quede mas cerca
-                                        val a = pegar(ini, puntos)
-                                        val b = pegar(ini + dur, puntos) - dur
-                                        ini = if (abs(a - ini) <= abs(b - ini) && a != ini) a else if (b != ini) b else ini
-                                        val fila = (pz.fila + (dy / CAPA_PASO.dp.toPx()).roundToInt()).coerceAtLeast(0)
-                                        estado.ajustar { Edicion.moverCapa(base, pz.id, ini.coerceAtLeast(0), fila) }
-                                    }
-                                    Pista.AUDIO -> arrastrar(abajo.id) { d ->
-                                        dx += d
-                                        val ini = pegar(pz.desde + (dx / pxUs).toLong(), puntos).coerceAtLeast(0)
-                                        estado.ajustar { Edicion.cambiarAudio(base, pz.id) { it.copy(inicioUs = ini) } }
-                                    }
+                                } finally {
+                                    cogido = null
+                                    estado.terminarGesto()
                                 }
-                                estado.terminarGesto()
                             } else {
                                 // ---- Mover el cabezal, con inercia al soltar ----
                                 val rastro = VelocityTracker()
@@ -640,7 +657,11 @@ private fun DrawScope.bloque(
             val k1 = ceil((min(x1, size.width) - xIni) / lado).toInt()
             val usPorLado = (lado / pxUs).toLong().coerceAtLeast(1)
             val v = if (c.esVideo) c.velocidad else 1f
-            val cuanto = max((usPorLado * v).toLong(), 200_000L)
+            // Cada cuanto se pide una miniatura: en pasos fijos (0.25 s, 0.5, 1,
+            // 2...) para que al pellizcar se reutilicen las ya sacadas en vez
+            // de pedir una tanda nueva por cada nivel de zoom.
+            var cuanto = 250_000L
+            while (cuanto < usPorLado * v) cuanto *= 2
             for (k in k0..k1) {
                 val local = (k * lado + lado / 2) / pxUs
                 val ta = if (c.esVideo) (c.tiempoArchivo(local.toLong()) / cuanto) * cuanto else 0L

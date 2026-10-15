@@ -56,17 +56,17 @@ import com.royermethod.app.ui.components.BotonRedondo
 import com.royermethod.app.ui.components.ComparadorCompleto
 import com.royermethod.app.ui.components.ComparadorImagenes
 import com.royermethod.app.ui.components.GhostButton
-import com.royermethod.app.ui.components.Glifo
 import com.royermethod.app.ui.components.LienzoLado
+import com.royermethod.app.ui.components.Simbolo
 import com.royermethod.app.ui.components.NeonButton
 import com.royermethod.app.ui.components.recordarPareja
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
 import com.royermethod.app.ui.theme.radio
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
 /** Luz tenue de arriba, del color del neon que haya elegido el usuario. */
 private val LUZ_ARRIBA: Color get() = Ink.White.copy(alpha = 0.09f)
@@ -274,12 +274,12 @@ fun ResultScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         BotonRedondo(
-                            glifo = Glifo.Lupa,
+                            glifo = Simbolo.Lupa,
                             onClick = { comparando = true },
                             modifier = Modifier.size(42.dp)
                         )
                         BotonRedondo(
-                            glifo = if (sonido) Glifo.Sonido else Glifo.Silencio,
+                            glifo = if (sonido) Simbolo.Sonido else Simbolo.Silencio,
                             onClick = { sonido = !sonido },
                             encendido = sonido,
                             modifier = Modifier.size(42.dp)
@@ -326,7 +326,7 @@ fun ResultScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         BotonRedondo(
-                            glifo = Glifo.Lupa,
+                            glifo = Simbolo.Lupa,
                             onClick = { comparando = true },
                             modifier = Modifier.size(42.dp)
                         )

@@ -20,7 +20,7 @@ data class Clip(
      */
     val desdeUs: Long = 0,
     val hastaUs: Long = origen?.duracionUs?.takeIf { it > 0 } ?: IMAGEN_POR_DEFECTO_US,
-    /** 0.25 a 4. Solo en video. */
+    /** 0.1 a 10. Solo en video. Para cambiarla, [conVelocidad]. */
     val velocidad: Float = 1f,
     /** 0 a 2: se puede subir por encima del original. */
     val volumen: Float = 1f,
@@ -109,6 +109,22 @@ data class Clip(
             }
         }
         return e.copy(ajuste = encuadre.ajuste, recorte = encuadre.recorte, espejo = encuadre.espejo)
+    }
+
+    /**
+     * El mismo bloque a otra velocidad. Los fotogramas clave van en tiempo del
+     * bloque, asi que se estiran o encogen con el: a doble velocidad, la clave
+     * que estaba en el segundo 2 pasa al 1 y cae sobre la misma imagen.
+     */
+    fun conVelocidad(v: Float): Clip {
+        if (!esVideo || v == velocidad) return copy(velocidad = v)
+        val f = velocidad.toDouble() / v
+        val nuevo = copy(velocidad = v, claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) })
+        val dur = nuevo.duracionUs
+        return nuevo.copy(
+            duracionEntradaUs = duracionEntradaUs.coerceAtMost(dur),
+            duracionSalidaUs = duracionSalidaUs.coerceAtMost(dur)
+        )
     }
 
     /** Ajustes de color con el filtro ya sumado. Es lo que dibuja el motor. */

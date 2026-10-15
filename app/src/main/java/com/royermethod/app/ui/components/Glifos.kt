@@ -1,4 +1,4 @@
-package com.royermethod.app.editor.ui
+package com.royermethod.app.ui.components
 
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size

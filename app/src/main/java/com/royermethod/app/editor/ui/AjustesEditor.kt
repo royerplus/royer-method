@@ -32,5 +32,9 @@ object AjustesEditor {
 
     var alCambiar: () -> Unit = {}
 
+    /** "[base] 1", "[base] 2"... el primero que no este usado. */
+    fun nombreNuevo(base: String, usados: List<String>): String =
+        generateSequence(1) { it + 1 }.map { "$base $it" }.first { it !in usados }
+
     fun proyectoNuevo(): Proyecto = Proyecto(formato = formato, fondo = fondo, salida = salida)
 }

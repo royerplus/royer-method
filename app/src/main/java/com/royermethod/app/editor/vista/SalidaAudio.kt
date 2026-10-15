@@ -86,9 +86,6 @@ internal class SalidaAudio(
     /** Frames que ya han sonado por el altavoz, desde [desde]. */
     fun sonados(): Long = pista.playbackHeadPosition.toLong() and 0xffffffffL
 
-    /** ¿Ha empezado a sonar de verdad? Antes de eso el reloj no avanza. */
-    val empezada: Boolean get() = pista.playState == AudioTrack.PLAYSTATE_PLAYING
-
     fun parar() {
         sonando = false
         runCatching { pista.pause() }

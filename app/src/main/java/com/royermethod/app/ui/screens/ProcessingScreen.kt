@@ -38,6 +38,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.royermethod.app.editor.exportar.Exportacion
+import com.royermethod.app.procesado.ESPERA_EXPORTACION
 import com.royermethod.app.procesado.Etapas
 import com.royermethod.app.procesado.ProcesadoService
 import com.royermethod.app.procesado.Procesador
@@ -144,7 +146,10 @@ fun ProcessingScreen(
         if (!Procesador.enLote && !Procesador.corriendo &&
             Procesador.salida == null && Procesador.fallo == null
         ) {
-            ProcesadoService.arrancar(context)
+            // Las dos usan la GPU y los codificadores: a la vez saldrian las
+            // dos a medias (la exportacion ya comprueba lo mismo al reves).
+            if (Exportacion.corriendo) Procesador.fallo = ESPERA_EXPORTACION
+            else ProcesadoService.arrancar(context)
         }
     }
 

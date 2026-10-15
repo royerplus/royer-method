@@ -1,4 +1,4 @@
-package com.royermethod.app.editor.ui
+package com.royermethod.app.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -118,7 +119,7 @@ fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolea
             texto,
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.4.sp, fontSize = 10.5.sp * Estilo.letra),
             color = if (resaltada) Ink.White else Ink.White70,
-            maxLines = 1,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
@@ -193,7 +194,7 @@ fun Deslizador(
                     .clickable {
                         gestos.empezar(); cambio(neutro); gestos.terminar()
                     }
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                    .padding(horizontal = 10.dp, vertical = 8.dp)
             )
         }
         Canvas(
@@ -206,18 +207,21 @@ fun Deslizador(
                         gestos.empezar()
                         val margen = 10.dp.toPx()
                         fun valorEn(x: Float) = dePos(((x - margen) / (size.width - 2 * margen)).coerceIn(0f, 1f))
-                        cambio(valorEn(abajo.position.x))
-                        abajo.consume()
-                        while (true) {
-                            val ev = awaitPointerEvent()
-                            val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
-                            if (!c.pressed) break
-                            if (c.positionChange() != Offset.Zero) {
-                                cambio(valorEn(c.position.x))
-                                c.consume()
+                        try {
+                            cambio(valorEn(abajo.position.x))
+                            abajo.consume()
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
+                                if (!c.pressed) break
+                                if (c.positionChange() != Offset.Zero) {
+                                    cambio(valorEn(c.position.x))
+                                    c.consume()
+                                }
                             }
+                        } finally {
+                            gestos.terminar()
                         }
-                        gestos.terminar()
                     }
                 }
         ) {
@@ -246,7 +250,8 @@ fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifie
     val fondo by animateColorAsState(if (elegido) Ink.White else Ink.White08, tween(180), label = "chip")
     Box(
         modifier
-            .clip(esquinas(18.dp))
+            .heightIn(min = 40.dp)
+            .clip(esquinas(20.dp))
             .background(fondo)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
@@ -312,7 +317,7 @@ fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifie
         if (conNinguno) {
             Box(
                 Modifier
-                    .size(34.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .border(if (elegido == 0) 2.dp else 1.dp, if (elegido == 0) Ink.White else Ink.White30, CircleShape)
                     .clickable { onElegir(0) },
@@ -323,7 +328,7 @@ fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifie
             val sel = c == elegido
             Box(
                 Modifier
-                    .size(34.dp)
+                    .size(40.dp)
                     .clip(CircleShape)
                     .border(2.dp, if (sel) Ink.White else Color.Transparent, CircleShape)
                     .padding(if (sel) 4.dp else 0.dp)
@@ -397,7 +402,9 @@ fun Mosaico(
             texto,
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.2.sp, fontSize = 10.5.sp * Estilo.letra),
             color = if (elegido) Ink.White else Ink.White70,
-            maxLines = 1,
+            // Dos lineas: "Desde la izquierda" y "Desde la derecha" no pueden
+            // quedar las dos en "Desde la…"
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )

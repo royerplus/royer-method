@@ -7,6 +7,8 @@ import android.graphics.Matrix
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.os.Handler
+import android.os.Looper
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -33,6 +35,7 @@ class RecursosAndroid(context: Context) : Recursos {
     private val miniaturas = mutableStateMapOf<String, ImageBitmap>()
     private val ondas = mutableStateMapOf<String, FloatArray>()
     private val pedidas = HashSet<String>()
+    private val principal = Handler(Looper.getMainLooper())
     private val lectores = object : LinkedHashMap<String, MediaMetadataRetriever>(4, 0.75f, true) {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<String, MediaMetadataRetriever>): Boolean {
             if (size > 3) { runCatching { e.value.release() }; return true }
@@ -40,12 +43,24 @@ class RecursosAndroid(context: Context) : Recursos {
         }
     }
 
+    /** Orden de uso de las miniaturas, para tirar las mas viejas. Solo en el hilo principal. */
+    private val usoMiniaturas = LinkedHashMap<String, Unit>(64, 0.75f, true)
+
     override fun miniatura(o: Origen, tUs: Long): ImageBitmap? {
         val clave = "${o.uri}@$tUs"
+        usoMiniaturas[clave] = Unit
+        if (usoMiniaturas.size > MAX_MINIATURAS) {
+            val vieja = usoMiniaturas.keys.first()
+            usoMiniaturas.remove(vieja)
+            pedidas.remove(vieja)
+            // Se pide desde el dibujo: el estado se toca despues, no en mitad
+            principal.post { miniaturas.remove(vieja) }
+        }
         miniaturas[clave]?.let { return it }
         if (pedidas.add(clave)) hilo.execute {
             val b = runCatching { if (o.esImagen) foto(o) else fotograma(o, tUs) }.getOrNull()
-            if (b != null) miniaturas[clave] = b.asImageBitmap()
+            // Se publica en el hilo principal: el mapa es estado de Compose
+            if (b != null) principal.post { if (clave in pedidas) miniaturas[clave] = b.asImageBitmap() }
         }
         return null
     }
@@ -121,6 +136,8 @@ class RecursosAndroid(context: Context) : Recursos {
 
     companion object {
         private const val LADO = 160
+        /** Unos 25 MB de miniaturas como mucho. */
+        private const val MAX_MINIATURAS = 240
         private const val MAX_ONDA_US = 15 * 60 * 1_000_000L
     }
 }

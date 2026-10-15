@@ -131,7 +131,21 @@ class Previsualizador(context: Context) {
         }
     }
 
+    /**
+     * Cuantas veces ha movido el cabezal la interfaz. Un instante que el hilo
+     * de dibujo calculo antes de la ultima busqueda ya no vale y no se manda:
+     * si no, al arrastrar, un fotograma lento devolveria el cabezal atras.
+     */
+    @Volatile
+    private var busquedas = 0
+
+    /** Avisa del instante a la interfaz, salvo que se haya buscado otro entretanto. */
+    private fun avisarTiempo(t: Long, desde: Int) {
+        principal.post { if (busquedas == desde) alTiempo(t) }
+    }
+
     fun irA(t: Long) {
+        busquedas++
         val d = Linea.duracion(proyecto)
         tiempo = t.coerceIn(0, maxOf(0, d - 1))
         h.removeCallbacks(dibujoSuelto)
@@ -162,8 +176,13 @@ class Previsualizador(context: Context) {
         if (!reproduciendo) return
         reproduciendo = false
         principal.post { alReproducir(false) }
+        val b = busquedas
         h.post {
-            tiempo = reloj()
+            // Se queda donde iba, salvo que justo se haya llevado el cabezal a otro sitio
+            if (busquedas == b) {
+                tiempo = reloj()
+                avisarTiempo(tiempo, b)
+            }
             h.removeCallbacks(bucle)
             sonido?.parar()
             sonido = null
@@ -219,7 +238,9 @@ class Previsualizador(context: Context) {
                 tiempo = maxOf(0, d - 1)
                 reproduciendo = false
                 sonido?.parar(); sonido = null
-                principal.post { alReproducir(false); alTiempo(tiempo) }
+                val fin = tiempo
+                principal.post { alReproducir(false) }
+                avisarTiempo(fin, busquedas)
                 ultimoDibujado = -1
                 dibujarAhora()
                 return
@@ -228,7 +249,7 @@ class Previsualizador(context: Context) {
             val n = Linea.fotogramaEn(t)
             if (n != ultimoDibujado) {
                 dibujar(Linea.tiempoDe(n), n, rapido = true)
-                principal.post { alTiempo(t) }
+                avisarTiempo(t, busquedas)
             }
             val falta = (Linea.tiempoDe(n + 1) - reloj()) / 1000
             h.postDelayed(this, falta.coerceIn(1, 34))
@@ -240,11 +261,13 @@ class Previsualizador(context: Context) {
         dibujarAhora()
     }
 
-    /** El instante actual tal cual, aunque no caiga en un fotograma exacto (al arrastrar). */
+    /**
+     * El instante actual tal cual, aunque no caiga en un fotograma exacto (al
+     * arrastrar). No avisa a la interfaz: en pausa es ella la que manda.
+     */
     private fun dibujarAhora() {
         val t = tiempo
         dibujar(t, Linea.fotogramaEn(t), rapido = false)
-        principal.post { alTiempo(t) }
     }
 
     private fun dibujar(t: Long, n: Long, rapido: Boolean) {

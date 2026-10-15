@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -43,6 +44,13 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Medidor
+import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Herramienta
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.LocalGestos
+import com.royermethod.app.ui.components.esquinas
+import com.royermethod.app.ui.components.reloj
 import com.royermethod.app.ui.theme.Ink
 import kotlinx.coroutines.delay
 
@@ -161,19 +169,27 @@ private fun BarraArriba(estado: EstadoEditor, onVolver: () -> Unit, onExportar: 
         BotonIcono(Glifos.atras, onVolver)
         Spacer(Modifier.width(4.dp))
         // La proporcion a la vista, y tocandola se cambia
-        Text(
-            estado.proyecto.formato.nombre,
-            style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp),
-            color = Ink.White70,
-            modifier = Modifier
+        Box(
+            Modifier
+                .heightIn(min = 44.dp)
                 .clip(esquinas(8.dp))
-                .border(1.dp, Ink.White15, esquinas(8.dp))
                 .clickable { estado.elegir(null); estado.panel = Panel.FORMATO }
-                .padding(horizontal = 10.dp, vertical = 5.dp)
-        )
+                .padding(horizontal = 4.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                estado.proyecto.formato.nombre,
+                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp),
+                color = Ink.White70,
+                modifier = Modifier
+                    .border(1.dp, Ink.White15, esquinas(8.dp))
+                    .padding(horizontal = 10.dp, vertical = 5.dp)
+            )
+        }
         Spacer(Modifier.weight(1f))
         Row(
             Modifier
+                .heightIn(min = 40.dp)
                 .clip(esquinas(20.dp))
                 .background(Ink.White)
                 .clickable(onClick = onExportar)
@@ -273,7 +289,7 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                 Herramienta(Glifos.superponer, "Superponer", onAgregarCapa)
                 Herramienta(Glifos.texto, "Texto", {
                     var nuevo = 0L
-                    estado.hacer { p -> Edicion.agregarTexto(p, "Escribe aqui", estado.tiempo).also { nuevo = it.second }.first }
+                    estado.hacer { p -> Edicion.agregarTexto(p, TEXTO_NUEVO, estado.tiempo).also { nuevo = it.second }.first }
                     estado.elegir(Seleccion.Bloque(nuevo))
                     estado.panel = Panel.TEXTO
                 })
@@ -283,7 +299,7 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
             is Seleccion.Sonido -> {
                 val id = s.id
                 Herramienta(Glifos.dividir, "Dividir", {
-                    val r = Edicion.dividirAudio(estado.proyecto, id, estado.tiempo)
+                    val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
                     if (r == null) estado.avisar("Pon el cabezal dentro del sonido para dividirlo") else estado.hacer { r.first }
                 })
                 Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
@@ -303,14 +319,14 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                 if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
                 Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
                 if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
+                Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
                 Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
                 if (!c.esTexto) Herramienta(Glifos.color, "Color", { estado.panel = Panel.COLOR })
-                Herramienta(Glifos.curva, "Curva", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())
+                Herramienta(Glifos.curva, "Claves", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())
                 if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
-                Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
                 if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
                 else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
-                Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
             }
         }
     }

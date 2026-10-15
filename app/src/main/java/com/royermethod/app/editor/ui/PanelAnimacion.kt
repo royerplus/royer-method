@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -42,6 +44,17 @@ import com.royermethod.app.editor.modelo.Combinaciones
 import com.royermethod.app.editor.modelo.Continuo
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Movimiento
+import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.Deslizador
+import com.royermethod.app.ui.components.Escala
+import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.Mosaico
+import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Pestanas
+import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
 
@@ -104,10 +117,10 @@ private fun EntradaOSalida(estado: EstadoEditor, c: Clip, entrada: Boolean) {
         onCambio = { l, arrastre -> poner(l, arrastre) },
         guardada = listas.any { it.piezas == piezas },
         onGuardar = {
-            val n = AjustesEditor.mias.size + 1
-            AjustesEditor.mias = AjustesEditor.mias + Combinaciones.Combinacion("Mia $n", piezas)
+            val nombre = AjustesEditor.nombreNuevo("Mia", AjustesEditor.mias.map { it.nombre })
+            AjustesEditor.mias = AjustesEditor.mias + Combinaciones.Combinacion(nombre, piezas)
             AjustesEditor.alCambiar()
-            estado.avisar("Guardada como \"Mia $n\"")
+            estado.avisar("Guardada como \"$nombre\"")
         }
     )
 }
@@ -124,12 +137,7 @@ private fun Piezas(
     Spacer(Modifier.height(6.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         Etiqueta("Piezas de esta animacion", Modifier.weight(1f))
-        if (!guardada) Text(
-            "Guardar como mia",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Ink.White,
-            modifier = Modifier.clickable(onClick = onGuardar).padding(6.dp)
-        )
+        if (!guardada) BotonGuardar(onGuardar)
     }
     piezas.forEachIndexed { i, m ->
         fun cambiar(n: Movimiento, arrastre: Boolean = true) = onCambio(piezas.toMutableList().also { it[i] = n }, arrastre)
@@ -156,7 +164,7 @@ private fun Piezas(
                         style = MaterialTheme.typography.labelSmall, color = Ink.White50
                     )
                 }
-                BotonIcono(Glifos.cerrar, { onCambio(piezas.filterIndexed { j, _ -> j != i }, false); abierta = -1 }, tam = 36.dp, color = Ink.White50)
+                BotonIcono(Glifos.cerrar, { onCambio(piezas.filterIndexed { j, _ -> j != i }, false); abierta = -1 }, color = Ink.White50)
             }
             AnimatedVisibility(abierta == i) {
                 Column(Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
@@ -195,24 +203,19 @@ private fun Continuas(estado: EstadoEditor, c: Clip) {
     Spacer(Modifier.height(8.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         Etiqueta("Piezas", Modifier.weight(1f))
-        if (listas.none { it.second == piezas }) Text(
-            "Guardar como mia",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Ink.White,
-            modifier = Modifier.clickable {
-                val n = AjustesEditor.continuasMias.size + 1
-                AjustesEditor.continuasMias = AjustesEditor.continuasMias + ("Mia $n" to piezas)
-                AjustesEditor.alCambiar()
-                estado.avisar("Guardada como \"Mia $n\"")
-            }.padding(6.dp)
-        )
+        if (listas.none { it.second == piezas }) BotonGuardar {
+            val nombre = AjustesEditor.nombreNuevo("Mia continua", AjustesEditor.continuasMias.map { it.first })
+            AjustesEditor.continuasMias = AjustesEditor.continuasMias + (nombre to piezas)
+            AjustesEditor.alCambiar()
+            estado.avisar("Guardada como \"$nombre\"")
+        }
     }
     piezas.forEachIndexed { i, k ->
         fun cambiar(n: Continuo) = poner(piezas.toMutableList().also { it[i] = n }, true)
         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp).background(Ink.White04, esquinas(12.dp)).padding(horizontal = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(k.tipo.nombre, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = Ink.White90, modifier = Modifier.weight(1f))
-                BotonIcono(Glifos.cerrar, { poner(piezas.filterIndexed { j, _ -> j != i }) }, tam = 36.dp, color = Ink.White50)
+                BotonIcono(Glifos.cerrar, { poner(piezas.filterIndexed { j, _ -> j != i }) }, color = Ink.White50)
             }
             Deslizador("Cuanto", k.intensidad, 0f, 3f, { v -> cambiar(k.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
             Deslizador("Rapidez", k.velocidad, 0.1f, 5f, { v -> cambiar(k.copy(velocidad = v)) }, neutro = 1f, escala = Escala.LOGARITMICA, texto = { "%.2gx".format(it) })
@@ -329,5 +332,22 @@ private fun DrawScope.dibujoContinua(t: AnimacionContinua, col: Color) {
             rotate(30f) { drawRoundRect(col, tl, Size(w, h), radio, style = trazo) }
             drawArc(col.copy(alpha = 0.6f), -60f, 120f, false, Offset(center.x - w * 0.9f, center.y - w * 0.9f), Size(w * 1.8f, w * 1.8f), style = Stroke(1.dp.toPx()))
         }
+    }
+}
+
+/** "Guardar como mia", con sitio de sobra para el dedo. */
+@Composable
+private fun BotonGuardar(onClick: () -> Unit) {
+    Row(
+        Modifier
+            .heightIn(min = 40.dp)
+            .clip(esquinas(10.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icono(Glifos.guardar, tam = 16.dp)
+        Spacer(Modifier.width(6.dp))
+        Text("Guardar como mia", style = MaterialTheme.typography.bodyMedium, color = Ink.White)
     }
 }

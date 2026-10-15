@@ -172,10 +172,13 @@ object Edicion {
         val (nid, q) = p.conId()
         // En el archivo, para video; en duracion, para imagen y texto
         val corte = if (c.esVideo) c.desdeUs + (local * c.velocidad.toDouble()).toLong() else c.desdeUs + local
-        val clavesA = c.claves.filter { it.tiempoUs <= local }
-        val clavesB = c.claves.filter { it.tiempoUs >= local }.map { it.copy(tiempoUs = it.tiempoUs - local) }
-        // El encuadre en el punto de corte, para que la segunda mitad empiece
-        // exactamente donde estaba
+        // Las dos mitades llevan un fotograma clave en el corte con el encuadre
+        // que habia ahi: la primera acaba y la segunda empieza exactamente
+        // donde estaba, sin salto.
+        val enCorte = claveEn(c, local)
+        val clavesA = (c.claves.filter { it.tiempoUs < local } + listOfNotNull(enCorte))
+        val clavesB = (listOfNotNull(enCorte?.copy(tiempoUs = 0)) +
+            c.claves.filter { it.tiempoUs > local }.map { it.copy(tiempoUs = it.tiempoUs - local) })
         val a = c.copy(
             hastaUs = corte,
             claves = clavesA,
@@ -193,18 +196,6 @@ object Edicion {
         return Triple(a, b, q)
     }
 
-    /** Parte un sonido en dos por [tUs]. Null si un trozo queda demasiado corto. */
-    fun dividirAudio(p: Proyecto, id: Long, tUs: Long): Pair<Proyecto, Long>? {
-        val a = p.audios.firstOrNull { it.id == id } ?: return null
-        val dentro = tUs - a.inicioUs
-        if (dentro < Clip.MINIMO_US || dentro > a.duracionUs - Clip.MINIMO_US) return null
-        val (nid, q) = p.conId()
-        val corte = a.desdeUs + dentro
-        val primero = a.copy(hastaUs = corte, fundidoSalidaUs = 0)
-        val segundo = a.copy(id = nid, inicioUs = tUs, desdeUs = corte, fundidoEntradaUs = 0)
-        return q.copy(audios = q.audios.flatMap { if (it.id == id) listOf(primero, segundo) else listOf(it) }) to nid
-    }
-
     /**
      * Recorta los bordes de un bloque. [desdeUs] y [hastaUs] en el archivo
      * para video; para imagen y texto, [hastaUs] - [desdeUs] es lo que dura.
@@ -220,12 +211,28 @@ object Edicion {
         // principio, se mueven con el contenido.
         val corrimiento = if (c.esVideo) (desplazado / c.velocidad.toDouble()).toLong() else desplazado
         return cambiar(p, id) {
+            // Lo que queda antes del nuevo principio se sustituye por una clave
+            // en el 0 con el encuadre que habia ahi, para que no salte.
+            val inicio = if (corrimiento > 0 && it.claves.any { k -> k.tiempoUs < corrimiento }) claveEn(it, corrimiento) else null
+            val claves = listOfNotNull(inicio) +
+                it.claves.filter { k -> k.tiempoUs >= corrimiento && (inicio == null || k.tiempoUs > corrimiento) }
             it.copy(
                 desdeUs = d,
                 hastaUs = h,
-                claves = it.claves.map { k -> k.copy(tiempoUs = k.tiempoUs - corrimiento) }.filter { k -> k.tiempoUs >= 0 }
+                claves = claves.map { k -> k.copy(tiempoUs = k.tiempoUs - corrimiento) }
             )
         }
+    }
+
+    /**
+     * Un fotograma clave en [local] con el encuadre que el bloque tiene ahi,
+     * y la curva del tramo en el que cae. Null si el bloque no tiene claves.
+     */
+    private fun claveEn(c: Clip, local: Long): Clave? {
+        if (c.claves.isEmpty()) return null
+        c.claves.firstOrNull { it.tiempoUs == local }?.let { return it }
+        val previa = c.claves.filter { it.tiempoUs < local }.maxByOrNull { it.tiempoUs }
+        return Clave(local, c.encuadreEn(local), previa?.curva ?: Curva.SUAVE, previa?.bezier)
     }
 
     fun recortarAudio(p: Proyecto, id: Long, inicioUs: Long, desdeUs: Long, hastaUs: Long): Proyecto =
@@ -267,7 +274,12 @@ object Edicion {
         val capa = p.capas.firstOrNull { it.id == id } ?: return p
         if (capa.clip.esTexto) return p
         val donde = puntoDeInsercion(p, capa.inicioUs)
-        val clip = capa.clip.copy(encuadre = capa.clip.encuadre.copy(escala = 1f, x = 0f, y = 0f, ajuste = Ajuste.CUBRIR))
+        // Abajo ocupa toda la pantalla: fuera el encuadre de capa y sus claves,
+        // que lo dejarian pequeno o movido
+        val clip = capa.clip.copy(
+            encuadre = capa.clip.encuadre.copy(escala = 1f, x = 0f, y = 0f, ajuste = Ajuste.CUBRIR),
+            claves = emptyList()
+        )
         return p.copy(
             capas = p.capas.filter { it.id != id },
             principal = p.principal.toMutableList().also { it.add(donde, clip) }
@@ -373,13 +385,6 @@ object Edicion {
         }
         val animado = { e: Encuadre -> listOf(e.escala, e.x, e.y, e.rotacion, e.opacidad) }
         return if (animado(ahora) == animado(nuevo)) q else ponerClave(q, id, ini + local, nuevo)
-    }
-
-    /** ¿Hay un fotograma clave en [tUs]? */
-    fun hayClave(p: Proyecto, id: Long, tUs: Long): Boolean {
-        val ini = inicio(p, id) ?: return false
-        val c = clip(p, id) ?: return false
-        return c.claves.any { kotlin.math.abs(it.tiempoUs - (tUs - ini)) <= TOLERANCIA_CLAVE }
     }
 
     /** Medio fotograma: lo que se considera "el mismo instante" para un clave. */

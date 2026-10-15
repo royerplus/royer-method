@@ -80,8 +80,22 @@ class EdicionTest {
         var q = Edicion.ponerClave(p, ids[0], 2_000_000, Encuadre(escala = 2f))
         // El primer clave fija tambien el inicio
         assertEquals(listOf(0L, 2_000_000L), q.principal[0].claves.map { it.tiempoUs })
+        val antes = q.principal[0].encuadreEn(1_000_000)
         q = Edicion.recortar(q, ids[0], 1_000_000, 4_000_000)
-        assertEquals(listOf(1_000_000L), q.principal[0].claves.map { it.tiempoUs })
+        // La clave del 0 se sustituye por una en el nuevo principio, con el encuadre de ahi
+        assertEquals(listOf(0L, 1_000_000L), q.principal[0].claves.map { it.tiempoUs })
+        assertEquals(antes.escala, q.principal[0].encuadreEn(0).escala, 0.001f)
+    }
+
+    @Test
+    fun dividirNoHaceSaltarElEncuadre() {
+        val (p, ids) = Edicion.agregarPrincipal(Proyecto(), listOf(video))
+        val q = Edicion.ponerClave(p, ids[0], 2_000_000, Encuadre(escala = 2f))
+        val enCorte = q.principal[0].encuadreEn(1_000_000).escala
+        val r = Edicion.dividir(q, ids[0], 1_000_000)!!.first
+        assertEquals(enCorte, r.principal[0].encuadreEn(r.principal[0].duracionUs).escala, 0.01f)
+        assertEquals(enCorte, r.principal[1].encuadreEn(0).escala, 0.01f)
+        assertEquals(2f, r.principal[1].encuadreEn(1_000_000).escala, 0.01f)
     }
 
     @Test

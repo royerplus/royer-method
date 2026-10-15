@@ -21,9 +21,19 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.PlanExportacion
+import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.BotonLleno
+import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.Interruptor
+import com.royermethod.app.ui.components.Nota
+import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.reloj
 import com.royermethod.app.ui.theme.Ink
 
 /** Como va la exportacion, contado por quien la hace. */
@@ -43,10 +53,13 @@ data class ResultadoExportar(
     val codec: String,
     /** Lo que se midio en el archivo: fotogramas, fps, saltos. */
     val verificacion: String,
-    val perfecta: Boolean
+    val perfecta: Boolean,
+    /** Fotogramas en los que algun archivo no se pudo leer y salio en negro. */
+    val avisos: Int = 0
 )
 
-private val LADOS = listOf(480, 576, 720, 1080)
+/** Lados cortos que se ofrecen al exportar. */
+val RESOLUCIONES = listOf(480, 576, 720, 1080)
 
 fun peso(bytes: Long): String = when {
     bytes >= 1_000_000 -> "%.1f MB".format(bytes / 1_000_000.0)
@@ -101,6 +114,15 @@ fun PanelExportar(
                 style = MaterialTheme.typography.bodyMedium,
                 color = if (r.perfecta) Ink.White70 else Ink.Peligro
             )
+            if (r.avisos > 0) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    "Algun archivo no se pudo leer en ${r.avisos} fotogramas y ahi salio en negro. " +
+                        "Mira que siga en el telefono.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink.Peligro
+                )
+            }
             Spacer(Modifier.height(18.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 BotonLleno("Compartir", onCompartir)
@@ -120,17 +142,14 @@ fun PanelExportar(
 
         else -> HojaPanel("Exportar", onCerrar) {
             val s = p.salida
-            fun salida(f: (com.royermethod.app.editor.modelo.AjustesSalida) -> com.royermethod.app.editor.modelo.AjustesSalida) {
-                estado.hacer { it.copy(salida = f(it.salida)) }
-                AjustesEditor.salida = f(AjustesEditor.salida)
-                AjustesEditor.alCambiar()
-            }
+            // Solo este proyecto: los de por defecto se cambian en Personalizar
+            fun salida(f: (AjustesSalida) -> AjustesSalida) = estado.hacer { it.copy(salida = f(it.salida)) }
             val plan = remember(p) { PlanExportacion.de(p, conAudio = p.audios.isNotEmpty() || p.principal.any { it.esVideo && it.origen?.conAudio == true && it.volumen > 0f }) }
             Etiqueta("Calidad")
             Opciones(Calidad.values().toList(), s.calidad, { it.nombre }, { c -> salida { it.copy(calidad = c) } })
             Spacer(Modifier.height(6.dp))
             Etiqueta("Resolucion")
-            Opciones(LADOS, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
+            Opciones(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
             Interruptor("H.265", s.hevc, { v -> salida { it.copy(hevc = v) } }, "Misma calidad con bastante menos peso. Si el telefono no lo tiene, sale en H.264")
             Interruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v -> salida { it.copy(desenfoqueMovimiento = v) } },
                 "El rastro que hace que las transiciones a 30 fps se vean fluidas")

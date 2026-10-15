@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -34,6 +35,7 @@ import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
+import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -58,6 +60,9 @@ fun Lienzo(
     val p = estado.proyecto
     val (cw, ch) = p.formato.medidas(p.salida.ladoCorto)
     val escena = remember(p, medidor) { Escena(p, cw, ch, medidor) }
+    // El gesto no se reinicia con cada cambio del proyecto (que es lo que hace
+    // el propio gesto): lee la escena del momento por aqui.
+    val escenaActual by rememberUpdatedState(escena)
     var guiaX by remember { mutableStateOf(false) }
     var guiaY by remember { mutableStateOf(false) }
 
@@ -80,13 +85,13 @@ fun Lienzo(
             Canvas(
                 Modifier
                     .fillMaxSize()
-                    .pointerInput(escena, escala) {
+                    .pointerInput(escala, vw, vh) {
                         awaitEachGesture {
                             val abajo = awaitFirstDown(requireUnconsumed = false)
                             estado.reproduciendo = false
                             val t = estado.tiempo
                             val enLienzo = Offset(abajo.position.x / escala, abajo.position.y / escala)
-                            val tocado = bloqueEn(estado, escena, enLienzo.x, enLienzo.y, t)
+                            val tocado = bloqueEn(estado, escenaActual, enLienzo.x, enLienzo.y, t)
 
                             // El bloque que se mueve: el elegido si se toco dentro de el
                             // (o si se usan dos dedos), si no, el que hay debajo.
@@ -101,52 +106,57 @@ fun Lienzo(
                             var recorrido = 0f
                             val base = estado.proyecto
 
-                            while (true) {
-                                val ev = awaitPointerEvent()
-                                val dedos = ev.changes.count { it.pressed }
-                                if (dedos == 0) break
-                                recorrido += ev.changes.first().positionChange().getDistance()
-                                if (!movido && (recorrido > umbral || dedos >= 2)) {
-                                    movido = true
-                                    objetivo = when {
-                                        elegido != null && (dedos >= 2 || tocado == elegido) && visible(estado, elegido, t) -> elegido
-                                        tocado != null -> tocado
-                                        else -> null
+                            try {
+                                while (true) {
+                                    val ev = awaitPointerEvent()
+                                    val dedos = ev.changes.count { it.pressed }
+                                    if (dedos == 0) break
+                                    recorrido += ev.changes.first().positionChange().getDistance()
+                                    if (!movido && (recorrido > umbral || dedos >= 2)) {
+                                        movido = true
+                                        objetivo = when {
+                                            elegido != null && (dedos >= 2 || tocado == elegido) && visible(estado, elegido, t) -> elegido
+                                            tocado != null -> tocado
+                                            else -> null
+                                        }
+                                        val id = objetivo
+                                        if (id != null) {
+                                            if (id != elegido) estado.elegir(Seleccion.Bloque(id))
+                                            val c = Edicion.clip(base, id)!!
+                                            val ini = Edicion.inicio(base, id) ?: 0
+                                            e0 = c.encuadreEn((t - ini).coerceIn(0, c.duracionUs))
+                                            estado.empezarGesto()
+                                        }
                                     }
                                     val id = objetivo
-                                    if (id != null) {
-                                        if (id != elegido) estado.elegir(Seleccion.Bloque(id))
-                                        val c = Edicion.clip(base, id)!!
-                                        val ini = Edicion.inicio(base, id) ?: 0
-                                        e0 = c.encuadreEn((t - ini).coerceIn(0, c.duracionUs))
-                                        estado.empezarGesto()
+                                    val inicial = e0
+                                    if (movido && id != null && inicial != null) {
+                                        pan += ev.calculatePan()
+                                        zoom *= ev.calculateZoom()
+                                        giro += ev.calculateRotation()
+                                        var x = inicial.x + pan.x / vw
+                                        var y = inicial.y + pan.y / vh
+                                        var r = inicial.rotacion + giro
+                                        guiaX = abs(x) < 0.012f
+                                        guiaY = abs(y) < 0.012f
+                                        if (guiaX) x = 0f
+                                        if (guiaY) y = 0f
+                                        val recto = (r / 90f).roundToInt() * 90f
+                                        if (abs(r - recto) < 4f) r = recto
+                                        val s = (inicial.escala * zoom).coerceIn(0.05f, 20f)
+                                        estado.ajustar { q ->
+                                            Edicion.ajustarEncuadre(q, id, t) { it.copy(x = x, y = y, rotacion = r, escala = s) }
+                                        }
+                                        ev.changes.forEach { it.consume() }
                                     }
                                 }
-                                val id = objetivo
-                                val inicial = e0
-                                if (movido && id != null && inicial != null) {
-                                    pan += ev.calculatePan()
-                                    zoom *= ev.calculateZoom()
-                                    giro += ev.calculateRotation()
-                                    var x = inicial.x + pan.x / vw
-                                    var y = inicial.y + pan.y / vh
-                                    var r = inicial.rotacion + giro
-                                    guiaX = abs(x) < 0.012f
-                                    guiaY = abs(y) < 0.012f
-                                    if (guiaX) x = 0f
-                                    if (guiaY) y = 0f
-                                    val recto = (r / 90f).roundToInt() * 90f
-                                    if (abs(r - recto) < 4f) r = recto
-                                    val s = (inicial.escala * zoom).coerceIn(0.05f, 20f)
-                                    estado.ajustar { q ->
-                                        Edicion.ajustarEncuadre(q, id, t) { it.copy(x = x, y = y, rotacion = r, escala = s) }
-                                    }
-                                    ev.changes.forEach { it.consume() }
-                                }
+                            } finally {
+                                // Tambien si el gesto se corta: que no quede abierto
+                                // el paso de deshacer ni las guias pintadas.
+                                guiaX = false
+                                guiaY = false
+                                if (objetivo != null) estado.terminarGesto()
                             }
-                            guiaX = false
-                            guiaY = false
-                            if (objetivo != null) estado.terminarGesto()
                             if (!movido) {
                                 // Un toque: elige; tocar otra vez un texto elegido lo abre para escribir
                                 if (tocado != null && tocado == elegido && Edicion.clip(estado.proyecto, tocado)?.esTexto == true) {

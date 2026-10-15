@@ -15,13 +15,11 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,8 +34,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -65,19 +65,22 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.royermethod.app.editor.exportar.Exportacion
 import com.royermethod.app.media.Medio
 import com.royermethod.app.media.leerMedio
+import com.royermethod.app.procesado.ESPERA_EXPORTACION
 import com.royermethod.app.procesado.ProcesadoService
 import com.royermethod.app.procesado.Procesador
 import com.royermethod.app.procesado.Trabajo
 import com.royermethod.app.procesado.Tramo
 import com.royermethod.app.procesado.bppDe
 import com.royermethod.app.procesado.ladoDe
+import com.royermethod.app.ui.components.Simbolo
 import com.royermethod.app.ui.components.AvisoDialog
 import com.royermethod.app.ui.components.AvisoFlotante
-import com.royermethod.app.ui.components.ColaDialog
 import com.royermethod.app.ui.components.BotonRedondo
-import com.royermethod.app.ui.components.Glifo
+import com.royermethod.app.ui.components.ColaDialog
+import com.royermethod.app.ui.components.ErrorDialog
 import com.royermethod.app.ui.components.LienzoVideo
 import com.royermethod.app.ui.components.NeonButton
 import com.royermethod.app.ui.components.OptionSelector
@@ -278,6 +281,8 @@ fun MejoraScreen(
     var modo by remember { mutableIntStateOf(AUTO) }
     var mostrarAviso by remember { mutableStateOf(false) }
     var avisoSilenciado by remember { mutableStateOf(false) }
+    // El editor esta exportando: no se puede empezar a la vez
+    var ocupado by remember { mutableStateOf(false) }
 
     var medio by remember { mutableStateOf<Medio?>(null) }
     var leyendo by remember { mutableStateOf(false) }
@@ -362,12 +367,19 @@ fun MejoraScreen(
         )
     }
 
+    if (ocupado) ErrorDialog(mensaje = ESPERA_EXPORTACION, onCerrar = { ocupado = false })
+
     if (mostrarCola) {
         ColaDialog(
             onIniciar = {
-                Procesador.arrancarCola()
-                ProcesadoService.arrancar(context, enLote = true)
-                onCola()
+                if (Exportacion.corriendo) {
+                    mostrarCola = false
+                    ocupado = true
+                } else {
+                    Procesador.arrancarCola()
+                    ProcesadoService.arrancar(context, enLote = true)
+                    onCola()
+                }
             },
             onCerrar = { mostrarCola = false }
         )
@@ -758,7 +770,7 @@ private fun ZonaMedio(
         if (cargado) {
             if (estado != null) {
                 BotonRedondo(
-                    glifo = if (sonido) Glifo.Sonido else Glifo.Silencio,
+                    glifo = if (sonido) Simbolo.Sonido else Simbolo.Silencio,
                     onClick = { sonido = !sonido },
                     encendido = sonido,
                     modifier = Modifier
@@ -768,7 +780,7 @@ private fun ZonaMedio(
                 )
             }
             BotonRedondo(
-                glifo = Glifo.Lupa,
+                glifo = Simbolo.Lupa,
                 onClick = onVer,
                 modifier = Modifier
                     .align(Alignment.TopEnd)

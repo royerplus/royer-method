@@ -159,7 +159,7 @@ private fun estadoExportar(): EstadoExportar {
         fraccion = f,
         restanteMs = restante,
         resultado = Exportacion.informe?.let {
-            ResultadoExportar(it.bytes, it.ancho, it.alto, it.codec, it.verificacion.resumen(), it.verificacion.perfecta)
+            ResultadoExportar(it.bytes, it.ancho, it.alto, it.codec, it.verificacion.resumen(), it.verificacion.perfecta, it.avisos)
         },
         fallo = Exportacion.fallo
     )
@@ -189,11 +189,23 @@ private class Superficie(private val prev: Previsualizador) : TextureView.Surfac
 
 private fun archivo(context: Context) = File(context.filesDir, "editor/proyecto.json")
 
-private fun cargar(context: Context): Proyecto? =
-    runCatching { archivo(context).takeIf { it.exists() }?.readText() }.getOrNull()?.let { Persistencia.deTexto(it) }
+/**
+ * El proyecto guardado. Si existe pero no se entiende, se aparta con otro
+ * nombre antes de empezar uno nuevo: el guardado automatico lo pisaria.
+ */
+private fun cargar(context: Context): Proyecto? {
+    val f = archivo(context)
+    if (!f.exists()) return null
+    val p = runCatching { f.readText() }.getOrNull()?.let { Persistencia.deTexto(it) }
+    if (p == null) runCatching { f.renameTo(File(f.parentFile, "proyecto-ilegible.json")) }
+    return p
+}
+
+/** Solo un guardado a la vez: el automatico y el de salir usan el mismo archivo temporal. */
+private val cerrojoGuardado = Any()
 
 /** Escribe aparte y luego cambia el nombre: un corte a mitad no deja el proyecto roto. */
-private fun guardar(context: Context, p: Proyecto) {
+private fun guardar(context: Context, p: Proyecto) = synchronized(cerrojoGuardado) {
     runCatching {
         val destino = archivo(context)
         destino.parentFile?.mkdirs()

@@ -39,6 +39,8 @@ class Compositor(
     private val linea = Programa(Sombreadores.VERTICE, Sombreadores.LINEA)
 
     private val videos = ArrayList<FuenteVideo>()
+    /** Archivos que no se pudieron abrir, con el cuadro en que fallaron. */
+    private val fallos = HashMap<String, Long>()
     private val imagenes = HashMap<String, FuenteImagen>()
     private val textos = HashMap<Triple<Texto, Int, Float>, FuenteImagen>()
     private val fondos = HashMap<Any, Pair<Long, List<Lamina>>>()
@@ -184,8 +186,12 @@ class Compositor(
                 cerrar(it)
             }
         }
+        // Un archivo que acaba de fallar no se reintenta en cada fotograma: abrir
+        // un decodificador cuesta, y si falta el archivo fallara igual.
+        fallos[uri]?.let { if (numero - it < REINTENTO_FOTOGRAMAS) { avisos++; return null } }
         return runCatching { FuenteVideo(context, Uri.parse(uri), giro) }
-            .onFailure { avisos++ }
+            .onFailure { avisos++; fallos[uri] = numero }
+            .onSuccess { fallos.remove(uri) }
             .getOrNull()
             ?.also { videos.add(it) }
     }
@@ -415,6 +421,9 @@ class Compositor(
 
     private companion object {
         const val MAX_VIDEOS = 6
+
+        /** Cuadros que se espera antes de volver a intentar abrir un archivo que fallo. */
+        private const val REINTENTO_FOTOGRAMAS = 30L
 
         /** Cuadros que se mantiene abierta una fuente sin usarse. */
         const val RETENER = 45L

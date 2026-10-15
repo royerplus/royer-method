@@ -10,8 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.royermethod.app.editor.ui.BotonIcono
-import com.royermethod.app.editor.ui.Glifos
 import com.royermethod.app.ui.logo.RoyerLogo
 import com.royermethod.app.ui.theme.Ink
 

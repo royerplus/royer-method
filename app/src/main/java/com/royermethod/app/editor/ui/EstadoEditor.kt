@@ -14,6 +14,7 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.PistaAudio
 import com.royermethod.app.editor.modelo.Proyecto
+import com.royermethod.app.ui.components.Gestos
 
 /** Lo que esta elegido en la linea de tiempo. */
 sealed interface Seleccion {
@@ -28,13 +29,13 @@ sealed interface Seleccion {
 enum class Panel(val titulo: String) {
     VELOCIDAD("Velocidad"),
     VOLUMEN("Volumen"),
-    ANIMACION("Animaciones"),
+    ANIMACION("Animar"),
     TRANSICION("Transicion"),
     COLOR("Color y filtros"),
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
-    FORMATO("Formato y fondo"),
-    CURVA("Fotograma clave")
+    FORMATO("Formato"),
+    CURVA("Fotogramas clave")
 }
 
 /**
@@ -141,6 +142,9 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     fun deshacer() {
         val p = atras.removeLastOrNull() ?: return
         adelante.addLast(proyecto)
+        // Si hay un gesto abierto (escribiendo un texto), lo siguiente que
+        // cambie tiene que ser un paso nuevo, no pegarse a este
+        gestoGuardado = false
         poner(p)
         limpiarSeleccion()
         botones()
@@ -149,19 +153,10 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     fun rehacer() {
         val p = adelante.removeLastOrNull() ?: return
         atras.addLast(proyecto)
+        gestoGuardado = false
         poner(p)
         limpiarSeleccion()
         botones()
-    }
-
-    /** Cambia el proyecto entero sin pasar por deshacer (al abrir uno). */
-    fun reemplazar(p: Proyecto) {
-        atras.clear()
-        adelante.clear()
-        botones()
-        poner(p)
-        seleccion = null
-        panel = null
     }
 
     private fun guardar() {

@@ -31,19 +31,20 @@ import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
 import com.royermethod.app.editor.ui.AjustesEditor
-import com.royermethod.app.editor.ui.BotonBorde
-import com.royermethod.app.editor.ui.BotonIcono
-import com.royermethod.app.editor.ui.Deslizador
-import com.royermethod.app.editor.ui.Etiqueta
-import com.royermethod.app.editor.ui.Glifos
-import com.royermethod.app.editor.ui.Interruptor
-import com.royermethod.app.editor.ui.Muestras
-import com.royermethod.app.editor.ui.Nota
-import com.royermethod.app.editor.ui.Opciones
-import com.royermethod.app.editor.ui.Pestanas
-import com.royermethod.app.editor.ui.esquinas
+import com.royermethod.app.editor.ui.RESOLUCIONES
 import com.royermethod.app.ui.components.ActionCard
+import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.Deslizador
+import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Interruptor
 import com.royermethod.app.ui.components.Marca
+import com.royermethod.app.ui.components.Muestras
+import com.royermethod.app.ui.components.Nota
+import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Pestanas
+import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.ACENTOS
 import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.FondoApp
@@ -167,7 +168,7 @@ private fun ColumnScope.Editor() {
     Etiqueta("Exportar")
     val s = AjustesEditor.salida
     Opciones(Calidad.values().toList(), s.calidad, { it.nombre }, { c -> salida { it.copy(calidad = c) } })
-    Opciones(listOf(480, 576, 720, 1080), s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
+    Opciones(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
     Interruptor("H.265", s.hevc, { v -> salida { it.copy(hevc = v) } }, "Misma calidad con bastante menos peso. Si el telefono no lo tiene, sale en H.264")
     Interruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v -> salida { it.copy(desenfoqueMovimiento = v) } },
         "El rastro que hace que las transiciones a 30 fps se vean fluidas")
