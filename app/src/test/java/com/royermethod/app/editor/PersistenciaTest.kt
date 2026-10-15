@@ -20,7 +20,10 @@ class PersistenciaTest {
                     filtro = Filtro.ANIME, intensidadFiltro = 0.5f,
                     encuadre = Encuadre(Ajuste.ENCAJAR, 1.2f, 0.1f, -0.2f, 15f, 0.9f, true, Recorte(0.1f, 0f, 0.05f, 0.2f)),
                     claves = listOf(Clave(0, Encuadre()), Clave(500_000, Encuadre(escala = 2f), Curva.ENTRADA)),
-                    entrada = Animacion.REBOTE, salida = Animacion.GIRO, continua = AnimacionContinua.PULSO,
+                    entrada = listOf(Movimiento(Animacion.REBOTE, 0.7f, Curva.ELASTICO, 0.1f, 0.9f), Movimiento(Animacion.APARECER)),
+                    salida = listOf(Movimiento(Animacion.GIRO)),
+                    continua = listOf(Continuo(AnimacionContinua.PULSO, 1.5f, 2f)),
+                    ajusteTransicion = AjusteTransicion(Curva.LINEAL, Direccion.ARRIBA, 0xFF00FF00.toInt(), 1.4f),
                     transicion = Transicion.LINEA, duracionTransicionUs = 400_000, fluido = true
                 )
             ),

@@ -1,6 +1,7 @@
 package com.royermethod.app.editor
 
 import com.royermethod.app.editor.modelo.Ajuste
+import com.royermethod.app.editor.modelo.AjusteTransicion
 import com.royermethod.app.editor.modelo.AjustesColor
 import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Alineacion
@@ -10,6 +11,7 @@ import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Capa
 import com.royermethod.app.editor.modelo.Clave
 import com.royermethod.app.editor.modelo.Clip
+import com.royermethod.app.editor.modelo.Continuo
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Filtro
@@ -17,6 +19,7 @@ import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
 import com.royermethod.app.editor.modelo.Fuente
 import com.royermethod.app.editor.modelo.Mezcla
+import com.royermethod.app.editor.modelo.Movimiento
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.PistaAudio
 import com.royermethod.app.editor.modelo.Proyecto
@@ -122,14 +125,41 @@ object Persistencia {
                 })
             }
         })
-        put("entrada", c.entrada.name)
-        put("salida", c.salida.name)
+        put("entrada", movimientos(c.entrada))
+        put("salida", movimientos(c.salida))
         put("duracionEntrada", c.duracionEntradaUs)
         put("duracionSalida", c.duracionSalidaUs)
-        put("continua", c.continua.name)
+        put("continua", JSONArray().apply {
+            c.continua.forEach { k ->
+                put(JSONObject().apply {
+                    put("tipo", k.tipo.name)
+                    put("intensidad", k.intensidad.toDouble())
+                    put("velocidad", k.velocidad.toDouble())
+                })
+            }
+        })
         put("transicion", c.transicion.name)
         put("duracionTransicion", c.duracionTransicionUs)
+        put("ajusteTransicion", JSONObject().apply {
+            val a = c.ajusteTransicion
+            put("curva", a.curva.name)
+            put("direccion", a.direccion.name)
+            put("color", a.color)
+            put("intensidad", a.intensidad.toDouble())
+        })
         put("fluido", c.fluido)
+    }
+
+    private fun movimientos(l: List<Movimiento>) = JSONArray().apply {
+        l.forEach { m ->
+            put(JSONObject().apply {
+                put("tipo", m.tipo.name)
+                put("intensidad", m.intensidad.toDouble())
+                put("curva", m.curva.name)
+                put("desde", m.desde.toDouble())
+                put("hasta", m.hasta.toDouble())
+            })
+        }
     }
 
     private fun texto(t: Texto) = JSONObject().apply {
@@ -266,15 +296,47 @@ object Persistencia {
                     )
                 }
             } ?: emptyList(),
-            entrada = o.enumeracion("entrada", Animacion.NINGUNA),
-            salida = o.enumeracion("salida", Animacion.NINGUNA),
+            entrada = movimientosDe(o.optJSONArray("entrada")),
+            salida = movimientosDe(o.optJSONArray("salida")),
             duracionEntradaUs = o.optLong("duracionEntrada", d.duracionEntradaUs),
             duracionSalidaUs = o.optLong("duracionSalida", d.duracionSalidaUs),
-            continua = o.enumeracion("continua", AnimacionContinua.NINGUNA),
+            continua = o.optJSONArray("continua")?.let { a ->
+                (0 until a.length()).mapNotNull { i ->
+                    val k = a.optJSONObject(i) ?: return@mapNotNull null
+                    val tipo = runCatching { AnimacionContinua.valueOf(k.optString("tipo")) }.getOrNull()
+                        ?: return@mapNotNull null
+                    Continuo(tipo, k.f("intensidad", 1f), k.f("velocidad", 1f).coerceIn(0.1f, 10f))
+                }
+            } ?: emptyList(),
             transicion = o.enumeracion("transicion", Transicion.NINGUNA),
             duracionTransicionUs = o.optLong("duracionTransicion", d.duracionTransicionUs),
+            ajusteTransicion = o.optJSONObject("ajusteTransicion")?.let { a ->
+                val def = AjusteTransicion()
+                AjusteTransicion(
+                    curva = a.enumeracion("curva", def.curva),
+                    direccion = a.enumeracion("direccion", def.direccion),
+                    color = a.optInt("color", def.color),
+                    intensidad = a.f("intensidad", def.intensidad)
+                )
+            } ?: AjusteTransicion(),
             fluido = o.optBoolean("fluido")
         )
+    }
+
+    private fun movimientosDe(a: JSONArray?): List<Movimiento> {
+        if (a == null) return emptyList()
+        return (0 until a.length()).mapNotNull { i ->
+            val m = a.optJSONObject(i) ?: return@mapNotNull null
+            val tipo = runCatching { Animacion.valueOf(m.optString("tipo")) }.getOrNull() ?: return@mapNotNull null
+            val desde = m.f("desde", 0f).coerceIn(0f, 1f)
+            Movimiento(
+                tipo,
+                m.f("intensidad", 1f),
+                m.enumeracion("curva", Curva.SALIDA),
+                desde,
+                m.f("hasta", 1f).coerceIn(desde, 1f)
+            )
+        }
     }
 
     private fun textoDe(o: JSONObject): Texto {

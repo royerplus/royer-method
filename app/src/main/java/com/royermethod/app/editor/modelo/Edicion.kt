@@ -105,7 +105,7 @@ object Edicion {
                 id = id,
                 texto = Texto(contenido),
                 encuadre = Encuadre(ajuste = Ajuste.ENCAJAR),
-                entrada = Animacion.APARECER,
+                entrada = listOf(Movimiento(Animacion.APARECER)),
                 duracionEntradaUs = 300_000
             )
         }, inicioUs)
@@ -179,7 +179,7 @@ object Edicion {
         val a = c.copy(
             hastaUs = corte,
             claves = clavesA,
-            salida = Animacion.NINGUNA,
+            salida = emptyList(),
             fundidoSalidaUs = 0,
             transicion = Transicion.NINGUNA
         )
@@ -187,7 +187,7 @@ object Edicion {
             id = nid,
             desdeUs = corte,
             claves = clavesB,
-            entrada = Animacion.NINGUNA,
+            entrada = emptyList(),
             fundidoEntradaUs = 0
         )
         return Triple(a, b, q)

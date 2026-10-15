@@ -122,6 +122,7 @@ class Escena(
             val anim = animacion(clip, local)
             e = anim.aplicar(e)
             op *= anim.opacidad
+            if (anim.desenfoque > 0f) desenfoque += anim.desenfoque / ts.size
             // Lo que imponga la transicion encima
             var conMascara = false
             if (transicion != null) {
@@ -258,14 +259,20 @@ class Escena(
         val inicioB = t - en.localSegundo
         val solape = Linea.solape(a, b)
         val ts = instantes(t, k)
-        // Avance de la transicion en cada muestra. Sin curva lineal: arrancar
-        // y frenar suave es lo que hace que no parezca un corte con prisa.
+        val ajuste = a.ajusteTransicion
+        // Avance de la transicion en cada muestra, con su curva. Por defecto
+        // suave: arrancar y frenar poco a poco es lo que hace que no parezca
+        // un corte con prisa.
         val ps = FloatArray(ts.size) { i ->
             val p = if (solape > 0) ((ts[i] - inicioB).toDouble() / solape).toFloat() else 1f
-            suave(p.coerceIn(0f, 1f))
+            curva(ajuste.curva, p.coerceIn(0f, 1f))
         }
         val tipo = a.transicion
-        val extension = (abs(DIR_LINEA.first) * ancho + abs(DIR_LINEA.second) * alto) / 2f
+        val fuerza = ajuste.intensidad
+        val dir = ajuste.direccion
+        // Los barridos van un poco inclinados: en recto parecen un fallo de imagen
+        val (bx, by) = girar(dir.dx, dir.dy, INCLINACION)
+        val extension = (abs(bx) * ancho + abs(by) * alto) / 2f
         val grosorLinea = alto * 0.012f
         fun borde(p: Float): Float {
             // Desde fuera del todo por un lado hasta fuera del todo por el otro,
@@ -277,6 +284,9 @@ class Escena(
         // no se apaga: la escena B es opaca y lo tapa, y asi en el fotograma
         // del cambio la mezcla de los dos es exacta y no se oscurece.
         val despues = { i: Int -> Efecto(opacidad = if (ps[i] < 0.5f) 0f else 1f) }
+        fun destello(pico: Float, pot: Float) = FloatArray(ts.size) { i ->
+            ((1f - abs(ps[i] * 2f - 1f)) * pico).coerceIn(0f, 1f).pow(pot)
+        }
 
         var ladoA = Lado()
         var ladoB = Lado(aEscena = { i -> Efecto(opacidad = ps[i]) })
@@ -287,60 +297,52 @@ class Escena(
                 ladoB = Lado(aEscena = despues)
                 // Negro del todo un momento alrededor del cambio: el cambio
                 // queda siempre tapado, caiga donde caiga dentro del fotograma.
-                encima.add(PasoSolido(0xFF000000.toInt(), FloatArray(ts.size) { i ->
-                    ((1f - abs(ps[i] * 2f - 1f)) * 1.25f).coerceIn(0f, 1f)
-                }, debajo = false))
+                encima.add(PasoSolido(0xFF000000.toInt(), destello(1.25f, 1f), debajo = false))
             }
 
             Transicion.DESTELLO -> {
                 ladoB = Lado(aEscena = despues)
-                // Pico en el centro, con caida rapida: un destello, no un fundido a blanco
-                encima.add(PasoSolido(0xFFFFFFFF.toInt(), FloatArray(ts.size) { i ->
-                    ((1f - abs(ps[i] * 2f - 1f)) * 1.15f).coerceIn(0f, 1f).pow(1.6f)
-                }, debajo = false))
+                // Pico en el centro, con caida rapida: un destello, no un fundido
+                encima.add(PasoSolido(ajuste.color, destello(1.15f, 1.6f), debajo = false))
             }
 
             Transicion.LINEA, Transicion.BARRIDO -> {
                 val suaveBorde = if (tipo == Transicion.LINEA) 1.5f else alto * 0.04f
-                val mascara = Mascara(DIR_LINEA.first, DIR_LINEA.second, suaveBorde)
+                val mascara = Mascara(bx, by, suaveBorde)
                 ladoB = Lado(aEscena = { i -> Efecto(mascara = mascara, borde = borde(ps[i])) })
                 if (tipo == Transicion.LINEA) {
                     encima.add(
                         PasoLinea(
-                            dirX = DIR_LINEA.first, dirY = DIR_LINEA.second,
+                            dirX = bx, dirY = by,
                             bordes = FloatArray(ts.size) { borde(ps[it]) },
-                            grosor = grosorLinea,
-                            color = 0xFFFFFFFF.toInt()
+                            grosor = grosorLinea * fuerza.coerceIn(0.3f, 3f),
+                            color = ajuste.color
                         )
                     )
                 }
             }
 
-            Transicion.EMPUJAR, Transicion.EMPUJAR_ARRIBA -> {
-                val horizontal = tipo == Transicion.EMPUJAR
-                ladoA = Lado(
-                    aEscena = { i -> if (horizontal) Efecto(dx = -ps[i]) else Efecto(dy = -ps[i]) },
-                    extender = true
-                )
-                ladoB = Lado(aEscena = { i -> if (horizontal) Efecto(dx = 1f - ps[i]) else Efecto(dy = 1f - ps[i]) })
+            Transicion.EMPUJAR -> {
+                ladoA = Lado(aEscena = { i -> Efecto(dx = dir.dx * ps[i], dy = dir.dy * ps[i]) }, extender = true)
+                ladoB = Lado(aEscena = { i -> Efecto(dx = -dir.dx * (1f - ps[i]), dy = -dir.dy * (1f - ps[i])) })
             }
 
             Transicion.DESLIZAR -> {
                 // El de debajo se aleja un poco mientras lo tapan: da profundidad
-                ladoA = Lado(alClip = { i -> Efecto(escala = 1f - 0.06f * ps[i]) })
-                ladoB = Lado(aEscena = { i -> Efecto(dx = 1f - ps[i]) })
+                ladoA = Lado(alClip = { i -> Efecto(escala = 1f - 0.06f * fuerza * ps[i]) })
+                ladoB = Lado(aEscena = { i -> Efecto(dx = -dir.dx * (1f - ps[i]), dy = -dir.dy * (1f - ps[i])) })
             }
 
             Transicion.ZOOM -> {
-                ladoA = Lado(alClip = { i -> Efecto(escala = 1f + 0.9f * ps[i]) })
+                ladoA = Lado(alClip = { i -> Efecto(escala = 1f + 0.9f * fuerza * ps[i]) })
                 ladoB = Lado(
-                    alClip = { i -> Efecto(escala = 1f + 0.9f * (1f - ps[i])) },
+                    alClip = { i -> Efecto(escala = 1f + 0.9f * fuerza * (1f - ps[i])) },
                     aEscena = { i -> Efecto(opacidad = paso(0.35f, 0.65f, ps[i])) }
                 )
             }
 
             Transicion.DESENFOQUE -> {
-                val radio = alto * 0.03f
+                val radio = alto * 0.03f * fuerza
                 ladoA = Lado(alClip = { i -> Efecto(desenfoque = radio * min(1f, ps[i] * 2f)) })
                 ladoB = Lado(
                     alClip = { i -> Efecto(desenfoque = radio * min(1f, (1f - ps[i]) * 2f)) },
@@ -349,11 +351,35 @@ class Escena(
             }
 
             Transicion.GIRO -> {
-                ladoA = Lado(alClip = { i -> Efecto(rotacion = 90f * ps[i], escala = 1f + ps[i] * 0.5f) })
+                val g = 90f * fuerza
+                ladoA = Lado(alClip = { i -> Efecto(rotacion = g * ps[i], escala = 1f + ps[i] * 0.5f) })
                 ladoB = Lado(
-                    alClip = { i -> Efecto(rotacion = -90f * (1f - ps[i]), escala = 1f + (1f - ps[i]) * 0.5f) },
+                    alClip = { i -> Efecto(rotacion = -g * (1f - ps[i]), escala = 1f + (1f - ps[i]) * 0.5f) },
                     aEscena = despues
                 )
+            }
+
+            Transicion.CIRCULO -> {
+                val radio = kotlin.math.sqrt((ancho * ancho + alto * alto).toFloat()) / 2f + 4f
+                val mascara = Mascara(0f, 0f, alto * 0.006f + 1f, radial = true)
+                ladoB = Lado(aEscena = { i -> Efecto(mascara = mascara, borde = radio * ps[i]) })
+            }
+
+            Transicion.ZOOM_GIRO -> {
+                ladoA = Lado(alClip = { i -> Efecto(escala = 1f + 1.2f * fuerza * ps[i], rotacion = 35f * fuerza * ps[i]) })
+                ladoB = Lado(
+                    alClip = { i -> Efecto(escala = 1f + 1.2f * fuerza * (1f - ps[i]), rotacion = -35f * fuerza * (1f - ps[i])) },
+                    aEscena = { i -> Efecto(opacidad = paso(0.4f, 0.6f, ps[i])) }
+                )
+            }
+
+            Transicion.IMPACTO -> {
+                ladoA = Lado(alClip = { i -> Efecto(escala = 1f + 0.6f * fuerza * ps[i] * ps[i]) })
+                ladoB = Lado(
+                    alClip = { i -> Efecto(escala = 1f + 0.35f * fuerza * (1f - ps[i]) * (1f - ps[i])) },
+                    aEscena = despues
+                )
+                encima.add(PasoSolido(ajuste.color, destello(1.4f, 2.2f), debajo = false))
             }
 
             // Fundido, y cualquier cosa que no tenga dibujo propio
@@ -430,67 +456,94 @@ class Escena(
         return continua(clip, local, e)
     }
 
-    private fun continua(clip: Clip, local: Long, e: Encuadre): Encuadre {
-        val s = local / 1_000_000f
-        return when (clip.continua) {
-            AnimacionContinua.NINGUNA -> e
-            AnimacionContinua.ACERCAMIENTO -> {
-                val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
-                e.copy(escala = e.escala * (1f + 0.15f * f))
-            }
-            AnimacionContinua.PULSO -> {
-                // Medio segundo por latido: encaja con la mayoria de musica de edits
-                val fase = (s / 0.5f) % 1f
-                val golpe = (1f - fase).pow(3)
-                e.copy(escala = e.escala * (1f + 0.05f * golpe))
-            }
-            AnimacionContinua.TEMBLOR -> {
-                val amp = 0.012f
-                e.copy(
-                    x = e.x + amp * ruido(s * 9f, 1.3f),
-                    y = e.y + amp * ruido(s * 9f, 7.1f),
-                    rotacion = e.rotacion + 0.8f * ruido(s * 7f, 3.7f),
-                    escala = e.escala * 1.03f
+    private fun continua(clip: Clip, local: Long, e0: Encuadre): Encuadre {
+        var e = e0
+        for (c in clip.continua) {
+            val s = local / 1_000_000f * c.velocidad
+            val i = c.intensidad
+            e = when (c.tipo) {
+                AnimacionContinua.ACERCAMIENTO -> {
+                    val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    e.copy(escala = e.escala * (1f + 0.15f * i * f))
+                }
+                AnimacionContinua.ALEJAMIENTO -> {
+                    val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    e.copy(escala = e.escala * (1f + 0.15f * i * (1f - f)))
+                }
+                AnimacionContinua.PULSO -> {
+                    // Medio segundo por latido: encaja con la mayoria de musica de edits
+                    val fase = (s / 0.5f) % 1f
+                    val golpe = (1f - fase).pow(3)
+                    e.copy(escala = e.escala * (1f + 0.05f * i * golpe))
+                }
+                AnimacionContinua.TEMBLOR -> {
+                    val amp = 0.012f * i
+                    e.copy(
+                        x = e.x + amp * ruido(s * 9f, 1.3f),
+                        y = e.y + amp * ruido(s * 9f, 7.1f),
+                        rotacion = e.rotacion + 0.8f * i * ruido(s * 7f, 3.7f),
+                        escala = e.escala * (1f + 0.03f * i)
+                    )
+                }
+                AnimacionContinua.BALANCEO -> e.copy(rotacion = e.rotacion + 3f * i * sin(2f * PI.toFloat() * s / 2f))
+                AnimacionContinua.FLOTAR -> e.copy(
+                    y = e.y + 0.012f * i * sin(2f * PI.toFloat() * s / 2.4f),
+                    x = e.x + 0.006f * i * sin(2f * PI.toFloat() * s / 3.7f)
                 )
+                AnimacionContinua.GIRAR -> e.copy(rotacion = e.rotacion + 90f * i * s)
             }
-            AnimacionContinua.BALANCEO -> e.copy(rotacion = e.rotacion + 3f * sin(2f * PI.toFloat() * s / 2f))
         }
+        return e
     }
 
     /** Lo que aportan las animaciones de entrada y salida en [local]. */
     private fun animacion(clip: Clip, local: Long): Efecto {
         var r = Efecto()
-        if (clip.entrada != Animacion.NINGUNA && clip.duracionEntradaUs > 0) {
+        if (clip.entrada.isNotEmpty() && clip.duracionEntradaUs > 0) {
             val q = (local.toFloat() / clip.duracionEntradaUs).coerceIn(0f, 1f)
-            if (q < 1f) r = r.y(efecto(clip.entrada, q))
+            if (q < 1f) for (m in clip.entrada) r = r.y(efecto(m, q))
         }
-        if (clip.salida != Animacion.NINGUNA && clip.duracionSalidaUs > 0) {
+        if (clip.salida.isNotEmpty() && clip.duracionSalidaUs > 0) {
             val restante = clip.duracionUs - local
             val q = (restante.toFloat() / clip.duracionSalidaUs).coerceIn(0f, 1f)
-            if (q < 1f) r = r.y(efecto(clip.salida, q))
+            if (q < 1f) for (m in clip.salida) r = r.y(efecto(m, q))
         }
         return r
     }
 
     /**
-     * Una animacion con [q] de 0 (fuera) a 1 (en su sitio). La salida es la
-     * misma animacion recorrida al reves: entrar desde la izquierda y salir
-     * hacia la izquierda son la misma cuenta.
+     * Una pieza de animacion con [q] de 0 (fuera) a 1 (en su sitio). La salida
+     * es la misma recorrida al reves: entrar desde la izquierda y salir hacia
+     * la izquierda son la misma cuenta.
      */
-    private fun efecto(a: Animacion, q: Float): Efecto {
-        val f = salidaSuave(q)
-        return when (a) {
-            Animacion.NINGUNA -> Efecto()
-            Animacion.APARECER -> Efecto(opacidad = f)
-            Animacion.ZOOM_ENTRA -> Efecto(escala = 1.35f - 0.35f * f, opacidad = min(1f, q * 2f))
-            Animacion.ZOOM_SALE -> Efecto(escala = 0.7f + 0.3f * f, opacidad = min(1f, q * 2f))
-            Animacion.IZQUIERDA -> Efecto(dx = -(1f - f))
-            Animacion.DERECHA -> Efecto(dx = (1f - f))
-            Animacion.ARRIBA -> Efecto(dy = -(1f - f))
-            Animacion.ABAJO -> Efecto(dy = (1f - f))
-            Animacion.GIRO -> Efecto(rotacion = -120f * (1f - f), escala = 0.5f + 0.5f * f, opacidad = min(1f, q * 2f))
-            Animacion.REBOTE -> Efecto(escala = rebote(q), opacidad = min(1f, q * 3f))
+    private fun efecto(m: Movimiento, q: Float): Efecto {
+        val tramo = (m.hasta - m.desde).coerceAtLeast(1e-3f)
+        val local = ((q - m.desde) / tramo).coerceIn(0f, 1f)
+        val f = curva(m.curva, local)
+        val falta = 1f - f
+        val i = m.intensidad
+        return when (m.tipo) {
+            Animacion.APARECER -> Efecto(opacidad = (1f - i.coerceIn(0f, 1f) * falta).coerceIn(0f, 1f))
+            Animacion.ZOOM_ENTRA -> Efecto(escala = 1f + 0.35f * i * falta)
+            Animacion.ZOOM_SALE -> Efecto(escala = (1f - 0.3f * i * falta).coerceAtLeast(0.02f))
+            Animacion.IZQUIERDA -> Efecto(dx = -i * falta)
+            Animacion.DERECHA -> Efecto(dx = i * falta)
+            Animacion.ARRIBA -> Efecto(dy = -i * falta)
+            Animacion.ABAJO -> Efecto(dy = i * falta)
+            Animacion.GIRO -> Efecto(rotacion = -120f * i * falta)
+            Animacion.REBOTE -> Efecto(escala = 1f + (rebote(local) - 1f) * i, opacidad = min(1f, local * 3f))
             Animacion.REVELAR -> Efecto(revelar = f)
+            Animacion.DESENFOCAR -> Efecto(desenfoque = alto * 0.04f * i * falta)
+            Animacion.SACUDIR -> {
+                // Golpes rapidos que se apagan
+                val amp = 0.035f * i * falta
+                Efecto(dx = amp * sin(local * 38f), rotacion = 4f * i * falta * sin(local * 31f + 1f))
+            }
+            Animacion.PARPADEO -> {
+                // Tres parpadeos y se queda
+                val on = sin(local * PI.toFloat() * 7f) > -0.2f || local >= 1f
+                Efecto(opacidad = if (on) 1f else (1f - i).coerceIn(0f, 1f) * 0.3f)
+            }
         }
     }
 
@@ -572,10 +625,14 @@ class Escena(
         /** Matriz que lleva cualquier pixel fuera de la imagen. */
         private val FUERA = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, -1f, -1f, 1f)
 
-        /** Direccion del barrido: casi horizontal, con algo de inclinacion. */
-        private val DIR_LINEA: Pair<Float, Float> = run {
-            val ang = Math.toRadians(-14.0)
-            cos(ang).toFloat() to sin(ang).toFloat()
+        /** Grados de inclinacion de los barridos. */
+        private const val INCLINACION = -14.0
+
+        private fun girar(x: Float, y: Float, grados: Double): Pair<Float, Float> {
+            val r = Math.toRadians(grados)
+            val c = cos(r).toFloat()
+            val s = sin(r).toFloat()
+            return (x * c - y * s) to (x * s + y * c)
         }
 
         fun suave(x: Float): Float = x * x * (3f - 2f * x)
@@ -589,6 +646,9 @@ class Escena(
             Curva.SUAVE -> if (x < 0.5f) 4 * x * x * x else 1 - (-2 * x + 2).pow(3) / 2
             Curva.ENTRADA -> x * x * x
             Curva.SALIDA -> 1 - (1 - x).pow(3)
+            Curva.REBOTE -> rebote(x)
+            Curva.ELASTICO -> if (x <= 0f) 0f else if (x >= 1f) 1f
+            else (2.0.pow(-10.0 * x) * sin((x * 10 - 0.75) * (2 * PI / 3)) + 1).toFloat()
         }
 
         /** Sale de pequeno, se pasa un poco y vuelve: el rebote. */
@@ -654,7 +714,7 @@ data class Efecto(
  * Un corte recto sobre el lienzo: se ve lo que el borde ya ha barrido.
  *
  * Con d la distancia de un pixel al centro del lienzo medida en la direccion
- * del barrido, el pixel se ve si d < borde. El borde avanza en esa direccion.
+ * del barrido (o sin direccion, si es [radial]), el pixel se ve si d < borde. El borde avanza en esa direccion.
  *
  * @param dirX,dirY hacia donde avanza el borde (vector unitario)
  * @param suave pixeles de transicion del borde, para que no salga dentado
@@ -662,7 +722,9 @@ data class Efecto(
 data class Mascara(
     val dirX: Float,
     val dirY: Float,
-    val suave: Float
+    val suave: Float,
+    /** En circulo: d es la distancia al centro del lienzo y se ve lo de dentro. */
+    val radial: Boolean = false
 )
 
 /** Un fotograma descrito: que dibujar, en orden de abajo arriba. */

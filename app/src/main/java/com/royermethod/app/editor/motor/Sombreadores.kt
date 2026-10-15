@@ -108,6 +108,7 @@ uniform vec4 uRecorte;
 uniform float uConMascara;
 uniform vec2 uMascDir;
 uniform float uMascSuave;
+uniform float uMascRadial;
 uniform float uRadio;
 uniform float uNitidez;
 uniform float uBrillo;
@@ -189,7 +190,7 @@ void main() {
                   * clamp((uv.y - uRecorte.y) / pv + 0.5, 0.0, 1.0)
                   * clamp((uRecorte.w - uv.y) / pv + 0.5, 0.0, 1.0);
         if (uConMascara > 0.5) {
-            float d = dot(p - 0.5 * uLienzo, uMascDir);
+            float d = uMascRadial > 0.5 ? length(p - 0.5 * uLienzo) : dot(p - 0.5 * uLienzo, uMascDir);
             cob *= clamp((uBorde[i] - d) / uMascSuave + 0.5, 0.0, 1.0);
         }
         float a = cob * uOpac[i];

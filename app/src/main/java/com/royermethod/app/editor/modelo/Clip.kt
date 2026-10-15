@@ -37,14 +37,23 @@ data class Clip(
     val encuadre: Encuadre = Encuadre(),
     /** Fotogramas clave del encuadre, en tiempo del clip (0 = su primer fotograma). */
     val claves: List<Clave> = emptyList(),
-    val entrada: Animacion = Animacion.NINGUNA,
-    val salida: Animacion = Animacion.NINGUNA,
+    /**
+     * Animacion de entrada. Una lista: varias piezas se combinan en una sola
+     * animacion (acercar + girar + desenfocar, por ejemplo), cada una con su
+     * intensidad, su curva y su tramo dentro de la duracion.
+     */
+    val entrada: List<Movimiento> = emptyList(),
+    /** La de salida, igual que la de entrada pero al reves. */
+    val salida: List<Movimiento> = emptyList(),
+    /** Desde una decima de segundo: las animaciones de los edits son cortas. */
     val duracionEntradaUs: Long = 500_000,
     val duracionSalidaUs: Long = 500_000,
-    val continua: AnimacionContinua = AnimacionContinua.NINGUNA,
+    /** Lo que se mueve durante todo el bloque. Tambien se combinan. */
+    val continua: List<Continuo> = emptyList(),
     /** Paso al bloque siguiente de la pista principal. En capas no se usa. */
     val transicion: Transicion = Transicion.NINGUNA,
     val duracionTransicionUs: Long = 500_000,
+    val ajusteTransicion: AjusteTransicion = AjusteTransicion(),
     /**
      * Generar los fotogramas que faltan con el modelo de interpolacion.
      *
@@ -150,15 +159,20 @@ data class Clave(
     val curva: Curva = Curva.SUAVE
 )
 
+/** Como se reparte el movimiento en el tiempo. */
 enum class Curva(val nombre: String) {
     LINEAL("Lineal"),
     SUAVE("Suave"),
     ENTRADA("Acelera"),
-    SALIDA("Frena")
+    SALIDA("Frena"),
+    /** Se pasa un poco y vuelve. */
+    REBOTE("Rebote"),
+    /** Oscila un par de veces antes de quedarse. */
+    ELASTICO("Elastico")
 }
 
+/** Piezas de animacion de entrada y salida. Se combinan entre ellas. */
 enum class Animacion(val nombre: String) {
-    NINGUNA("Ninguna"),
     APARECER("Aparecer"),
     ZOOM_ENTRA("Acercar"),
     ZOOM_SALE("Alejar"),
@@ -169,34 +183,84 @@ enum class Animacion(val nombre: String) {
     GIRO("Girar"),
     REBOTE("Rebote"),
     /** Se descubre de izquierda a derecha, como escrito. Pensado para textos. */
-    REVELAR("Revelar")
+    REVELAR("Revelar"),
+    DESENFOCAR("Enfocar"),
+    SACUDIR("Sacudir"),
+    PARPADEO("Parpadeo")
 }
+
+/**
+ * Una pieza de una animacion.
+ *
+ * @param intensidad cuanto se mueve: 1 lo normal, 0.2 apenas, 2 el doble
+ * @param desde,hasta en que parte de la duracion actua (0 a 1). Sirve para
+ *   encadenar: primero entra deslizando y al final da un giro.
+ */
+data class Movimiento(
+    val tipo: Animacion,
+    val intensidad: Float = 1f,
+    val curva: Curva = Curva.SALIDA,
+    val desde: Float = 0f,
+    val hasta: Float = 1f
+)
 
 /** Lo que se mueve durante todo el bloque, no solo al entrar o salir. */
 enum class AnimacionContinua(val nombre: String) {
-    NINGUNA("Ninguna"),
     /** Acercamiento lento, el efecto Ken Burns de las fotos. */
     ACERCAMIENTO("Acercamiento"),
+    ALEJAMIENTO("Alejamiento"),
     PULSO("Pulso"),
     TEMBLOR("Temblor"),
-    BALANCEO("Balanceo")
+    BALANCEO("Balanceo"),
+    FLOTAR("Flotar"),
+    GIRAR("Girar sin parar")
 }
+
+data class Continuo(
+    val tipo: AnimacionContinua,
+    val intensidad: Float = 1f,
+    /** 1 lo normal; 2 el doble de rapido. */
+    val velocidad: Float = 1f
+)
 
 enum class Transicion(val nombre: String) {
     NINGUNA("Corte"),
     FUNDIDO("Fundido"),
     NEGRO("A negro"),
     DESTELLO("Destello"),
-    /** Barrido con una linea blanca brillante en el borde. */
-    LINEA("Linea blanca"),
+    /** Barrido con una linea brillante en el borde. */
+    LINEA("Linea de luz"),
     BARRIDO("Barrido"),
     EMPUJAR("Empujar"),
-    EMPUJAR_ARRIBA("Empujar arriba"),
     DESLIZAR("Deslizar"),
     ZOOM("Zoom"),
     DESENFOQUE("Desenfoque"),
-    GIRO("Giro")
+    GIRO("Giro"),
+    /** Se abre un circulo desde el centro. */
+    CIRCULO("Circulo"),
+    ZOOM_GIRO("Zoom y giro"),
+    /** Zoom de golpe con destello en el cambio. */
+    IMPACTO("Impacto")
 }
+
+/** Hacia donde va una transicion que se mueve. */
+enum class Direccion(val nombre: String, val dx: Float, val dy: Float) {
+    IZQUIERDA("Izquierda", -1f, 0f),
+    DERECHA("Derecha", 1f, 0f),
+    ARRIBA("Arriba", 0f, -1f),
+    ABAJO("Abajo", 0f, 1f)
+}
+
+/** Lo que se puede cambiar de una transicion ademas de su duracion. */
+data class AjusteTransicion(
+    val curva: Curva = Curva.SUAVE,
+    /** Para empujar, deslizar y los barridos: hacia donde se va lo que sale. */
+    val direccion: Direccion = Direccion.IZQUIERDA,
+    /** Color de la linea o del destello. */
+    val color: Int = 0xFFFFFFFF.toInt(),
+    /** Cuanto zoom, giro o desenfoque: 1 lo normal. */
+    val intensidad: Float = 1f
+)
 
 /**
  * Correccion de color. Todo en -1..1 con 0 neutro, salvo nitidez y vineta,

@@ -46,12 +46,12 @@ class EdicionTest {
     @Test
     fun laTransicionSeQuedaConLaSegundaMitad() {
         val (p, ids) = Edicion.agregarPrincipal(Proyecto(), listOf(video, video))
-        val r = Edicion.cambiar(p, ids[0]) { it.copy(transicion = Transicion.LINEA, entrada = Animacion.APARECER) }
+        val r = Edicion.cambiar(p, ids[0]) { it.copy(transicion = Transicion.LINEA, entrada = listOf(Movimiento(Animacion.APARECER))) }
         val (q, _) = Edicion.dividir(r, ids[0], 1_000_000)!!
         assertEquals(Transicion.NINGUNA, q.principal[0].transicion)
-        assertEquals(Animacion.APARECER, q.principal[0].entrada)
+        assertEquals(listOf(Movimiento(Animacion.APARECER)), q.principal[0].entrada)
         assertEquals(Transicion.LINEA, q.principal[1].transicion)
-        assertEquals(Animacion.NINGUNA, q.principal[1].entrada)
+        assertTrue(q.principal[1].entrada.isEmpty())
     }
 
     @Test

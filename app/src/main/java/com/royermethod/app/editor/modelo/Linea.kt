@@ -196,8 +196,8 @@ object Linea {
                 if (c > 0f && media > 0f) (c / media).coerceIn(0.7f, 1.4f) else 1f
             }
             // Imagen o texto: casi quieto, salvo que se mueva
-            en.primero.continua != AnimacionContinua.NINGUNA || en.primero.claves.isNotEmpty() ||
-                en.primero.entrada != Animacion.NINGUNA || en.primero.salida != Animacion.NINGUNA -> 0.8f
+            en.primero.continua.isNotEmpty() || en.primero.claves.isNotEmpty() ||
+                en.primero.entrada.isNotEmpty() || en.primero.salida.isNotEmpty() -> 0.8f
             else -> 0.45f
         }
         if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
