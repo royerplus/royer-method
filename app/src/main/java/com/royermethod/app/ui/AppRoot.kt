@@ -1,11 +1,11 @@
 package com.royermethod.app.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
@@ -26,6 +26,7 @@ import com.royermethod.app.ui.screens.CONFIG_IMAGEN
 import com.royermethod.app.ui.screens.CONFIG_VIDEO
 import com.royermethod.app.ui.screens.EditorScreen
 import com.royermethod.app.ui.screens.MejoraScreen
+import com.royermethod.app.ui.screens.PersonalizarScreen
 import com.royermethod.app.ui.screens.ProcessingScreen
 import com.royermethod.app.ui.screens.ResultScreen
 import com.royermethod.app.ui.screens.SplashScreen
@@ -35,7 +36,9 @@ import com.royermethod.app.ui.theme.Motion
 
 // El orden importa: la direccion de la transicion se decide comparando el
 // ordinal, asi que avanzar en la lista sube y retroceder baja.
-private enum class Screen { Splash, Start, Video, Imagen, Edicion, Processing, Result }
+private enum class Screen { Splash, Start, Video, Imagen, Edicion, Personalizar, Processing, Result }
+
+private val VUELVEN_AL_INICIO = setOf(Screen.Video, Screen.Imagen, Screen.Personalizar, Screen.Result)
 
 /**
  * Navegacion propia en vez de navigation-compose: son cuatro pantallas y asi
@@ -53,6 +56,13 @@ fun AppRoot() {
 
     fallo?.let { mensaje ->
         ErrorDialog(mensaje = mensaje, onCerrar = { fallo = null })
+    }
+
+    // Atras vuelve al inicio en vez de cerrar la app. El editor lleva el suyo
+    // (primero cierra paneles); durante el procesado no se toca, que sigue
+    // en segundo plano igual.
+    BackHandler(enabled = screen in VUELVEN_AL_INICIO) {
+        screen = Screen.Start
     }
 
     Box(
@@ -109,10 +119,13 @@ fun AppRoot() {
                 Screen.Start -> StartScreen(
                     onVideo = { screen = Screen.Video },
                     onImagen = { screen = Screen.Imagen },
-                    onEdicion = { screen = Screen.Edicion }
+                    onEdicion = { screen = Screen.Edicion },
+                    onPersonalizar = { screen = Screen.Personalizar }
                 )
 
                 Screen.Edicion -> EditorScreen(onVolver = { screen = Screen.Start })
+
+                Screen.Personalizar -> PersonalizarScreen(onVolver = { screen = Screen.Start })
 
                 // Las dos usan la misma pantalla; solo cambia la configuracion
                 // que se le pasa.

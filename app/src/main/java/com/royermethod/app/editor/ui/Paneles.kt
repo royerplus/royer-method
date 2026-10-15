@@ -332,6 +332,18 @@ fun PanelFormato(estado: EstadoEditor) {
     }
     Etiqueta("Fondo donde el video no llega")
     Opciones(Fondo.values().toList(), p.fondo, { it.nombre }, { f -> estado.hacer { it.copy(fondo = f) } })
+    Hueco()
+    Interruptor(
+        "Imanes", AjustesEditor.imanes, { AjustesEditor.imanes = it; AjustesEditor.alCambiar() },
+        "Al mover o recortar, los bloques se pegan al cabezal y a los cortes"
+    )
+    Hueco()
+    BotonBorde("Empezar proyecto nuevo", {
+        estado.hacer { AjustesEditor.proyectoNuevo() }
+        estado.panel = null
+        estado.irA(0)
+        estado.avisar("Proyecto nuevo. Si fue sin querer, deshaz")
+    }, glifo = Glifos.mas)
 }
 
 // ----------------------------------------------------------------------

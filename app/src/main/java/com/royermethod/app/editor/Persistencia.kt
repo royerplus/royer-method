@@ -54,13 +54,7 @@ object Persistencia {
         put("version", VERSION)
         put("formato", p.formato.name)
         put("fondo", p.fondo.name)
-        put("salida", JSONObject().apply {
-            put("ladoCorto", p.salida.ladoCorto)
-            put("calidad", p.salida.calidad.name)
-            put("hevc", p.salida.hevc)
-            put("desenfoque", p.salida.desenfoqueMovimiento)
-            put("muestras", p.salida.muestras)
-        })
+        put("salida", salida(p.salida))
         put("principal", JSONArray().apply { p.principal.forEach { put(clip(it)) } })
         put("capas", JSONArray().apply {
             p.capas.forEach { c ->
@@ -131,15 +125,7 @@ object Persistencia {
         put("salida", movimientos(c.salida))
         put("duracionEntrada", c.duracionEntradaUs)
         put("duracionSalida", c.duracionSalidaUs)
-        put("continua", JSONArray().apply {
-            c.continua.forEach { k ->
-                put(JSONObject().apply {
-                    put("tipo", k.tipo.name)
-                    put("intensidad", k.intensidad.toDouble())
-                    put("velocidad", k.velocidad.toDouble())
-                })
-            }
-        })
+        put("continua", continuas(c.continua))
         put("transicion", c.transicion.name)
         put("duracionTransicion", c.duracionTransicionUs)
         put("ajusteTransicion", JSONObject().apply {
@@ -152,7 +138,25 @@ object Persistencia {
         put("fluido", c.fluido)
     }
 
-    private fun movimientos(l: List<Movimiento>) = JSONArray().apply {
+    internal fun salida(s: AjustesSalida) = JSONObject().apply {
+        put("ladoCorto", s.ladoCorto)
+        put("calidad", s.calidad.name)
+        put("hevc", s.hevc)
+        put("desenfoque", s.desenfoqueMovimiento)
+        put("muestras", s.muestras)
+    }
+
+    internal fun continuas(l: List<Continuo>) = JSONArray().apply {
+        l.forEach { k ->
+            put(JSONObject().apply {
+                put("tipo", k.tipo.name)
+                put("intensidad", k.intensidad.toDouble())
+                put("velocidad", k.velocidad.toDouble())
+            })
+        }
+    }
+
+    internal fun movimientos(l: List<Movimiento>) = JSONArray().apply {
         l.forEach { m ->
             put(JSONObject().apply {
                 put("tipo", m.tipo.name)
@@ -199,14 +203,12 @@ object Persistencia {
 
     // ---- Leer ----
 
-    private inline fun <reified E : Enum<E>> JSONObject.enumeracion(clave: String, defecto: E): E =
+    internal inline fun <reified E : Enum<E>> JSONObject.enumeracion(clave: String, defecto: E): E =
         optString(clave, "").let { n -> enumValues<E>().firstOrNull { it.name == n } } ?: defecto
 
     private fun JSONObject.f(clave: String, defecto: Float) = optDouble(clave, defecto.toDouble()).toFloat()
 
     private fun proyecto(j: JSONObject): Proyecto {
-        val s = j.optJSONObject("salida") ?: JSONObject()
-        val d = AjustesSalida()
         val principal = j.optJSONArray("principal")?.let { a -> (0 until a.length()).mapNotNull { clipDe(a.getJSONObject(it)) } } ?: emptyList()
         val capas = j.optJSONArray("capas")?.let { a ->
             (0 until a.length()).mapNotNull { i ->
@@ -237,13 +239,7 @@ object Persistencia {
         return Proyecto(
             formato = j.enumeracion("formato", Formato.VERTICAL),
             fondo = j.enumeracion("fondo", Fondo.DESENFOCADO),
-            salida = AjustesSalida(
-                ladoCorto = s.optInt("ladoCorto", d.ladoCorto),
-                calidad = s.enumeracion("calidad", d.calidad),
-                hevc = s.optBoolean("hevc", d.hevc),
-                desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
-                muestras = s.optInt("muestras", d.muestras)
-            ),
+            salida = salidaDe(j.optJSONObject("salida")),
             principal = principal,
             capas = capas,
             audios = audios,
@@ -306,14 +302,7 @@ object Persistencia {
             salida = movimientosDe(o.optJSONArray("salida")),
             duracionEntradaUs = o.optLong("duracionEntrada", d.duracionEntradaUs),
             duracionSalidaUs = o.optLong("duracionSalida", d.duracionSalidaUs),
-            continua = o.optJSONArray("continua")?.let { a ->
-                (0 until a.length()).mapNotNull { i ->
-                    val k = a.optJSONObject(i) ?: return@mapNotNull null
-                    val tipo = runCatching { AnimacionContinua.valueOf(k.optString("tipo")) }.getOrNull()
-                        ?: return@mapNotNull null
-                    Continuo(tipo, k.f("intensidad", 1f), k.f("velocidad", 1f).coerceIn(0.1f, 10f))
-                }
-            } ?: emptyList(),
+            continua = continuasDe(o.optJSONArray("continua")),
             transicion = o.enumeracion("transicion", Transicion.NINGUNA),
             duracionTransicionUs = o.optLong("duracionTransicion", d.duracionTransicionUs),
             ajusteTransicion = o.optJSONObject("ajusteTransicion")?.let { a ->
@@ -329,7 +318,29 @@ object Persistencia {
         )
     }
 
-    private fun movimientosDe(a: JSONArray?): List<Movimiento> {
+    internal fun salidaDe(s: JSONObject?): AjustesSalida {
+        val d = AjustesSalida()
+        s ?: return d
+        return AjustesSalida(
+            ladoCorto = s.optInt("ladoCorto", d.ladoCorto),
+            calidad = s.enumeracion("calidad", d.calidad),
+            hevc = s.optBoolean("hevc", d.hevc),
+            desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
+            muestras = s.optInt("muestras", d.muestras)
+        )
+    }
+
+    internal fun continuasDe(a: JSONArray?): List<Continuo> {
+        if (a == null) return emptyList()
+        return (0 until a.length()).mapNotNull { i ->
+            val k = a.optJSONObject(i) ?: return@mapNotNull null
+            val tipo = runCatching { AnimacionContinua.valueOf(k.optString("tipo")) }.getOrNull()
+                ?: return@mapNotNull null
+            Continuo(tipo, k.f("intensidad", 1f), k.f("velocidad", 1f).coerceIn(0.1f, 10f))
+        }
+    }
+
+    internal fun movimientosDe(a: JSONArray?): List<Movimiento> {
         if (a == null) return emptyList()
         return (0 until a.length()).mapNotNull { i ->
             val m = a.optJSONObject(i) ?: return@mapNotNull null

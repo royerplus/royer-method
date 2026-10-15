@@ -47,6 +47,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
+import com.royermethod.app.ui.theme.radio
 
 /** Vuelta completa del destello alrededor del borde. */
 private const val RECORRIDO_MS = 5200
@@ -59,7 +60,7 @@ private const val BARRIDO_MS = 4600
  * angular del logo, en vez de tirar de iconos redondeados de Material que
  * desentonarian.
  */
-enum class Marca { Video, Imagen }
+enum class Marca { Video, Imagen, Edicion }
 
 private fun DrawScope.marca(tipo: Marca, lado: Float) {
     val g = 1.6.dp.toPx()
@@ -102,6 +103,30 @@ private fun DrawScope.marca(tipo: Marca, lado: Float) {
             }
             drawPath(p, Ink.White, alpha = 0.9f, style = trazo)
             drawCircle(Ink.White, radius = g * 1.6f, center = Offset(lado * 0.70f, lado * 0.30f), alpha = 0.9f)
+        }
+        Marca.Edicion -> {
+            // una linea de tiempo: tres bloques, una capa encima y el cabezal
+            val alto = lado * 0.22f
+            val hueco = lado * 0.06f
+            val ancho = (lado - hueco * 2) / 3
+            for (n in 0..2) {
+                drawRoundRect(
+                    color = Ink.White,
+                    alpha = if (n == 1) 0.9f else 0.45f,
+                    topLeft = Offset(n * (ancho + hueco), lado * 0.56f),
+                    size = Size(ancho, alto),
+                    cornerRadius = CornerRadius(g * 1.5f)
+                )
+            }
+            drawRoundRect(
+                color = Ink.White,
+                alpha = 0.85f,
+                topLeft = Offset(lado * 0.24f, lado * 0.26f),
+                size = Size(lado * 0.46f, alto * 0.8f),
+                cornerRadius = CornerRadius(g * 1.5f),
+                style = trazo
+            )
+            drawLine(Ink.White, Offset(lado * 0.52f, lado * 0.12f), Offset(lado * 0.52f, lado * 0.88f), g, StrokeCap.Round)
         }
     }
 }
@@ -169,7 +194,7 @@ fun ActionCard(
         label = "cardFondo"
     )
 
-    val radio = 24.dp
+    val radio = radio(24.dp)
     val radioPx = with(density) { radio.toPx() }
     val shape = RoundedCornerShape(radio)
 
@@ -321,13 +346,13 @@ fun ActionCard(
 private fun Etiqueta(texto: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(radio(6.dp)))
             .drawWithCache {
                 onDrawBehind {
                     drawRoundRect(
                         color = Ink.White,
                         alpha = 0.10f,
-                        cornerRadius = CornerRadius(6.dp.toPx())
+                        cornerRadius = CornerRadius(radio(6.dp).toPx())
                     )
                 }
             }

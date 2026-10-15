@@ -24,10 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -52,10 +49,7 @@ import com.royermethod.app.ui.components.rememberBreath
 import com.royermethod.app.ui.logo.RoyerLogo
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 /**
  * Lo que se le esta haciendo al archivo.
@@ -243,8 +237,11 @@ fun ProcessingScreen(
             GhostButton(
                 text = "Cancelar",
                 onClick = {
+                    // Solo se avisa: el servicio lo ve en el siguiente
+                    // fotograma, suelta la GPU y se cierra solo. Pararlo desde
+                    // aqui lo daba por terminado con el trabajo aun en marcha,
+                    // y otro encargo podia entrar a usar la GPU a la vez.
                     Procesador.cancelar()
-                    ProcesadoService.parar(context)
                     onCancel()
                 }
             )

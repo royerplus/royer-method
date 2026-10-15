@@ -56,6 +56,7 @@ import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
 import com.royermethod.app.ui.theme.Velocidad
+import com.royermethod.app.ui.theme.radio
 
 /**
  * Latido del neon.
@@ -404,7 +405,7 @@ fun NeonCard(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
-    val shape = RoundedCornerShape(22.dp)
+    val shape = RoundedCornerShape(radio(22.dp))
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -551,7 +552,7 @@ fun ToggleChip(
         label = "tcEscala"
     )
 
-    val radio = with(androidx.compose.ui.platform.LocalDensity.current) { 12.dp.toPx() }
+    val radio = with(androidx.compose.ui.platform.LocalDensity.current) { radio(12.dp).toPx() }
 
     Box(
         modifier = modifier
@@ -562,7 +563,7 @@ fun ToggleChip(
                 scaleX = s
                 scaleY = s
             }
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(radio(12.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.White,
@@ -610,11 +611,11 @@ fun ToggleChip(
                 Box(
                     Modifier
                         .size(22.dp)
-                        .clip(RoundedCornerShape(7.dp))
+                        .clip(RoundedCornerShape(radio(7.dp)))
                         .drawBehind {
                             drawRoundRect(
                                 color = Ink.White, alpha = 0.14f,
-                                cornerRadius = CornerRadius(7.dp.toPx())
+                                cornerRadius = CornerRadius(radio(7.dp).toPx())
                             )
                             lapiz(this)
                         }
@@ -679,8 +680,8 @@ private fun OptionChip(
         label = "chipText"
     )
 
-    val shape = RoundedCornerShape(14.dp)
-    val radius = with(androidx.compose.ui.platform.LocalDensity.current) { 14.dp.toPx() }
+    val shape = RoundedCornerShape(radio(14.dp))
+    val radius = with(androidx.compose.ui.platform.LocalDensity.current) { radio(14.dp).toPx() }
 
     Box(
         modifier = modifier

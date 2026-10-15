@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.Dp
 
 /**
  * Lo que el usuario puede personalizar del aspecto de la app.
@@ -69,3 +70,6 @@ val ACENTOS: List<Pair<String, Color>> = listOf(
     "Violeta" to Color(0xFFB69CFF),
     "Azul" to Color(0xFF7FA8FF)
 )
+
+/** Un radio de esquina de la app, escalado por lo redondo que lo quiera el usuario. */
+fun radio(d: Dp): Dp = d * Estilo.redondez

@@ -93,6 +93,7 @@ import com.royermethod.app.ui.components.rememberBreath
 import com.royermethod.app.ui.logo.RoyerLogo
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
+import com.royermethod.app.ui.theme.radio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -685,17 +686,17 @@ private fun ZonaMedio(
                 scaleX = s
                 scaleY = s
             }
-            .clip(RoundedCornerShape(22.dp))
+            .clip(RoundedCornerShape(radio(22.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.White,
                     alpha = 0.025f,
-                    cornerRadius = CornerRadius(22.dp.toPx())
+                    cornerRadius = CornerRadius(radio(22.dp).toPx())
                 )
                 drawRoundRect(
                     color = Ink.White,
                     alpha = if (cargado) 0.28f else breath.value * 0.38f,
-                    cornerRadius = CornerRadius(22.dp.toPx()),
+                    cornerRadius = CornerRadius(radio(22.dp).toPx()),
                     size = Size(size.width, size.height),
                     style = Stroke(
                         width = 1.4f,
@@ -812,17 +813,17 @@ private fun AccionCaja(texto: String, onClick: () -> Unit) {
     Box(
         modifier = Modifier
             .height(28.dp)
-            .clip(RoundedCornerShape(9.dp))
+            .clip(RoundedCornerShape(radio(9.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.Black,
                     alpha = 0.55f,
-                    cornerRadius = CornerRadius(9.dp.toPx())
+                    cornerRadius = CornerRadius(radio(9.dp).toPx())
                 )
                 drawRoundRect(
                     color = Ink.White,
                     alpha = 0.28f,
-                    cornerRadius = CornerRadius(9.dp.toPx()),
+                    cornerRadius = CornerRadius(radio(9.dp).toPx()),
                     style = Stroke(width = 1.dp.toPx())
                 )
             }
@@ -1196,17 +1197,17 @@ private fun Tarjeta(
 ) {
     Column(
         modifier = (if (estirar) Modifier.fillMaxSize() else Modifier.fillMaxWidth())
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(radio(20.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.White,
                     alpha = 0.035f,
-                    cornerRadius = CornerRadius(20.dp.toPx())
+                    cornerRadius = CornerRadius(radio(20.dp).toPx())
                 )
                 drawRoundRect(
                     color = Ink.White,
                     alpha = 0.10f,
-                    cornerRadius = CornerRadius(20.dp.toPx()),
+                    cornerRadius = CornerRadius(radio(20.dp).toPx()),
                     style = Stroke(width = 1.dp.toPx())
                 )
             }
@@ -1230,17 +1231,17 @@ private fun BotonTexto(texto: String, flecha: Boolean, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(42.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(RoundedCornerShape(radio(14.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.White,
                     alpha = fondo,
-                    cornerRadius = CornerRadius(14.dp.toPx())
+                    cornerRadius = CornerRadius(radio(14.dp).toPx())
                 )
                 drawRoundRect(
                     color = Ink.White,
                     alpha = 0.12f,
-                    cornerRadius = CornerRadius(14.dp.toPx()),
+                    cornerRadius = CornerRadius(radio(14.dp).toPx()),
                     style = Stroke(width = 1.dp.toPx())
                 )
             }

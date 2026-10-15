@@ -49,12 +49,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
+import com.royermethod.app.ui.theme.radio
 import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.exp
 
 /** Esquinas redondeadas segun la redondez elegida en Personalizar. */
-fun esquinas(r: Dp): Shape = RoundedCornerShape(r * Estilo.redondez)
+fun esquinas(r: Dp): Shape = RoundedCornerShape(radio(r))
 
 /**
  * Para que un deslizador junte todo un arrastre en un solo paso de deshacer.
@@ -135,7 +136,7 @@ fun Nota(texto: String, modifier: Modifier = Modifier, color: Color = Ink.White5
 fun Etiqueta(texto: String, modifier: Modifier = Modifier) {
     Text(
         texto.uppercase(),
-        modifier = modifier,
+        modifier = modifier.padding(top = 8.dp, bottom = 2.dp),
         style = MaterialTheme.typography.labelSmall,
         color = Ink.White50,
         maxLines = 1
@@ -284,7 +285,7 @@ fun Interruptor(texto: String, activo: Boolean, onCambio: (Boolean) -> Unit, det
     ) {
         Column(Modifier.weight(1f)) {
             Text(texto, style = MaterialTheme.typography.bodyMedium, color = Ink.White90)
-            if (detalle != null) Text(detalle, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.3.sp), color = Ink.White50)
+            if (detalle != null) Nota(detalle)
         }
         Spacer(Modifier.width(12.dp))
         val pista by animateColorAsState(if (activo) Ink.White else Ink.White15, tween(200), label = "pista")

@@ -367,23 +367,23 @@ private fun DrawScope.dibujarDivision(division: Float, medidor: TextMeasurer) {
         start = Offset(x, 0f), end = Offset(x, size.height), strokeWidth = 7f
     )
     drawLine(
-        Color.White,
+        Ink.White,
         start = Offset(x, 0f), end = Offset(x, size.height), strokeWidth = 2.5f
     )
 
     // asa central, para que se entienda que se arrastra
     val cy = size.height / 2
     drawCircle(Color.Black, alpha = 0.35f, radius = 23f, center = Offset(x, cy))
-    drawCircle(Color.White, radius = 20f, center = Offset(x, cy), style = Stroke(2.5f))
+    drawCircle(Ink.White, radius = 20f, center = Offset(x, cy), style = Stroke(2.5f))
     for (lado in listOf(-1f, 1f)) {
         drawLine(
-            Color.White,
+            Ink.White,
             start = Offset(x + 6f * lado, cy - 5f),
             end = Offset(x + 11f * lado, cy),
             strokeWidth = 2.5f, cap = StrokeCap.Round
         )
         drawLine(
-            Color.White,
+            Ink.White,
             start = Offset(x + 11f * lado, cy),
             end = Offset(x + 6f * lado, cy + 5f),
             strokeWidth = 2.5f, cap = StrokeCap.Round
