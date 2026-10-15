@@ -41,7 +41,23 @@ lleve el rastro del movimiento dentro. Sale más fluido y pesa mucho menos.
 **Cola**: prepara varios archivos y los procesa uno detrás de otro, guardando
 cada resultado en la galería. Para dejarlo trabajando de noche.
 
-**Edición** (beta): línea de tiempo, cortes, deshacer. En construcción.
+**Editor** (por bloques, como CapCut)
+- Pista principal y, debajo, una fila por cada capa (videos, fotos, textos)
+  y por cada sonido. Se toca un bloque para editarlo; mantener pulsado lo
+  mueve; los bordes lo recortan; pellizcar acerca la línea de tiempo.
+- Animaciones de entrada, salida y continuas. Cada una es una lista de
+  piezas que se combinan y se ajustan (fuerza, curva, cuándo empieza y
+  acaba), y se pueden guardar como propias. Duraciones desde 0,1 s.
+- Transiciones con duración, ritmo, dirección, color y fuerza.
+- Fotogramas clave con curvas editables a mano.
+- Exporta a 30 fps exactos (comprobados en el archivo), H.265 si el
+  teléfono lo tiene y si no H.264, con el bitrate repartido según lo que se
+  mueve en cada tramo. Los videos de menos de 30 fps generan los fotogramas
+  que faltan.
+
+**Personalizar**: color del neón, fondo, halo, latido, velocidad de las
+animaciones, tamaño de letra, esquinas y los valores con los que empieza el
+editor.
 
 ## Compilar
 
@@ -63,8 +79,15 @@ mover Vulkan con computación, que es lo que exigen los modelos.
 ```
 app/src/main/java/com/royermethod/app/
   media/        leer archivos y sus datos
-  procesado/    el motor: GL, transcodificado, modelos, cola
-  ui/           pantallas y componentes
+  procesado/    el motor de mejora: GL, transcodificado, modelos, cola
+  editor/
+    modelo/     el proyecto y sus cuentas (sin Android: se prueba en el PC)
+    motor/      composición con OpenGL, compartida por vista previa y exportación
+    exportar/   codificadores, MP4 y comprobación del resultado
+    audio/      mezcla, cambio de velocidad y tono
+    ui/         la pantalla del editor (sin Android: se dibuja también en el PC)
+    vista/      lo que une la pantalla con el teléfono
+  ui/           pantallas, componentes y tema
 app/src/main/cpp/
   rife/         RIFE, con parches para ncnn moderno
   waifu2x/      waifu2x
