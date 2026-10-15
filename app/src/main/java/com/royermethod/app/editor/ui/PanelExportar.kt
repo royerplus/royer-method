@@ -141,6 +141,14 @@ fun PanelExportar(
                 color = Ink.White
             )
             Nota("${plan.ancho}×${plan.alto}  ·  30 fps exactos  ·  ${reloj(plan.duracionUs)}  ·  ${Linea.fotogramas(p)} fotogramas", color = Ink.White50)
+            val fluidos = (p.principal + p.capas.map { it.clip }).count { it.fluido }
+            if (fluidos > 0) {
+                Nota(
+                    (if (fluidos == 1) "Un bloque va" else "$fluidos bloques van") +
+                        " con Fluido: se generan los fotogramas que faltan y tarda mas en salir.",
+                    color = Ink.White30
+                )
+            }
             Spacer(Modifier.height(14.dp))
             BotonLleno("Exportar", onExportar, Modifier.fillMaxWidth(), activo = p.principal.isNotEmpty() || p.capas.isNotEmpty())
         }

@@ -142,4 +142,33 @@ class LineaTest {
         assertEquals(2, Linea.filaLibre(capas, 1_500_000, 2_000_000))
         assertEquals(0, Linea.filaLibre(capas, 3_000_000, 4_000_000))
     }
+
+    @Test
+    fun unaFotoSoloPagaMientrasSeMueve() {
+        val foto = Clip(
+            id = 1, origen = Origen("content://i", "i", TipoOrigen.IMAGEN, 1000, 1000),
+            entrada = listOf(Movimiento(Animacion.APARECER)), duracionEntradaUs = 400_000
+        )
+        val tramos = Linea.tramos(Proyecto(principal = listOf(foto)), normalizar = false)
+        val entrando = tramos.first { it.desdeUs == 0L }
+        val quieta = tramos.first { it.desdeUs == 400_000L }
+        assertTrue(entrando.factor > quieta.factor)
+    }
+
+    @Test
+    fun elBitrateSubeAntesDeLaTransicion() {
+        val p = Proyecto(
+            principal = listOf(
+                Clip(id = 1, origen = Origen("content://a", "a", TipoOrigen.IMAGEN, 1000, 1000), transicion = Transicion.FUNDIDO, duracionTransicionUs = 400_000),
+                Clip(id = 2, origen = Origen("content://b", "b", TipoOrigen.IMAGEN, 1000, 1000))
+            )
+        )
+        val plan = PlanExportacion.de(p)
+        val inicioTransicion = Linea.inicios(p.principal)[1]
+        val lejos = plan.bitrateEn(Linea.fotogramaDe(inicioTransicion - 1_000_000))
+        val justoAntes = plan.bitrateEn(Linea.fotogramaDe(inicioTransicion - 100_000))
+        val dentro = plan.bitrateEn(Linea.fotogramaDe(inicioTransicion + 100_000))
+        assertTrue(justoAntes > lejos)
+        assertEquals(dentro, justoAntes)
+    }
 }

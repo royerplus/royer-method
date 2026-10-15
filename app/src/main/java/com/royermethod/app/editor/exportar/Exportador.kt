@@ -67,7 +67,7 @@ class Exportador(
         val plan0 = PlanExportacion.de(proyecto, conAudio = conAudio)
         // H.265 solo si de verdad hay codificador para ese tamano
         val hevc = plan0.hevc && Codificadores.hay(Codificadores.HEVC, plan0.ancho, plan0.alto)
-        val plan = if (hevc == plan0.hevc) plan0 else PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
+        var plan = if (hevc == plan0.hevc) plan0 else PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
         require(plan.fotogramas > 0) { "El proyecto esta vacio" }
 
         var video: MediaCodec? = null
@@ -81,6 +81,9 @@ class Exportador(
         try {
             val (codec, mime) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc)
             video = codec
+            // Si H.265 decia que si pero luego no arranco, sale en H.264, que
+            // necesita mas bits para la misma calidad: el plan se rehace.
+            if (plan.hevc && mime != Codificadores.HEVC) plan = PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
             superficie = codec.createInputSurface()
             codec.start()
             if (conAudio) audio = Codificadores.audio(plan.audioKbps).also { it.start() }
@@ -104,7 +107,8 @@ class Exportador(
             val audioEnvio = EnvioAudio(totalAudio)
 
             val cortes = Linea.cortes(proyecto)
-            var bitrate = plan.bitrateEn(0)
+            // -1: el primero siempre se manda, por si el plan cambio tras configurar
+            var bitrate = -1
             for (n in 0 until plan.fotogramas) {
                 if (cancelado()) throw Cancelado()
 

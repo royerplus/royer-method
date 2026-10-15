@@ -72,7 +72,7 @@ object Edicion {
         for (o in origenes) {
             val (id, r) = q.conId()
             q = r
-            nuevos.add(Clip(id = id, origen = o))
+            nuevos.add(Clip(id = id, origen = o, fluido = o.pideFluidez))
         }
         val donde = puntoDeInsercion(p, enUs)
         val lista = q.principal.toMutableList()
@@ -112,7 +112,7 @@ object Edicion {
 
     /** Un video o imagen encima, mas pequeno para que se vea que esta encima. */
     fun agregarSuperpuesto(p: Proyecto, o: Origen, inicioUs: Long): Pair<Proyecto, Long> =
-        agregarCapa(p, { id -> Clip(id = id, origen = o, encuadre = Encuadre(ajuste = Ajuste.ENCAJAR, escala = 0.6f)) }, inicioUs)
+        agregarCapa(p, { id -> Clip(id = id, origen = o, encuadre = Encuadre(ajuste = Ajuste.ENCAJAR, escala = 0.6f), fluido = o.pideFluidez) }, inicioUs)
 
     fun agregarAudio(p: Proyecto, o: Origen, inicioUs: Long): Pair<Proyecto, Long> {
         val (id, q) = p.conId()

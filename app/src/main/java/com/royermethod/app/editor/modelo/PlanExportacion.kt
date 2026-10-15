@@ -23,29 +23,37 @@ data class PlanExportacion(
     val conAudio: Boolean,
     val duracionUs: Long
 ) {
-    /** Bitrate para el fotograma [n]. */
+    /**
+     * Bitrate para el fotograma [n].
+     *
+     * Mira un poco por delante: el control de bitrate del codificador tarda
+     * unos fotogramas en hacer caso a un cambio, y una transicion de un tercio
+     * de segundo se habria acabado antes de recibir lo que pidio. Al subir se
+     * adelanta; al bajar se espera a que el tramo caro haya pasado.
+     */
     fun bitrateEn(n: Long): Int {
         val t = Linea.tiempoDe(n)
-        val f = tramos.firstOrNull { t >= it.desdeUs && t < it.hastaUs }?.factor ?: 1f
+        val f = maxOf(factorEn(t) ?: 1f, factorEn(t + ANTICIPO_US) ?: 0f)
         return (bitrateBase * f).toInt().coerceAtLeast(MINIMO)
     }
 
+    private fun factorEn(t: Long): Float? = tramos.firstOrNull { t >= it.desdeUs && t < it.hastaUs }?.factor
+
     /** Peso aproximado del archivo, para ensenarlo antes de exportar. */
-    val bytesEstimados: Long
-        get() {
-            var bits = 0.0
-            for (tr in tramos) {
-                val s = (tr.hastaUs - tr.desdeUs) / 1_000_000.0
-                bits += s * (bitrateBase * tr.factor).coerceAtLeast(MINIMO.toFloat())
-            }
-            if (conAudio) bits += duracionUs / 1_000_000.0 * audioKbps * 1000
-            // Lo que ocupa el contenedor (cabeceras, indices): poco, pero algo
-            return (bits / 8 * 1.01).toLong()
-        }
+    val bytesEstimados: Long by lazy {
+        var bits = 0.0
+        for (n in 0 until fotogramas) bits += bitrateEn(n).toDouble() / Linea.FPS
+        if (conAudio) bits += duracionUs / 1_000_000.0 * audioKbps * 1000
+        // Lo que ocupa el contenedor (cabeceras, indices): poco, pero algo
+        (bits / 8 * 1.01).toLong()
+    }
 
     companion object {
         /** Por debajo de esto cualquier codificador se desmorona. */
         const val MINIMO = 120_000
+
+        /** Cuanto antes se pide el bitrate de un tramo caro. */
+        const val ANTICIPO_US = 200_000L
 
         fun de(p: Proyecto, hevc: Boolean = p.salida.hevc, conAudio: Boolean = true): PlanExportacion {
             val (w, h) = p.formato.medidas(p.salida.ladoCorto)

@@ -70,6 +70,13 @@ internal object Codificadores {
                 f.setInteger(MediaFormat.KEY_PROFILE, quiero)
                 f.setInteger(MediaFormat.KEY_LEVEL, nivel)
             }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                // Fotogramas B: se apoyan en el de antes y en el de despues, y
+                // en algo que se mueve suave (zoom, deslizar, fundido) cuestan
+                // mucho menos. El que no los tenga lo ignora; si el
+                // codificador lo rechaza, se reintenta sin perfil y sin esto.
+                f.setInteger(MediaFormat.KEY_MAX_B_FRAMES, 2)
+            }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
             // Colores de video normal (BT.709, rango limitado). Sin esto cada

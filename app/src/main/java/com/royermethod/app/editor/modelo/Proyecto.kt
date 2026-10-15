@@ -117,6 +117,13 @@ data class Origen(
     val esVideo: Boolean get() = tipo == TipoOrigen.VIDEO
     val esImagen: Boolean get() = tipo == TipoOrigen.IMAGEN
 
+    /**
+     * Grabado a menos de 30 fps (24, 25...). Pasado tal cual a 30, uno de
+     * cada pocos fotogramas se repite y el movimiento va a tirones: estos
+     * entran ya con los fotogramas generados.
+     */
+    val pideFluidez: Boolean get() = esVideo && fps > 0f && fps < 29f
+
     /** Medidas tal y como se ven, con el giro ya aplicado. */
     val anchoVisible: Int get() = if (giro == 90 || giro == 270) alto else ancho
     val altoVisible: Int get() = if (giro == 90 || giro == 270) ancho else alto

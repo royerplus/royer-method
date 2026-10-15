@@ -165,6 +165,11 @@ object Linea {
             cortesEn.add(ini[i] + p.principal[i].duracionUs)
         }
         for (c in p.capas) { cortesEn.add(c.inicioUs); cortesEn.add(c.finUs) }
+        // Donde empieza y acaba lo que se mueve dentro de cada bloque: una foto
+        // de cinco segundos con medio segundo de entrada solo necesita bits
+        // en ese medio segundo.
+        for (i in p.principal.indices) movimiento(p.principal[i]).forEach { cortesEn.add(ini[i] + it) }
+        for (c in p.capas) movimiento(c.clip).forEach { cortesEn.add(c.inicioUs + it) }
         val puntos = cortesEn.filter { it in 0..total }.distinct().sorted()
 
         // Complejidad media de los videos, para comparar cada uno contra ella
@@ -193,18 +198,47 @@ object Linea {
             en.segundo != null -> 1.6f   // transicion: dos fuentes y movimiento
             en.primero.esVideo -> {
                 val c = en.primero.origen?.complejidad() ?: 0f
-                if (c > 0f && media > 0f) (c / media).coerceIn(0.7f, 1.4f) else 1f
+                val base = if (c > 0f && media > 0f) (c / media).coerceIn(0.7f, 1.4f) else 1f
+                // Un video que ademas se mueve o se amplia cambia mas entre fotogramas
+                if (seMueve(en.primero, en.localPrimero)) base * 1.15f else base
             }
-            // Imagen o texto: casi quieto, salvo que se mueva
-            en.primero.continua.isNotEmpty() || en.primero.claves.isNotEmpty() ||
-                en.primero.entrada.isNotEmpty() || en.primero.salida.isNotEmpty() -> 0.8f
+            // Imagen o texto: casi quieto, salvo mientras se mueve
+            seMueve(en.primero, en.localPrimero) -> 0.8f
             else -> 0.45f
         }
         if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
         // Lo que va encima tambien hay que pagarlo
         val encima = capasEn(p.capas, t)
-        for (c in encima) f += if (c.clip.esVideo) 0.35f else 0.1f
+        for (c in encima) f += when {
+            c.clip.esVideo -> 0.35f
+            seMueve(c.clip, t - c.inicioUs) -> 0.25f
+            else -> 0.1f
+        }
         return f.coerceIn(0.35f, 2.2f)
+    }
+
+    /**
+     * Instantes (dentro del bloque) donde empieza o deja de moverse: fin de la
+     * entrada, principio de la salida, primer y ultimo fotograma clave.
+     */
+    private fun movimiento(c: Clip): List<Long> {
+        val r = ArrayList<Long>(4)
+        if (c.entrada.isNotEmpty()) r.add(minOf(c.duracionEntradaUs, c.duracionUs))
+        if (c.salida.isNotEmpty()) r.add((c.duracionUs - c.duracionSalidaUs).coerceAtLeast(0))
+        if (c.claves.size >= 2) {
+            r.add(c.claves.minOf { it.tiempoUs })
+            r.add(c.claves.maxOf { it.tiempoUs })
+        }
+        return r
+    }
+
+    /** ¿Algo de [c] cambia de un fotograma al siguiente en [local]? */
+    private fun seMueve(c: Clip, local: Long): Boolean {
+        if (c.continua.isNotEmpty()) return true
+        if (c.entrada.isNotEmpty() && local < c.duracionEntradaUs) return true
+        if (c.salida.isNotEmpty() && local >= c.duracionUs - c.duracionSalidaUs) return true
+        if (c.claves.size >= 2 && local >= c.claves.minOf { it.tiempoUs } && local < c.claves.maxOf { it.tiempoUs }) return true
+        return false
     }
 }
 
