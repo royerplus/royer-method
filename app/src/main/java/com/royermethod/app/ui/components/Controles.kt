@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -108,11 +109,12 @@ fun BotonIcono(
 fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolean = true, resaltada: Boolean = false) {
     Column(
         Modifier
-            .width(64.dp)
+            // Un nombre largo ("Compresion") ensancha la suya en vez de partirse
+            .widthIn(min = 64.dp)
             .clip(esquinas(12.dp))
             .clickable(enabled = activa, onClick = onClick)
             .alpha(if (activa) 1f else 0.3f)
-            .padding(vertical = 8.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Icono(glifo, color = if (resaltada) Ink.White else Ink.White90, tam = 22.dp)
@@ -121,7 +123,7 @@ fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolea
             texto,
             style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.4.sp, fontSize = 10.5.sp * Estilo.letra),
             color = if (resaltada) Ink.White else Ink.White70,
-            maxLines = 2,
+            maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
