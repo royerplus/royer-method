@@ -1,0 +1,312 @@
+package com.royermethod.app.editor.modelo
+
+/**
+ * Un bloque: la unidad de todo el editor.
+ *
+ * Video, imagen o texto, en la pista principal o encima, todo es un Clip. Asi
+ * cada bloque se edita con las mismas herramientas (encuadre, color,
+ * animaciones, fotogramas clave) y lo que se aprende en uno sirve en todos.
+ *
+ * Exactamente uno de [origen] y [texto] viene relleno.
+ */
+data class Clip(
+    val id: Long,
+    val origen: Origen? = null,
+    val texto: Texto? = null,
+    /**
+     * Trozo del archivo que se usa. Recortar no toca el archivo: solo mueve
+     * estos dos limites, y el original sigue entero por si se quiere volver.
+     * En imagenes y textos [desdeUs] es 0 y [hastaUs] es lo que dura.
+     */
+    val desdeUs: Long = 0,
+    val hastaUs: Long = origen?.duracionUs?.takeIf { it > 0 } ?: IMAGEN_POR_DEFECTO_US,
+    /** 0.25 a 4. Solo en video. */
+    val velocidad: Float = 1f,
+    val volumen: Float = 1f,
+    val fundidoEntradaUs: Long = 0,
+    val fundidoSalidaUs: Long = 0,
+    val color: AjustesColor = AjustesColor(),
+    val filtro: Filtro = Filtro.NINGUNO,
+    val intensidadFiltro: Float = 1f,
+    val encuadre: Encuadre = Encuadre(),
+    /** Fotogramas clave del encuadre, en tiempo del clip (0 = su primer fotograma). */
+    val claves: List<Clave> = emptyList(),
+    val entrada: Animacion = Animacion.NINGUNA,
+    val salida: Animacion = Animacion.NINGUNA,
+    val duracionEntradaUs: Long = 500_000,
+    val duracionSalidaUs: Long = 500_000,
+    val continua: AnimacionContinua = AnimacionContinua.NINGUNA,
+    /** Paso al bloque siguiente de la pista principal. En capas no se usa. */
+    val transicion: Transicion = Transicion.NINGUNA,
+    val duracionTransicionUs: Long = 500_000,
+    /**
+     * Generar los fotogramas que faltan con el modelo de interpolacion.
+     *
+     * Hace dos cosas a la vez: convierte cualquier video a 30 fps exactos sin
+     * repetir fotogramas (un 24 fps pasado a 30 repite uno de cada cuatro y se
+     * nota el tiron), y da camara lenta de verdad al bajar la velocidad.
+     */
+    val fluido: Boolean = false
+) {
+    init {
+        require((origen == null) != (texto == null)) { "un clip es archivo o texto" }
+    }
+
+    val esTexto: Boolean get() = texto != null
+    val esVideo: Boolean get() = origen?.esVideo == true
+    val esImagen: Boolean get() = origen?.esImagen == true
+
+    /** Lo que ocupa en la linea de tiempo. */
+    val duracionUs: Long
+        get() = if (esVideo) ((hastaUs - desdeUs) / velocidad.toDouble()).toLong()
+        else hastaUs - desdeUs
+
+    /**
+     * Instante del archivo que toca mostrar a [localUs] del inicio del clip.
+     *
+     * Nunca devuelve el final exacto: el ultimo fotograma de un video empieza
+     * un poco antes de su duracion, y pedir justo la duracion devolveria
+     * "nada" en vez de ese ultimo fotograma.
+     */
+    fun tiempoArchivo(localUs: Long): Long {
+        if (!esVideo) return 0
+        val t = desdeUs + (localUs.coerceAtLeast(0) * velocidad.toDouble()).toLong()
+        return t.coerceIn(desdeUs, (hastaUs - 1).coerceAtLeast(desdeUs))
+    }
+
+    /** Ajustes de color con el filtro ya sumado. Es lo que dibuja el motor. */
+    fun colorFinal(): AjustesColor = color.mas(filtro.ajustes, intensidadFiltro)
+
+    fun nombre(): String = texto?.contenido?.lineSequence()?.firstOrNull()?.take(24)
+        ?: origen?.nombre ?: ""
+
+    companion object {
+        /** Lo que dura una imagen o un texto recien puesto. */
+        const val IMAGEN_POR_DEFECTO_US = 3_000_000L
+
+        /** Lo minimo que puede quedar un bloque al recortar o dividir. */
+        const val MINIMO_US = 100_000L
+    }
+}
+
+/**
+ * Donde y como se coloca el bloque sobre el lienzo.
+ *
+ * Las posiciones van en fracciones del lienzo y no en pixeles: el mismo
+ * proyecto se exporta a 576 o a 1080 y tiene que verse igual.
+ */
+data class Encuadre(
+    val ajuste: Ajuste = Ajuste.CUBRIR,
+    /** 1 = el tamano que da [ajuste]. */
+    val escala: Float = 1f,
+    /** Desplazamiento del centro, en anchos y altos de lienzo. */
+    val x: Float = 0f,
+    val y: Float = 0f,
+    /** Grados, en el sentido de las agujas del reloj. */
+    val rotacion: Float = 0f,
+    val opacidad: Float = 1f,
+    val espejo: Boolean = false,
+    val recorte: Recorte = Recorte()
+) {
+    /** Lo animable, mezclado con [otro] en [t] de 0 a 1. */
+    fun hacia(otro: Encuadre, t: Float): Encuadre = copy(
+        escala = escala + (otro.escala - escala) * t,
+        x = x + (otro.x - x) * t,
+        y = y + (otro.y - y) * t,
+        rotacion = rotacion + (otro.rotacion - rotacion) * t,
+        opacidad = opacidad + (otro.opacidad - opacidad) * t
+    )
+}
+
+enum class Ajuste(val nombre: String) {
+    /** Llena el lienzo y recorta lo que sobra. */
+    CUBRIR("Llenar"),
+    /** Se ve entero; lo que falta lo pone el fondo. */
+    ENCAJAR("Encajar")
+}
+
+/** Cuanto quitar de cada lado, en fraccion del clip. */
+data class Recorte(
+    val izquierda: Float = 0f,
+    val arriba: Float = 0f,
+    val derecha: Float = 0f,
+    val abajo: Float = 0f
+) {
+    val vacio: Boolean get() = izquierda == 0f && arriba == 0f && derecha == 0f && abajo == 0f
+    val ancho: Float get() = (1f - izquierda - derecha).coerceAtLeast(0.05f)
+    val alto: Float get() = (1f - arriba - abajo).coerceAtLeast(0.05f)
+}
+
+/** Un fotograma clave: como esta el encuadre en ese instante del clip. */
+data class Clave(
+    val tiempoUs: Long,
+    val encuadre: Encuadre,
+    val curva: Curva = Curva.SUAVE
+)
+
+enum class Curva(val nombre: String) {
+    LINEAL("Lineal"),
+    SUAVE("Suave"),
+    ENTRADA("Acelera"),
+    SALIDA("Frena")
+}
+
+enum class Animacion(val nombre: String) {
+    NINGUNA("Ninguna"),
+    APARECER("Aparecer"),
+    ZOOM_ENTRA("Acercar"),
+    ZOOM_SALE("Alejar"),
+    IZQUIERDA("Izquierda"),
+    DERECHA("Derecha"),
+    ARRIBA("Arriba"),
+    ABAJO("Abajo"),
+    GIRO("Girar"),
+    REBOTE("Rebote"),
+    /** Se descubre de izquierda a derecha, como escrito. Pensado para textos. */
+    REVELAR("Revelar")
+}
+
+/** Lo que se mueve durante todo el bloque, no solo al entrar o salir. */
+enum class AnimacionContinua(val nombre: String) {
+    NINGUNA("Ninguna"),
+    /** Acercamiento lento, el efecto Ken Burns de las fotos. */
+    ACERCAMIENTO("Acercamiento"),
+    PULSO("Pulso"),
+    TEMBLOR("Temblor"),
+    BALANCEO("Balanceo")
+}
+
+enum class Transicion(val nombre: String) {
+    NINGUNA("Corte"),
+    FUNDIDO("Fundido"),
+    NEGRO("A negro"),
+    DESTELLO("Destello"),
+    /** Barrido con una linea blanca brillante en el borde. */
+    LINEA("Linea blanca"),
+    BARRIDO("Barrido"),
+    EMPUJAR("Empujar"),
+    EMPUJAR_ARRIBA("Empujar arriba"),
+    DESLIZAR("Deslizar"),
+    ZOOM("Zoom"),
+    DESENFOQUE("Desenfoque"),
+    GIRO("Giro")
+}
+
+/**
+ * Correccion de color. Todo en -1..1 con 0 neutro, salvo nitidez y vineta,
+ * que van de 0 a 1.
+ */
+data class AjustesColor(
+    val brillo: Float = 0f,
+    val contraste: Float = 0f,
+    val saturacion: Float = 0f,
+    val exposicion: Float = 0f,
+    val calidez: Float = 0f,
+    val tinte: Float = 0f,
+    val sombras: Float = 0f,
+    val luces: Float = 0f,
+    val nitidez: Float = 0f,
+    val vineta: Float = 0f
+) {
+    val neutro: Boolean get() = this == NEUTRO
+
+    fun mas(o: AjustesColor, f: Float): AjustesColor = AjustesColor(
+        brillo = brillo + o.brillo * f,
+        contraste = contraste + o.contraste * f,
+        saturacion = saturacion + o.saturacion * f,
+        exposicion = exposicion + o.exposicion * f,
+        calidez = calidez + o.calidez * f,
+        tinte = tinte + o.tinte * f,
+        sombras = sombras + o.sombras * f,
+        luces = luces + o.luces * f,
+        nitidez = (nitidez + o.nitidez * f).coerceIn(0f, 1f),
+        vineta = (vineta + o.vineta * f).coerceIn(0f, 1f)
+    )
+
+    companion object {
+        val NEUTRO = AjustesColor()
+    }
+}
+
+/** Combinaciones de ajustes con nombre. Se suman a lo que el usuario toque. */
+enum class Filtro(val nombre: String, val ajustes: AjustesColor) {
+    NINGUNO("Original", AjustesColor()),
+    VIVO("Vivo", AjustesColor(contraste = 0.15f, saturacion = 0.35f, nitidez = 0.15f)),
+    ANIME("Anime", AjustesColor(contraste = 0.12f, saturacion = 0.25f, luces = -0.1f, sombras = 0.1f, nitidez = 0.3f)),
+    FRIO("Frio", AjustesColor(calidez = -0.35f, tinte = -0.05f, saturacion = 0.05f)),
+    CALIDO("Calido", AjustesColor(calidez = 0.35f, saturacion = 0.1f, brillo = 0.03f)),
+    CINE("Cine", AjustesColor(contraste = 0.2f, saturacion = -0.15f, calidez = 0.1f, sombras = -0.1f, vineta = 0.35f)),
+    NOCHE("Noche", AjustesColor(exposicion = -0.25f, calidez = -0.4f, contraste = 0.1f, vineta = 0.3f)),
+    DESVAIDO("Desvaido", AjustesColor(contraste = -0.3f, brillo = 0.06f, saturacion = -0.25f, sombras = 0.25f)),
+    BYN("Blanco y negro", AjustesColor(saturacion = -1f, contraste = 0.25f)),
+    DRAMA("Drama", AjustesColor(contraste = 0.4f, saturacion = -0.1f, luces = -0.25f, sombras = -0.15f, vineta = 0.45f, nitidez = 0.2f))
+}
+
+/** Un texto puesto encima. */
+data class Texto(
+    val contenido: String,
+    /** Altura de la letra en fraccion del alto del lienzo. */
+    val tamano: Float = 0.055f,
+    /** ARGB. */
+    val color: Int = 0xFFFFFFFF.toInt(),
+    val fuente: Fuente = Fuente.SANS,
+    val negrita: Boolean = true,
+    /** 0 sin contorno. Se mide en fraccion del tamano de letra. */
+    val contorno: Float = 0f,
+    val colorContorno: Int = 0xFF000000.toInt(),
+    val sombra: Boolean = true,
+    /** 0 sin caja de fondo. */
+    val fondo: Int = 0,
+    val alineacion: Alineacion = Alineacion.CENTRO,
+    val espaciado: Float = 0f
+)
+
+enum class Fuente(val nombre: String) {
+    SANS("Clasica"),
+    CONDENSADA("Estrecha"),
+    SERIF("Serif"),
+    MONO("Maquina"),
+    REDONDA("Casual")
+}
+
+enum class Alineacion { IZQUIERDA, CENTRO, DERECHA }
+
+/** Como se mezcla una capa con lo que tiene debajo. */
+enum class Mezcla(val nombre: String) {
+    NORMAL("Normal"),
+    PANTALLA("Pantalla"),
+    SUMAR("Sumar"),
+    MULTIPLICAR("Multiplicar")
+}
+
+/**
+ * Un bloque encima de la pista principal.
+ *
+ * [fila] decide el orden: la fila 0 va justo encima del video principal y
+ * cada fila mas arriba tapa a las de debajo. En la linea de tiempo cada fila
+ * se ve como su propia pista, debajo de la principal.
+ */
+data class Capa(
+    val inicioUs: Long,
+    val fila: Int,
+    val clip: Clip,
+    val mezcla: Mezcla = Mezcla.NORMAL
+) {
+    val id: Long get() = clip.id
+    val finUs: Long get() = inicioUs + clip.duracionUs
+}
+
+/** Musica o un sonido suelto. */
+data class PistaAudio(
+    val id: Long,
+    val origen: Origen,
+    val inicioUs: Long = 0,
+    val desdeUs: Long = 0,
+    val hastaUs: Long = origen.duracionUs,
+    val volumen: Float = 1f,
+    val fundidoEntradaUs: Long = 0,
+    val fundidoSalidaUs: Long = 0
+) {
+    val duracionUs: Long get() = hastaUs - desdeUs
+    val finUs: Long get() = inicioUs + duracionUs
+}
