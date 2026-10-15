@@ -22,7 +22,13 @@ data class Clip(
     val hastaUs: Long = origen?.duracionUs?.takeIf { it > 0 } ?: IMAGEN_POR_DEFECTO_US,
     /** 0.25 a 4. Solo en video. */
     val velocidad: Float = 1f,
+    /** 0 a 2: se puede subir por encima del original. */
     val volumen: Float = 1f,
+    /**
+     * Al cambiar la velocidad, que la voz y la musica suenen igual de agudas.
+     * Sin esto, a doble velocidad todo sale como una ardilla.
+     */
+    val mantenerTono: Boolean = true,
     val fundidoEntradaUs: Long = 0,
     val fundidoSalidaUs: Long = 0,
     val color: AjustesColor = AjustesColor(),

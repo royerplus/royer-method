@@ -83,4 +83,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     debugImplementation(libs.androidx.ui.tooling)
+    // El modelo del editor (linea de tiempo, escena, audio) es Kotlin puro y
+    // se prueba en el ordenador: ./gradlew test
+    testImplementation(libs.junit)
 }

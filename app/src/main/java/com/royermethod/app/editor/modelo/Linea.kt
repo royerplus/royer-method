@@ -149,11 +149,12 @@ object Linea {
      * comparado con los demas. Repartir el mismo bitrate a todo seria tirar
      * bits en lo facil y quedarse corto en lo dificil.
      *
-     * Los factores estan normalizados para que la media ponderada por tiempo
-     * sea 1: el peso total sale el mismo que con bitrate fijo, solo cambia
-     * donde se gasta.
+     * Con [normalizar], la media ponderada por tiempo es 1: el peso total
+     * sale el mismo que con bitrate fijo y solo cambia donde se gasta. Sin
+     * normalizar, un proyecto de fotos quietas pesa menos que uno lleno de
+     * transiciones, que es lo que se usa al exportar.
      */
-    fun tramos(p: Proyecto): List<Tramo> {
+    fun tramos(p: Proyecto, normalizar: Boolean = true): List<Tramo> {
         val total = duracion(p)
         if (total <= 0) return emptyList()
         val ini = inicios(p.principal)
@@ -178,6 +179,7 @@ object Linea {
             val medio = (a + b) / 2
             crudos.add(Tramo(a, b, peso(p, ini, medio, media)))
         }
+        if (!normalizar) return crudos
         // Normalizar a media 1 ponderada por duracion
         val suma = crudos.sumOf { (it.hastaUs - it.desdeUs) * it.factor.toDouble() }
         val norma = if (suma > 0) total / suma else 1.0
@@ -194,7 +196,8 @@ object Linea {
                 if (c > 0f && media > 0f) (c / media).coerceIn(0.7f, 1.4f) else 1f
             }
             // Imagen o texto: casi quieto, salvo que se mueva
-            en.primero.continua != AnimacionContinua.NINGUNA || en.primero.claves.isNotEmpty() -> 0.8f
+            en.primero.continua != AnimacionContinua.NINGUNA || en.primero.claves.isNotEmpty() ||
+                en.primero.entrada != Animacion.NINGUNA || en.primero.salida != Animacion.NINGUNA -> 0.8f
             else -> 0.45f
         }
         if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
