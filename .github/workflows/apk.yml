@@ -55,7 +55,7 @@ jobs:
         run: bash tools/traer_dependencias.sh
 
       - name: Compilar
-        run: ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease
+        run: bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease
 
       - name: Publicar
         env:
