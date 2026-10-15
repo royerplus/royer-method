@@ -69,7 +69,12 @@ gradlew assembleRelease
 ```
 
 El primer paso descarga ncnn y los pesos de los modelos, que no están en el
-repositorio por ser binarios de terceros. Ver [NOTICE.md](NOTICE.md).
+repositorio por ser binarios de terceros. Ver [NOTICE.md](NOTICE.md). En Linux
+es `bash tools/traer_dependencias.sh`.
+
+GitHub también lo compila solo en cada push a `main` o a la rama del editor, y
+deja el APK siempre en el mismo enlace:
+https://github.com/royerplus/royer-method/releases/download/prueba/RoyerMethod.apk
 
 Solo se compila para `arm64-v8a`. Es lo que lleva cualquier teléfono capaz de
 mover Vulkan con computación, que es lo que exigen los modelos.
