@@ -201,4 +201,17 @@ object Glifos {
         camino(c, true, false, 6f, 4f, 18f, 4f, 18f, 20f, 12f, 15.5f, 6f, 20f)
     }
     val flecha: Glifo = { c -> linea(c, 4f, 12f, 19f, 12f); camino(c, false, false, 13f, 6f, 19f, 12f, 13f, 18f) }
+    /** Fotogramas que se encadenan: generar los que faltan. */
+    val fluidez: Glifo = { c ->
+        camino(c, true, false, 11f, 7f, 20f, 12f, 11f, 17f)
+        linea(c, 3.5f, 9f, 8f, 9f)
+        linea(c, 2.5f, 12f, 8f, 12f)
+        linea(c, 3.5f, 15f, 8f, 15f)
+    }
+    /** Dos flechas que aprietan: menos peso. */
+    val compresion: Glifo = { c ->
+        linea(c, 12f, 3.5f, 12f, 9.5f); camino(c, false, false, 9f, 6.5f, 12f, 9.5f, 15f, 6.5f)
+        linea(c, 12f, 20.5f, 12f, 14.5f); camino(c, false, false, 9f, 17.5f, 12f, 14.5f, 15f, 17.5f)
+        linea(c, 5f, 12f, 19f, 12f)
+    }
 }

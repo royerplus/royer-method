@@ -207,14 +207,16 @@ object Linea {
             else -> 0.45f
         }
         if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
+        // Lo que el usuario le pidio a ese bloque: en una transicion, la media de los dos
+        if (en != null) f *= en.segundo?.let { (en.primero.calidad + it.calidad) / 2f } ?: en.primero.calidad
         // Lo que va encima tambien hay que pagarlo
         val encima = capasEn(p.capas, t)
-        for (c in encima) f += when {
+        for (c in encima) f += c.clip.calidad * when {
             c.clip.esVideo -> 0.35f
             seMueve(c.clip, t - c.inicioUs) -> 0.25f
             else -> 0.1f
         }
-        return f.coerceIn(0.35f, 2.2f)
+        return f.coerceIn(0.2f, 3.3f)
     }
 
     /**

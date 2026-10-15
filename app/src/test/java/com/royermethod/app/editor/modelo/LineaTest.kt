@@ -171,4 +171,17 @@ class LineaTest {
         assertTrue(justoAntes > lejos)
         assertEquals(dentro, justoAntes)
     }
+
+    @Test
+    fun laCalidadDelBloqueMueveSusBits() {
+        val p = Proyecto(principal = listOf(video(1, 3.0).copy(calidad = 0.5f), video(2, 3.0)))
+        val tramos = Linea.tramos(p)
+        val bajo = tramos.first { it.hastaUs <= 3_000_000 }
+        val normal = tramos.first { it.desdeUs >= 3_000_000 }
+        assertEquals(0.5f, bajo.factor / normal.factor, 0.02f)
+        // Lo que se ahorra en uno no se lo lleva el otro: baja el total
+        val plan = PlanExportacion.de(p)
+        val igual = PlanExportacion.de(p.copy(principal = p.principal.map { it.copy(calidad = 1f) }))
+        assertTrue(plan.bytesEstimados < igual.bytesEstimados)
+    }
 }

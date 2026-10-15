@@ -27,6 +27,7 @@ object Preferencias {
 
     private const val ARCHIVO = "ajustes"
     private const val CLAVE = "todo"
+    private const val VERSION_EDITOR = 2
 
     /** Lee lo guardado y deja preparado que cada cambio se guarde solo. */
     fun cargar(context: Context) {
@@ -48,6 +49,7 @@ object Preferencias {
             put("redondez", Estilo.redondez.toDouble())
         })
         put("editor", JSONObject().apply {
+            put("version", VERSION_EDITOR)
             put("formato", AjustesEditor.formato.name)
             put("fondo", AjustesEditor.fondo.name)
             put("salida", Persistencia.salida(AjustesEditor.salida))
@@ -78,7 +80,9 @@ object Preferencias {
             Estilo.redondez = e.optDouble("redondez", 1.0).toFloat().coerceIn(0f, 1.5f)
         }
         j.optJSONObject("editor")?.let { e ->
-            AjustesEditor.formato = e.enumeracion("formato", Formato.VERTICAL)
+            // Antes de la version 2 el formato se guardaba aunque nadie lo eligiera
+            // (vertical): ahi manda el nuevo por defecto, el cuadrado.
+            if (e.optInt("version", 1) >= VERSION_EDITOR) AjustesEditor.formato = e.enumeracion("formato", Formato.CUADRADO)
             AjustesEditor.fondo = e.enumeracion("fondo", Fondo.DESENFOCADO)
             AjustesEditor.salida = Persistencia.salidaDe(e.optJSONObject("salida"))
             AjustesEditor.duracionTransicionUs = e.optLong("duracionTransicion", 400_000L).coerceIn(100_000L, 3_000_000L)

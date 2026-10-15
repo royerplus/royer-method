@@ -1,5 +1,12 @@
 package com.royermethod.app.editor.audio
 
+import java.util.IdentityHashMap
+import java.util.concurrent.Callable
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.Future
+import java.util.concurrent.TimeUnit
+
 /**
  * Suma todos los [Segmento]s del proyecto en una sola pista estereo.
  *
@@ -10,6 +17,11 @@ package com.royermethod.app.editor.audio
  *
  * @param desde frame por el que empezar (la vista previa empieza donde este
  *   el cursor)
+ * @param antelacion frames de adelanto con que se abre cada segmento en otro
+ *   hilo, o 0 para abrirlo en este justo cuando empieza a sonar. Abrir un
+ *   archivo y dejar listo su decodificador tarda una o dos decenas de
+ *   milisegundos en un telefono; en directo, hacerlo en el mismo hilo que
+ *   alimenta al altavoz lo deja sin sonido justo en cada junta.
  * @param abrir da el audio de un segmento desde un frame suyo ya a [Pcm.HZ]
  *   y a la velocidad del segmento
  */
@@ -17,11 +29,18 @@ class Mezclador(
     segmentos: List<Segmento>,
     private val total: Long,
     desde: Long = 0,
+    private val antelacion: Long = 0,
     private val abrir: (Segmento, Long) -> FuentePcm
 ) : FuentePcm {
 
     private val pendientes = segmentos.filter { it.fin > desde }.sortedBy { it.inicio }.toMutableList()
     private val abiertos = ArrayList<Pair<Segmento, FuentePcm>>()
+
+    /** Los que se estan abriendo por adelantado. Por identidad: dos segmentos pueden ser iguales. */
+    private val preparados = IdentityHashMap<Segmento, Future<FuentePcm>>()
+    private val apertura: ExecutorService? = if (antelacion > 0) {
+        Executors.newSingleThreadExecutor { Thread(it, "abrir-sonido").apply { isDaemon = true } }
+    } else null
 
     /** Siguiente frame a mezclar (va [Limitador.LATENCIA] por delante de lo entregado). */
     private var mezcla = desde
@@ -56,11 +75,27 @@ class Mezclador(
         val desde = mezcla
         val hasta = desde + n
 
+        // Los que van a empezar pronto se abren ya, aparte. Solo los que aun no
+        // han empezado: esos se abren siempre desde su primer frame.
+        apertura?.let { ex ->
+            for (s in pendientes) {
+                if (s.inicio >= hasta + antelacion) break
+                if (s.inicio >= desde && s !in preparados) {
+                    preparados[s] = ex.submit(Callable { runCatching { abrir(s, 0) }.getOrDefault(Silencio) })
+                }
+            }
+        }
+
         // Los que empiezan en este trozo
         while (pendientes.isNotEmpty() && pendientes[0].inicio < hasta) {
             val s = pendientes.removeAt(0)
             val dentro = (desde - s.inicio).coerceAtLeast(0)
-            val fuente = runCatching { abrir(s, dentro) }.getOrDefault(Silencio)
+            val listo = preparados.remove(s)
+            val fuente = if (listo != null) {
+                runCatching { listo.get() }.getOrDefault(Silencio)
+            } else {
+                runCatching { abrir(s, dentro) }.getOrDefault(Silencio)
+            }
             abiertos.add(s to fuente)
         }
 
@@ -94,6 +129,12 @@ class Mezclador(
     override fun cerrar() {
         abiertos.forEach { it.second.cerrar() }
         abiertos.clear()
+        // Lo abierto por adelantado que no llego a sonar tambien se cierra
+        for (f in preparados.values) {
+            if (!f.cancel(false)) runCatching { f.get(2, TimeUnit.SECONDS).cerrar() }
+        }
+        preparados.clear()
+        apertura?.shutdown()
     }
 
     companion object {

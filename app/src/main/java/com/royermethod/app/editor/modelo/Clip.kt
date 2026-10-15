@@ -61,7 +61,14 @@ data class Clip(
      * repetir fotogramas (un 24 fps pasado a 30 repite uno de cada cuatro y se
      * nota el tiron), y da camara lenta de verdad al bajar la velocidad.
      */
-    val fluido: Boolean = false
+    val fluido: Boolean = false,
+    /**
+     * Cuantos bits se lleva este bloque al exportar, sobre lo que le tocaria:
+     * 0.5 la mitad (pesa menos, para un fondo o algo de paso), 1.5 la mitad
+     * mas (para el plano que tiene que verse perfecto). Se suma a lo que ya
+     * decide el reparto por tramos, no lo sustituye.
+     */
+    val calidad: Float = 1f
 ) {
     init {
         require((origen == null) != (texto == null)) { "un clip es archivo o texto" }
@@ -247,7 +254,9 @@ enum class Curva(val nombre: String) {
     /** Se pasa un poco y vuelve. */
     REBOTE("Rebote"),
     /** Oscila un par de veces antes de quedarse. */
-    ELASTICO("Elastico")
+    ELASTICO("Elastico"),
+    /** Sale disparada y frena en seco: la de los latigazos. */
+    RAPIDA("Rapida")
 }
 
 /** Piezas de animacion de entrada y salida. Se combinan entre ellas. */
@@ -265,7 +274,15 @@ enum class Animacion(val nombre: String) {
     REVELAR("Revelar"),
     DESENFOCAR("Enfocar"),
     SACUDIR("Sacudir"),
-    PARPADEO("Parpadeo")
+    PARPADEO("Parpadeo"),
+    /** Sacudida de arriba a abajo. */
+    SACUDIR_VERTICAL("Sacudir vertical"),
+    /** Se balancea de lado a lado y se va calmando, como un pendulo. */
+    PENDULO("Pendulo"),
+    /** Late de tamano rapido mientras se calma. */
+    ZOOM_VIBRA("Zoom vibrante"),
+    /** Saltos de posicion y parpadeos, como una imagen que falla. */
+    GLITCH("Glitch")
 }
 
 /**
@@ -292,7 +309,15 @@ enum class AnimacionContinua(val nombre: String) {
     TEMBLOR("Temblor"),
     BALANCEO("Balanceo"),
     FLOTAR("Flotar"),
-    GIRAR("Girar sin parar")
+    GIRAR("Girar sin parar"),
+    /** Golpes de glitch cada poco, y entre medias quieto. */
+    GLITCH("Glitch"),
+    /** Temblor fino y rapido, como de bajo fuerte. */
+    VIBRAR("Vibrar"),
+    /** Se agranda y se encoge muy despacio. */
+    RESPIRAR("Respirar"),
+    /** Se desplaza de lado a lado a lo largo del bloque. */
+    PANEO("Paneo")
 }
 
 data class Continuo(
@@ -322,24 +347,32 @@ enum class Transicion(val nombre: String) {
     IMPACTO("Impacto")
 }
 
-/** Hacia donde va una transicion que se mueve. */
-enum class Direccion(val nombre: String, val dx: Float, val dy: Float) {
-    IZQUIERDA("Izquierda", -1f, 0f),
-    DERECHA("Derecha", 1f, 0f),
-    ARRIBA("Arriba", 0f, -1f),
-    ABAJO("Abajo", 0f, 1f)
-}
-
 /** Lo que se puede cambiar de una transicion ademas de su duracion. */
 data class AjusteTransicion(
     val curva: Curva = Curva.SUAVE,
-    /** Para empujar, deslizar y los barridos: hacia donde se va lo que sale. */
-    val direccion: Direccion = Direccion.IZQUIERDA,
+    /**
+     * Para empujar, deslizar y los barridos: hacia donde se va lo que sale,
+     * en grados y a cualquier angulo. 0 derecha, 90 abajo, 180 izquierda,
+     * 270 arriba.
+     */
+    val angulo: Float = 180f,
     /** Color de la linea o del destello. */
     val color: Int = 0xFFFFFFFF.toInt(),
     /** Cuanto zoom, giro o desenfoque: 1 lo normal. */
     val intensidad: Float = 1f
-)
+) {
+    /** Hacia donde va, como vector de largo 1 (y hacia abajo). */
+    val dx: Float get() = kotlin.math.cos(Math.toRadians(angulo.toDouble())).toFloat()
+    val dy: Float get() = kotlin.math.sin(Math.toRadians(angulo.toDouble())).toFloat()
+
+    companion object {
+        /**
+         * Los barridos quedan mejor un poco inclinados: en recto parecen un
+         * fallo de imagen. Es el angulo con el que empiezan.
+         */
+        const val ANGULO_BARRIDO = 166f
+    }
+}
 
 /**
  * Correccion de color. Todo en -1..1 con 0 neutro, salvo nitidez y vineta,

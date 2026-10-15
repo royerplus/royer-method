@@ -138,4 +138,45 @@ class EscenaTest {
         val e2 = Escena(Proyecto(principal = listOf(girado), fondo = Fondo.DESENFOCADO), 576, 1024, medidor)
         assertTrue(e2.cuadro(10).clips.any { it.esFondo })
     }
+
+    @Test
+    fun elEmpujeEnDiagonalAvanzaEnLosDosEjes() {
+        // 225 grados: la escena nueva entra desde abajo a la derecha
+        val a = Clip(
+            id = 1, origen = origen, transicion = Transicion.EMPUJAR, duracionTransicionUs = 1_000_000,
+            ajusteTransicion = AjusteTransicion(angulo = 225f)
+        )
+        val b = Clip(id = 2, origen = origen)
+        val e = Escena(Proyecto(principal = listOf(a, b), fondo = Fondo.NEGRO), 576, 1024, medidor)
+        val grupos = e.cuadro(105).pasos.filterIsInstance<PasoGrupo>()
+        val escenaB = grupos[1]
+        val us = escenaB.matrices.map { uv(it, 0f, 0f) }
+        for (i in 1 until us.size) {
+            assertTrue("x muestra $i", us[i].first > us[i - 1].first)
+            assertTrue("y muestra $i", us[i].second > us[i - 1].second)
+        }
+        // Al terminar ya no queda nada de A
+        val fin = e.cuadro(Linea.fotogramaDe(4_000_000))
+        assertTrue(fin.clips.all { it.clip.id == 2L })
+    }
+
+    @Test
+    fun todasLasAnimacionesDanNumerosValidos() {
+        val foto = Origen("content://i", "i", TipoOrigen.IMAGEN, 1000, 1000)
+        fun valido(c: Clip) {
+            val e = escena(c)
+            for (n in 0L until 60L) {
+                for (paso in e.cuadro(n).pasos.filterIsInstance<PasoClip>()) {
+                    assertTrue("${c.entrada} ${c.continua} $n", paso.matrices.all { m -> m.all { it.isFinite() } })
+                    assertTrue("${c.entrada} ${c.continua} $n", paso.opacidades.all { it in 0f..1f })
+                }
+            }
+        }
+        for (t in Animacion.entries) {
+            valido(Clip(id = 1, origen = foto, hastaUs = 2_000_000, entrada = listOf(Movimiento(t)), salida = listOf(Movimiento(t, intensidad = 2f))))
+        }
+        for (t in AnimacionContinua.entries) {
+            valido(Clip(id = 1, origen = foto, hastaUs = 2_000_000, continua = listOf(Continuo(t, intensidad = 2f))))
+        }
+    }
 }

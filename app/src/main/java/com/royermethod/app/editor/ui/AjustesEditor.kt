@@ -17,7 +17,7 @@ import com.royermethod.app.editor.modelo.Proyecto
  * usuario ha combinado y guardado. Se guardan con Preferencias.
  */
 object AjustesEditor {
-    var formato by mutableStateOf(Formato.VERTICAL)
+    var formato by mutableStateOf(Formato.CUADRADO)
     var fondo by mutableStateOf(Fondo.DESENFOCADO)
     var salida by mutableStateOf(AjustesSalida())
     /** Lo que dura una transicion recien puesta. */

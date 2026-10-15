@@ -131,11 +131,12 @@ object Persistencia {
         put("ajusteTransicion", JSONObject().apply {
             val a = c.ajusteTransicion
             put("curva", a.curva.name)
-            put("direccion", a.direccion.name)
+            put("angulo", a.angulo.toDouble())
             put("color", a.color)
             put("intensidad", a.intensidad.toDouble())
         })
         put("fluido", c.fluido)
+        put("calidad", c.calidad.toDouble())
     }
 
     internal fun salida(s: AjustesSalida) = JSONObject().apply {
@@ -207,6 +208,21 @@ object Persistencia {
         optString(clave, "").let { n -> enumValues<E>().firstOrNull { it.name == n } } ?: defecto
 
     private fun JSONObject.f(clave: String, defecto: Float) = optDouble(clave, defecto.toDouble()).toFloat()
+
+    /**
+     * Los proyectos de antes guardaban una de cuatro direcciones, y los
+     * barridos se inclinaban solos. Se pasa a angulo para que se vean igual.
+     */
+    private fun anguloViejo(direccion: String, transicion: String): Float {
+        val base = when (direccion) {
+            "DERECHA" -> 0f
+            "ABAJO" -> 90f
+            "ARRIBA" -> 270f
+            else -> 180f
+        }
+        val barrido = transicion == Transicion.LINEA.name || transicion == Transicion.BARRIDO.name
+        return if (barrido) (base + AjusteTransicion.ANGULO_BARRIDO - 180f + 360f) % 360f else base
+    }
 
     private fun proyecto(j: JSONObject): Proyecto {
         val principal = j.optJSONArray("principal")?.let { a -> (0 until a.length()).mapNotNull { clipDe(a.getJSONObject(it)) } } ?: emptyList()
@@ -309,12 +325,13 @@ object Persistencia {
                 val def = AjusteTransicion()
                 AjusteTransicion(
                     curva = a.enumeracion("curva", def.curva),
-                    direccion = a.enumeracion("direccion", def.direccion),
+                    angulo = if (a.has("angulo")) a.f("angulo", def.angulo) else anguloViejo(a.optString("direccion"), o.optString("transicion")),
                     color = a.optInt("color", def.color),
                     intensidad = a.f("intensidad", def.intensidad)
                 )
             } ?: AjusteTransicion(),
-            fluido = o.optBoolean("fluido")
+            fluido = o.optBoolean("fluido"),
+            calidad = o.f("calidad", 1f).coerceIn(0.3f, 2f)
         )
     }
 

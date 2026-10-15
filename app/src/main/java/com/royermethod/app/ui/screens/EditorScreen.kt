@@ -50,7 +50,12 @@ fun EditorScreen(onVolver: () -> Unit) {
     val context = LocalContext.current
     val alcance = rememberCoroutineScope()
 
-    val estado = remember { EstadoEditor(cargar(context) ?: AjustesEditor.proyectoNuevo()) }
+    // Un proyecto guardado vacio no tiene nada que conservar: se empieza con
+    // los ajustes de ahora (formato, fondo, salida), por si cambiaron.
+    val estado = remember {
+        val guardado = cargar(context)?.takeIf { it.principal.isNotEmpty() || it.capas.isNotEmpty() || it.audios.isNotEmpty() }
+        EstadoEditor(guardado ?: AjustesEditor.proyectoNuevo())
+    }
     val prev = remember { Previsualizador(context) }
     val recursos = remember { RecursosAndroid(context) }
 

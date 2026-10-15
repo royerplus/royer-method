@@ -46,6 +46,7 @@ import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Movimiento
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.Cuadricula
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
@@ -94,11 +95,9 @@ private fun EntradaOSalida(estado: EstadoEditor, c: Clip, entrada: Boolean) {
     }
 
     val listas = Combinaciones.entrada + AjustesEditor.mias
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }) { col -> ninguna(col) }
-        listas.forEach { comb ->
-            Mosaico(comb.nombre, comb.piezas == piezas, { poner(comb.piezas) }) { col -> dibujoPieza(comb.piezas.first().tipo, col, !entrada) }
-        }
+    Cuadricula(listOf<Combinaciones.Combinacion?>(null) + listas) { comb, mod ->
+        if (comb == null) Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }, mod) { col -> ninguna(col) }
+        else Mosaico(comb.nombre, comb.piezas == piezas, { poner(comb.piezas) }, mod) { col -> dibujoPieza(comb.piezas.first().tipo, col, !entrada) }
     }
     if (piezas.isEmpty()) return
     Spacer(Modifier.height(4.dp))
@@ -192,11 +191,9 @@ private fun Continuas(estado: EstadoEditor, c: Clip) {
     val piezas = c.continua
     fun poner(l: List<Continuo>, arrastre: Boolean = false) = estado.cambiarClip(arrastre) { it.copy(continua = l) }
     val listas = Combinaciones.continuas + AjustesEditor.continuasMias
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }) { col -> ninguna(col) }
-        listas.forEach { (nombre, l) ->
-            Mosaico(nombre, l == piezas, { poner(l) }) { col -> dibujoContinua(l.first().tipo, col) }
-        }
+    Cuadricula(listOf<Pair<String, List<Continuo>>?>(null) + listas) { par, mod ->
+        if (par == null) Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }, mod) { col -> ninguna(col) }
+        else Mosaico(par.first, par.second == piezas, { poner(par.second) }, mod) { col -> dibujoContinua(par.second.first().tipo, col) }
     }
     if (piezas.isEmpty()) return
     var agregando by remember { mutableStateOf(false) }
@@ -301,6 +298,25 @@ fun DrawScope.dibujoPieza(t: Animacion, col: Color, alReves: Boolean) {
             drawRoundRect(col, tl, Size(w, h), radio, style = discontinuo)
             drawRoundRect(col.copy(alpha = 0.6f), Offset(tl.x + w * 0.25f, tl.y + h * 0.25f), Size(w * 0.5f, h * 0.5f), radio)
         }
+        Animacion.SACUDIR_VERTICAL -> {
+            drawRoundRect(col.copy(alpha = 0.4f), Offset(tl.x, tl.y - 4.dp.toPx()), Size(w, h), radio, style = trazo)
+            drawRoundRect(col, Offset(tl.x, tl.y + 3.dp.toPx()), Size(w, h), radio, style = trazo)
+        }
+        Animacion.PENDULO -> {
+            rotate(-14f, Offset(c.x, tl.y)) { drawRoundRect(col.copy(alpha = 0.35f), tl, Size(w, h), radio, style = trazo) }
+            rotate(14f, Offset(c.x, tl.y)) { drawRoundRect(col, tl, Size(w, h), radio, style = trazo) }
+        }
+        Animacion.ZOOM_VIBRA -> {
+            for (k in 0..2) {
+                val f = 1f + k * 0.18f
+                drawRoundRect(col.copy(alpha = 1f - k * 0.35f), Offset(c.x - w * f / 2, c.y - h * f / 2), Size(w * f, h * f), radio, style = Stroke(1.2.dp.toPx()))
+            }
+        }
+        Animacion.GLITCH -> {
+            drawRoundRect(col.copy(alpha = 0.35f), Offset(tl.x - 4.dp.toPx(), tl.y), Size(w, h * 0.4f), radio)
+            drawRoundRect(col, Offset(tl.x + 3.dp.toPx(), tl.y + h * 0.4f), Size(w, h * 0.25f), radio)
+            drawRoundRect(col.copy(alpha = 0.6f), Offset(tl.x - 1.dp.toPx(), tl.y + h * 0.65f), Size(w, h * 0.35f), radio)
+        }
     }
 }
 
@@ -331,6 +347,23 @@ private fun DrawScope.dibujoContinua(t: AnimacionContinua, col: Color) {
         AnimacionContinua.GIRAR -> {
             rotate(30f) { drawRoundRect(col, tl, Size(w, h), radio, style = trazo) }
             drawArc(col.copy(alpha = 0.6f), -60f, 120f, false, Offset(center.x - w * 0.9f, center.y - w * 0.9f), Size(w * 1.8f, w * 1.8f), style = Stroke(1.dp.toPx()))
+        }
+        AnimacionContinua.GLITCH -> {
+            drawRoundRect(col.copy(alpha = 0.35f), Offset(tl.x - 4.dp.toPx(), tl.y), Size(w, h * 0.45f), radio)
+            drawRoundRect(col, Offset(tl.x + 3.dp.toPx(), tl.y + h * 0.45f), Size(w, h * 0.55f), radio)
+        }
+        AnimacionContinua.VIBRAR -> {
+            for (k in -1..1) drawRoundRect(col.copy(alpha = if (k == 0) 1f else 0.35f), Offset(tl.x + k * 2.dp.toPx(), tl.y), Size(w, h), radio, style = trazo)
+        }
+        AnimacionContinua.RESPIRAR -> {
+            drawRoundRect(col, tl, Size(w, h), radio, style = trazo)
+            drawRoundRect(col.copy(alpha = 0.3f), Offset(tl.x - 3.dp.toPx(), tl.y - 3.dp.toPx()), Size(w + 6.dp.toPx(), h + 6.dp.toPx()), radio, style = Stroke(1.dp.toPx()))
+        }
+        AnimacionContinua.PANEO -> {
+            drawRoundRect(col, tl, Size(w, h), radio, style = trazo)
+            val y = tl.y + h + 5.dp.toPx()
+            drawLine(col.copy(alpha = 0.6f), Offset(tl.x, y), Offset(tl.x + w, y), 1.2.dp.toPx(), StrokeCap.Round)
+            drawLine(col.copy(alpha = 0.6f), Offset(tl.x + w, y), Offset(tl.x + w - 3.dp.toPx(), y - 3.dp.toPx()), 1.2.dp.toPx(), StrokeCap.Round)
         }
     }
 }

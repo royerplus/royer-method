@@ -269,9 +269,14 @@ class Escena(
         }
         val tipo = a.transicion
         val fuerza = ajuste.intensidad
-        val dir = ajuste.direccion
-        // Los barridos van un poco inclinados: en recto parecen un fallo de imagen
-        val (bx, by) = girar(dir.dx, dir.dy, INCLINACION)
+        val bx = ajuste.dx
+        val by = ajuste.dy
+        // Para empujar: lo justo para que salga entero del lienzo en cualquier
+        // angulo. En diagonal no basta con moverse un lienzo en cada eje a
+        // medias: el lado mas largo del vector tiene que llegar a 1.
+        val largo = maxOf(abs(bx), abs(by))
+        val ex = bx / largo
+        val ey = by / largo
         val extension = (abs(bx) * ancho + abs(by) * alto) / 2f
         val grosorLinea = alto * 0.012f
         fun borde(p: Float): Float {
@@ -323,14 +328,14 @@ class Escena(
             }
 
             Transicion.EMPUJAR -> {
-                ladoA = Lado(aEscena = { i -> Efecto(dx = dir.dx * ps[i], dy = dir.dy * ps[i]) }, extender = true)
-                ladoB = Lado(aEscena = { i -> Efecto(dx = -dir.dx * (1f - ps[i]), dy = -dir.dy * (1f - ps[i])) })
+                ladoA = Lado(aEscena = { i -> Efecto(dx = ex * ps[i], dy = ey * ps[i]) }, extender = true)
+                ladoB = Lado(aEscena = { i -> Efecto(dx = -ex * (1f - ps[i]), dy = -ey * (1f - ps[i])) })
             }
 
             Transicion.DESLIZAR -> {
                 // El de debajo se aleja un poco mientras lo tapan: da profundidad
                 ladoA = Lado(alClip = { i -> Efecto(escala = 1f - 0.06f * fuerza * ps[i]) })
-                ladoB = Lado(aEscena = { i -> Efecto(dx = -dir.dx * (1f - ps[i]), dy = -dir.dy * (1f - ps[i])) })
+                ladoB = Lado(aEscena = { i -> Efecto(dx = -ex * (1f - ps[i]), dy = -ey * (1f - ps[i])) })
             }
 
             Transicion.ZOOM -> {
@@ -465,6 +470,34 @@ class Escena(
                     x = e.x + 0.006f * i * sin(2f * PI.toFloat() * s / 3.7f)
                 )
                 AnimacionContinua.GIRAR -> e.copy(rotacion = e.rotacion + 90f * i * s)
+                AnimacionContinua.GLITCH -> {
+                    // Un golpe de 0.2 s cada 1.2 s; el resto del tiempo, quieto
+                    val ciclo = s / 1.2f
+                    val fase = ciclo - floor(ciclo)
+                    if (fase > 0.17f) e else {
+                        val k = floor(s * 30f)
+                        val semilla = floor(ciclo) * 3.1f
+                        e.copy(
+                            x = e.x + 0.03f * i * ruido(k, 1.9f + semilla),
+                            y = e.y + 0.012f * i * ruido(k, 4.4f + semilla),
+                            escala = e.escala * (1f + 0.04f * i * abs(ruido(k, 8.8f + semilla)))
+                        )
+                    }
+                }
+                AnimacionContinua.VIBRAR -> {
+                    val amp = 0.004f * i
+                    e.copy(
+                        x = e.x + amp * ruido(s * 40f, 2.2f),
+                        y = e.y + amp * ruido(s * 40f, 6.6f),
+                        escala = e.escala * (1f + 0.01f * i)
+                    )
+                }
+                AnimacionContinua.RESPIRAR -> e.copy(escala = e.escala * (1f + 0.04f * i * (0.5f - 0.5f * cos(2f * PI.toFloat() * s / 3f))))
+                AnimacionContinua.PANEO -> {
+                    val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    // Con un poco de zoom, para que al moverse no se vea el borde
+                    e.copy(x = e.x + 0.05f * i * (f * 2f - 1f), escala = e.escala * (1f + 0.1f * i))
+                }
             }
         }
         return e
@@ -517,6 +550,23 @@ class Escena(
                 // Tres parpadeos y se queda
                 val on = sin(local * PI.toFloat() * 7f) > -0.2f || local >= 1f
                 Efecto(opacidad = if (on) 1f else (1f - i).coerceIn(0f, 1f) * 0.3f)
+            }
+            Animacion.SACUDIR_VERTICAL -> {
+                val amp = 0.035f * i * falta
+                Efecto(dy = amp * sin(local * 38f), rotacion = 2f * i * falta * sin(local * 29f + 2f))
+            }
+            Animacion.PENDULO -> Efecto(rotacion = 18f * i * falta * sin(local * PI.toFloat() * 5f))
+            Animacion.ZOOM_VIBRA -> Efecto(escala = 1f + 0.12f * i * falta * sin(local * PI.toFloat() * 8f))
+            Animacion.GLITCH -> {
+                // Catorce saltos secos repartidos por la animacion, cada vez menores
+                val k = floor(local * 14f)
+                val amp = 0.05f * i * falta
+                val corte = ruido(k, 5.3f) > 0.55f && local < 1f
+                Efecto(
+                    dx = amp * ruido(k, 1.7f),
+                    dy = amp * 0.4f * ruido(k, 9.2f),
+                    opacidad = if (corte) (1f - 0.7f * i.coerceIn(0f, 1f)) else 1f
+                )
             }
         }
     }
@@ -616,16 +666,6 @@ class Escena(
         /** Matriz que lleva cualquier pixel fuera de la imagen. */
         private val FUERA = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, -1f, -1f, 1f)
 
-        /** Grados de inclinacion de los barridos. */
-        private const val INCLINACION = -14.0
-
-        private fun girar(x: Float, y: Float, grados: Double): Pair<Float, Float> {
-            val r = Math.toRadians(grados)
-            val c = cos(r).toFloat()
-            val s = sin(r).toFloat()
-            return (x * c - y * s) to (x * s + y * c)
-        }
-
         fun suave(x: Float): Float = x * x * (3f - 2f * x)
 
         fun salidaSuave(x: Float): Float = 1f - (1f - x).pow(3)
@@ -640,6 +680,8 @@ class Escena(
             Curva.REBOTE -> rebote(x)
             Curva.ELASTICO -> if (x <= 0f) 0f else if (x >= 1f) 1f
             else (2.0.pow(-10.0 * x) * sin((x * 10 - 0.75) * (2 * PI / 3)) + 1).toFloat()
+            // Exponencial: casi todo el camino en el primer cuarto
+            Curva.RAPIDA -> if (x >= 1f) 1f else (1.0 - 2.0.pow(-10.0 * x)).toFloat()
         }
 
         /** Sale de pequeno, se pasa un poco y vuelve: el rebote. */

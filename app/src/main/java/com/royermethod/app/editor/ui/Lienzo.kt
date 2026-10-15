@@ -20,8 +20,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -37,6 +39,7 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
+import com.royermethod.app.ui.theme.radio
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -169,6 +172,14 @@ fun Lienzo(
                     }
             ) {
                 val pr = estado.proyecto
+                // El borde de lo que se exporta, siempre a la vista: lo que se
+                // salga de esta linea no va a salir en el video.
+                val grosor = 1.5.dp.toPx()
+                val esquina = radio(6.dp).toPx()
+                drawRoundRect(
+                    Color.White, Offset(grosor / 2, grosor / 2), Size(size.width - grosor, size.height - grosor),
+                    CornerRadius(esquina, esquina), style = Stroke(grosor)
+                )
                 if (guiaX) drawLine(Ink.White70, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), 1.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
                 if (guiaY) drawLine(Ink.White70, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 1.dp.toPx(),

@@ -157,6 +157,9 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.TEXTO -> PanelTexto(estado)
         Panel.FORMATO -> PanelFormato(estado)
         Panel.CURVA -> PanelCurva(estado)
+        Panel.FLUIDEZ -> PanelFluidez(estado)
+        Panel.COMPRESION -> PanelCompresion(estado)
+        Panel.RESOLUCION -> PanelResolucion(estado)
     }
 }
 
@@ -168,24 +171,9 @@ private fun BarraArriba(estado: EstadoEditor, onVolver: () -> Unit, onExportar: 
     ) {
         BotonIcono(Glifos.atras, onVolver)
         Spacer(Modifier.width(4.dp))
-        // La proporcion a la vista, y tocandola se cambia
-        Box(
-            Modifier
-                .heightIn(min = 44.dp)
-                .clip(esquinas(8.dp))
-                .clickable { estado.elegir(null); estado.panel = Panel.FORMATO }
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                estado.proyecto.formato.nombre,
-                style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp),
-                color = Ink.White70,
-                modifier = Modifier
-                    .border(1.dp, Ink.White15, esquinas(8.dp))
-                    .padding(horizontal = 10.dp, vertical = 5.dp)
-            )
-        }
+        // La proporcion y la resolucion a la vista; tocandolas se cambian
+        Pastilla(estado.proyecto.formato.nombre) { estado.elegir(null); estado.panel = Panel.FORMATO }
+        Pastilla("${estado.proyecto.salida.ladoCorto}p") { estado.elegir(null); estado.panel = Panel.RESOLUCION }
         Spacer(Modifier.weight(1f))
         Row(
             Modifier
@@ -201,6 +189,28 @@ private fun BarraArriba(estado: EstadoEditor, onVolver: () -> Unit, onExportar: 
             Text("Exportar", style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Medium), color = Ink.Black)
         }
         Spacer(Modifier.width(6.dp))
+    }
+}
+
+/** Un dato del proyecto en la barra de arriba que se toca para cambiarlo. */
+@Composable
+private fun Pastilla(texto: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .heightIn(min = 44.dp)
+            .clip(esquinas(8.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            texto,
+            style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp),
+            color = Ink.White70,
+            modifier = Modifier
+                .border(1.dp, Ink.White15, esquinas(8.dp))
+                .padding(horizontal = 10.dp, vertical = 5.dp)
+        )
     }
 }
 
@@ -327,6 +337,9 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                 if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
                 if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
                 else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
+                // Lo de la pantalla de Mejorar, al final: fotogramas y peso de este bloque
+                if (c.esVideo) Herramienta(Glifos.fluidez, "Fluidez", { estado.panel = Panel.FLUIDEZ }, resaltada = c.fluido)
+                Herramienta(Glifos.compresion, "Compresion", { estado.panel = Panel.COMPRESION }, resaltada = c.calidad != 1f)
             }
         }
     }

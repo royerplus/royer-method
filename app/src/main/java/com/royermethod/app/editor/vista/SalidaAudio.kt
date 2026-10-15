@@ -25,7 +25,9 @@ internal class SalidaAudio(
     private val desde: Long
 ) {
     private val app = context.applicationContext
-    private val mezclador = Mezclador(segmentos, total, desde) { s, dentro ->
+    // Cada clip se abre un segundo antes de sonar, en otro hilo: abrirlo aqui
+    // dejaria al altavoz sin muestras justo en la junta y se oiria un corte.
+    private val mezclador = Mezclador(segmentos, total, desde, antelacion = Pcm.HZ.toLong()) { s, dentro ->
         Mezclador.lector(s, dentro) { uri, d ->
             DecodificadorAudio.abrir(app, Uri.parse(uri), d)?.let { it to it.hz }
         }
@@ -51,7 +53,9 @@ internal class SalidaAudio(
                     .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                     .build()
             )
-            .setBufferSizeInBytes(maxOf(minimo * 2, 8192))
+            // 150 ms de margen: absorbe un tiron del telefono sin que se oiga. El
+            // reloj no se retrasa, porque sale de lo que ya sono, no de lo escrito.
+            .setBufferSizeInBytes(maxOf(minimo * 2, Pcm.HZ * 15 / 100 * Pcm.CANALES * 2))
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
         hilo = Thread({ bucle() }, "sonido")

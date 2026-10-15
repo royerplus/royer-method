@@ -35,7 +35,10 @@ enum class Panel(val titulo: String) {
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
     FORMATO("Formato"),
-    CURVA("Fotogramas clave")
+    CURVA("Fotogramas clave"),
+    FLUIDEZ("Fluidez"),
+    COMPRESION("Compresion"),
+    RESOLUCION("Resolucion")
 }
 
 /**
@@ -173,8 +176,8 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
 
     private fun poner(p: Proyecto) {
         proyecto = p
-        val d = duracion
-        if (tiempo > d) irA(d)
+        val limite = limiteCabezal
+        if (tiempo > limite) irA(limite)
         alCambiar(p)
     }
 
@@ -196,8 +199,16 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     // Cabezal y avisos
     // ------------------------------------------------------------------
 
+    /**
+     * Hasta donde llega el cabezal: algo mas alla de lo ultimo que haya. Asi se
+     * puede ir a cualquier punto y poner ahi un texto o un sonido aunque
+     * todavia no haya ningun video.
+     */
+    val limiteCabezal: Long
+        get() = maxOf(duracion, proyecto.audios.maxOfOrNull { it.finUs } ?: 0L) + MARGEN_CABEZAL_US
+
     fun irA(t: Long) {
-        tiempo = t.coerceIn(0, maxOf(0, duracion - 1))
+        tiempo = t.coerceIn(0, limiteCabezal)
         alBuscar(tiempo)
     }
 
@@ -261,5 +272,7 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
         const val MAX_DESHACER = 100
         const val ZOOM_MIN = 8f
         const val ZOOM_MAX = 900f
+        /** Lo que se puede pasar el cabezal del final. */
+        const val MARGEN_CABEZAL_US = 30_000_000L
     }
 }

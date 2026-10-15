@@ -23,8 +23,8 @@ class PersistenciaTest {
                     entrada = listOf(Movimiento(Animacion.REBOTE, 0.7f, Curva.ELASTICO, 0.1f, 0.9f), Movimiento(Animacion.APARECER)),
                     salida = listOf(Movimiento(Animacion.GIRO)),
                     continua = listOf(Continuo(AnimacionContinua.PULSO, 1.5f, 2f)),
-                    ajusteTransicion = AjusteTransicion(Curva.LINEAL, Direccion.ARRIBA, 0xFF00FF00.toInt(), 1.4f),
-                    transicion = Transicion.LINEA, duracionTransicionUs = 400_000, fluido = true
+                    ajusteTransicion = AjusteTransicion(Curva.LINEAL, 237f, 0xFF00FF00.toInt(), 1.4f),
+                    transicion = Transicion.LINEA, duracionTransicionUs = 400_000, fluido = true, calidad = 0.6f
                 )
             ),
             capas = listOf(Capa(1_000_000, 2, Clip(id = 2, texto = Texto("Hola\nmundo", contorno = 0.1f, fuente = Fuente.MONO, fondo = 0x80000000.toInt())), Mezcla.PANTALLA)),
@@ -42,5 +42,20 @@ class PersistenciaTest {
         assertEquals(Transicion.NINGUNA, q.principal[0].transicion)
         // El contador queda por encima de los ids que hay
         assertEquals(6L, q.siguienteId)
+    }
+
+    @Test
+    fun lasDireccionesDeAntesPasanAAngulo() {
+        val q = Persistencia.deTexto(
+            """{"principal":[
+                {"id":1,"texto":{"contenido":"a"},"transicion":"EMPUJAR","ajusteTransicion":{"direccion":"ARRIBA"}},
+                {"id":2,"texto":{"contenido":"b"},"transicion":"LINEA","ajusteTransicion":{"direccion":"IZQUIERDA"}},
+                {"id":3,"texto":{"contenido":"c"}}
+            ]}"""
+        )!!
+        assertEquals(270f, q.principal[0].ajusteTransicion.angulo, 0f)
+        // Los barridos de antes iban algo inclinados: se conserva
+        assertEquals(AjusteTransicion.ANGULO_BARRIDO, q.principal[1].ajusteTransicion.angulo, 0f)
+        assertEquals(1f, q.principal[2].calidad, 0f)
     }
 }

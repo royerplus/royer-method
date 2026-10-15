@@ -8,11 +8,13 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -268,10 +270,13 @@ fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifie
 
 /** Fila de pastillas que se desliza de lado si no caben. */
 @Composable
+@OptIn(ExperimentalLayoutApi::class)
 fun <T> Opciones(opciones: List<T>, elegida: T?, nombre: (T) -> String, onElegir: (T) -> Unit, modifier: Modifier = Modifier) {
-    Row(
-        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    // Las que no caben bajan a otra fila: nada queda escondido a la derecha
+    FlowRow(
+        modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         opciones.forEach { o -> Chip(nombre(o), o == elegida, { onElegir(o) }) }
     }
@@ -307,12 +312,14 @@ fun Interruptor(texto: String, activo: Boolean, onCambio: (Boolean) -> Unit, det
     }
 }
 
-/** Muestras de color. La elegida lleva un aro. */
+/** Muestras de color. La elegida lleva un aro. Las que no caben bajan a otra fila. */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifier: Modifier = Modifier, conNinguno: Boolean = false) {
-    Row(
-        modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    FlowRow(
+        modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         if (conNinguno) {
             Box(
@@ -382,8 +389,9 @@ fun Mosaico(
     val borde by animateColorAsState(if (elegido) Ink.White else Color.Transparent, tween(180), label = "mosaico")
     Column(
         modifier
+            // Con peso dentro de una Cuadricula, el peso manda y se estira
             .width(72.dp)
-            .clip(esquinas(12.dp))
+            // Sin recortar: el nombre llega justo al borde y se comeria letras
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -408,6 +416,31 @@ fun Mosaico(
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+/**
+ * Casillas en filas que bajan, en vez de una tira que hay que arrastrar de
+ * lado: se ven todas de un vistazo y el panel ya se desliza hacia abajo.
+ * Cada columna se estira lo justo para llenar el ancho.
+ */
+@Composable
+fun <T> Cuadricula(
+    elementos: List<T>,
+    modifier: Modifier = Modifier,
+    celda: @Composable (T, Modifier) -> Unit
+) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val hueco = 8.dp
+        val columnas = ((maxWidth + hueco) / (72.dp + hueco)).toInt().coerceAtLeast(3)
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            elementos.chunked(columnas).forEach { fila ->
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(hueco)) {
+                    fila.forEach { celda(it, Modifier.weight(1f)) }
+                    repeat(columnas - fila.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
     }
 }
 

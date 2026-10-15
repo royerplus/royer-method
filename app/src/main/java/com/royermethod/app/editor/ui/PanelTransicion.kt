@@ -3,19 +3,24 @@ package com.royermethod.app.editor.ui
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -29,12 +34,15 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.Curva
-import com.royermethod.app.editor.modelo.Direccion
+import com.royermethod.app.editor.modelo.AjusteTransicion
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Transicion
 import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.Cuadricula
+import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Etiqueta
 import com.royermethod.app.ui.components.Glifos
@@ -71,18 +79,21 @@ fun PanelTransicion(estado: EstadoEditor) {
     // Una transicion no puede comerse mas de la mitad de ninguno de los dos
     val maximo = (min(a.duracionUs, b.duracionUs) / 2).coerceAtLeast(100_000L)
 
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Transicion.values().forEach { t ->
-            Mosaico(t.nombre, a.transicion == t, {
-                cambiar {
-                    val dur = if (it.transicion == Transicion.NINGUNA) AjustesEditor.duracionTransicionUs else it.duracionTransicionUs
-                    it.copy(transicion = t, duracionTransicionUs = dur.coerceAtMost(maximo))
-                }
-                // Que se vea entera: el cabezal salta a un poco antes
-                val ini = com.royermethod.app.editor.modelo.Linea.inicios(estado.proyecto.principal)
-                estado.irA((ini[i + 1] - 200_000).coerceAtLeast(0))
-            }) { col -> dibujoTransicion(t, col) }
-        }
+    Cuadricula(Transicion.values().toList()) { t, mod ->
+        Mosaico(t.nombre, a.transicion == t, {
+            cambiar {
+                val dur = if (it.transicion == Transicion.NINGUNA) AjustesEditor.duracionTransicionUs else it.duracionTransicionUs
+                // Los barridos empiezan algo inclinados; si ya se giro a mano, se respeta
+                val aj = it.ajusteTransicion
+                val barrido = t == Transicion.LINEA || t == Transicion.BARRIDO
+                val recto = aj.angulo % 90f == 0f
+                val angulo = if (barrido && recto) AjusteTransicion.ANGULO_BARRIDO else aj.angulo
+                it.copy(transicion = t, duracionTransicionUs = dur.coerceAtMost(maximo), ajusteTransicion = aj.copy(angulo = angulo))
+            }
+            // Que se vea entera: el cabezal salta a un poco antes
+            val ini = com.royermethod.app.editor.modelo.Linea.inicios(estado.proyecto.principal)
+            estado.irA((ini[i + 1] - 200_000).coerceAtLeast(0))
+        }, mod) { col -> dibujoTransicion(t, col) }
     }
     if (a.transicion == Transicion.NINGUNA) {
         Spacer(Modifier.height(10.dp))
@@ -101,21 +112,12 @@ fun PanelTransicion(estado: EstadoEditor) {
     if (a.transicion in CON_DIRECCION) {
         Spacer(Modifier.height(6.dp))
         Etiqueta("Hacia donde")
-        Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Direccion.values().forEach { d ->
-                val sel = aj.direccion == d
-                Box(
-                    Modifier
-                        .size(46.dp)
-                        .background(if (sel) Ink.White else Ink.White08, esquinas(12.dp))
-                        .clickable { cambiar { it.copy(ajusteTransicion = it.ajusteTransicion.copy(direccion = d)) } },
-                    contentAlignment = Alignment.Center
-                ) {
-                    val giro = when (d) { Direccion.DERECHA -> 0f; Direccion.ABAJO -> 90f; Direccion.IZQUIERDA -> 180f; Direccion.ARRIBA -> 270f }
-                    Icono({ col -> rotate(giro) { Glifos.flecha(this, col) } }, color = if (sel) Ink.Black else Ink.White90, tam = 22.dp)
-                }
-            }
-        }
+        RuedaDireccion(
+            aj.angulo,
+            barrido = a.transicion == Transicion.LINEA || a.transicion == Transicion.BARRIDO,
+            color = if (a.transicion in CON_COLOR) Color(aj.color) else Ink.White,
+            onCambio = { g -> cambiar(true) { it.copy(ajusteTransicion = it.ajusteTransicion.copy(angulo = g)) } }
+        )
     }
     if (a.transicion in CON_COLOR) {
         Etiqueta("Color de la luz")
@@ -141,6 +143,86 @@ fun PanelTransicion(estado: EstadoEditor) {
         }
         estado.avisar("${a.transicion.nombre} en todas las uniones")
     })
+}
+
+/**
+ * La direccion a cualquier angulo: una linea desde el centro con un punto en
+ * la punta. Arrastrando el punto (o tocando el aro) la linea gira entera, y
+ * cerca de las ocho direcciones rectas se queda pegada para acertarlas sin
+ * esfuerzo.
+ *
+ * En los barridos se dibuja tambien la linea de corte, perpendicular, que es
+ * la que se ve cruzar la imagen.
+ */
+@Composable
+private fun RuedaDireccion(angulo: Float, barrido: Boolean, color: Color, onCambio: (Float) -> Unit) {
+    val gestos = LocalGestos.current
+    val cambio by rememberUpdatedState(onCambio)
+    Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Canvas(
+            Modifier
+                .size(132.dp)
+                .pointerInput(Unit) {
+                    awaitEachGesture {
+                        val abajo = awaitFirstDown()
+                        gestos.empezar()
+                        fun anguloEn(p: Offset): Float {
+                            val c = Offset(size.width / 2f, size.height / 2f)
+                            var g = Math.toDegrees(kotlin.math.atan2((p.y - c.y).toDouble(), (p.x - c.x).toDouble())).toFloat()
+                            g = (g + 360f) % 360f
+                            val recto = Math.round(g / 45f) * 45f
+                            if (kotlin.math.abs(g - recto) < 4f) g = recto % 360f
+                            return Math.round(g).toFloat() % 360f
+                        }
+                        try {
+                            cambio(anguloEn(abajo.position))
+                            abajo.consume()
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
+                                if (!c.pressed) break
+                                cambio(anguloEn(c.position))
+                                c.consume()
+                            }
+                        } finally {
+                            gestos.terminar()
+                        }
+                    }
+                }
+        ) {
+            val c = center
+            val r = size.minDimension / 2f - 12.dp.toPx()
+            drawCircle(Ink.White08, r + 10.dp.toPx(), c)
+            drawCircle(Ink.White15, r, c, style = Stroke(1.dp.toPx()))
+            // Marcas de las ocho direcciones rectas
+            for (k in 0 until 8) {
+                val g = Math.toRadians(k * 45.0)
+                val d = Offset(kotlin.math.cos(g).toFloat(), kotlin.math.sin(g).toFloat())
+                val largo = if (k % 2 == 0) 6.dp.toPx() else 3.dp.toPx()
+                drawLine(Ink.White50, c + d * (r - largo), c + d * r, 1.dp.toPx(), StrokeCap.Round)
+            }
+            val g = Math.toRadians(angulo.toDouble())
+            val d = Offset(kotlin.math.cos(g).toFloat(), kotlin.math.sin(g).toFloat())
+            if (barrido) {
+                // El borde del barrido: perpendicular a hacia donde avanza
+                val n = Offset(-d.y, d.x)
+                drawLine(color.copy(alpha = 0.55f), c - n * (r * 0.8f), c + n * (r * 0.8f), 2.dp.toPx(), StrokeCap.Round)
+            }
+            drawLine(Ink.White30, c - d * r, c, 1.5.dp.toPx(), StrokeCap.Round)
+            drawLine(Ink.White, c, c + d * r, 2.5.dp.toPx(), StrokeCap.Round)
+            drawCircle(Ink.White, 3.dp.toPx(), c)
+            drawCircle(Ink.White, 11.dp.toPx(), c + d * r)
+            drawCircle(Ink.Black, 4.dp.toPx(), c + d * r)
+        }
+        Spacer(Modifier.width(16.dp))
+        Column(Modifier.weight(1f)) {
+            Text("${angulo.toInt()}°", style = MaterialTheme.typography.headlineSmall, color = Ink.White)
+            Text(
+                "Arrastra el punto para girar la direccion",
+                style = MaterialTheme.typography.bodyMedium, color = Ink.White50
+            )
+        }
+    }
 }
 
 /** Dos rectangulos (lo que sale y lo que entra) y como pasan. */

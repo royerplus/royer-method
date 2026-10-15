@@ -164,4 +164,39 @@ class AudioTest {
         assertEquals(96_000L, pedido)
         assertEquals(192_000 - 96_000, x.size)
     }
+
+    @Test
+    fun mezcladorAbreLosClipsAntesDeQueSuenen() {
+        // Dos trozos del mismo video con una transicion: el segundo tiene que
+        // estar abierto antes de su junta, y fuera del hilo que mezcla
+        val a = Clip(id = 1, origen = video, transicion = Transicion.FUNDIDO, duracionTransicionUs = 500_000)
+        val b = Clip(id = 2, origen = video, desdeUs = 1_000_000)
+        val p = Proyecto(principal = listOf(a, b))
+        val segs = PlanAudio.de(p)
+        val mezcla = Thread.currentThread()
+        var entregados = 0L
+        val aperturas = java.util.Collections.synchronizedList(ArrayList<Pair<Long, Boolean>>())
+        val m = Mezclador(segs, PlanAudio.total(p), antelacion = 48_000) { s, _ ->
+            aperturas.add(s.inicio to (Thread.currentThread() !== mezcla))
+            Thread.sleep(30)
+            tono(48_000, 300.0, 4.0, 0.5f)
+        }
+        val conAdelanto = ArrayList<Float>()
+        val buf = FloatArray(4096)
+        while (true) {
+            val n = m.leer(buf, 1024)
+            if (n <= 0) break
+            for (i in 0 until n) conAdelanto.add(buf[i * 2])
+            entregados += n
+        }
+        m.cerrar()
+        // El segundo se abrio en otro hilo
+        val segundo = aperturas.first { it.first == segs[1].inicio }
+        assertTrue(segundo.second)
+
+        // Y suena exactamente igual que abriendolo en el momento
+        val directo = todo(Mezclador(segs, PlanAudio.total(p)) { _, _ -> tono(48_000, 300.0, 4.0, 0.5f) })
+        assertEquals(directo.size, conAdelanto.size)
+        for (i in directo.indices step 101) assertEquals(directo[i], conAdelanto[i], 1e-6f)
+    }
 }

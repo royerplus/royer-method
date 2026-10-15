@@ -229,7 +229,9 @@ fun LineaTiempo(
                         if (pos.x in (xMas - 4.dp.toPx())..(xMas + 46.dp.toPx()) && pos.y in PRINCIPAL_Y.dp.toPx()..(PRINCIPAL_Y + PRINCIPAL_H).dp.toPx()) {
                             return@run Objetivo.Agregar
                         }
-                        if (estado.proyecto.principal.isEmpty() && pos.y in PRINCIPAL_Y.dp.toPx()..(PRINCIPAL_Y + PRINCIPAL_H).dp.toPx()) {
+                        if (estado.proyecto.principal.isEmpty() && pos.y in PRINCIPAL_Y.dp.toPx()..(PRINCIPAL_Y + PRINCIPAL_H).dp.toPx() &&
+                            pos.x in xDe(0)..(xDe(0) + 210.dp.toPx())
+                        ) {
                             return@run Objetivo.Agregar
                         }
                         g.piezas.lastOrNull { pz ->
@@ -530,8 +532,9 @@ private fun DrawScope.dibujar(
     // ---- Pista principal ----
     val y0 = PRINCIPAL_Y.dp.toPx(); val y1 = (PRINCIPAL_Y + PRINCIPAL_H).dp.toPx()
     if (p.principal.isEmpty()) {
+        // Pegado al cero, donde va a empezar el video
         val w = 210.dp.toPx()
-        val x0 = centro + 12.dp.toPx()
+        val x0 = x(0)
         drawRoundRect(Ink.White, Offset(x0, y0), Size(w, y1 - y0), radio)
         val cruz = 9.dp.toPx(); val cx = x0 + 26.dp.toPx(); val cy = (y0 + y1) / 2
         drawLine(Ink.Black, Offset(cx - cruz, cy), Offset(cx + cruz, cy), 2.2.dp.toPx(), StrokeCap.Round)

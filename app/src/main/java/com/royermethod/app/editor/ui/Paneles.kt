@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -69,6 +68,7 @@ import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonIcono
 import com.royermethod.app.ui.components.BotonLleno
 import com.royermethod.app.ui.components.Chip
+import com.royermethod.app.ui.components.Cuadricula
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
@@ -210,13 +210,11 @@ fun PanelColor(estado: EstadoEditor) {
     Pestanas(listOf("Filtros", "Ajustes"), pestana, { pestana = it })
     Hueco(6)
     if (pestana == 0) {
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Filtro.values().forEach { f ->
-                val colores = muestraDe(f)
-                Mosaico(f.nombre, c.filtro == f, { estado.cambiarClip { it.copy(filtro = f) } }) { _ ->
-                    drawCircle(colores[0], size.minDimension * 0.34f, Offset(size.width * 0.38f, size.height * 0.5f))
-                    drawCircle(colores[1].copy(alpha = 0.85f), size.minDimension * 0.34f, Offset(size.width * 0.62f, size.height * 0.5f))
-                }
+        Cuadricula(Filtro.values().toList()) { f, m ->
+            val colores = muestraDe(f)
+            Mosaico(f.nombre, c.filtro == f, { estado.cambiarClip { it.copy(filtro = f) } }, m) { _ ->
+                drawCircle(colores[0], size.minDimension * 0.34f, Offset(size.width * 0.38f, size.height * 0.5f))
+                drawCircle(colores[1].copy(alpha = 0.85f), size.minDimension * 0.34f, Offset(size.width * 0.62f, size.height * 0.5f))
             }
         }
         if (c.filtro != Filtro.NINGUNO) {
@@ -435,15 +433,17 @@ fun PanelCurva(estado: EstadoEditor) {
     val ultima = c.claves.maxOf { it.tiempoUs } == clave.tiempoUs
     Nota(if (ultima) "Es el ultimo fotograma clave: la curva se usa si pones otro despues." else "Como se llega desde aqui al siguiente fotograma clave", color = Ink.White50)
     Hueco(8)
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Curva.values().forEach { cu ->
-            Mosaico(cu.nombre, clave.bezier == null && clave.curva == cu, { poner({ it.copy(curva = cu, bezier = null) }) }) { col ->
+    // null es "A mano"
+    Cuadricula(Curva.values().toList() + listOf<Curva?>(null)) { cu, m ->
+        if (cu != null) {
+            Mosaico(cu.nombre, clave.bezier == null && clave.curva == cu, { poner({ it.copy(curva = cu, bezier = null) }) }, m) { col ->
                 dibujoCurva({ Escena.curva(cu, it) }, col)
             }
-        }
-        Mosaico("A mano", clave.bezier != null, { poner({ it.copy(bezier = it.bezier ?: Bezier.SUAVE) }) }) { col ->
-            dibujoCurva({ Bezier(0.1f, 0.9f, 0.4f, 0.1f).en(it) }, col)
-            drawCircle(col, 2.5.dp.toPx(), Offset(size.width * 0.1f, size.height * (0.85f - 0.7f * 0.9f)))
+        } else {
+            Mosaico("A mano", clave.bezier != null, { poner({ it.copy(bezier = it.bezier ?: Bezier.SUAVE) }) }, m) { col ->
+                dibujoCurva({ Bezier(0.1f, 0.9f, 0.4f, 0.1f).en(it) }, col)
+                drawCircle(col, 2.5.dp.toPx(), Offset(size.width * 0.1f, size.height * (0.85f - 0.7f * 0.9f)))
+            }
         }
     }
     val b = clave.bezier
