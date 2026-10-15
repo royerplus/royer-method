@@ -286,7 +286,7 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                     if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
                 })
                 Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
-                Herramienta(Glifos.superponer, "Superponer", onAgregarCapa)
+                Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
                 Herramienta(Glifos.texto, "Texto", {
                     var nuevo = 0L
                     estado.hacer { p -> Edicion.agregarTexto(p, TEXTO_NUEVO, estado.tiempo).also { nuevo = it.second }.first }
