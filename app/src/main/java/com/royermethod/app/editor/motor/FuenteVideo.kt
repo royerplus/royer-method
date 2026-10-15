@@ -62,6 +62,8 @@ class FuenteVideo(
     /** La imagen derecha y al tamano de uso, lista para el compositor. */
     var copia: Lamina? = null
         private set
+    /** La copia a medias: ya con su ancho, todavia con el alto del original. */
+    private var intermedia: Lamina? = null
     private var ptsCopia = -1L
 
     /** Se marca al usarla en un fotograma; las que no se usan se cierran. */
@@ -262,12 +264,13 @@ class FuenteVideo(
     }
 
     /**
-     * Pasa el fotograma actual a [copia], derecho y a [ancho] x [alto].
+     * Pasa el fotograma actual a [copia], derecho y a [ancho] x [alto], con
+     * el filtro de [reduccion].
      *
      * Solo si cambio: un video a 24 fps exportado a 30 repite fotograma una
      * de cada cinco veces, y no hay que volver a copiar lo mismo.
      */
-    fun copiar(ancho: Int, alto: Int, programa: Programa): Lamina {
+    fun copiar(ancho: Int, alto: Int, reduccion: Reduccion): Lamina {
         var c = copia
         if (c == null || c.ancho != ancho || c.alto != alto) {
             c?.soltar()
@@ -277,18 +280,14 @@ class FuenteVideo(
         }
         if (ptsCopia == ptsActual && ptsCopia >= 0) return c
 
+        var m = intermedia
+        if (m == null || m.ancho != ancho || m.alto != altoVisible) {
+            m?.soltar()
+            m = Lamina(ancho, altoVisible)
+            intermedia = m
+        }
         superficieTextura.getTransformMatrix(matrizOes)
-        c.activar()
-        GLES20.glDisable(GLES20.GL_BLEND)
-        programa.usar()
-        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
-        GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, texturaOes)
-        GLES20.glUniform1i(programa.u("sTex"), 0)
-        GLES20.glUniformMatrix3fv(programa.u("uMapa"), 1, false, mapa(), 0)
-        // Un cuarto de pixel de la copia a cada lado: las cuatro muestras
-        // reparten el pixel en cuatro cuadrantes.
-        GLES20.glUniform2f(programa.u("uPaso"), 0.25f / ancho, 0.25f / alto)
-        programa.dibujar(voltear = true)
+        reduccion.reducir(texturaOes, mapa(), anchoVisible, altoVisible, m, c)
         ptsCopia = ptsActual
         return c
     }
@@ -333,6 +332,8 @@ class FuenteVideo(
         GLES20.glDeleteTextures(1, intArrayOf(texturaOes), 0)
         copia?.soltar()
         copia = null
+        intermedia?.soltar()
+        intermedia = null
     }
 
     companion object {

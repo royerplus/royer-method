@@ -30,14 +30,22 @@ void main() {
 
     /**
      * Del fotograma del decodificador a una textura normal, derecha y del
-     * tamano al que se va a usar.
+     * tamano al que se va a usar: primera de las dos pasadas de [Reduccion].
      *
-     * Cuatro muestras bilineales por pixel: al reducir a la mitad, cada una
-     * promedia cuatro pixeles del original y entre las cuatro cubren un
-     * cuadrado de cuatro por cuatro. Una sola muestra se saltaria pixeles y
-     * las lineas finas del anime saldrian con dientes.
+     * Lanczos de radio 2 abierto segun lo que se reduce: al bajar a la mitad
+     * cada pixel del resultado mira 9 del original en esa direccion, todos
+     * cuentan y las lineas finas del anime no salen con dientes ni titilan.
+     * Un filtro fijo de pocas muestras se saltaria pixeles al reducir mucho.
+     *
+     * Lo que sale se limita al rango de los pixeles que caen justo debajo
+     * (el "pie"): los lobulos negativos de Lanczos dan filo pero tambien un
+     * cerco claro alrededor de las lineas oscuras, y asi se queda el filo
+     * sin el cerco.
+     *
+     * Las muestras no salen del borde de la imagen: el decodificador guarda
+     * relleno fuera de lo visible y se colaria como una raya de color.
      */
-    const val COPIA_EXTERNA = """
+    const val REDUCIR_EXTERNA = """
 #extension GL_OES_EGL_image_external : require
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;
@@ -47,18 +55,95 @@ precision mediump float;
 varying vec2 vPos;
 uniform samplerExternalOES sTex;
 uniform mat3 uMapa;
-uniform vec2 uPaso;
-vec4 en(vec2 c) { return texture2D(sTex, (uMapa * vec3(c, 1.0)).xy); }
+uniform vec2 uDir;
+uniform float uOrigen;
+uniform float uEscala;
+float lanczos2(float x) {
+    x = abs(x);
+    if (x < 0.0001) return 1.0;
+    if (x >= 2.0) return 0.0;
+    float p = 3.14159265 * x;
+    return 2.0 * sin(p) * sin(0.5 * p) / (p * p);
+}
 void main() {
-    vec4 s = en(vPos + vec2(-uPaso.x, -uPaso.y))
-           + en(vPos + vec2( uPaso.x, -uPaso.y))
-           + en(vPos + vec2(-uPaso.x,  uPaso.y))
-           + en(vPos + vec2( uPaso.x,  uPaso.y));
-    gl_FragColor = vec4(s.rgb * 0.25, 1.0);
+    float c = dot(vPos, uDir) * uOrigen;
+    float radio = 2.0 * uEscala;
+    float pie = 0.5 * uEscala + 0.5;
+    // Hasta 20 muestras; si no llegan, se separan (cada una ya promedia dos)
+    float paso = max(1.0, 2.0 * radio / 19.0);
+    float p0 = paso > 1.0 ? c - radio + 0.5 * paso : floor(c - radio) + 0.5;
+    vec2 fijo = vPos * (vec2(1.0) - uDir);
+    vec3 suma = vec3(0.0);
+    float pesos = 0.0;
+    vec3 lo = vec3(1.0);
+    vec3 hi = vec3(0.0);
+    for (int i = 0; i < 20; i++) {
+        float p = p0 + float(i) * paso;
+        if (p > c + radio) break;
+        float d = p - c;
+        vec2 q = fijo + uDir * (clamp(p, 0.5, uOrigen - 0.5) / uOrigen);
+        vec3 t = texture2D(sTex, (uMapa * vec3(q, 1.0)).xy).rgb;
+        float w = lanczos2(d / uEscala);
+        suma += t * w;
+        pesos += w;
+        if (abs(d) <= pie) { lo = min(lo, t); hi = max(hi, t); }
+    }
+    gl_FragColor = vec4(clamp(suma / max(pesos, 0.0001), lo, hi), 1.0);
 }
 """
 
-    /** Lo mismo desde una textura normal: imagenes y reducciones en cadena. */
+    /** La segunda pasada de [Reduccion], desde la lamina de la primera. */
+    const val REDUCIR_PLANA = """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vPos;
+uniform sampler2D sTex;
+uniform mat3 uMapa;
+uniform vec2 uDir;
+uniform float uOrigen;
+uniform float uEscala;
+float lanczos2(float x) {
+    x = abs(x);
+    if (x < 0.0001) return 1.0;
+    if (x >= 2.0) return 0.0;
+    float p = 3.14159265 * x;
+    return 2.0 * sin(p) * sin(0.5 * p) / (p * p);
+}
+void main() {
+    float c = dot(vPos, uDir) * uOrigen;
+    float radio = 2.0 * uEscala;
+    float pie = 0.5 * uEscala + 0.5;
+    float paso = max(1.0, 2.0 * radio / 19.0);
+    float p0 = paso > 1.0 ? c - radio + 0.5 * paso : floor(c - radio) + 0.5;
+    vec2 fijo = vPos * (vec2(1.0) - uDir);
+    vec3 suma = vec3(0.0);
+    float pesos = 0.0;
+    vec3 lo = vec3(1.0);
+    vec3 hi = vec3(0.0);
+    for (int i = 0; i < 20; i++) {
+        float p = p0 + float(i) * paso;
+        if (p > c + radio) break;
+        float d = p - c;
+        vec2 q = fijo + uDir * (clamp(p, 0.5, uOrigen - 0.5) / uOrigen);
+        vec3 t = texture2D(sTex, (uMapa * vec3(q, 1.0)).xy).rgb;
+        float w = lanczos2(d / uEscala);
+        suma += t * w;
+        pesos += w;
+        if (abs(d) <= pie) { lo = min(lo, t); hi = max(hi, t); }
+    }
+    gl_FragColor = vec4(clamp(suma / max(pesos, 0.0001), lo, hi), 1.0);
+}
+"""
+
+    /**
+     * Cuatro muestras bilineales por pixel, a un cuarto de pixel de la copia
+     * a cada lado: al reducir a la mitad cubren un cuadrado de cuatro por
+     * cuatro. Basta para la cadena de mitades del fondo desenfocado, que de
+     * todas formas se va a emborronar.
+     */
     const val COPIA_PLANA = """
 #ifdef GL_FRAGMENT_PRECISION_HIGH
 precision highp float;

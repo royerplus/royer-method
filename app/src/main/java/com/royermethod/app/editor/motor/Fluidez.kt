@@ -48,7 +48,7 @@ class Fluidez(context: Context) {
      * @return null si el modelo no esta disponible o algo fallo; quien llama
      *   sigue por el camino normal.
      */
-    fun fotograma(fuente: FuenteVideo, paso: PasoClip, ancho: Int, alto: Int, copia: Programa): Lamina? {
+    fun fotograma(fuente: FuenteVideo, paso: PasoClip, ancho: Int, alto: Int, copia: Reduccion): Lamina? {
         if (!disponible || !Rife.listo()) return null
         var e = estados[fuente]
         if (e == null || e.ancho != ancho || e.alto != alto) {
@@ -99,7 +99,7 @@ class Fluidez(context: Context) {
      * Deja en [e] los dos fotogramas que rodean [t]. Si la ventana ya esta
      * cerca, no hace nada: se avanza fotograma a fotograma, que es barato.
      */
-    private fun ventana(fuente: FuenteVideo, e: Estado, t: Long, copia: Programa): Boolean {
+    private fun ventana(fuente: FuenteVideo, e: Estado, t: Long, copia: Reduccion): Boolean {
         val valida = e.ptsA in 0..t && (e.ptsB > t || fuente.agotada || t - e.ptsB < 1_000_000)
         if (valida) return true
         // Salto: el fotograma que ya ha empezado en t, y el siguiente
@@ -118,7 +118,7 @@ class Fluidez(context: Context) {
         return true
     }
 
-    private fun avanzar(fuente: FuenteVideo, e: Estado, copia: Programa): Boolean {
+    private fun avanzar(fuente: FuenteVideo, e: Estado, copia: Reduccion): Boolean {
         val viejo = e.a
         e.a = e.b
         e.ptsA = e.ptsB

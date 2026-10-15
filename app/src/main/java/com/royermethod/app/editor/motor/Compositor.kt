@@ -32,7 +32,7 @@ class Compositor(
     val alto: Int,
     private val fluidez: Fluidez? = null
 ) {
-    private val copiaExterna = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_EXTERNA)
+    private val reduccion = Reduccion()
     private val copiaPlana = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_PLANA)
     private val capa = Programa(Sombreadores.VERTICE, Sombreadores.CAPA)
     private val solido = Programa(Sombreadores.VERTICE, Sombreadores.SOLIDO)
@@ -143,7 +143,7 @@ class Compositor(
         // Modo fluido: los fotogramas que faltan los pone el modelo. Si no esta
         // disponible, sigue por el camino normal en vez de fallar.
         if (clip.fluido && fluidez != null) {
-            val l = fluidez.fotograma(fuente, paso, w, h, copiaExterna)
+            val l = fluidez.fotograma(fuente, paso, w, h, reduccion)
             if (l != null) {
                 return if (paso.esFondo) fondo(fuente, l.textura, l.ancho, l.alto, paso.tiempoArchivoUs)
                 else Textura(l.textura, l.ancho, l.alto)
@@ -152,7 +152,7 @@ class Compositor(
 
         if (!fuente.irA(paso.tiempoArchivoUs)) avisos++
         if (fuente.ptsActual < 0) return null
-        val copia = fuente.copiar(w, h, copiaExterna)
+        val copia = fuente.copiar(w, h, reduccion)
         return if (paso.esFondo) fondo(fuente, copia.textura, copia.ancho, copia.alto, fuente.ptsActual)
         else Textura(copia.textura, copia.ancho, copia.alto)
     }
@@ -416,7 +416,7 @@ class Compositor(
         fondos.values.forEach { par -> par.second.forEach { it.soltar() } }
         fondos.clear()
         fluidez?.soltar()
-        copiaExterna.soltar(); copiaPlana.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
+        reduccion.soltar(); copiaPlana.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
     }
 
     private companion object {
