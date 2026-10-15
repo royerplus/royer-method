@@ -86,4 +86,5 @@ dependencies {
     // El modelo del editor (linea de tiempo, escena, audio) es Kotlin puro y
     // se prueba en el ordenador: ./gradlew test
     testImplementation(libs.junit)
+    testImplementation(libs.json)
 }
