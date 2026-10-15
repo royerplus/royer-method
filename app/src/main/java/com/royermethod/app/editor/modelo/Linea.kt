@@ -207,6 +207,9 @@ object Linea {
             else -> 0.45f
         }
         if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
+        // Un flash o un negativo cambia todos los pixeles de golpe: el
+        // codificador no puede aprovechar el fotograma anterior
+        if (en != null && golpea(en.primero, en.localPrimero)) f *= 1.25f
         // Lo que el usuario le pidio a ese bloque: en una transicion, la media de los dos
         if (en != null) f *= en.segundo?.let { (en.primero.calidad + it.calidad) / 2f } ?: en.primero.calidad
         // Lo que va encima tambien hay que pagarlo
@@ -232,6 +235,22 @@ object Linea {
             r.add(c.claves.maxOf { it.tiempoUs })
         }
         return r
+    }
+
+    private val PIEZAS_FUERTES = setOf(
+        Animacion.FLASH, Animacion.FLASH_NEGRO, Animacion.ESTROBO, Animacion.NEGATIVO,
+        Animacion.RGB, Animacion.CAMARA, Animacion.TWITCH
+    )
+    private val CONTINUAS_FUERTES = setOf(
+        AnimacionContinua.SHAKE_FLASH, AnimacionContinua.ESTROBO, AnimacionContinua.RGB, AnimacionContinua.TWITCH
+    )
+
+    /** ¿En [local] hay flashes, RGB o sacudidas fuertes? */
+    private fun golpea(c: Clip, local: Long): Boolean {
+        if (c.continua.any { it.tipo in CONTINUAS_FUERTES }) return true
+        if (local < c.duracionEntradaUs && c.entrada.any { it.tipo in PIEZAS_FUERTES }) return true
+        if (local >= c.duracionUs - c.duracionSalidaUs && c.salida.any { it.tipo in PIEZAS_FUERTES }) return true
+        return false
     }
 
     /** ¿Algo de [c] cambia de un fotograma al siguiente en [local]? */

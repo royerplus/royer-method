@@ -282,7 +282,20 @@ enum class Animacion(val nombre: String) {
     /** Late de tamano rapido mientras se calma. */
     ZOOM_VIBRA("Zoom vibrante"),
     /** Saltos de posicion y parpadeos, como una imagen que falla. */
-    GLITCH("Glitch")
+    GLITCH("Glitch"),
+    /** Se pone blanco y vuelve. Con una sacudida es el shake con flash. */
+    FLASH("Flash"),
+    FLASH_NEGRO("Flash negro"),
+    /** Varios flashes seguidos que se van apagando. */
+    ESTROBO("Estrobo"),
+    /** Rojo y azul se separan a los lados y vuelven a juntarse. */
+    RGB("Separar RGB"),
+    /** Colores invertidos un instante, a golpes. */
+    NEGATIVO("Negativo"),
+    /** Sacudida en todas direcciones con giro y algo de zoom, como una camara golpeada. */
+    CAMARA("Sacudida de camara"),
+    /** Saltos secos de tamano y sitio con los colores separados. */
+    TWITCH("Twitch")
 }
 
 /**
@@ -317,7 +330,24 @@ enum class AnimacionContinua(val nombre: String) {
     /** Se agranda y se encoge muy despacio. */
     RESPIRAR("Respirar"),
     /** Se desplaza de lado a lado a lo largo del bloque. */
-    PANEO("Paneo")
+    PANEO("Paneo"),
+    /**
+     * En cada golpe (medio segundo; con Rapidez se ajusta al tema) una
+     * sacudida y un flash que se apagan antes del siguiente.
+     */
+    SHAKE_FLASH("Shake con flash"),
+    /** Un zoom seco en cada golpe que vuelve enseguida. */
+    ZOOM_RITMO("Zoom al ritmo"),
+    /** Un flash corto en cada golpe. */
+    ESTROBO("Estrobo"),
+    /** Los colores separados, temblando. */
+    RGB("RGB"),
+    /** Se mueve suave y sin patron, como grabado a mano. */
+    CAMARA_EN_MANO("Camara en mano"),
+    /** Dos latidos seguidos y una pausa, como un corazon. */
+    LATIDO("Latido"),
+    /** Tirones de tamano y sitio con RGB, de vez en cuando. */
+    TWITCH("Twitch")
 }
 
 data class Continuo(

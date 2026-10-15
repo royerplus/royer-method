@@ -362,6 +362,9 @@ class Compositor(
         GLES20.glUniform1f(capa.u("uLuces"), c.luces)
         GLES20.glUniform1f(capa.u("uVineta"), c.vineta)
         GLES20.glUniform1f(capa.u("uNeutro"), if (c.copy(nitidez = 0f).neutro) 1f else 0f)
+        GLES20.glUniform1f(capa.u("uLuz"), p.luz)
+        GLES20.glUniform1f(capa.u("uRgb"), if (p.esFondo) 0f else p.rgb)
+        GLES20.glUniform1f(capa.u("uNegativo"), p.negativo)
         capa.dibujar(voltear)
     }
 
@@ -382,6 +385,9 @@ class Compositor(
         GLES20.glUniform1f(capa.u("uRadio"), 0f)
         GLES20.glUniform1f(capa.u("uNitidez"), 0f)
         GLES20.glUniform1f(capa.u("uNeutro"), 1f)
+        GLES20.glUniform1f(capa.u("uLuz"), 0f)
+        GLES20.glUniform1f(capa.u("uRgb"), 0f)
+        GLES20.glUniform1f(capa.u("uNegativo"), 0f)
         capa.dibujar(voltear)
     }
 

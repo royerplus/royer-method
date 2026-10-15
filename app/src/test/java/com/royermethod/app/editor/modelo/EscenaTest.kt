@@ -169,6 +169,7 @@ class EscenaTest {
                 for (paso in e.cuadro(n).pasos.filterIsInstance<PasoClip>()) {
                     assertTrue("${c.entrada} ${c.continua} $n", paso.matrices.all { m -> m.all { it.isFinite() } })
                     assertTrue("${c.entrada} ${c.continua} $n", paso.opacidades.all { it in 0f..1f })
+                    assertTrue("${c.entrada} ${c.continua} $n", paso.luz in -1f..1f && paso.rgb >= 0f && paso.negativo in 0f..1f)
                 }
             }
         }
@@ -178,5 +179,46 @@ class EscenaTest {
         for (t in AnimacionContinua.entries) {
             valido(Clip(id = 1, origen = foto, hastaUs = 2_000_000, continua = listOf(Continuo(t, intensidad = 2f))))
         }
+    }
+
+    private val foto = Origen("content://i", "i", TipoOrigen.IMAGEN, 1000, 1000)
+
+    private fun delante(e: Escena, n: Long) = e.cuadro(n).pasos.filterIsInstance<PasoClip>().single { !it.esFondo }
+
+    @Test
+    fun elFlashEmpiezaBlancoYSeApaga() {
+        val c = Clip(id = 1, origen = foto, hastaUs = 2_000_000, entrada = listOf(Movimiento(Animacion.FLASH)), duracionEntradaUs = 400_000)
+        val e = escena(c)
+        assertTrue(delante(e, 0).luz > 0.8f)
+        assertTrue(delante(e, 6).luz < delante(e, 2).luz)
+        assertEquals(0f, delante(e, 15).luz, 1e-6f)
+        // El flash negro va al reves
+        val negro = escena(c.copy(entrada = listOf(Movimiento(Animacion.FLASH_NEGRO))))
+        assertTrue(delante(negro, 0).luz < -0.8f)
+    }
+
+    @Test
+    fun elShakeConFlashGolpeaCadaMedioSegundo() {
+        val c = Clip(id = 1, origen = foto, hastaUs = 3_000_000, continua = listOf(Continuo(AnimacionContinua.SHAKE_FLASH)))
+        val e = escena(c)
+        // Golpes en 0, 0.5 s, 1 s...: fotogramas 15 y 30. Entre medias, sin flash
+        assertTrue(delante(e, 15).luz > 0.5f)
+        assertTrue(delante(e, 30).luz > 0.5f)
+        assertEquals(0f, delante(e, 23).luz, 1e-6f)
+        // Y la imagen se mueve en el golpe, no entre golpes
+        val quieta = escena(c.copy(continua = emptyList()))
+        fun movida(n: Long) = !delante(e, n).matrices[0].contentEquals(delante(quieta, n).matrices[0])
+        assertTrue(movida(16))
+        assertFalse(movida(27))
+    }
+
+    @Test
+    fun rgbYNegativoLleganAlPaso() {
+        val rgb = escena(Clip(id = 1, origen = foto, hastaUs = 2_000_000, entrada = listOf(Movimiento(Animacion.RGB)), duracionEntradaUs = 400_000))
+        assertTrue(delante(rgb, 1).rgb > 5f)
+        assertEquals(0f, delante(rgb, 20).rgb, 1e-6f)
+        val neg = escena(Clip(id = 1, origen = foto, hastaUs = 2_000_000, entrada = listOf(Movimiento(Animacion.NEGATIVO)), duracionEntradaUs = 1_000_000))
+        assertTrue(delante(neg, 0).negativo > 0.5f)
+        assertEquals(0f, delante(neg, 25).negativo, 1e-6f)
     }
 }

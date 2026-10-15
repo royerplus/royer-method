@@ -3,6 +3,7 @@ package com.royermethod.app.editor.modelo
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.exp
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
@@ -153,6 +154,10 @@ class Escena(
         }
 
         val localCentro = t - inicio
+        // Flashes y RGB son luz, no movimiento: van en el instante del
+        // fotograma, sin promediar el obturador. Si no, el flash que cae justo
+        // en el golpe saldria a medias, mezclado con el final del anterior.
+        val luces = animacion(clip, localCentro).y(destellos(clip, localCentro))
         return PasoClip(
             clip = clip,
             tiempoArchivoUs = clip.tiempoArchivo(localCentro),
@@ -167,7 +172,10 @@ class Escena(
             esFondo = false,
             anchoEnLienzo = anchoMax,
             altoEnLienzo = altoMax,
-            escalaTexto = escalaMax
+            escalaTexto = escalaMax,
+            luz = luces.luz.coerceIn(-1f, 1f),
+            rgb = luces.rgb.coerceIn(0f, alto * 0.1f),
+            negativo = luces.negativo.coerceIn(0f, 1f)
         )
     }
 
@@ -203,7 +211,10 @@ class Escena(
             esFondo = true,
             anchoEnLienzo = ancho * 1.15f,
             altoEnLienzo = alto * 1.15f,
-            escalaTexto = 1f
+            escalaTexto = 1f,
+            // El flash es de toda la imagen: el relleno de detras tambien
+            luz = delante.luz,
+            negativo = delante.negativo
         )
     }
 
@@ -450,8 +461,7 @@ class Escena(
                     e.copy(escala = e.escala * (1f + 0.15f * i * (1f - f)))
                 }
                 AnimacionContinua.PULSO -> {
-                    // Medio segundo por latido: encaja con la mayoria de musica de edits
-                    val fase = (s / 0.5f) % 1f
+                    val fase = fase(s, GOLPE)
                     val golpe = (1f - fase).pow(3)
                     e.copy(escala = e.escala * (1f + 0.05f * i * golpe))
                 }
@@ -498,6 +508,49 @@ class Escena(
                     // Con un poco de zoom, para que al moverse no se vea el borde
                     e.copy(x = e.x + 0.05f * i * (f * 2f - 1f), escala = e.escala * (1f + 0.1f * i))
                 }
+                AnimacionContinua.SHAKE_FLASH -> {
+                    // La sacudida dura el 60% del golpe y se apaga; el flash, en destellos()
+                    val fase = fase(s, GOLPE)
+                    val d = (1f - fase / 0.6f).coerceAtLeast(0f)
+                    val dx = 0.03f * i * d * ruido(s * 40f, 1.7f)
+                    val dy = 0.02f * i * d * ruido(s * 40f, 4.2f)
+                    val giro = 2.5f * i * d * ruido(s * 30f, 7.3f)
+                    e.copy(x = e.x + dx, y = e.y + dy, rotacion = e.rotacion + giro, escala = e.escala * cubrir(dx, dy, giro))
+                }
+                AnimacionContinua.ZOOM_RITMO -> {
+                    val fase = fase(s, GOLPE)
+                    e.copy(escala = e.escala * (1f + 0.15f * i * (1f - fase).pow(4)))
+                }
+                AnimacionContinua.CAMARA_EN_MANO -> {
+                    val dx = 0.01f * i * ruido(s * 1.3f, 1.1f) + 0.003f * i * ruido(s * 3.1f, 9.9f)
+                    val dy = 0.01f * i * ruido(s * 1.1f, 3.3f)
+                    val giro = 0.8f * i * ruido(s * 0.9f, 5.5f)
+                    // Zoom fijo, el que pide lo maximo que se puede mover: si
+                    // cambiara con el movimiento se notaria que respira
+                    e.copy(x = e.x + dx, y = e.y + dy, rotacion = e.rotacion + giro, escala = e.escala * cubrir(0.013f * i, 0.01f * i, 0.8f * i))
+                }
+                AnimacionContinua.LATIDO -> {
+                    // 0.8 s por latido: un golpe, otro mas flojo al poco, y pausa
+                    val fase = fase(s, 0.8f)
+                    val uno = exp(-fase * 18f)
+                    val dos = if (fase >= 0.2f) 0.7f * exp(-(fase - 0.2f) * 18f) else 0f
+                    e.copy(escala = e.escala * (1f + 0.06f * i * (uno + dos)))
+                }
+                AnimacionContinua.TWITCH -> {
+                    // Un tiron de 0.25 s cada segundo; el RGB, en destellos()
+                    val ciclo = s / 1f
+                    val fase = ciclo - floor(ciclo)
+                    if (fase >= 0.25f) e else {
+                        val k = floor(s * 24f)
+                        val semilla = floor(ciclo) * 3.1f
+                        e.copy(
+                            x = e.x + 0.03f * i * ruido(k, 2.8f + semilla),
+                            y = e.y + 0.015f * i * ruido(k, 5.2f + semilla),
+                            escala = e.escala * (1f + 0.1f * i * abs(ruido(k, 1.4f + semilla)))
+                        )
+                    }
+                }
+                AnimacionContinua.ESTROBO, AnimacionContinua.RGB -> e
             }
         }
         return e
@@ -524,6 +577,9 @@ class Escena(
      * la izquierda son la misma cuenta.
      */
     private fun efecto(m: Movimiento, q: Float): Efecto {
+        // Un golpe (flash, shake) antes de su parte no se ve: no se queda
+        // esperando en blanco como se queda fuera un bloque que va a entrar.
+        if (q < m.desde && m.tipo in GOLPES) return Efecto()
         val tramo = (m.hasta - m.desde).coerceAtLeast(1e-3f)
         val local = ((q - m.desde) / tramo).coerceIn(0f, 1f)
         val f = curva(m.curva, local)
@@ -568,7 +624,77 @@ class Escena(
                     opacidad = if (corte) (1f - 0.7f * i.coerceIn(0f, 1f)) else 1f
                 )
             }
+            // Blanco del todo en el primer instante y se apaga con la curva
+            Animacion.FLASH -> Efecto(luz = (i * falta).coerceIn(0f, 1f))
+            Animacion.FLASH_NEGRO -> Efecto(luz = -(i * falta).coerceIn(0f, 1f))
+            Animacion.ESTROBO -> {
+                // Cuatro destellos, cada uno algo mas flojo
+                val on = (local * 4f) % 1f < 0.35f && local < 1f
+                Efecto(luz = if (on) (i * (1f - 0.7f * local)).coerceIn(0f, 1f) else 0f)
+            }
+            Animacion.RGB -> Efecto(rgb = alto * 0.02f * i * falta)
+            Animacion.NEGATIVO -> {
+                // Golpes de negativo en la primera mitad, a fotogramas sueltos
+                val k = floor(local * 10f).toInt()
+                Efecto(negativo = if (local < 0.6f && k % 2 == 0) i.coerceIn(0f, 1f) else 0f)
+            }
+            Animacion.CAMARA -> {
+                val amp = i * falta
+                val dx = 0.03f * amp * ruido(local * 22f, 1.3f)
+                val dy = 0.03f * amp * ruido(local * 22f, 5.9f)
+                val giro = 3f * amp * ruido(local * 18f, 8.1f)
+                Efecto(dx = dx, dy = dy, rotacion = giro, escala = cubrir(dx, dy, giro))
+            }
+            Animacion.TWITCH -> {
+                // Doce saltos secos; en algunos se queda quieto para que se note el golpe
+                val k = floor(local * 12f)
+                val amp = if (ruido(k, 3.3f) > -0.2f && local < 1f) i * falta else 0f
+                val dx = 0.04f * amp * ruido(k, 2.2f)
+                val dy = 0.02f * amp * ruido(k, 6.6f)
+                Efecto(
+                    dx = dx,
+                    dy = dy,
+                    escala = cubrir(dx, dy, 0f) + 0.12f * amp * abs(ruido(k, 1.1f)),
+                    rgb = alto * 0.015f * amp * abs(ruido(k, 4.4f))
+                )
+            }
         }
+    }
+
+    /**
+     * Lo que las continuas hacen al color: flashes, RGB. La parte de moverse
+     * esta en [continua]; esto va aparte porque el encuadre no lleva color.
+     */
+    private fun destellos(clip: Clip, local: Long): Efecto {
+        var r = Efecto()
+        for (c in clip.continua) {
+            val s = local / 1_000_000f * c.velocidad
+            val i = c.intensidad
+            r = r.y(
+                when (c.tipo) {
+                    AnimacionContinua.SHAKE_FLASH -> {
+                        val fase = fase(s, GOLPE)
+                        val d = (1f - fase / 0.25f).coerceAtLeast(0f)
+                        Efecto(luz = (0.9f * i).coerceAtMost(1f) * d * d)
+                    }
+                    AnimacionContinua.ESTROBO -> {
+                        val fase = fase(s, GOLPE / 2f)
+                        Efecto(luz = if (fase < 0.18f) (0.85f * i).coerceAtMost(1f) else 0f)
+                    }
+                    AnimacionContinua.RGB -> Efecto(rgb = alto * 0.008f * i * (0.6f + 0.4f * abs(ruido(s * 12f, 2.5f))))
+                    AnimacionContinua.TWITCH -> {
+                        val ciclo = s / 1f
+                        val fase = ciclo - floor(ciclo)
+                        if (fase >= 0.25f) Efecto() else {
+                            val k = floor(s * 24f)
+                            Efecto(rgb = alto * 0.012f * i * abs(ruido(k, 6.1f + floor(ciclo) * 3.1f)))
+                        }
+                    }
+                    else -> Efecto()
+                }
+            )
+        }
+        return r
     }
 
     // ------------------------------------------------------------------
@@ -657,6 +783,22 @@ class Escena(
     companion object {
         const val MAX_MUESTRAS = 8
 
+        /** Medio segundo por golpe: 120 por minuto, lo de casi toda la musica de edits. */
+        const val GOLPE = 0.5f
+
+        private val GOLPES = setOf(
+            Animacion.FLASH, Animacion.FLASH_NEGRO, Animacion.ESTROBO, Animacion.NEGATIVO,
+            Animacion.RGB, Animacion.CAMARA, Animacion.TWITCH
+        )
+
+        /**
+         * Zoom que hace falta para que un bloque que llena el lienzo no
+         * ensenie el borde al moverse [dx], [dy] (fracciones del lienzo) y
+         * girar [giro] grados. 1.8 por grado cubre hasta el 9:16.
+         */
+        fun cubrir(dx: Float, dy: Float, giro: Float): Float =
+            1f + 2f * max(abs(dx), abs(dy)) + 1.8f * abs(giro) * PI.toFloat() / 180f
+
         /**
          * Borde de mascara que no recorta nada. Lejos de cualquier lienzo pero
          * dentro de lo que cabe en un float de media precision (65504).
@@ -667,6 +809,16 @@ class Escena(
         private val FUERA = floatArrayOf(0f, 0f, 0f, 0f, 0f, 0f, -1f, -1f, 1f)
 
         fun suave(x: Float): Float = x * x * (3f - 2f * x)
+
+        /**
+         * Por donde va el golpe de [periodo] segundos en [s], de 0 a 1. Con un
+         * pelin de margen: el fotograma que cae justo en el golpe, con el
+         * redondeo, daria 0.9999 (el final del anterior) en vez de 0.
+         */
+        fun fase(s: Float, periodo: Float): Float {
+            val x = s / periodo + 1e-4f
+            return x - floor(x)
+        }
 
         fun salidaSuave(x: Float): Float = 1f - (1f - x).pow(3)
 
@@ -737,7 +889,13 @@ data class Efecto(
     val mascara: Mascara? = null,
     val borde: Float = 0f,
     /** -1 sin revelar; 0..1 cuanto se ha descubierto. */
-    val revelar: Float = -1f
+    val revelar: Float = -1f,
+    /** Flash: hacia blanco si es positivo, hacia negro si es negativo (-1 a 1). */
+    val luz: Float = 0f,
+    /** Rojo y azul separados, en pixeles del lienzo. */
+    val rgb: Float = 0f,
+    /** 0 normal, 1 colores invertidos. */
+    val negativo: Float = 0f
 ) {
     fun aplicar(e: Encuadre): Encuadre = e.copy(
         x = e.x + dx,
@@ -751,7 +909,8 @@ data class Efecto(
         dx + o.dx, dy + o.dy, escala * o.escala, rotacion + o.rotacion,
         opacidad * o.opacidad, desenfoque + o.desenfoque, mascara ?: o.mascara,
         if (mascara != null) borde else o.borde,
-        if (revelar >= 0f) revelar else o.revelar
+        if (revelar >= 0f) revelar else o.revelar,
+        luz + o.luz, rgb + o.rgb, max(negativo, o.negativo)
     )
 }
 
@@ -835,7 +994,13 @@ data class PasoClip(
     val anchoEnLienzo: Float,
     val altoEnLienzo: Float,
     /** Para maquetar el texto al tamano al que se va a ver, no estirarlo. */
-    val escalaTexto: Float
+    val escalaTexto: Float,
+    /** Flash: hacia blanco (positivo) o negro (negativo), de -1 a 1. */
+    val luz: Float = 0f,
+    /** Rojo y azul separados, en pixeles del lienzo. */
+    val rgb: Float = 0f,
+    /** Colores invertidos, de 0 a 1. */
+    val negativo: Float = 0f
 ) : Paso() {
 
     val muestras: Int get() = matrices.size

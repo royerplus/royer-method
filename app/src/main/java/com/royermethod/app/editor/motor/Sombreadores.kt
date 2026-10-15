@@ -206,6 +206,9 @@ uniform float uSombras;
 uniform float uLuces;
 uniform float uVineta;
 uniform float uNeutro;
+uniform float uLuz;
+uniform float uRgb;
+uniform float uNegativo;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
@@ -215,7 +218,7 @@ vec4 tomar(vec2 uv) {
     return texture2D(sTex, clamp(uv, lo, hi));
 }
 
-vec4 muestra(vec2 uv, vec2 pixel) {
+vec4 muestra(vec2 uv, vec2 pixel, vec2 desp) {
     if (uRadio > 0.0) {
         // Disco de muestras en espiral: sin tablas, que GLSL ES 1 no admite
         vec4 s = vec4(0.0);
@@ -238,6 +241,13 @@ vec4 muestra(vec2 uv, vec2 pixel) {
         vec4 suelo = min(min(min(a, b), min(d, e)), c);
         vec4 techo = max(max(max(a, b), max(d, e)), c);
         c = clamp(afilado, suelo, techo);
+    }
+    if (uRgb > 0.0) {
+        // Rojo de un lado y azul del otro. El alfa, el mayor de los tres:
+        // en un texto el borde rojo y el azul se ven fuera de la letra.
+        vec4 r = tomar(uv + desp);
+        vec4 b = tomar(uv - desp);
+        c = vec4(r.r, c.g, b.b, max(c.a, max(r.a, b.a)));
     }
     return c;
 }
@@ -279,12 +289,17 @@ void main() {
             cob *= clamp((uBorde[i] - d) / uMascSuave + 0.5, 0.0, 1.0);
         }
         float a = cob * uOpac[i];
-        if (a > 0.0) suma += muestra(uv, vec2(pu, pv)) * a;
+        // Un pixel del lienzo hacia la derecha, en la textura: la separacion del RGB
+        vec2 desp = uRgb * vec2(m[0][0], m[0][1]);
+        if (a > 0.0) suma += muestra(uv, vec2(pu, pv), desp) * a;
     }
     suma /= uN;
-    if (uNeutro < 0.5 && suma.a > 0.0) {
+    if (suma.a > 0.0 && (uNeutro < 0.5 || uLuz != 0.0 || uNegativo > 0.0)) {
         vec3 recto = suma.rgb / suma.a;
-        suma.rgb = ajustar(recto, uvPrimero) * suma.a;
+        if (uNeutro < 0.5) recto = ajustar(recto, uvPrimero);
+        recto = mix(recto, vec3(1.0) - recto, uNegativo);
+        recto = uLuz > 0.0 ? mix(recto, vec3(1.0), uLuz) : recto * (1.0 + uLuz);
+        suma.rgb = recto * suma.a;
     }
     gl_FragColor = suma;
 }

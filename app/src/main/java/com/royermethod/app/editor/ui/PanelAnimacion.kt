@@ -95,9 +95,15 @@ private fun EntradaOSalida(estado: EstadoEditor, c: Clip, entrada: Boolean) {
     }
 
     val listas = Combinaciones.entrada + AjustesEditor.mias
-    Cuadricula(listOf<Combinaciones.Combinacion?>(null) + listas) { comb, mod ->
-        if (comb == null) Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }, mod) { col -> ninguna(col) }
-        else Mosaico(comb.nombre, comb.piezas == piezas, { poner(comb.piezas) }, mod) { col -> dibujoPieza(comb.piezas.first().tipo, col, !entrada) }
+    val grupos = Combinaciones.entradaPorGrupo +
+        (if (AjustesEditor.mias.isNotEmpty()) listOf("Mias" to AjustesEditor.mias) else emptyList())
+    grupos.forEachIndexed { g, (nombre, combinaciones) ->
+        Etiqueta(nombre, if (g > 0) Modifier.padding(top = 8.dp) else Modifier)
+        // "Ninguna" va la primera de todas
+        Cuadricula((if (g == 0) listOf<Combinaciones.Combinacion?>(null) else emptyList()) + combinaciones) { comb, mod ->
+            if (comb == null) Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }, mod) { col -> ninguna(col) }
+            else Mosaico(comb.nombre, comb.piezas == piezas, { poner(comb.piezas) }, mod) { col -> dibujoCombinacion(comb.piezas, col, !entrada) }
+        }
     }
     if (piezas.isEmpty()) return
     Spacer(Modifier.height(4.dp))
@@ -191,9 +197,21 @@ private fun Continuas(estado: EstadoEditor, c: Clip) {
     val piezas = c.continua
     fun poner(l: List<Continuo>, arrastre: Boolean = false) = estado.cambiarClip(arrastre) { it.copy(continua = l) }
     val listas = Combinaciones.continuas + AjustesEditor.continuasMias
-    Cuadricula(listOf<Pair<String, List<Continuo>>?>(null) + listas) { par, mod ->
-        if (par == null) Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }, mod) { col -> ninguna(col) }
-        else Mosaico(par.first, par.second == piezas, { poner(par.second) }, mod) { col -> dibujoContinua(par.second.first().tipo, col) }
+    val grupos = Combinaciones.continuasPorGrupo +
+        (if (AjustesEditor.continuasMias.isNotEmpty()) listOf("Mias" to AjustesEditor.continuasMias) else emptyList())
+    grupos.forEachIndexed { g, (nombre, combinaciones) ->
+        Etiqueta(nombre, if (g > 0) Modifier.padding(top = 8.dp) else Modifier)
+        Cuadricula((if (g == 0) listOf<Pair<String, List<Continuo>>?>(null) else emptyList()) + combinaciones) { par, mod ->
+            if (par == null) Mosaico("Ninguna", piezas.isEmpty(), { poner(emptyList()) }, mod) { col -> ninguna(col) }
+            else Mosaico(par.first, par.second == piezas, { poner(par.second) }, mod) { col ->
+                dibujoContinua(par.second.first().tipo, col)
+                // "Zoom y flash" se distingue de "Zoom al ritmo" por los rayos
+                if (par.second.drop(1).any { it.tipo == AnimacionContinua.SHAKE_FLASH }) {
+                    val (tl, s) = marco()
+                    rayos(col, tl, s.width, s.height)
+                }
+            }
+        }
     }
     if (piezas.isEmpty()) return
     var agregando by remember { mutableStateOf(false) }
@@ -317,7 +335,91 @@ fun DrawScope.dibujoPieza(t: Animacion, col: Color, alReves: Boolean) {
             drawRoundRect(col, Offset(tl.x + 3.dp.toPx(), tl.y + h * 0.4f), Size(w, h * 0.25f), radio)
             drawRoundRect(col.copy(alpha = 0.6f), Offset(tl.x - 1.dp.toPx(), tl.y + h * 0.65f), Size(w, h * 0.35f), radio)
         }
+        Animacion.FLASH, Animacion.FLASH_NEGRO -> {
+            if (t == Animacion.FLASH) drawRoundRect(col, tl, Size(w, h), radio)
+            else {
+                drawRoundRect(col.copy(alpha = 0.15f), tl, Size(w, h), radio)
+                drawRoundRect(col, tl, Size(w, h), radio, style = trazo)
+            }
+            rayos(col.copy(alpha = if (t == Animacion.FLASH) 1f else 0.45f), tl, w, h)
+        }
+        Animacion.ESTROBO -> {
+            val paso = w * 0.32f
+            for (k in 0..2) {
+                val o = Offset(tl.x - paso + k * paso, tl.y + (k - 1) * 2.dp.toPx())
+                if (k % 2 == 0) drawRoundRect(col.copy(alpha = 0.5f + k * 0.25f), o, Size(w * 0.8f, h), radio)
+                else drawRoundRect(col, o, Size(w * 0.8f, h), radio, style = trazo)
+            }
+        }
+        Animacion.RGB -> {
+            val d = 3.dp.toPx()
+            drawRoundRect(ROJO, Offset(tl.x - d, tl.y), Size(w, h), radio, style = trazo)
+            drawRoundRect(AZUL, Offset(tl.x + d, tl.y), Size(w, h), radio, style = trazo)
+            drawRoundRect(col, tl, Size(w, h), radio, style = trazo)
+        }
+        Animacion.NEGATIVO -> {
+            drawRoundRect(col, tl, Size(w, h), radio, style = trazo)
+            val p = androidx.compose.ui.graphics.Path().apply {
+                moveTo(tl.x, tl.y); lineTo(tl.x + w, tl.y); lineTo(tl.x, tl.y + h); close()
+            }
+            drawPath(p, col)
+        }
+        Animacion.CAMARA -> {
+            rotate(-8f) { drawRoundRect(col.copy(alpha = 0.35f), Offset(tl.x - 3.dp.toPx(), tl.y - 2.dp.toPx()), Size(w, h), radio, style = trazo) }
+            rotate(6f) { drawRoundRect(col, Offset(tl.x + 2.dp.toPx(), tl.y + 2.dp.toPx()), Size(w, h), radio, style = trazo) }
+            val x = tl.x + w + 5.dp.toPx()
+            for (k in 0..1) drawLine(col.copy(alpha = 0.6f), Offset(x + k * 3.dp.toPx(), c.y - h * 0.25f), Offset(x + k * 3.dp.toPx(), c.y + h * 0.25f), 1.2.dp.toPx(), StrokeCap.Round)
+        }
+        Animacion.TWITCH -> {
+            drawRoundRect(AZUL, Offset(tl.x + 3.dp.toPx(), tl.y + h * 0.1f), Size(w * 0.8f, h * 0.8f), radio, style = Stroke(1.2.dp.toPx()))
+            drawRoundRect(ROJO, Offset(tl.x - 4.dp.toPx(), tl.y - h * 0.05f), Size(w * 1.1f, h * 1.1f), radio, style = Stroke(1.2.dp.toPx()))
+            drawRoundRect(col, Offset(tl.x - 1.dp.toPx(), tl.y), Size(w, h), radio, style = trazo)
+        }
     }
+}
+
+/**
+ * La casilla de una combinacion: el dibujo de su primera pieza y, si ademas
+ * lleva flash, RGB o negativo, la marca de eso encima. Sin la marca "Shake
+ * con flash" y "Shake de camara" se verian iguales.
+ */
+private fun DrawScope.dibujoCombinacion(piezas: List<Movimiento>, col: Color, alReves: Boolean) {
+    val primera = piezas.first().tipo
+    dibujoPieza(primera, col, alReves)
+    val resto = piezas.drop(1).map { it.tipo }.toSet()
+    val (tl, s) = marco()
+    if (primera !in DESTELLOS && resto.any { it in DESTELLOS })
+        rayos(col.copy(alpha = if (Animacion.FLASH_NEGRO in resto) 0.45f else 1f), tl, s.width, s.height)
+    if (primera != Animacion.RGB && primera != Animacion.TWITCH && Animacion.RGB in resto) {
+        val d = 3.dp.toPx()
+        drawLine(ROJO, Offset(tl.x - d, tl.y + s.height * 0.2f), Offset(tl.x - d, tl.y + s.height * 0.8f), 1.4.dp.toPx(), StrokeCap.Round)
+        drawLine(AZUL, Offset(tl.x + s.width + d, tl.y + s.height * 0.2f), Offset(tl.x + s.width + d, tl.y + s.height * 0.8f), 1.4.dp.toPx(), StrokeCap.Round)
+    }
+    if (primera != Animacion.NEGATIVO && Animacion.NEGATIVO in resto) {
+        val p = androidx.compose.ui.graphics.Path().apply {
+            moveTo(tl.x, tl.y); lineTo(tl.x + s.width * 0.6f, tl.y); lineTo(tl.x, tl.y + s.height * 0.6f); close()
+        }
+        drawPath(p, col.copy(alpha = 0.7f))
+    }
+}
+
+/** Donde va el rectangulo del bloque en los dibujos: esquina y tamano. */
+private fun DrawScope.marco(): Pair<Offset, Size> {
+    val w = size.width * 0.46f
+    val h = size.height * 0.62f
+    return Offset(center.x - w / 2, center.y - h / 2) to Size(w, h)
+}
+
+private val DESTELLOS = setOf(Animacion.FLASH, Animacion.FLASH_NEGRO, Animacion.ESTROBO)
+private val ROJO = Color(0xFFFF4D6D)
+private val AZUL = Color(0xFF4DA6FF)
+
+/** Cuatro rayitos saliendo de las esquinas: el destello. */
+private fun DrawScope.rayos(col: Color, tl: Offset, w: Float, h: Float) {
+    val l = 4.dp.toPx()
+    val g = 2.dp.toPx()
+    val esquinas = listOf(tl to Offset(-1f, -1f), Offset(tl.x + w, tl.y) to Offset(1f, -1f), Offset(tl.x, tl.y + h) to Offset(-1f, 1f), Offset(tl.x + w, tl.y + h) to Offset(1f, 1f))
+    for ((p, d) in esquinas) drawLine(col, p + d * g, p + d * (g + l), 1.4.dp.toPx(), StrokeCap.Round)
 }
 
 private fun DrawScope.dibujoContinua(t: AnimacionContinua, col: Color) {
@@ -365,7 +467,48 @@ private fun DrawScope.dibujoContinua(t: AnimacionContinua, col: Color) {
             drawLine(col.copy(alpha = 0.6f), Offset(tl.x, y), Offset(tl.x + w, y), 1.2.dp.toPx(), StrokeCap.Round)
             drawLine(col.copy(alpha = 0.6f), Offset(tl.x + w, y), Offset(tl.x + w - 3.dp.toPx(), y - 3.dp.toPx()), 1.2.dp.toPx(), StrokeCap.Round)
         }
+        AnimacionContinua.SHAKE_FLASH -> {
+            drawRoundRect(col.copy(alpha = 0.35f), Offset(tl.x - 3.dp.toPx(), tl.y + 2.dp.toPx()), Size(w, h), radio, style = trazo)
+            drawRoundRect(col, tl, Size(w, h), radio)
+            pulsos(col, tl, w, h)
+        }
+        AnimacionContinua.ZOOM_RITMO -> {
+            drawRoundRect(col, tl, Size(w, h), radio, style = trazo)
+            drawRoundRect(col.copy(alpha = 0.4f), Offset(center.x - w * 0.62f, center.y - h * 0.62f), Size(w * 1.24f, h * 1.24f), radio, style = Stroke(1.dp.toPx()))
+            pulsos(col, tl, w, h)
+        }
+        AnimacionContinua.ESTROBO -> dibujoPieza(Animacion.ESTROBO, col, false)
+        AnimacionContinua.RGB -> dibujoPieza(Animacion.RGB, col, false)
+        AnimacionContinua.TWITCH -> dibujoPieza(Animacion.TWITCH, col, false)
+        AnimacionContinua.CAMARA_EN_MANO -> {
+            rotate(-5f) { drawRoundRect(col, tl, Size(w, h), radio, style = trazo) }
+            val y = tl.y + h + 5.dp.toPx()
+            val p = androidx.compose.ui.graphics.Path().apply {
+                moveTo(tl.x, y)
+                cubicTo(tl.x + w * 0.3f, y - 4.dp.toPx(), tl.x + w * 0.6f, y + 4.dp.toPx(), tl.x + w, y)
+            }
+            drawPath(p, col.copy(alpha = 0.6f), style = Stroke(1.2.dp.toPx(), cap = StrokeCap.Round))
+        }
+        AnimacionContinua.LATIDO -> {
+            drawRoundRect(col.copy(alpha = 0.5f), tl, Size(w, h), radio, style = Stroke(1.dp.toPx()))
+            // La linea del pulso, de lado a lado
+            val y = center.y
+            val x0 = tl.x - 3.dp.toPx()
+            val x1 = tl.x + w + 3.dp.toPx()
+            val u = (x1 - x0) / 10f
+            val p = androidx.compose.ui.graphics.Path().apply {
+                moveTo(x0, y); lineTo(x0 + u * 3, y); lineTo(x0 + u * 4, y - h * 0.35f); lineTo(x0 + u * 5, y + h * 0.25f)
+                lineTo(x0 + u * 6, y - h * 0.18f); lineTo(x0 + u * 7, y); lineTo(x1, y)
+            }
+            drawPath(p, col, style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+        }
     }
+}
+
+/** Tres puntos debajo: va con los golpes de la musica. */
+private fun DrawScope.pulsos(col: Color, tl: Offset, w: Float, h: Float) {
+    val y = tl.y + h + 6.dp.toPx()
+    for (k in 0..2) drawCircle(col.copy(alpha = if (k == 0) 1f else 0.45f), 1.6.dp.toPx(), Offset(tl.x + w * (0.2f + k * 0.3f), y))
 }
 
 /** "Guardar como mia", con sitio de sobra para el dedo. */
