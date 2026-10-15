@@ -193,6 +193,18 @@ object Edicion {
         return Triple(a, b, q)
     }
 
+    /** Parte un sonido en dos por [tUs]. Null si un trozo queda demasiado corto. */
+    fun dividirAudio(p: Proyecto, id: Long, tUs: Long): Pair<Proyecto, Long>? {
+        val a = p.audios.firstOrNull { it.id == id } ?: return null
+        val dentro = tUs - a.inicioUs
+        if (dentro < Clip.MINIMO_US || dentro > a.duracionUs - Clip.MINIMO_US) return null
+        val (nid, q) = p.conId()
+        val corte = a.desdeUs + dentro
+        val primero = a.copy(hastaUs = corte, fundidoSalidaUs = 0)
+        val segundo = a.copy(id = nid, inicioUs = tUs, desdeUs = corte, fundidoEntradaUs = 0)
+        return q.copy(audios = q.audios.flatMap { if (it.id == id) listOf(primero, segundo) else listOf(it) }) to nid
+    }
+
     /**
      * Recorta los bordes de un bloque. [desdeUs] y [hastaUs] en el archivo
      * para video; para imagen y texto, [hastaUs] - [desdeUs] es lo que dura.
@@ -315,11 +327,14 @@ object Edicion {
         val ini = inicio(p, id) ?: return p
         val local = (tUs - ini).coerceAtLeast(0)
         return cambiar(p, id) { c ->
-            val sin = c.claves.filter { kotlin.math.abs(it.tiempoUs - local) > TOLERANCIA_CLAVE }
+            val previa = c.claves.firstOrNull { kotlin.math.abs(it.tiempoUs - local) <= TOLERANCIA_CLAVE }
+            val sin = c.claves.filter { it !== previa }
             // El primer fotograma clave fija tambien el de partida: sin esto,
             // el bloque saltaria de su encuadre base al primer clave.
-            val base = if (sin.isEmpty() && local > TOLERANCIA_CLAVE) listOf(Clave(0, c.encuadre)) else emptyList()
-            c.copy(claves = (base + sin + Clave(local, encuadre)).sortedBy { it.tiempoUs })
+            val base = if (sin.isEmpty() && previa == null && local > TOLERANCIA_CLAVE) listOf(Clave(0, c.encuadre)) else emptyList()
+            // Si ya habia uno ahi se cambia el encuadre y se le deja su curva
+            val nueva = previa?.copy(encuadre = encuadre) ?: Clave(local, encuadre)
+            c.copy(claves = (base + sin + nueva).sortedBy { it.tiempoUs })
         }
     }
 
@@ -327,6 +342,37 @@ object Edicion {
         val ini = inicio(p, id) ?: return p
         val local = tUs - ini
         return cambiar(p, id) { c -> c.copy(claves = c.claves.filter { kotlin.math.abs(it.tiempoUs - local) > TOLERANCIA_CLAVE }) }
+    }
+
+    /** Cambia el fotograma clave que cae en [tUs] (su curva, por ejemplo). */
+    fun cambiarClave(p: Proyecto, id: Long, tUs: Long, f: (Clave) -> Clave): Proyecto {
+        val ini = inicio(p, id) ?: return p
+        val local = tUs - ini
+        return cambiar(p, id) { c ->
+            c.copy(claves = c.claves.map { if (kotlin.math.abs(it.tiempoUs - local) <= TOLERANCIA_CLAVE) f(it) else it })
+        }
+    }
+
+    /**
+     * Cambia el encuadre de un bloque tal y como se ve en [tUs].
+     *
+     * Sin fotogramas clave cambia el del bloque entero. Con ellos, lo que se
+     * anima (posicion, escala, giro, opacidad) va a un fotograma clave en
+     * ese instante, nuevo o el que ya habia: es como funcionan los editores
+     * de movil, mover algo con claves crea una clave.
+     */
+    fun ajustarEncuadre(p: Proyecto, id: Long, tUs: Long, f: (Encuadre) -> Encuadre): Proyecto {
+        val c = clip(p, id) ?: return p
+        if (c.claves.isEmpty()) return cambiar(p, id) { it.copy(encuadre = f(it.encuadre)) }
+        val ini = inicio(p, id) ?: return p
+        val local = (tUs - ini).coerceIn(0, c.duracionUs)
+        val ahora = c.encuadreEn(local)
+        val nuevo = f(ahora)
+        val q = cambiar(p, id) {
+            it.copy(encuadre = it.encuadre.copy(ajuste = nuevo.ajuste, recorte = nuevo.recorte, espejo = nuevo.espejo))
+        }
+        val animado = { e: Encuadre -> listOf(e.escala, e.x, e.y, e.rotacion, e.opacidad) }
+        return if (animado(ahora) == animado(nuevo)) q else ponerClave(q, id, ini + local, nuevo)
     }
 
     /** ¿Hay un fotograma clave en [tUs]? */

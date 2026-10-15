@@ -11,6 +11,7 @@ import android.text.StaticLayout
 import android.text.TextPaint
 import com.royermethod.app.editor.modelo.Alineacion
 import com.royermethod.app.editor.modelo.Fuente
+import com.royermethod.app.editor.modelo.Medidor
 import com.royermethod.app.editor.modelo.Texto
 import kotlin.math.ceil
 
@@ -24,6 +25,21 @@ import kotlin.math.ceil
  * estira un mapa de bits.
  */
 object MaquetaTexto {
+
+    /**
+     * Lo que se mide para la escena: videos e imagenes por sus metadatos,
+     * textos maquetados igual que se van a dibujar. Lo comparten la vista
+     * previa, la exportacion y la pantalla (para el marco de lo elegido).
+     */
+    val medidor = Medidor { clip, altoLienzo ->
+        val t = clip.texto
+        val o = clip.origen
+        when {
+            t != null -> medidas(t, altoLienzo)
+            o != null -> o.anchoVisible.toFloat() to o.altoVisible.toFloat()
+            else -> 1f to 1f
+        }
+    }
 
     private class Maqueta(val layout: StaticLayout, val ancho: Float, val alto: Float, val margen: Float)
 

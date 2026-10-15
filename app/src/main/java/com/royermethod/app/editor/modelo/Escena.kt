@@ -427,34 +427,8 @@ class Escena(
     // Encuadre en el tiempo
     // ------------------------------------------------------------------
 
-    /** El encuadre a [local] del inicio, con los fotogramas clave aplicados. */
-    fun encuadreEn(clip: Clip, local: Long): Encuadre {
-        val claves = clip.claves
-        var e = if (claves.isEmpty()) clip.encuadre else {
-            val ordenadas = claves.sortedBy { it.tiempoUs }
-            when {
-                local <= ordenadas.first().tiempoUs -> ordenadas.first().encuadre
-                local >= ordenadas.last().tiempoUs -> ordenadas.last().encuadre
-                else -> {
-                    var r = ordenadas.last().encuadre
-                    for (i in 0 until ordenadas.size - 1) {
-                        val a = ordenadas[i]
-                        val b = ordenadas[i + 1]
-                        if (local >= a.tiempoUs && local < b.tiempoUs) {
-                            val f = (local - a.tiempoUs).toFloat() / (b.tiempoUs - a.tiempoUs)
-                            r = a.encuadre.hacia(b.encuadre, curva(a.curva, f))
-                            break
-                        }
-                    }
-                    r
-                }
-            }
-        }
-        // Lo que no se anima sale siempre del clip: recortar o cambiar el
-        // ajuste no tiene que obligar a rehacer cada fotograma clave.
-        e = e.copy(ajuste = clip.encuadre.ajuste, recorte = clip.encuadre.recorte, espejo = clip.encuadre.espejo)
-        return continua(clip, local, e)
-    }
+    /** El encuadre a [local] del inicio, con fotogramas clave y movimiento continuo. */
+    fun encuadreEn(clip: Clip, local: Long): Encuadre = continua(clip, local, clip.encuadreEn(local))
 
     private fun continua(clip: Clip, local: Long, e0: Encuadre): Encuadre {
         var e = e0
@@ -550,6 +524,23 @@ class Escena(
     // ------------------------------------------------------------------
     // Geometria
     // ------------------------------------------------------------------
+
+    /**
+     * Donde queda el bloque sobre el lienzo con el encuadre [e], en pixeles.
+     * Es lo que usa la pantalla para saber que bloque se toca y para dibujar
+     * el marco del elegido.
+     */
+    fun marco(clip: Clip, e: Encuadre): Marco {
+        val (cw, ch) = medidor.medidas(clip, alto)
+        val s = base(clip, e, cw, ch) * e.escala
+        return Marco(
+            cx = ancho / 2f + e.x * ancho,
+            cy = alto / 2f + e.y * alto,
+            ancho = cw * e.recorte.ancho * s,
+            alto = ch * e.recorte.alto * s,
+            rotacion = e.rotacion
+        )
+    }
 
     /** Escala base que da el ajuste, antes de la escala del usuario. */
     private fun base(clip: Clip, e: Encuadre, cw: Float, ch: Float): Float {
@@ -673,6 +664,18 @@ class Escena(
 }
 
 /** Mide el contenido de un bloque: el archivo, o el texto ya maquetado. */
+/** Rectangulo girado de un bloque sobre el lienzo, en pixeles. */
+data class Marco(val cx: Float, val cy: Float, val ancho: Float, val alto: Float, val rotacion: Float) {
+    fun contiene(x: Float, y: Float, margen: Float = 0f): Boolean {
+        val r = Math.toRadians(-rotacion.toDouble())
+        val dx = x - cx
+        val dy = y - cy
+        val lx = (dx * cos(r) - dy * sin(r)).toFloat()
+        val ly = (dx * sin(r) + dy * cos(r)).toFloat()
+        return abs(lx) <= ancho / 2f + margen && abs(ly) <= alto / 2f + margen
+    }
+}
+
 fun interface Medidor {
     /** Ancho y alto del contenido en pixeles, para un lienzo de [altoLienzo]. */
     fun medidas(clip: Clip, altoLienzo: Int): Pair<Float, Float>

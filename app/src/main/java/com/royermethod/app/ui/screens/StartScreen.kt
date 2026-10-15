@@ -1,4 +1,4 @@
-﻿package com.royermethod.app.ui.screens
+package com.royermethod.app.ui.screens
 
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState

@@ -1,4 +1,4 @@
-﻿package com.royermethod.app.ui.components
+package com.royermethod.app.ui.components
 
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -32,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,8 +52,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
+import com.royermethod.app.ui.theme.Velocidad
 
 /**
  * Latido del neon.
@@ -69,6 +72,10 @@ fun rememberBreath(
     max: Float = 1f,
     durationMs: Int = Motion.BREATH
 ): State<Float> {
+    // Con el latido apagado en Personalizar, el neon se queda en su punto alto
+    if (!Estilo.latido || Estilo.velocidad == Velocidad.INSTANTANEA) {
+        return remember(max) { mutableFloatStateOf(max) }
+    }
     val t = rememberInfiniteTransition(label = "breath")
     return t.animateFloat(
         initialValue = min,
@@ -87,7 +94,7 @@ private fun Modifier.neonHalo(
     radius: Dp,
     intensity: () -> Float
 ): Modifier = this.drawBehind {
-    val v = intensity()
+    val v = intensity() * Estilo.halo
     if (v <= 0f) return@drawBehind
     val r = radius.toPx()
     val spread = floatArrayOf(

@@ -8,33 +8,37 @@ import androidx.compose.animation.core.Easing
  *
  * Criterio: animaciones lentas y con mucha desaceleracion al final.
  * Nada arranca de golpe ni frena de golpe; la idea es que se sienta
- * pesado y caro, no rapido.
+ * pesado y caro, no rapido. Las duraciones se escalan con la velocidad
+ * que el usuario elija en Personalizar (o se anulan del todo).
  */
 object Motion {
 
     // ---- Duraciones (ms) ----
 
     /** Micro-reaccion de un boton al tocarlo. */
-    const val TAP = 220
+    val TAP: Int get() = ms(220)
 
     /** Cambio de estado dentro de un mismo componente. */
-    const val QUICK = 420
+    val QUICK: Int get() = ms(420)
 
     /** Aparicion o desaparicion de un elemento. */
-    const val NORMAL = 700
+    val NORMAL: Int get() = ms(700)
 
     /** Transicion entre secciones. Los 2 segundos que pediste. */
-    const val SECTION = 2000
+    val SECTION: Int get() = ms(2000)
 
     /** Tramos del splash. */
-    const val SPLASH_LOGO_IN = 1400
-    const val SPLASH_HOLD = 500
-    const val SPLASH_SLIDE = 2000
-    const val SPLASH_SETTLE = 900
-    const val SPLASH_OUT = 900
+    val SPLASH_LOGO_IN: Int get() = ms(1400)
+    val SPLASH_HOLD: Int get() = ms(500)
+    val SPLASH_SLIDE: Int get() = ms(2000)
+    val SPLASH_SETTLE: Int get() = ms(900)
+    val SPLASH_OUT: Int get() = ms(900)
 
-    /** Ciclo del latido del halo neon. */
+    /** Ciclo del latido del halo neon. No se acelera: un latido rapido cansa. */
     const val BREATH = 3800
+
+    /** Duracion ajustada a la velocidad elegida en Personalizar. */
+    private fun ms(base: Int): Int = (base * Estilo.velocidad.factor).toInt()
 
     // ---- Curvas ----
 

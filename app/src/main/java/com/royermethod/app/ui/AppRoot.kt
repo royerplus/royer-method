@@ -1,4 +1,4 @@
-﻿package com.royermethod.app.ui
+package com.royermethod.app.ui
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
@@ -24,7 +24,7 @@ import com.royermethod.app.procesado.Trabajo
 import com.royermethod.app.ui.components.ErrorDialog
 import com.royermethod.app.ui.screens.CONFIG_IMAGEN
 import com.royermethod.app.ui.screens.CONFIG_VIDEO
-import com.royermethod.app.ui.screens.EdicionScreen
+import com.royermethod.app.ui.screens.EditorScreen
 import com.royermethod.app.ui.screens.MejoraScreen
 import com.royermethod.app.ui.screens.ProcessingScreen
 import com.royermethod.app.ui.screens.ResultScreen
@@ -112,7 +112,7 @@ fun AppRoot() {
                     onEdicion = { screen = Screen.Edicion }
                 )
 
-                Screen.Edicion -> EdicionScreen(onVolver = { screen = Screen.Start })
+                Screen.Edicion -> EditorScreen(onVolver = { screen = Screen.Start })
 
                 // Las dos usan la misma pantalla; solo cambia la configuracion
                 // que se le pasa.

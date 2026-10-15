@@ -7,6 +7,7 @@ import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Alineacion
 import com.royermethod.app.editor.modelo.Animacion
 import com.royermethod.app.editor.modelo.AnimacionContinua
+import com.royermethod.app.editor.modelo.Bezier
 import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Capa
 import com.royermethod.app.editor.modelo.Clave
@@ -122,6 +123,7 @@ object Persistencia {
                     put("t", k.tiempoUs)
                     put("encuadre", encuadre(k.encuadre))
                     put("curva", k.curva.name)
+                    k.bezier?.let { b -> put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })) }
                 })
             }
         })
@@ -292,7 +294,11 @@ object Persistencia {
                     Clave(
                         k.optLong("t"),
                         k.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
-                        k.enumeracion("curva", Curva.SUAVE)
+                        k.enumeracion("curva", Curva.SUAVE),
+                        k.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let { b ->
+                            fun v(i: Int) = b.optDouble(i, 0.0).toFloat()
+                            Bezier(v(0).coerceIn(0f, 1f), v(1), v(2).coerceIn(0f, 1f), v(3))
+                        }
                     )
                 }
             } ?: emptyList(),

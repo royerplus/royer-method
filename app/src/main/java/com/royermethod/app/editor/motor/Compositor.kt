@@ -6,7 +6,6 @@ import android.net.Uri
 import android.opengl.GLES20
 import com.royermethod.app.editor.modelo.Cuadro
 import com.royermethod.app.editor.modelo.Mascara
-import com.royermethod.app.editor.modelo.Medidor
 import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Paso
 import com.royermethod.app.editor.modelo.PasoClip
@@ -47,15 +46,7 @@ class Compositor(
     private val grupos = ArrayList<Lamina>()
 
     /** Lo que se mide para la escena: videos e imagenes por sus metadatos, textos maquetados. */
-    val medidor = Medidor { clip, altoLienzo ->
-        val t = clip.texto
-        val o = clip.origen
-        when {
-            t != null -> MaquetaTexto.medidas(t, altoLienzo)
-            o != null -> o.anchoVisible.toFloat() to o.altoVisible.toFloat()
-            else -> 1f to 1f
-        }
-    }
+    val medidor = MaquetaTexto.medidor
 
     private var numero = 0L
 

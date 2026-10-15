@@ -89,6 +89,28 @@ data class Clip(
         return t.coerceIn(desdeUs, (hastaUs - 1).coerceAtLeast(desdeUs))
     }
 
+    /**
+     * El encuadre a [local] del inicio con los fotogramas clave aplicados.
+     * Lo que no se anima (ajuste, recorte, espejo) sale siempre del clip:
+     * cambiarlo no obliga a rehacer cada fotograma clave.
+     */
+    fun encuadreEn(local: Long): Encuadre {
+        if (claves.isEmpty()) return encuadre
+        val ordenadas = claves.sortedBy { it.tiempoUs }
+        val e = when {
+            local <= ordenadas.first().tiempoUs -> ordenadas.first().encuadre
+            local >= ordenadas.last().tiempoUs -> ordenadas.last().encuadre
+            else -> {
+                val i = ordenadas.indexOfLast { it.tiempoUs <= local }
+                val a = ordenadas[i]
+                val b = ordenadas[i + 1]
+                val f = (local - a.tiempoUs).toFloat() / (b.tiempoUs - a.tiempoUs)
+                a.encuadre.hacia(b.encuadre, a.avance(f))
+            }
+        }
+        return e.copy(ajuste = encuadre.ajuste, recorte = encuadre.recorte, espejo = encuadre.espejo)
+    }
+
     /** Ajustes de color con el filtro ya sumado. Es lo que dibuja el motor. */
     fun colorFinal(): AjustesColor = color.mas(filtro.ajustes, intensidadFiltro)
 
@@ -152,12 +174,53 @@ data class Recorte(
     val alto: Float get() = (1f - arriba - abajo).coerceAtLeast(0.05f)
 }
 
-/** Un fotograma clave: como esta el encuadre en ese instante del clip. */
+/**
+ * Un fotograma clave: como esta el encuadre en ese instante del clip.
+ *
+ * [curva] y [bezier] dicen como se llega desde aqui a la clave siguiente. Si
+ * hay [bezier], manda ella: es la curva dibujada a mano en el editor.
+ */
 data class Clave(
     val tiempoUs: Long,
     val encuadre: Encuadre,
-    val curva: Curva = Curva.SUAVE
-)
+    val curva: Curva = Curva.SUAVE,
+    val bezier: Bezier? = null
+) {
+    fun avance(x: Float): Float = bezier?.en(x) ?: Escena.curva(curva, x)
+}
+
+/**
+ * Curva de movimiento libre, como las de los editores de escritorio: va de
+ * (0,0) a (1,1) y los dos puntos de control dan la forma. La y de los puntos
+ * puede salirse de 0..1 para que el movimiento se pase y vuelva.
+ */
+data class Bezier(val x1: Float, val y1: Float, val x2: Float, val y2: Float) {
+
+    /** Avance (y) para la fraccion de tiempo [x]. */
+    fun en(x: Float): Float {
+        if (x <= 0f) return 0f
+        if (x >= 1f) return 1f
+        // La x de una bezier con x1, x2 en 0..1 siempre crece: se busca por biseccion
+        var lo = 0f
+        var hi = 1f
+        var t = x
+        repeat(24) {
+            if (coordenada(t, x1.coerceIn(0f, 1f), x2.coerceIn(0f, 1f)) < x) lo = t else hi = t
+            t = (lo + hi) / 2f
+        }
+        return coordenada(t, y1, y2)
+    }
+
+    private fun coordenada(t: Float, a: Float, b: Float): Float {
+        val u = 1f - t
+        return 3f * u * u * t * a + 3f * u * t * t * b + t * t * t
+    }
+
+    companion object {
+        /** Punto de partida al pasar a curva libre: la suave de siempre. */
+        val SUAVE = Bezier(0.42f, 0f, 0.58f, 1f)
+    }
+}
 
 /** Como se reparte el movimiento en el tiempo. */
 enum class Curva(val nombre: String) {
