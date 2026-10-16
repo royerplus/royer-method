@@ -172,3 +172,16 @@ Falta:
 4. B282 tuvo un ajuste flojo; se usa el valor de B172.
 
 .royer actual: resultados/replica-medida-testprueba1.royer, SHA256 d3ee6fdab9440c1210e22684c3e99466c83b5cd61031f81dea579d92392da68d (no probado con el último APK).
+
+### Actualización 2026-10-16, segunda sesión (Claude)
+
+- Exports 3 a 6 en royer-method-work/resultados/export-medido-3..6. El mejor es el **6** (replica-medida-6.mp4, también en el teléfono en Movies/RoyerMethod): 411 fotogramas, 30 fps, 0 avisos, stss correcto.
+- Rayas de los latigazos resueltas (commit 6b6acae): el desenfoque direccional toma una muestra cada ~3 px (16–64) y lleva ruido por píxel.
+- Rastro del cuadro siguiente al latigazo: medido en analisis/forense/latigazos-residuales.json (173/283 60 px H, 201/311 100 px V, 229/339 100 px ~H, 241 100 px diagonal, 352 40 px V; 351 no ajusta). El generador lo añade como DESENFOQUE_H/V (copia previa: resultados/replicar_medida.antes-rastros.py). Medido sobre la salida de la app, da los mismos largos.
+- No hay un obturador global en la referencia: hay cuadros que se mueven sin rastro (D202/204, E216), según analisis/forense/obturador-medido.json. No cambiar el obturador de 180°.
+- El anillo de B 186 sale nítido, con radio 163–174. Es más brillante que el original por el contenido de la foto.
+- Merge de 2169ce4 (Escena, máscaras): 103 pruebas OK. Diferencia media del video contra el export anterior fuera de los cuadros cambiados: menor que 1 de 255.
+- Vista previa: 29,4–29,5 fps, 1–2 saltos. Tirones: ~200 ms al arrancar y 80 ms en el cuadro 194 (≈50 ms de CPU, antes 26). El cuadro 242 tarda 22 ms de swap por el desenfoque diagonal.
+- .royer actual: SHA256 d284575fa5422e764a0d8cb48601b29ba60d1422b3c25131816fb8f3325f34f4.
+
+Pendiente: el tirón del cuadro 194; el intro congelado bajo las mitades (límite del material); G del segundo ciclo (351) sin medida fiable.
