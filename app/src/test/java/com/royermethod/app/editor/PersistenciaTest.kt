@@ -2,6 +2,7 @@ package com.royermethod.app.editor
 
 import com.royermethod.app.editor.modelo.*
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PersistenciaTest {
@@ -57,5 +58,15 @@ class PersistenciaTest {
         // Los barridos de antes iban algo inclinados: se conserva
         assertEquals(AjusteTransicion.ANGULO_BARRIDO, q.principal[1].ajusteTransicion.angulo, 0f)
         assertEquals(1f, q.principal[2].calidad, 0f)
+    }
+
+    @Test
+    fun elCeroNegativoSeLeeComoCero() {
+        val texto = Persistencia.aTexto(Proyecto(principal = listOf(Clip(id = 1, texto = Texto("x"), encuadre = Encuadre(rotacion = 5f)))))
+        val conNegativo = Regex("\"rotacion\":5(\\.0)?").replace(texto, "\"rotacion\":-0.0")
+        assertTrue("No se encontro la rotacion en el texto", conNegativo != texto)
+        val q = Persistencia.deTexto(conNegativo)!!
+        assertEquals(0f.toRawBits(), q.principal[0].encuadre.rotacion.toRawBits())
+        assertEquals(q, Persistencia.deTexto(Persistencia.aTexto(q)))
     }
 }

@@ -251,7 +251,9 @@ object Persistencia {
     internal inline fun <reified E : Enum<E>> JSONObject.enumeracion(clave: String, defecto: E): E =
         optString(clave, "").let { n -> enumValues<E>().firstOrNull { it.name == n } } ?: defecto
 
-    private fun JSONObject.f(clave: String, defecto: Float) = optDouble(clave, defecto.toDouble()).toFloat()
+    // org.json guarda -0.0 como "-0" y al releerlo sale 0: se normaliza aqui para que
+    // un proyecto leido sea igual al mismo proyecto guardado y vuelto a leer.
+    private fun JSONObject.f(clave: String, defecto: Float) = optDouble(clave, defecto.toDouble()).toFloat() + 0f
 
     /**
      * Los proyectos de antes guardaban una de cuatro direcciones, y los
@@ -491,7 +493,7 @@ object Persistencia {
 
     private fun encuadreDe(o: JSONObject): Encuadre {
         val r = o.optJSONArray("recorte")
-        fun rc(i: Int) = r?.optDouble(i, 0.0)?.toFloat() ?: 0f
+        fun rc(i: Int) = (r?.optDouble(i, 0.0)?.toFloat() ?: 0f) + 0f
         return Encuadre(
             ajuste = o.enumeracion("ajuste", Ajuste.CUBRIR),
             escala = o.f("escala", 1f),
@@ -505,7 +507,7 @@ object Persistencia {
     }
 
     private fun colorDe(a: JSONArray): AjustesColor {
-        fun v(i: Int) = a.optDouble(i, 0.0).toFloat()
+        fun v(i: Int) = a.optDouble(i, 0.0).toFloat() + 0f
         return AjustesColor(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8), v(9))
     }
 }
