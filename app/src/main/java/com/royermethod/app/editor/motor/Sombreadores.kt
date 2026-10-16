@@ -238,7 +238,20 @@ vec4 tomarRgb(vec2 uv, vec2 desp) {
     return c;
 }
 
-vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY) {
+vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
+    if (uRadio <= 0.0 && (uRadioDir.x > 0.0 || uRadioDir.y > 0.0)) {
+        // Solo en una direccion: muestras repartidas por igual a lo largo de
+        // la linea, como el rastro de un movimiento. El disco de abajo deja
+        // copias separadas cuando el rastro es largo. Cada muestra del
+        // obturador corre las suyas una fraccion del paso ([fase]): juntas
+        // llenan la linea en vez de repetir los mismos puntos y dejar rayas.
+        vec4 s = vec4(0.0);
+        for (int j = 0; j < 16; j++) {
+            float t = (float(j) + 0.5 + fase) / 8.0 - 1.0;
+            s += tomarRgb(uv + t * (ejeX + ejeY), desp);
+        }
+        return s / 16.0;
+    }
     if (uRadio > 0.0 || uRadioDir.x > 0.0 || uRadioDir.y > 0.0) {
         // Disco de muestras en espiral: sin tablas, que GLSL ES 1 no admite
         vec4 s = vec4(0.0);
@@ -326,7 +339,8 @@ void main() {
         vec2 desp = uRgb * vec2(m[0][0], m[0][1]);
         vec2 ejeX = uRadioDir.x * vec2(m[0][0], m[0][1]);
         vec2 ejeY = uRadioDir.y * vec2(m[1][0], m[1][1]);
-        if (a > 0.0) suma += muestra(uv, vec2(pu, pv), desp, ejeX, ejeY) * a;
+        float fase = (float(i) + 0.5) / uN - 0.5;
+        if (a > 0.0) suma += muestra(uv, vec2(pu, pv), desp, ejeX, ejeY, fase) * a;
     }
     suma /= uN;
     if (suma.a > 0.0 && (uNeutro < 0.5 || uLuz != 0.0 || uNegativo > 0.0)) {
