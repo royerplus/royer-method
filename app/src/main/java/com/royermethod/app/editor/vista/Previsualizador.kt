@@ -388,6 +388,8 @@ class Previsualizador(context: Context) {
             val marcaNs = System.nanoTime()
             e.marcarTiempo(marcaNs)
             val publicada = e.publicar()
+            // Despues de publicar, para no retrasar este fotograma
+            c.anticipar(Linea.origenesEntre(p, t, t + ANTICIPO_US))
             if (publicada) {
                 ultimoDibujado = n
                 if (observador != null) {
@@ -399,5 +401,10 @@ class Previsualizador(context: Context) {
             }
             publicada
         }.getOrDefault(false)
+    }
+
+    private companion object {
+        /** Cuanto antes de aparecer se empieza a leer una foto. */
+        const val ANTICIPO_US = 1_000_000L
     }
 }

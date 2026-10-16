@@ -1,12 +1,14 @@
 package com.royermethod.app.editor.motor
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.opengl.GLES20
 import com.royermethod.app.editor.modelo.Cuadro
 import com.royermethod.app.editor.modelo.Mascara
 import com.royermethod.app.editor.modelo.Mezcla
+import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.Paso
 import com.royermethod.app.editor.modelo.PasoClip
 import com.royermethod.app.editor.modelo.PasoGrupo
@@ -15,6 +17,9 @@ import com.royermethod.app.editor.modelo.PasoPartes
 import com.royermethod.app.editor.modelo.PasoSolido
 import com.royermethod.app.editor.modelo.Texto
 import java.util.IdentityHashMap
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 import kotlin.math.ceil
 
 /**
@@ -44,6 +49,19 @@ class Compositor(
     /** Archivos que no se pudieron abrir, con el cuadro en que fallaron. */
     private val fallos = HashMap<String, Long>()
     private val imagenes = HashMap<String, FuenteImagen>()
+    /**
+     * Fotos ya decodificadas en otro hilo, esperando a subirse a la GPU. Leer
+     * un JPEG grande cuesta decenas de milisegundos: hecho en el hilo de
+     * dibujo, el fotograma en que entra la foto se retrasaba.
+     */
+    private val precargadas = ConcurrentHashMap<String, Bitmap>()
+    /** Lo pedido al hilo de precarga y todavia no subido a la GPU. */
+    private val pedidas = ConcurrentHashMap.newKeySet<String>()
+    private var precargador: ExecutorService? = null
+    @Volatile
+    private var soltado = false
+    /** Hasta 1.5 veces el lienzo: deja hacer zoom sin que se pixele. */
+    private val ladoImagen = (maxOf(ancho, alto) * 1.5f).toInt()
     private val textos = HashMap<Triple<Texto, Int, Float>, FuenteImagen>()
     private val fondos = HashMap<Any, Pair<Long, List<Lamina>>>()
     /** Laminas del tamano del lienzo para montar escenas aparte. */
@@ -111,6 +129,28 @@ class Compositor(
         }
         GLES20.glDisable(GLES20.GL_BLEND)
         limpiar()
+    }
+
+    /**
+     * Empieza a leer en segundo plano las fotos de [origenes] que aun no estan
+     * en la GPU, para que el fotograma en que aparecen no espere al archivo.
+     * Se llama desde el hilo de dibujo; lo que no llegue a tiempo se lee
+     * igual que siempre al necesitarlo.
+     */
+    fun anticipar(origenes: Collection<Origen>) {
+        if (soltado) return
+        for (o in origenes) {
+            if (!o.esImagen || o.uri in imagenes || !pedidas.add(o.uri)) continue
+            val hilo = precargador ?: Executors.newSingleThreadExecutor { r ->
+                Thread(r, "precarga").apply { priority = Thread.MIN_PRIORITY }
+            }.also { precargador = it }
+            hilo.execute {
+                val bmp = if (soltado) null else FuenteImagen.decodificar(context, Uri.parse(o.uri), ladoImagen)
+                // Si mientras tanto ya se leyo en el hilo de dibujo, sobra.
+                if (bmp != null && (soltado || o.uri !in pedidas)) bmp.recycle()
+                else if (bmp != null) precargadas[o.uri] = bmp
+            }
+        }
     }
 
     private fun dibujarPaso(paso: Paso, texturas: Map<PasoClip, Textura>, voltear: Boolean) {
@@ -181,8 +221,9 @@ class Compositor(
 
         if (o.esImagen) {
             val img = imagenes.getOrPut(o.uri) {
-                // Hasta 1.5 veces el lienzo: deja hacer zoom sin que se pixele
-                FuenteImagen.abrir(context, Uri.parse(o.uri), (maxOf(ancho, alto) * 1.5f).toInt())
+                pedidas.remove(o.uri)
+                precargadas.remove(o.uri)?.let { bmp -> FuenteImagen.subir(bmp).also { bmp.recycle() } }
+                    ?: FuenteImagen.abrir(context, Uri.parse(o.uri), ladoImagen)
                     ?: return null
             }
             img.usadaEn = numero
@@ -478,6 +519,12 @@ class Compositor(
     }
 
     fun soltar() {
+        soltado = true
+        precargador?.shutdownNow()
+        precargador = null
+        pedidas.clear()
+        precargadas.values.forEach { it.recycle() }
+        precargadas.clear()
         grupos.forEach { it.soltar() }
         grupos.clear()
         muestraPartes?.soltar(); muestraPartes = null

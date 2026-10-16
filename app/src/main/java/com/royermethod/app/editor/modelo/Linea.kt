@@ -124,6 +124,24 @@ object Linea {
         return r
     }
 
+    /**
+     * Los archivos de todo lo que se ve en algun momento de [desde] a [hasta]
+     * (incluidos), en la pista principal o en capas. Sirve para ir leyendolos
+     * antes de que aparezcan.
+     */
+    fun origenesEntre(p: Proyecto, desde: Long, hasta: Long): Set<Origen> {
+        val r = LinkedHashSet<Origen>()
+        val ini = inicios(p.principal)
+        for (i in p.principal.indices) {
+            val c = p.principal[i]
+            if (ini[i] <= hasta && ini[i] + c.duracionUs > desde) c.origen?.let(r::add)
+        }
+        for (c in p.capas) {
+            if (c.inicioUs <= hasta && c.finUs > desde) c.clip.origen?.let(r::add)
+        }
+        return r
+    }
+
     /** Capas visibles en [t], de abajo arriba. */
     fun capasEn(capas: List<Capa>, t: Long): List<Capa> =
         capas.filter { t >= it.inicioUs && t < it.finUs }.sortedBy { it.fila }

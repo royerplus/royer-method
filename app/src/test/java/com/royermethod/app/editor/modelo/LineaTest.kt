@@ -184,4 +184,17 @@ class LineaTest {
         val igual = PlanExportacion.de(p.copy(principal = p.principal.map { it.copy(calidad = 1f) }))
         assertTrue(plan.bytesEstimados < igual.bytesEstimados)
     }
+
+    @Test
+    fun origenesQueVanAAparecer() {
+        val a = video(1, 2.0); val b = video(2, 2.0)
+        val capa = Capa(3_000_000, 0, video(3, 1.0))
+        val p = Proyecto(principal = listOf(a, b), capas = listOf(capa))
+        assertEquals(setOf(a.origen), Linea.origenesEntre(p, 0, 1_000_000))
+        // b empieza en 2 s y la capa en 3 s: el que mira un segundo adelante ya los ve
+        assertEquals(setOf(a.origen, b.origen), Linea.origenesEntre(p, 1_500_000, 2_500_000))
+        assertEquals(setOf(b.origen, capa.clip.origen), Linea.origenesEntre(p, 2_500_000, 3_000_000))
+        // Lo que ya acabo no se pide
+        assertTrue(Linea.origenesEntre(p, 4_000_000, 5_000_000).isEmpty())
+    }
 }
