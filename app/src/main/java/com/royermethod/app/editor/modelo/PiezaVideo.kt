@@ -38,7 +38,9 @@ data class PiezaVideo(
     val nombre: String,
     val region: RegionUv,
     val encuadre: Encuadre = Encuadre(),
-    val claves: List<Clave> = emptyList()
+    val claves: List<Clave> = emptyList(),
+    /** Las claves de antes de simplificar la trayectoria, para poder volver. */
+    val clavesOriginales: List<Clave>? = null
 ) {
     fun encuadreEn(local: Long): Encuadre {
         if (claves.isEmpty()) return encuadre

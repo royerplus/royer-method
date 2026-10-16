@@ -315,4 +315,13 @@ private fun descripcionEfecto(tipo: TipoEfectoVideo): String = when (tipo) {
     TipoEfectoVideo.CERRAR_HORIZONTAL -> "Aplasta la imagen en una banda vertical y revela la capa inferior."
     TipoEfectoVideo.GLITCH -> "Distorsion digital con cortes y separacion de color."
     TipoEfectoVideo.TWITCH -> "Tirones cortos y rapidos para remarcar un golpe."
+    TipoEfectoVideo.MOVER -> "Lleva la imagen de un sitio a otro con la curva elegida."
+    TipoEfectoVideo.ZOOM -> "Acerca o aleja la imagen de un tamano a otro."
+    TipoEfectoVideo.GIRAR -> "Gira la imagen de un angulo a otro."
+    TipoEfectoVideo.LATIGAZO -> "Sale disparada hacia un lado y vuelve por el contrario."
+    TipoEfectoVideo.DESENFOQUE_DIRECCIONAL -> "Rastro de movimiento en cualquier direccion."
+    TipoEfectoVideo.CIRCULO -> "Circulo o anillo que se abre o se cierra, con su centro."
+    TipoEfectoVideo.BARRIDO -> "Descubre u oculta la imagen con un borde que avanza en cualquier direccion."
+    TipoEfectoVideo.MITADES -> "Las dos mitades de la imagen llegan desde lados opuestos y se juntan."
+    TipoEfectoVideo.ANIMACION -> "Una animacion convertida en efecto: muevela y recortala como cualquier otro."
 }

@@ -15,7 +15,15 @@ data class EfectoVideo(
     val duracionBaseUs: Long = 0,
     val activo: Boolean = true,
     /** Progreso medido en el reloj original del efecto, sin presets. */
-    val progresos: List<ProgresoEfecto> = emptyList()
+    val progresos: List<ProgresoEfecto> = emptyList(),
+    /** Identidad dentro del bloque para elegirlo en la interfaz; 0 en proyectos viejos. */
+    val id: Long = 0,
+    /** Nombre de la combinacion rapida que lo agrego junto a otros; vacio si va suelto. */
+    val grupo: String = "",
+    /** Forma del movimiento: direccion, recorrido, curva, centro... Cada tipo usa los suyos. */
+    val ajustes: AjustesEfecto = AjustesEfecto(),
+    /** Solo en [TipoEfectoVideo.ANIMACION]: la animacion del bloque convertida en efecto. */
+    val animacion: AnimacionEnEfecto? = null
 ) {
     val duracionUs: Long get() = (finUs - inicioUs).coerceAtLeast(0)
 
@@ -77,6 +85,24 @@ data class EfectoVideo(
         )
     }
 
+    /**
+     * Mueve el tramo entero sin cambiar lo que dura ni su reloj: lo que pasaba
+     * al principio del efecto sigue pasando al principio. Nunca sale del bloque.
+     */
+    fun desplazado(deltaUs: Long, duracionBloqueUs: Long): EfectoVideo {
+        val d = deltaUs.coerceIn(-inicioUs, (duracionBloqueUs - finUs).coerceAtLeast(-inicioUs))
+        return if (d == 0L) this else copy(inicioUs = inicioUs + d, finUs = finUs + d)
+    }
+
+    /** El progreso con la curva elegida aplicada: lo que recorren los tipos "de .. a ..". */
+    fun avanceEn(localUs: Long): Float {
+        val p = progresoEn(localUs)
+        return ajustes.bezier?.en(p) ?: Escena.curva(ajustes.curva, p)
+    }
+
+    /** El valor entre [AjustesEfecto.desde] y [AjustesEfecto.hasta] en [localUs]. */
+    fun valorEn(localUs: Long): Float = ajustes.desde + (ajustes.hasta - ajustes.desde) * avanceEn(localUs)
+
     /** Los intervalos siguen al contenido al cambiar su velocidad. */
     fun tiempoEscalado(factor: Double): EfectoVideo = copy(
         inicioUs = (inicioUs * factor).toLong(),
@@ -90,6 +116,33 @@ data class EfectoVideo(
 }
 
 data class ProgresoEfecto(val tiempoUs: Long, val valor: Float)
+
+/**
+ * Lo que da forma a un efecto ademas de su tramo e intensidad. Pocos numeros
+ * con sentido en vez de decenas de claves. Que significa cada uno depende del
+ * tipo (ver [TipoEfectoVideo]); los que un tipo no usa se ignoran.
+ */
+data class AjustesEfecto(
+    /** Direccion en grados: 0 derecha, 90 abajo, 180 izquierda, 270 arriba (como las transiciones). */
+    val angulo: Float = 0f,
+    /** Valor al empezar el efecto y al terminarlo. La unidad la pone el tipo. */
+    val desde: Float = 0f,
+    val hasta: Float = 1f,
+    /** Como se reparte el recorrido de [desde] a [hasta]. Si hay [bezier], manda ella. */
+    val curva: Curva = Curva.SUAVE,
+    val bezier: Bezier? = null,
+    /** Centro respecto al centro del lienzo, en fracciones de su ancho y su alto. */
+    val centroX: Float = 0f,
+    val centroY: Float = 0f,
+    /** Grosor del anillo en fraccion del radio maximo; 0 es un circulo lleno. */
+    val grosor: Float = 0f,
+    /** Borde suave en fraccion del alto del lienzo; 0 usa el de siempre del tipo. */
+    val suavidad: Float = 0f,
+    /** Al reves: mostrar fuera en vez de dentro, ocultar en vez de descubrir. */
+    val invertir: Boolean = false,
+    /** Mitades: corte vertical (izquierda y derecha) en vez de horizontal (arriba y abajo). */
+    val vertical: Boolean = false
+)
 
 enum class TipoEfectoVideo(val nombre: String) {
     SACUDIDA("Sacudida"),
@@ -110,5 +163,26 @@ enum class TipoEfectoVideo(val nombre: String) {
     DESENFOQUE_VERTICAL("Desenfoque vertical"),
     CERRAR_VERTICAL("Cerrar vertical"),
     CERRAR_HORIZONTAL("Cerrar horizontal"),
-    REVELAR_HORIZONTAL("Revelar horizontal")
+    REVELAR_HORIZONTAL("Revelar horizontal"),
+
+    // Herramientas de movimiento: pocos parametros (ajustes) en vez de claves
+
+    /** Desde/hasta: recorrido en lienzos a lo largo de [AjustesEfecto.angulo]. */
+    MOVER("Mover"),
+    /** Desde/hasta: escala (1 = tamano normal). */
+    ZOOM("Zoom"),
+    /** Desde/hasta: grados. */
+    GIRAR("Girar"),
+    /** Se va hacia [AjustesEfecto.angulo] y vuelve por el lado contrario; desde = recorrido en lienzos. */
+    LATIGAZO("Latigazo"),
+    /** Rastro en la direccion de [AjustesEfecto.angulo], a cualquier angulo. */
+    DESENFOQUE_DIRECCIONAL("Desenfoque direccional"),
+    /** Desde/hasta: radio en fraccion del radio que cubre todo; con grosor es un anillo. */
+    CIRCULO("Circulo o anillo"),
+    /** Desde/hasta: cuanto se ha descubierto (0 a 1), con el borde avanzando hacia el angulo. */
+    BARRIDO("Barrido"),
+    /** Dos mitades que se juntan; desde/hasta: recorrido de cada mitad en lienzos. */
+    MITADES("Mitades"),
+    /** Una animacion del bloque convertida en efecto: lleva su contenido en [EfectoVideo.animacion]. */
+    ANIMACION("Animacion")
 }

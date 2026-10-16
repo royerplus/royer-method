@@ -858,6 +858,13 @@ class Escena(
         return r
     }
 
+    /**
+     * Un efecto ANIMACION: la animacion que llevaba el bloque, ahora en el
+     * reloj del efecto. [fuerza] multiplica la intensidad de cada pieza.
+     * ESQUELETO: se rellena en el trabajo de animaciones.
+     */
+    private fun efectoDeAnimacion(ef: EfectoVideo, local: Long, fuerza: Float): Efecto = Efecto()
+
     /** Efectos libres del bloque, compartidos por vista previa y exportacion. */
     internal fun efectosVideo(clip: Clip, local: Long): Efecto {
         var r = Efecto()
@@ -935,6 +942,12 @@ class Escena(
                     }
                     Efecto(mascara = Mascara(1f, 0f, suave = 2f), borde = borde)
                 }
+                // ESQUELETO: se rellenan en el trabajo de efectos
+                TipoEfectoVideo.MOVER, TipoEfectoVideo.ZOOM, TipoEfectoVideo.GIRAR, TipoEfectoVideo.LATIGAZO,
+                TipoEfectoVideo.DESENFOQUE_DIRECCIONAL, TipoEfectoVideo.CIRCULO, TipoEfectoVideo.BARRIDO -> Efecto()
+                // Las mitades no son un Efecto: parten el bloque en dibujos()
+                TipoEfectoVideo.MITADES -> Efecto()
+                TipoEfectoVideo.ANIMACION -> efectoDeAnimacion(ef, local, i)
             }
             r = r.y(e)
         }
@@ -1180,7 +1193,12 @@ data class Mascara(
     val suave: Float,
     /** En circulo: d es la distancia al centro del lienzo y se ve lo de dentro. */
     val radial: Boolean = false,
-    val invertida: Boolean = false
+    val invertida: Boolean = false,
+    /** Centro de la mascara respecto al centro del lienzo, en pixeles. */
+    val centroX: Float = 0f,
+    val centroY: Float = 0f,
+    /** Mayor que 0: solo se ve la banda de este ancho (pixeles) por dentro del borde, un anillo. */
+    val grosor: Float = 0f
 )
 
 /** Un fotograma descrito: que dibujar, en orden de abajo arriba. */

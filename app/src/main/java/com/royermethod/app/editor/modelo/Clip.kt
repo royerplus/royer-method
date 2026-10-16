@@ -54,6 +54,14 @@ data class Clip(
     val efectos: List<EfectoVideo> = emptyList(),
     /** Partes de la misma fuente con regiones y movimientos independientes. */
     val piezas: List<PiezaVideo> = emptyList(),
+    /**
+     * Animaciones que se suman, cada una con su nombre y su duracion. Se
+     * evaluan despues de [entrada], [salida] y [continua], que quedan para los
+     * proyectos de antes y pasan a esta lista al editarlas.
+     */
+    val animaciones: List<AnimacionAplicada> = emptyList(),
+    /** Las claves de antes de simplificar la trayectoria, para poder volver. */
+    val clavesOriginales: List<Clave>? = null,
     /** Paso al bloque siguiente de la pista principal. En capas no se usa. */
     val transicion: Transicion = Transicion.NINGUNA,
     val duracionTransicionUs: Long = 500_000,
@@ -331,6 +339,40 @@ data class Movimiento(
     val curva: Curva = Curva.SALIDA,
     val desde: Float = 0f,
     val hasta: Float = 1f
+)
+
+/** Cuando actua una animacion aplicada. */
+enum class MomentoAnimacion(val nombre: String) {
+    ENTRADA("Entrada"),
+    SALIDA("Salida"),
+    /** Durante todo el bloque: las continuas. */
+    SIEMPRE("Siempre")
+}
+
+/**
+ * Una animacion puesta en un bloque. Se pueden sumar varias: cada una conserva
+ * su nombre del catalogo, sus piezas y su propia duracion.
+ *
+ * @param piezas lo que hace en ENTRADA y SALIDA
+ * @param continuas lo que hace en SIEMPRE
+ * @param duracionUs lo que dura desde el borde del bloque (ENTRADA y SALIDA)
+ */
+data class AnimacionAplicada(
+    val id: Long,
+    val nombre: String,
+    val momento: MomentoAnimacion,
+    val piezas: List<Movimiento> = emptyList(),
+    val continuas: List<Continuo> = emptyList(),
+    val duracionUs: Long = 500_000,
+    val activa: Boolean = true
+)
+
+/** Lo que lleva un efecto de tipo ANIMACION: la animacion tal cual estaba. */
+data class AnimacionEnEfecto(
+    val nombre: String,
+    val momento: MomentoAnimacion,
+    val piezas: List<Movimiento> = emptyList(),
+    val continuas: List<Continuo> = emptyList()
 )
 
 /** Lo que se mueve durante todo el bloque, no solo al entrar o salir. */
