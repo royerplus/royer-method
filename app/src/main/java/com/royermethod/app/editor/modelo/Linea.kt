@@ -244,12 +244,18 @@ object Linea {
 
     /**
      * Instantes (dentro del bloque) donde empieza o deja de moverse: fin de la
-     * entrada, principio de la salida, primer y ultimo fotograma clave.
+     * entrada, principio de la salida (las de antes y las aplicadas), primer y
+     * ultimo fotograma clave.
      */
     private fun movimiento(c: Clip): List<Long> {
         val r = ArrayList<Long>(4)
         if (c.entrada.isNotEmpty()) r.add(minOf(c.duracionEntradaUs, c.duracionUs))
         if (c.salida.isNotEmpty()) r.add((c.duracionUs - c.duracionSalidaUs).coerceAtLeast(0))
+        for (a in c.animaciones) if (a.activa && a.piezas.isNotEmpty()) when (a.momento) {
+            MomentoAnimacion.ENTRADA -> r.add(minOf(a.duracionUs, c.duracionUs))
+            MomentoAnimacion.SALIDA -> r.add((c.duracionUs - a.duracionUs).coerceAtLeast(0))
+            MomentoAnimacion.SIEMPRE -> Unit
+        }
         if (c.claves.size >= 2) {
             r.add(c.claves.minOf { it.tiempoUs })
             r.add(c.claves.maxOf { it.tiempoUs })
@@ -275,15 +281,33 @@ object Linea {
 
     private val EFECTOS_FUERTES = setOf(
         TipoEfectoVideo.FLASH, TipoEfectoVideo.FLASH_NEGRO, TipoEfectoVideo.ESTROBO,
-        TipoEfectoVideo.NEGATIVO, TipoEfectoVideo.RGB, TipoEfectoVideo.GLITCH, TipoEfectoVideo.TWITCH
+        TipoEfectoVideo.NEGATIVO, TipoEfectoVideo.RGB, TipoEfectoVideo.GLITCH, TipoEfectoVideo.TWITCH,
+        TipoEfectoVideo.LATIGAZO
     )
+
+    /** ¿Lo que hace una animacion (aplicada o dentro de un efecto) es de los golpes fuertes? */
+    private fun fuerte(momento: MomentoAnimacion, piezas: List<Movimiento>, continuas: List<Continuo>): Boolean =
+        if (momento == MomentoAnimacion.SIEMPRE) continuas.any { it.tipo in CONTINUAS_FUERTES }
+        else piezas.any { it.tipo in PIEZAS_FUERTES }
+
+    private fun efectoFuerte(e: EfectoVideo): Boolean =
+        e.tipo in EFECTOS_FUERTES ||
+            (e.tipo == TipoEfectoVideo.ANIMACION && e.animacion?.let { fuerte(it.momento, it.piezas, it.continuas) } == true)
 
     /** ¿En [local] hay flashes, RGB o sacudidas fuertes? */
     private fun golpea(c: Clip, local: Long): Boolean {
-        if (c.efectos.any { it.tipo in EFECTOS_FUERTES && it.activoEn(local) }) return true
+        if (c.efectos.any { efectoFuerte(it) && it.activoEn(local) }) return true
         if (c.continua.any { it.tipo in CONTINUAS_FUERTES }) return true
         if (local < c.duracionEntradaUs && c.entrada.any { it.tipo in PIEZAS_FUERTES }) return true
         if (local >= c.duracionUs - c.duracionSalidaUs && c.salida.any { it.tipo in PIEZAS_FUERTES }) return true
+        for (a in c.animaciones) if (a.activa && fuerte(a.momento, a.piezas, a.continuas)) {
+            val dentro = when (a.momento) {
+                MomentoAnimacion.ENTRADA -> local < a.duracionUs
+                MomentoAnimacion.SALIDA -> local >= c.duracionUs - a.duracionUs
+                MomentoAnimacion.SIEMPRE -> true
+            }
+            if (dentro) return true
+        }
         return false
     }
 
@@ -294,6 +318,11 @@ object Linea {
         if (c.continua.isNotEmpty()) return true
         if (c.entrada.isNotEmpty() && local < c.duracionEntradaUs) return true
         if (c.salida.isNotEmpty() && local >= c.duracionUs - c.duracionSalidaUs) return true
+        for (a in c.animaciones) if (a.activa) when (a.momento) {
+            MomentoAnimacion.ENTRADA -> if (a.piezas.isNotEmpty() && local < a.duracionUs) return true
+            MomentoAnimacion.SALIDA -> if (a.piezas.isNotEmpty() && local >= c.duracionUs - a.duracionUs) return true
+            MomentoAnimacion.SIEMPRE -> if (a.continuas.isNotEmpty()) return true
+        }
         if (c.claves.size >= 2 && local >= c.claves.minOf { it.tiempoUs } && local < c.claves.maxOf { it.tiempoUs }) return true
         return false
     }

@@ -128,7 +128,9 @@ object Edicion {
      *
      * Las dos mitades se quedan con lo suyo: la entrada y los fotogramas
      * clave de antes del corte en la primera, la salida, la transicion y los
-     * de despues en la segunda.
+     * de despues en la segunda. Lo que se mueve todo el bloque va en las dos.
+     * Con las animaciones aplicadas igual: la primera conserva las de ENTRADA
+     * y SIEMPRE, la segunda las de SALIDA y SIEMPRE.
      *
      * @return null si el corte deja un trozo demasiado corto
      */
@@ -172,19 +174,17 @@ object Edicion {
         val (nid, q) = p.conId()
         // En el archivo, para video; en duracion, para imagen y texto
         val corte = if (c.esVideo) c.desdeUs + (local * c.velocidad.toDouble()).toLong() else c.desdeUs + local
-        // Las dos mitades llevan un fotograma clave en el corte con el encuadre
-        // que habia ahi: la primera acaba y la segunda empieza exactamente
-        // donde estaba, sin salto.
-        val enCorte = claveEn(c, local)
-        val clavesA = (c.claves.filter { it.tiempoUs < local } + listOfNotNull(enCorte))
-        val clavesB = (listOfNotNull(enCorte?.copy(tiempoUs = 0)) +
-            c.claves.filter { it.tiempoUs > local }.map { it.copy(tiempoUs = it.tiempoUs - local) })
+        val (clavesA, clavesB) = partirClaves(c, c.claves, local)
+        // Las de antes de simplificar se parten igual, para poder volver a ellas en cada mitad
+        val originales = c.clavesOriginales?.let { partirClaves(c, it, local) }
         val a = c.copy(
             hastaUs = corte,
             claves = clavesA,
+            clavesOriginales = originales?.first,
             efectos = c.efectos.mapNotNull { it.recortado(0, local) },
             piezas = c.piezas.map { it.recortada(0, local) },
             salida = emptyList(),
+            animaciones = c.animaciones.filter { it.momento != MomentoAnimacion.SALIDA },
             fundidoSalidaUs = 0,
             transicion = Transicion.NINGUNA
         )
@@ -192,12 +192,27 @@ object Edicion {
             id = nid,
             desdeUs = corte,
             claves = clavesB,
+            clavesOriginales = originales?.second,
             efectos = c.efectos.mapNotNull { it.recortado(local, c.duracionUs) },
             piezas = c.piezas.map { it.recortada(local, c.duracionUs) },
             entrada = emptyList(),
+            animaciones = c.animaciones.filter { it.momento != MomentoAnimacion.ENTRADA },
             fundidoEntradaUs = 0
         )
         return Triple(a, b, q)
+    }
+
+    /**
+     * Las [claves] de [c] a cada lado de [local]. Las dos mitades llevan un
+     * fotograma clave en el corte con el encuadre que habia ahi: la primera
+     * acaba y la segunda empieza exactamente donde estaba, sin salto.
+     */
+    private fun partirClaves(c: Clip, claves: List<Clave>, local: Long): Pair<List<Clave>, List<Clave>> {
+        val enCorte = claveEn(if (claves === c.claves) c else c.copy(claves = claves), local)
+        val a = (claves.filter { it.tiempoUs < local } + listOfNotNull(enCorte))
+        val b = (listOfNotNull(enCorte?.copy(tiempoUs = 0)) +
+            claves.filter { it.tiempoUs > local }.map { it.copy(tiempoUs = it.tiempoUs - local) })
+        return a to b
     }
 
     /**
@@ -215,15 +230,11 @@ object Edicion {
         // principio, se mueven con el contenido.
         val corrimiento = if (c.esVideo) (desplazado / c.velocidad.toDouble()).toLong() else desplazado
         return cambiar(p, id) {
-            // Lo que queda antes del nuevo principio se sustituye por una clave
-            // en el 0 con el encuadre que habia ahi, para que no salte.
-            val inicio = if (corrimiento > 0 && it.claves.any { k -> k.tiempoUs < corrimiento }) claveEn(it, corrimiento) else null
-            val claves = listOfNotNull(inicio) +
-                it.claves.filter { k -> k.tiempoUs >= corrimiento && (inicio == null || k.tiempoUs > corrimiento) }
             it.copy(
                 desdeUs = d,
                 hastaUs = h,
-                claves = claves.map { k -> k.copy(tiempoUs = k.tiempoUs - corrimiento) },
+                claves = clavesDesde(it, it.claves, corrimiento),
+                clavesOriginales = it.clavesOriginales?.let { o -> clavesDesde(it, o, corrimiento) },
                 efectos = it.efectos.mapNotNull { ef ->
                     val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
                     ef.recortado(corrimiento, corrimiento + duracion)
@@ -234,6 +245,20 @@ object Edicion {
                 }
             )
         }
+    }
+
+    /**
+     * Las [claves] de [c] con el principio movido [corrimiento] hacia delante
+     * (o hacia atras si es negativo). Lo que queda antes del nuevo principio
+     * se sustituye por una clave en el 0 con el encuadre que habia ahi, para
+     * que no salte.
+     */
+    private fun clavesDesde(c: Clip, claves: List<Clave>, corrimiento: Long): List<Clave> {
+        val inicio = if (corrimiento > 0 && claves.any { k -> k.tiempoUs < corrimiento })
+            claveEn(if (claves === c.claves) c else c.copy(claves = claves), corrimiento) else null
+        val quedan = listOfNotNull(inicio) +
+            claves.filter { k -> k.tiempoUs >= corrimiento && (inicio == null || k.tiempoUs > corrimiento) }
+        return quedan.map { k -> k.copy(tiempoUs = k.tiempoUs - corrimiento) }
     }
 
     /**
@@ -286,11 +311,12 @@ object Edicion {
         val capa = p.capas.firstOrNull { it.id == id } ?: return p
         if (capa.clip.esTexto) return p
         val donde = puntoDeInsercion(p, capa.inicioUs)
-        // Abajo ocupa toda la pantalla: fuera el encuadre de capa y sus claves,
-        // que lo dejarian pequeno o movido
+        // Abajo ocupa toda la pantalla: fuera el encuadre de capa y sus claves
+        // (tambien las de antes de simplificar), que lo dejarian pequeno o movido
         val clip = capa.clip.copy(
             encuadre = capa.clip.encuadre.copy(escala = 1f, x = 0f, y = 0f, ajuste = Ajuste.CUBRIR),
-            claves = emptyList()
+            claves = emptyList(),
+            clavesOriginales = null
         )
         return p.copy(
             capas = p.capas.filter { it.id != id },

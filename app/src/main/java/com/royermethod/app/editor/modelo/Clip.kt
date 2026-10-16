@@ -144,7 +144,8 @@ data class Clip(
     /**
      * El mismo bloque a otra velocidad. Los fotogramas clave van en tiempo del
      * bloque, asi que se estiran o encogen con el: a doble velocidad, la clave
-     * que estaba en el segundo 2 pasa al 1 y cae sobre la misma imagen.
+     * que estaba en el segundo 2 pasa al 1 y cae sobre la misma imagen. Las
+     * animaciones no: siguen durando lo mismo, solo que nunca mas que el bloque.
      */
     fun conVelocidad(v: Float): Clip {
         if (!esVideo || v == velocidad) return copy(velocidad = v)
@@ -152,13 +153,15 @@ data class Clip(
         val nuevo = copy(
             velocidad = v,
             claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
+            clavesOriginales = clavesOriginales?.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
             efectos = efectos.map { it.tiempoEscalado(f) },
             piezas = piezas.map { it.tiempoEscalado(f) }
         )
         val dur = nuevo.duracionUs
         return nuevo.copy(
             duracionEntradaUs = duracionEntradaUs.coerceAtMost(dur),
-            duracionSalidaUs = duracionSalidaUs.coerceAtMost(dur)
+            duracionSalidaUs = duracionSalidaUs.coerceAtMost(dur),
+            animaciones = animaciones.map { if (it.duracionUs > dur) it.copy(duracionUs = dur) else it }
         )
     }
 

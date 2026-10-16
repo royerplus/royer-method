@@ -604,120 +604,132 @@ class Escena(
     // Encuadre en el tiempo
     // ------------------------------------------------------------------
 
-    /** El encuadre a [local] del inicio, con fotogramas clave y movimiento continuo. */
+    /**
+     * El encuadre a [local] del inicio, con fotogramas clave y movimiento
+     * continuo: el de antes y el de cada animacion SIEMPRE que este puesta.
+     */
     fun encuadreEn(clip: Clip, local: Long): Encuadre = continua(clip, local, clip.encuadreEn(local))
 
     private fun continua(clip: Clip, local: Long, e0: Encuadre): Encuadre {
+        if (clip.continua.isEmpty() && clip.animaciones.isEmpty()) return e0
+        // Lo que va del bloque, para las que lo recorren entero (acercamiento, paneo)
+        val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
         var e = e0
-        for (c in clip.continua) {
-            val s = local / 1_000_000f * c.velocidad
-            val i = c.intensidad
-            e = when (c.tipo) {
-                AnimacionContinua.ACERCAMIENTO -> {
-                    val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    e.copy(escala = e.escala * (1f + 0.15f * i * f))
-                }
-                AnimacionContinua.ALEJAMIENTO -> {
-                    val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    e.copy(escala = e.escala * (1f + 0.15f * i * (1f - f)))
-                }
-                AnimacionContinua.PULSO -> {
-                    val fase = fase(s, GOLPE)
-                    val golpe = (1f - fase).pow(3)
-                    e.copy(escala = e.escala * (1f + 0.05f * i * golpe))
-                }
-                AnimacionContinua.TEMBLOR -> {
-                    val amp = 0.012f * i
-                    e.copy(
-                        x = e.x + amp * ruido(s * 9f, 1.3f),
-                        y = e.y + amp * ruido(s * 9f, 7.1f),
-                        rotacion = e.rotacion + 0.8f * i * ruido(s * 7f, 3.7f),
-                        escala = e.escala * (1f + 0.03f * i)
-                    )
-                }
-                AnimacionContinua.BALANCEO -> e.copy(rotacion = e.rotacion + 3f * i * sin(2f * PI.toFloat() * s / 2f))
-                AnimacionContinua.FLOTAR -> e.copy(
-                    y = e.y + 0.012f * i * sin(2f * PI.toFloat() * s / 2.4f),
-                    x = e.x + 0.006f * i * sin(2f * PI.toFloat() * s / 3.7f)
-                )
-                AnimacionContinua.GIRAR -> e.copy(rotacion = e.rotacion + 90f * i * s)
-                AnimacionContinua.GLITCH -> {
-                    // Un golpe de 0.2 s cada 1.2 s; el resto del tiempo, quieto
-                    val ciclo = s / 1.2f
-                    val fase = ciclo - floor(ciclo)
-                    if (fase > 0.17f) e else {
-                        val k = floor(s * 30f)
-                        val semilla = floor(ciclo) * 3.1f
-                        e.copy(
-                            x = e.x + 0.03f * i * ruido(k, 1.9f + semilla),
-                            y = e.y + 0.012f * i * ruido(k, 4.4f + semilla),
-                            escala = e.escala * (1f + 0.04f * i * abs(ruido(k, 8.8f + semilla)))
-                        )
-                    }
-                }
-                AnimacionContinua.VIBRAR -> {
-                    val amp = 0.004f * i
-                    e.copy(
-                        x = e.x + amp * ruido(s * 40f, 2.2f),
-                        y = e.y + amp * ruido(s * 40f, 6.6f),
-                        escala = e.escala * (1f + 0.01f * i)
-                    )
-                }
-                AnimacionContinua.RESPIRAR -> e.copy(escala = e.escala * (1f + 0.04f * i * (0.5f - 0.5f * cos(2f * PI.toFloat() * s / 3f))))
-                AnimacionContinua.PANEO -> {
-                    val f = (local.toFloat() / clip.duracionUs.coerceAtLeast(1)).coerceIn(0f, 1f)
-                    // Con un poco de zoom, para que al moverse no se vea el borde
-                    e.copy(x = e.x + 0.05f * i * (f * 2f - 1f), escala = e.escala * (1f + 0.1f * i))
-                }
-                AnimacionContinua.SHAKE_FLASH -> {
-                    // La sacudida dura el 60% del golpe y se apaga; el flash, en destellos()
-                    val fase = fase(s, GOLPE)
-                    val d = (1f - fase / 0.6f).coerceAtLeast(0f)
-                    val dx = 0.03f * i * d * ruido(s * 40f, 1.7f)
-                    val dy = 0.02f * i * d * ruido(s * 40f, 4.2f)
-                    val giro = 2.5f * i * d * ruido(s * 30f, 7.3f)
-                    e.copy(x = e.x + dx, y = e.y + dy, rotacion = e.rotacion + giro, escala = e.escala * cubrir(dx, dy, giro))
-                }
-                AnimacionContinua.ZOOM_RITMO -> {
-                    val fase = fase(s, GOLPE)
-                    e.copy(escala = e.escala * (1f + 0.15f * i * (1f - fase).pow(4)))
-                }
-                AnimacionContinua.CAMARA_EN_MANO -> {
-                    val dx = 0.01f * i * ruido(s * 1.3f, 1.1f) + 0.003f * i * ruido(s * 3.1f, 9.9f)
-                    val dy = 0.01f * i * ruido(s * 1.1f, 3.3f)
-                    val giro = 0.8f * i * ruido(s * 0.9f, 5.5f)
-                    // Zoom fijo, el que pide lo maximo que se puede mover: si
-                    // cambiara con el movimiento se notaria que respira
-                    e.copy(x = e.x + dx, y = e.y + dy, rotacion = e.rotacion + giro, escala = e.escala * cubrir(0.013f * i, 0.01f * i, 0.8f * i))
-                }
-                AnimacionContinua.LATIDO -> {
-                    // 0.8 s por latido: un golpe, otro mas flojo al poco, y pausa
-                    val fase = fase(s, 0.8f)
-                    val uno = exp(-fase * 18f)
-                    val dos = if (fase >= 0.2f) 0.7f * exp(-(fase - 0.2f) * 18f) else 0f
-                    e.copy(escala = e.escala * (1f + 0.06f * i * (uno + dos)))
-                }
-                AnimacionContinua.TWITCH -> {
-                    // Un tiron de 0.25 s cada segundo; el RGB, en destellos()
-                    val ciclo = s / 1f
-                    val fase = ciclo - floor(ciclo)
-                    if (fase >= 0.25f) e else {
-                        val k = floor(s * 24f)
-                        val semilla = floor(ciclo) * 3.1f
-                        e.copy(
-                            x = e.x + 0.03f * i * ruido(k, 2.8f + semilla),
-                            y = e.y + 0.015f * i * ruido(k, 5.2f + semilla),
-                            escala = e.escala * (1f + 0.1f * i * abs(ruido(k, 1.4f + semilla)))
-                        )
-                    }
-                }
-                AnimacionContinua.ESTROBO, AnimacionContinua.RGB -> e
-            }
+        for (c in clip.continua) e = continuo(c, local / 1_000_000f * c.velocidad, f, e)
+        for (a in clip.animaciones) if (a.activa && a.momento == MomentoAnimacion.SIEMPRE) {
+            for (c in a.continuas) e = continuo(c, local / 1_000_000f * c.velocidad, f, e)
         }
         return e
     }
 
-    /** Lo que aportan las animaciones de entrada y salida en [local]. */
+    /**
+     * Una pieza continua sobre el encuadre [e]. [s] son los segundos ya
+     * multiplicados por su rapidez y [f] lo que va del bloque (0 a 1). Solo
+     * suma a la posicion y al giro y multiplica la escala: lo mismo se puede
+     * llevar en un [Efecto] sin que cambie nada.
+     */
+    private fun continuo(c: Continuo, s: Float, f: Float, e: Encuadre): Encuadre {
+        val i = c.intensidad
+        return when (c.tipo) {
+            AnimacionContinua.ACERCAMIENTO -> e.copy(escala = e.escala * (1f + 0.15f * i * f))
+            AnimacionContinua.ALEJAMIENTO -> e.copy(escala = e.escala * (1f + 0.15f * i * (1f - f)))
+            AnimacionContinua.PULSO -> {
+                val fase = fase(s, GOLPE)
+                val golpe = (1f - fase).pow(3)
+                e.copy(escala = e.escala * (1f + 0.05f * i * golpe))
+            }
+            AnimacionContinua.TEMBLOR -> {
+                val amp = 0.012f * i
+                e.copy(
+                    x = e.x + amp * ruido(s * 9f, 1.3f),
+                    y = e.y + amp * ruido(s * 9f, 7.1f),
+                    rotacion = e.rotacion + 0.8f * i * ruido(s * 7f, 3.7f),
+                    escala = e.escala * (1f + 0.03f * i)
+                )
+            }
+            AnimacionContinua.BALANCEO -> e.copy(rotacion = e.rotacion + 3f * i * sin(2f * PI.toFloat() * s / 2f))
+            AnimacionContinua.FLOTAR -> e.copy(
+                y = e.y + 0.012f * i * sin(2f * PI.toFloat() * s / 2.4f),
+                x = e.x + 0.006f * i * sin(2f * PI.toFloat() * s / 3.7f)
+            )
+            AnimacionContinua.GIRAR -> e.copy(rotacion = e.rotacion + 90f * i * s)
+            AnimacionContinua.GLITCH -> {
+                // Un golpe de 0.2 s cada 1.2 s; el resto del tiempo, quieto
+                val ciclo = s / 1.2f
+                val fase = ciclo - floor(ciclo)
+                if (fase > 0.17f) e else {
+                    val k = floor(s * 30f)
+                    val semilla = floor(ciclo) * 3.1f
+                    e.copy(
+                        x = e.x + 0.03f * i * ruido(k, 1.9f + semilla),
+                        y = e.y + 0.012f * i * ruido(k, 4.4f + semilla),
+                        escala = e.escala * (1f + 0.04f * i * abs(ruido(k, 8.8f + semilla)))
+                    )
+                }
+            }
+            AnimacionContinua.VIBRAR -> {
+                val amp = 0.004f * i
+                e.copy(
+                    x = e.x + amp * ruido(s * 40f, 2.2f),
+                    y = e.y + amp * ruido(s * 40f, 6.6f),
+                    escala = e.escala * (1f + 0.01f * i)
+                )
+            }
+            AnimacionContinua.RESPIRAR -> e.copy(escala = e.escala * (1f + 0.04f * i * (0.5f - 0.5f * cos(2f * PI.toFloat() * s / 3f))))
+            AnimacionContinua.PANEO -> {
+                // Con un poco de zoom, para que al moverse no se vea el borde
+                e.copy(x = e.x + 0.05f * i * (f * 2f - 1f), escala = e.escala * (1f + 0.1f * i))
+            }
+            AnimacionContinua.SHAKE_FLASH -> {
+                // La sacudida dura el 60% del golpe y se apaga; el flash, en destellos()
+                val fase = fase(s, GOLPE)
+                val d = (1f - fase / 0.6f).coerceAtLeast(0f)
+                val dx = 0.03f * i * d * ruido(s * 40f, 1.7f)
+                val dy = 0.02f * i * d * ruido(s * 40f, 4.2f)
+                val giro = 2.5f * i * d * ruido(s * 30f, 7.3f)
+                e.copy(x = e.x + dx, y = e.y + dy, rotacion = e.rotacion + giro, escala = e.escala * cubrir(dx, dy, giro))
+            }
+            AnimacionContinua.ZOOM_RITMO -> {
+                val fase = fase(s, GOLPE)
+                e.copy(escala = e.escala * (1f + 0.15f * i * (1f - fase).pow(4)))
+            }
+            AnimacionContinua.CAMARA_EN_MANO -> {
+                val dx = 0.01f * i * ruido(s * 1.3f, 1.1f) + 0.003f * i * ruido(s * 3.1f, 9.9f)
+                val dy = 0.01f * i * ruido(s * 1.1f, 3.3f)
+                val giro = 0.8f * i * ruido(s * 0.9f, 5.5f)
+                // Zoom fijo, el que pide lo maximo que se puede mover: si
+                // cambiara con el movimiento se notaria que respira
+                e.copy(x = e.x + dx, y = e.y + dy, rotacion = e.rotacion + giro, escala = e.escala * cubrir(0.013f * i, 0.01f * i, 0.8f * i))
+            }
+            AnimacionContinua.LATIDO -> {
+                // 0.8 s por latido: un golpe, otro mas flojo al poco, y pausa
+                val fase = fase(s, 0.8f)
+                val uno = exp(-fase * 18f)
+                val dos = if (fase >= 0.2f) 0.7f * exp(-(fase - 0.2f) * 18f) else 0f
+                e.copy(escala = e.escala * (1f + 0.06f * i * (uno + dos)))
+            }
+            AnimacionContinua.TWITCH -> {
+                // Un tiron de 0.25 s cada segundo; el RGB, en destellos()
+                val ciclo = s / 1f
+                val fase = ciclo - floor(ciclo)
+                if (fase >= 0.25f) e else {
+                    val k = floor(s * 24f)
+                    val semilla = floor(ciclo) * 3.1f
+                    e.copy(
+                        x = e.x + 0.03f * i * ruido(k, 2.8f + semilla),
+                        y = e.y + 0.015f * i * ruido(k, 5.2f + semilla),
+                        escala = e.escala * (1f + 0.1f * i * abs(ruido(k, 1.4f + semilla)))
+                    )
+                }
+            }
+            AnimacionContinua.ESTROBO, AnimacionContinua.RGB -> e
+        }
+    }
+
+    /**
+     * Lo que aportan las animaciones de entrada y salida en [local]: primero
+     * las de antes, despues cada animacion aplicada con su propia duracion.
+     */
     private fun animacion(clip: Clip, local: Long): Efecto {
         var r = Efecto()
         if (clip.entrada.isNotEmpty() && clip.duracionEntradaUs > 0) {
@@ -729,7 +741,25 @@ class Escena(
             val q = (restante.toFloat() / clip.duracionSalidaUs).coerceIn(0f, 1f)
             if (q < 1f) for (m in clip.salida) r = r.y(efecto(m, q))
         }
+        for (a in clip.animaciones) {
+            if (!a.activa || a.piezas.isEmpty() || a.duracionUs <= 0) continue
+            // La misma cuenta que arriba: una aplicada se ve igual que la de antes
+            val q = when (a.momento) {
+                MomentoAnimacion.ENTRADA -> local.toFloat() / a.duracionUs
+                MomentoAnimacion.SALIDA -> (clip.duracionUs - local).toFloat() / a.duracionUs
+                MomentoAnimacion.SIEMPRE -> continue
+            }
+            r = conPiezas(r, a.piezas, q.coerceIn(0f, 1f), 1f)
+        }
         return r
+    }
+
+    /** Suma a [r] las [piezas] en [q], con su intensidad por [fuerza]; nada si ya acabaron. */
+    private fun conPiezas(r: Efecto, piezas: List<Movimiento>, q: Float, fuerza: Float): Efecto {
+        if (q >= 1f) return r
+        var e = r
+        for (m in piezas) e = e.y(efecto(if (fuerza == 1f) m else m.copy(intensidad = m.intensidad * fuerza), q))
+        return e
     }
 
     /**
@@ -828,42 +858,85 @@ class Escena(
      */
     private fun destellos(clip: Clip, local: Long): Efecto {
         var r = Efecto()
-        for (c in clip.continua) {
-            val s = local / 1_000_000f * c.velocidad
-            val i = c.intensidad
-            r = r.y(
-                when (c.tipo) {
-                    AnimacionContinua.SHAKE_FLASH -> {
-                        val fase = fase(s, GOLPE)
-                        val d = (1f - fase / 0.25f).coerceAtLeast(0f)
-                        Efecto(luz = (0.9f * i).coerceAtMost(1f) * d * d)
-                    }
-                    AnimacionContinua.ESTROBO -> {
-                        val fase = fase(s, GOLPE / 2f)
-                        Efecto(luz = if (fase < 0.18f) (0.85f * i).coerceAtMost(1f) else 0f)
-                    }
-                    AnimacionContinua.RGB -> Efecto(rgb = alto * 0.008f * i * (0.6f + 0.4f * abs(ruido(s * 12f, 2.5f))))
-                    AnimacionContinua.TWITCH -> {
-                        val ciclo = s / 1f
-                        val fase = ciclo - floor(ciclo)
-                        if (fase >= 0.25f) Efecto() else {
-                            val k = floor(s * 24f)
-                            Efecto(rgb = alto * 0.012f * i * abs(ruido(k, 6.1f + floor(ciclo) * 3.1f)))
-                        }
-                    }
-                    else -> Efecto()
-                }
-            )
+        for (c in clip.continua) r = r.y(destello(c, local / 1_000_000f * c.velocidad))
+        for (a in clip.animaciones) if (a.activa && a.momento == MomentoAnimacion.SIEMPRE) {
+            for (c in a.continuas) r = r.y(destello(c, local / 1_000_000f * c.velocidad))
         }
         return r
+    }
+
+    /** La luz y el color de una pieza continua; [s] son los segundos por su rapidez. */
+    private fun destello(c: Continuo, s: Float): Efecto {
+        val i = c.intensidad
+        return when (c.tipo) {
+            AnimacionContinua.SHAKE_FLASH -> {
+                val fase = fase(s, GOLPE)
+                val d = (1f - fase / 0.25f).coerceAtLeast(0f)
+                Efecto(luz = (0.9f * i).coerceAtMost(1f) * d * d)
+            }
+            AnimacionContinua.ESTROBO -> {
+                val fase = fase(s, GOLPE / 2f)
+                Efecto(luz = if (fase < 0.18f) (0.85f * i).coerceAtMost(1f) else 0f)
+            }
+            AnimacionContinua.RGB -> Efecto(rgb = alto * 0.008f * i * (0.6f + 0.4f * abs(ruido(s * 12f, 2.5f))))
+            AnimacionContinua.TWITCH -> {
+                val ciclo = s / 1f
+                val fase = ciclo - floor(ciclo)
+                if (fase >= 0.25f) Efecto() else {
+                    val k = floor(s * 24f)
+                    Efecto(rgb = alto * 0.012f * i * abs(ruido(k, 6.1f + floor(ciclo) * 3.1f)))
+                }
+            }
+            else -> Efecto()
+        }
     }
 
     /**
      * Un efecto ANIMACION: la animacion que llevaba el bloque, ahora en el
      * reloj del efecto. [fuerza] multiplica la intensidad de cada pieza.
-     * ESQUELETO: se rellena en el trabajo de animaciones.
+     *
+     * Recien convertida se ve igual que antes: la entrada recorre su tramo
+     * como recorria su duracion, la salida lo recorre al reves y las
+     * continuas cuentan los segundos desde el principio del efecto. El
+     * movimiento de las continuas va como desplazamiento, giro y escala del
+     * [Efecto] en vez de en el encuadre, que es la misma cuenta.
      */
-    private fun efectoDeAnimacion(ef: EfectoVideo, local: Long, fuerza: Float): Efecto = Efecto()
+    private fun efectoDeAnimacion(ef: EfectoVideo, local: Long, fuerza: Float): Efecto {
+        val a = ef.animacion ?: return Efecto()
+        return when (a.momento) {
+            MomentoAnimacion.ENTRADA -> conPiezas(Efecto(), a.piezas, avanceAnimacion(ef, local, alReves = false), fuerza)
+            MomentoAnimacion.SALIDA -> conPiezas(Efecto(), a.piezas, avanceAnimacion(ef, local, alReves = true), fuerza)
+            MomentoAnimacion.SIEMPRE -> {
+                val f = avanceAnimacion(ef, local, alReves = false)
+                val s = ef.segundosEn(local)
+                var e = Encuadre()
+                var luz = Efecto()
+                for (c0 in a.continuas) {
+                    val c = if (fuerza == 1f) c0 else c0.copy(intensidad = c0.intensidad * fuerza)
+                    e = continuo(c, s * c.velocidad, f, e)
+                    luz = luz.y(destello(c, s * c.velocidad))
+                }
+                Efecto(dx = e.x, dy = e.y, escala = e.escala, rotacion = e.rotacion).y(luz)
+            }
+        }
+    }
+
+    /**
+     * Por donde va la animacion de un efecto ANIMACION, de 0 a 1 (en la
+     * salida, de 1 a 0). Sin puntos de progreso ni rapidez se cuenta en
+     * microsegundos enteros y se divide en Float como en [animacion]: asi las
+     * piezas que van a saltos (glitch, parpadeo, estrobo) caen en el mismo
+     * escalon que antes de convertir y no uno antes por un redondeo.
+     */
+    private fun avanceAnimacion(ef: EfectoVideo, local: Long, alReves: Boolean): Float {
+        val base = ef.duracionBaseUs.takeIf { it > 0 } ?: ef.duracionUs
+        if (ef.progresos.isNotEmpty() || ef.rapidez != 1f || base <= 0) {
+            val p = ef.progresoEn(local)
+            return if (alReves) 1f - p else p
+        }
+        val transcurrido = local - ef.inicioUs + ef.desfaseUs
+        return ((if (alReves) base - transcurrido else transcurrido).toFloat() / base).coerceIn(0f, 1f)
+    }
 
     /** Efectos libres del bloque, compartidos por vista previa y exportacion. */
     internal fun efectosVideo(clip: Clip, local: Long): Efecto {
