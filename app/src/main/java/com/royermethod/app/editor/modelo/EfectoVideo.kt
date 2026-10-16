@@ -95,10 +95,7 @@ data class EfectoVideo(
     }
 
     /** El progreso con la curva elegida aplicada: lo que recorren los tipos "de .. a ..". */
-    fun avanceEn(localUs: Long): Float {
-        val p = progresoEn(localUs)
-        return ajustes.bezier?.en(p) ?: Escena.curva(ajustes.curva, p)
-    }
+    fun avanceEn(localUs: Long): Float = ajustes.avance(progresoEn(localUs))
 
     /** El valor entre [AjustesEfecto.desde] y [AjustesEfecto.hasta] en [localUs]. */
     fun valorEn(localUs: Long): Float = ajustes.desde + (ajustes.hasta - ajustes.desde) * avanceEn(localUs)
@@ -142,7 +139,10 @@ data class AjustesEfecto(
     val invertir: Boolean = false,
     /** Mitades: corte vertical (izquierda y derecha) en vez de horizontal (arriba y abajo). */
     val vertical: Boolean = false
-)
+) {
+    /** La curva elegida en [x], de 0 a 1. */
+    fun avance(x: Float): Float = bezier?.en(x) ?: Escena.curva(curva, x)
+}
 
 enum class TipoEfectoVideo(val nombre: String) {
     SACUDIDA("Sacudida"),
