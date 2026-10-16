@@ -12,6 +12,29 @@ class EfectoVideoTest {
     private fun escena(c: Clip) = Escena(Proyecto(principal = listOf(c), fondo = Fondo.NEGRO), 576, 1024, medidor)
 
     @Test
+    fun unaLineaQueAcabaYUnIrisQueEmpiezaEnElMismoFotogramaNoMezclanSusBordes() {
+        // Revela hasta 1 s y desde ahi cierra en circulo. Con desenfoque de
+        // movimiento, el fotograma de 1 s tiene muestras de las dos.
+        val c = Clip(1, origen = video, efectos = listOf(
+            EfectoVideo(TipoEfectoVideo.REVELAR_HORIZONTAL, 0, 1_000_000),
+            EfectoVideo(TipoEfectoVideo.CIRCULO_CERRAR, 1_000_000, 2_000_000)))
+        fun escenaConBlur() = Escena(Proyecto(principal = listOf(c), fondo = Fondo.NEGRO,
+            salida = AjustesSalida(desenfoqueMovimiento = true)), 576, 1024, medidor)
+
+        // Manda el iris: la linea casi abierta (borde ~288) no puede leerse
+        // como un radio, que dejaria un circulo pequeno durante un fotograma.
+        val iris = escenaConBlur().cuadroEn(1_002_000).clips.single()
+        assertTrue(iris.mascara!!.radial)
+        assertTrue(iris.bordes.size > 1)
+        for (b in iris.bordes) assertTrue("radio $b", b > 500f)
+
+        // Manda la linea: las muestras del iris no la cierran.
+        val linea = escenaConBlur().cuadroEn(998_000).clips.single()
+        assertFalse(linea.mascara!!.radial)
+        for (b in linea.bordes) assertTrue("linea $b", b in 250f..300f)
+    }
+
+    @Test
     fun losEfectosSoloActuanEnSuIntervalo() {
         val efecto = EfectoVideo(TipoEfectoVideo.RGB, 1_000_000, 2_000_000)
         val c = Clip(1, origen = video, efectos = listOf(efecto))

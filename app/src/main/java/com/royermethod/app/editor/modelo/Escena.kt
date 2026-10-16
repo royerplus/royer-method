@@ -124,6 +124,49 @@ class Escena(
         a.opacidades.contentEquals(b.opacidades) && a.matrices.size == b.matrices.size &&
             a.matrices.indices.all { a.matrices[it].contentEquals(b.matrices[it]) }
 
+    /**
+     * Un paso lleva una sola mascara para todas las muestras del obturador,
+     * pero dentro de un fotograma puede acabar una y empezar otra (una linea
+     * que revela y enseguida un iris). Sus bordes no se miden igual: la
+     * posicion de la linea leida como radio daria un destello. Manda la de la
+     * muestra del centro; las muestras con otra clase de mascara copian el
+     * borde de la muestra mas cercana que tiene la que manda. Las que no
+     * tienen mascara se quedan con el borde que no recorta nada.
+     */
+    private fun unaMascara(mascaras: Array<Mascara?>, bordes: FloatArray): Mascara? {
+        val n = mascaras.size
+        var manda: Mascara? = null
+        var mejor = Int.MAX_VALUE
+        for (i in 0 until n) {
+            val m = mascaras[i] ?: continue
+            val d = abs(2 * i - (n - 1))
+            if (d < mejor) { mejor = d; manda = m }
+        }
+        if (manda == null) return null
+        val original = bordes.copyOf()
+        for (i in 0 until n) {
+            val m = mascaras[i] ?: continue
+            if (mismaClase(m, manda)) continue
+            var j = -1
+            for (q in 0 until n) {
+                val mq = mascaras[q] ?: continue
+                if (mismaClase(mq, manda) && (j < 0 || abs(q - i) < abs(j - i))) j = q
+            }
+            bordes[i] = original[j]
+        }
+        // Fuera de un iris invertido tiene que verse entero. Su borde neutro
+        // esta al otro lado que el de las mascaras que dejan ver el interior.
+        if (manda.invertida) for (i in bordes.indices) {
+            if (bordes[i] == SIN_BORDE) bordes[i] = -SIN_BORDE
+        }
+        return manda
+    }
+
+    /** Si dos mascaras miden el borde igual y se puede pasar de una a otra. */
+    private fun mismaClase(a: Mascara, b: Mascara): Boolean =
+        a.radial == b.radial && a.invertida == b.invertida &&
+            (a.radial || (a.dirX == b.dirX && a.dirY == b.dirY))
+
     private fun dibujo(
         clip: Clip,
         t: Long,
@@ -138,7 +181,7 @@ class Escena(
         val opacidades = FloatArray(ts.size)
         // Una muestra sin mascara lleva el borde tan lejos que no recorta nada
         val bordes = FloatArray(ts.size) { SIN_BORDE }
-        var mascara: Mascara? = null
+        val mascaras = arrayOfNulls<Mascara>(ts.size)
         var desenfoque = 0f
         var desenfoqueX = 0f
         var desenfoqueY = 0f
@@ -164,7 +207,7 @@ class Escena(
             // Lo que imponga la transicion encima
             var conMascara = anim.mascara != null
             if (anim.mascara != null) {
-                mascara = anim.mascara
+                mascaras[i] = anim.mascara
                 bordes[i] = anim.borde
             }
             if (transicion != null) {
@@ -177,7 +220,7 @@ class Escena(
                 escalaX *= a.escalaX
                 escalaY *= a.escalaY
                 if (a.mascara != null) {
-                    mascara = a.mascara
+                    mascaras[i] = a.mascara
                     bordes[i] = a.borde
                     conMascara = true
                 }
@@ -187,7 +230,7 @@ class Escena(
                 // La mascara de revelar va en el espacio del lienzo, a lo ancho
                 // de donde cae el bloque.
                 val caja = caja(clip, e, cw, ch)
-                mascara = Mascara(1f, 0f, suave = 6f)
+                mascaras[i] = Mascara(1f, 0f, suave = 6f)
                 bordes[i] = caja.first + (caja.second - caja.first) * anim.revelar - ancho / 2f
             }
             val relativa = pieza?.encuadreEn(local)
@@ -204,11 +247,7 @@ class Escena(
         }
 
         val localCentro = t - inicio
-        // Fuera de un iris invertido tiene que verse entero. Su borde neutro
-        // esta al otro lado que el de las mascaras que dejan ver el interior.
-        if (mascara?.invertida == true) for (i in bordes.indices) {
-            if (bordes[i] == SIN_BORDE) bordes[i] = -SIN_BORDE
-        }
+        val mascara = unaMascara(mascaras, bordes)
         // Flashes y RGB son luz, no movimiento: van en el instante del
         // fotograma, sin promediar el obturador. Si no, el flash que cae justo
         // en el golpe saldria a medias, mezclado con el final del anterior.
@@ -520,8 +559,13 @@ class Escena(
         val dentro = ArrayList<Paso>(3)
         val delante = dibujos(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip)
         if (proyecto.fondo == Fondo.DESENFOCADO) {
-            val base = if (clip.piezas.isEmpty()) delante.first() as PasoClip else dibujo(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip)
-            fondoDe(base, t - inicio, forzar = clip.piezas.isNotEmpty())?.let { dentro.add(it) }
+            // Partido en piezas, entre ellas se ve lo de detras aunque el
+            // bloque entero tapara el lienzo. Si las piezas se juntaron en un
+            // solo dibujo, es el bloque de siempre.
+            val unico = delante.singleOrNull() as? PasoClip
+            val fondo = if (unico != null) fondoDe(unico, t - inicio)
+            else fondoDe(dibujo(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip), t - inicio, forzar = true)
+            fondo?.let { dentro.add(it) }
         }
         dentro.addAll(delante)
 
@@ -533,14 +577,16 @@ class Escena(
         }
         val n = instantes(t, k).size
         val efs = List(n) { ef(it) }
+        val bordes = FloatArray(n) { if (efs[it].mascara != null) efs[it].borde else SIN_BORDE }
+        val mascara = unaMascara(Array(n) { efs[it].mascara }, bordes)
         pasos.add(
             PasoGrupo(
                 // Con su color de fondo: la escena es opaca y tapa la otra
                 pasos = listOf(PasoSolido(colorFondo(), floatArrayOf(1f))) + dentro,
                 matrices = efs.map { desplazamiento(it.dx, it.dy, it.escalaX, it.escalaY) },
                 opacidades = FloatArray(n) { efs[it].opacidad.coerceIn(0f, 1f) },
-                mascara = efs.firstNotNullOfOrNull { it.mascara },
-                bordes = FloatArray(n) { if (efs[it].mascara != null) efs[it].borde else SIN_BORDE },
+                mascara = mascara,
+                bordes = bordes,
                 extender = lado.extender
             )
         )

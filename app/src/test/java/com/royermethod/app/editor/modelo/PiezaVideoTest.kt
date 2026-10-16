@@ -105,6 +105,15 @@ class PiezaVideoTest {
     }
 
     @Test
+    fun mitadesQueSeJuntanNoPonenFondoSiElBloqueTapaElLienzo() {
+        val solo = escena(clip(), fondo = Fondo.DESENFOCADO).cuadroEn(1_000_000).clips
+        val juntas = escena(clip(listOf(superior, inferior)), fondo = Fondo.DESENFOCADO).cuadroEn(1_000_000).clips
+        assertEquals(0, solo.count { it.esFondo })
+        assertEquals(0, juntas.count { it.esFondo })
+        assertEquals(1, juntas.size)
+    }
+
+    @Test
     fun regionesYClavesEditadasQuedanAcotadas() {
         val r = RegionUv(-1f, Float.NaN, 2f, -1f).acotada()
         assertEquals(0f, r.izquierda, 0f)
