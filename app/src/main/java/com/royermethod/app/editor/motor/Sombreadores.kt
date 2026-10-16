@@ -242,15 +242,20 @@ vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
     if (uRadio <= 0.0 && (uRadioDir.x > 0.0 || uRadioDir.y > 0.0)) {
         // Solo en una direccion: muestras repartidas por igual a lo largo de
         // la linea, como el rastro de un movimiento. El disco de abajo deja
-        // copias separadas cuando el rastro es largo. Cada muestra del
-        // obturador corre las suyas una fraccion del paso ([fase]): juntas
-        // llenan la linea en vez de repetir los mismos puntos y dejar rayas.
+        // copias separadas cuando el rastro es largo. Una muestra cada ~3 px
+        // del lienzo (entre 16 y 64): con menos, un rastro de 500 px deja
+        // rayas finas. Cada muestra del obturador y cada pixel corren las
+        // suyas una fraccion del paso ([fase] y un ruido fijo), asi que lo
+        // que queda es grano y no lineas.
+        float n = clamp(ceil(2.0 * (uRadioDir.x + uRadioDir.y) / 3.0), 16.0, 64.0);
+        float ruido = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
         vec4 s = vec4(0.0);
-        for (int j = 0; j < 16; j++) {
-            float t = (float(j) + 0.5 + fase) / 8.0 - 1.0;
+        for (int j = 0; j < 64; j++) {
+            if (float(j) >= n) break;
+            float t = (float(j) + 0.5 + fase + ruido / uN) / n * 2.0 - 1.0;
             s += tomarRgb(uv + t * (ejeX + ejeY), desp);
         }
-        return s / 16.0;
+        return s / n;
     }
     if (uRadio > 0.0 || uRadioDir.x > 0.0 || uRadioDir.y > 0.0) {
         // Disco de muestras en espiral: sin tablas, que GLSL ES 1 no admite
