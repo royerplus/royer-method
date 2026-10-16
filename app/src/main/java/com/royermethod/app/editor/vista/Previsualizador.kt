@@ -64,6 +64,12 @@ class Previsualizador(context: Context) {
     private var escenaMuestras = 0
     private var sonido: SalidaAudio? = null
     private var segmentosSonando: List<Segmento>? = null
+    private var totalSonando = -1L
+    /**
+     * El sonido ya acabo (o no llego a sonar) y la imagen sigue con el reloj
+     * del sistema desde donde iba. [sonido] se conserva para pararlo luego.
+     */
+    private var relojDeSistema = false
     private var inicioUs = 0L
     private var inicioNanos = 0L
     /** Orden y busqueda que realmente llegaron a preparar este reloj en GL. */
@@ -150,7 +156,7 @@ class Previsualizador(context: Context) {
         h.post {
             if (reproduciendo) {
                 val segs = PlanAudio.de(p)
-                if (segs != segmentosSonando) reiniciarSonido(reloj())
+                if (segs != segmentosSonando || PlanAudio.total(p) != totalSonando) reiniciarSonido(reloj())
             } else {
                 ultimoDibujado = -1
                 dibujarAhora()
@@ -270,6 +276,8 @@ class Previsualizador(context: Context) {
         val p = proyecto
         val segs = PlanAudio.de(p)
         segmentosSonando = segs
+        totalSonando = PlanAudio.total(p)
+        relojDeSistema = false
         inicioUs = desdeUs
         if (segs.isNotEmpty()) {
             sonido = runCatching { SalidaAudio(app, segs, PlanAudio.total(p), Pcm.frames(desdeUs)) }.getOrNull()
@@ -280,6 +288,7 @@ class Previsualizador(context: Context) {
     }
 
     private fun invalidarReloj() {
+        relojDeSistema = false
         ordenDelReloj = -1
         busquedaDelReloj = -1
     }
@@ -293,7 +302,7 @@ class Previsualizador(context: Context) {
         // se usa el audio anterior para sobrescribir una busqueda pendiente.
         if (!relojVigente(orden, busqueda)) return tiempo
         val s = sonido
-        if (s != null) {
+        if (s != null && !relojDeSistema) {
             val frames = runCatching { s.sonados() }.getOrNull()
             val audioUs = frames?.let { inicioUs + Pcm.us(it) } ?: tiempo
             if (s.fallo || frames == null) {
@@ -305,7 +314,16 @@ class Previsualizador(context: Context) {
                 runCatching { s.parar() }
                 return inicioUs
             }
-            return if (s.agotada) maxOf(audioUs, Linea.duracion(proyecto)) else audioUs
+            if (s.agotada || s.sinArrancar) {
+                // Lo consumido llega al final antes que lo que suena: saltar a
+                // la duracion se comeria la latencia del final. Se sigue con el
+                // reloj del sistema desde lo que ya sono.
+                inicioUs = maxOf(tiempo, audioUs)
+                inicioNanos = System.nanoTime()
+                relojDeSistema = true
+                return inicioUs
+            }
+            return audioUs
         }
         return inicioUs + (System.nanoTime() - inicioNanos) / 1000
     }
