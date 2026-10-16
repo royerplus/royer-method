@@ -185,3 +185,22 @@ Falta:
 - .royer actual: SHA256 d284575fa5422e764a0d8cb48601b29ba60d1422b3c25131816fb8f3325f34f4.
 
 Pendiente: el tirón del cuadro 194; el intro congelado bajo las mitades (límite del material); G del segundo ciclo (351) sin medida fiable.
+
+## Estado final al 2026-10-16 05:05 (cierre de Claude; sirve para Claude, ChatGPT/Codex o quien siga)
+
+**Entregable actual:** export 6, en `C:/Users/PC/Downloads/royer-method-work/entrega/` (replica-medida-6.mp4, replica-medida-6.royer, el APK .prueba que lo exportó, su informe y SHA256.txt). También está en el teléfono, en Movies/RoyerMethod/replica-medida-6.mp4. Revisado cuadro a cuadro contra la referencia: coincide todo lo listado arriba (mitades, iris y anillo, agujero, giros, espejos, barridos de G, latigazos con su rastro, fundido final). El generador vigente es `royer-method-work/replicar_medida.py` (no está en git).
+
+**Commits nuevos SIN probar en el teléfono** (compilan y pasan 105 pruebas JVM):
+- 88cc6d0: el Compositor suelta los decodificadores de video en otro hilo (debería quitar el tirón de 80 ms del cuadro 194).
+- 7fab2d8, 9f42ea4, 5f1ebc9: arreglos del reloj de la vista previa (debería quitar el tirón de ~200 ms al dar play; detalle en cada commit).
+- 9c1d031: prueba de diagnóstico `testDiagnosticoArranqueAudio`, que escribe `pruebas/arranque-audio.json`.
+
+**Próximo paso exacto:**
+1. Leer `C:/Users/PC/Downloads/EditorPro-main/CELULAR.md`; marcarlo OCUPADO.
+2. Compilar (`$env:JAVA_HOME=...jdk21...; .\gradlew.bat --offline testDebugUnitTest assemblePrueba assembleDebugAndroidTest`). Instalar `app/build/outputs/apk/prueba/app-prueba.apk` y `app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk` con `adb install -r`. Nunca tocar com.royermethod.app.
+3. La réplica ya está importada en la app .prueba. Correr `testPrevisualizarProyectoReal` (runner `com.royermethod.app.prueba.test/android.test.InstrumentationTestRunner`) y comparar contra `royer-method-work/resultados/export-medido-6/preview-1-informe.json` (29,46 fps, 1 salto, huecos en 3→4 de ~200 ms y en 193→194 de 85 ms).
+4. Correr `testDiagnosticoArranqueAudio` si el tirón del arranque sigue.
+5. Re-exportar (`testImportarYExportarProyectoReal`; justo después de lanzar `am instrument` hay que abrir MainActivity de .prueba con `am start`, porque "Hiber" de Infinix congela la app si queda en segundo plano). Confirmar que la diferencia media contra la export 6 es menor que 1/255 (los cuadros se comparan con ffmpeg + PIL; scripts de ejemplo en este documento y en el historial).
+6. Dejar CELULAR.md en LIBRE con una línea de historial.
+
+**Límites que no se pueden arreglar con el material:** el intro queda congelado bajo las mitades (149–159); el brillo del anillo de B depende de la foto; G del segundo ciclo (351) no tiene medida fiable (se usa 352).
