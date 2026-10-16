@@ -41,6 +41,8 @@ internal class SalidaAudio(
     @Volatile
     private var escrituraCompleta = false
     @Volatile
+    private var completaNs = 0L
+    @Volatile
     var fallo = false
         private set
     private val hilo: Thread
@@ -59,6 +61,14 @@ internal class SalidaAudio(
         val marcaFrames: Long?, val marcaNanoTime: Long?, val posicion: Long, val congelado: Boolean
     )
     var alLeer: ((Lectura) -> Unit)? = null
+
+    /**
+     * Ya se escribio todo y el altavoz no empezo en 300 ms: no va a sonar (el
+     * relleno de silencio deberia evitarlo). La vista previa sigue con el
+     * reloj del sistema. Solo desde el hilo GL.
+     */
+    val sinArrancar: Boolean get() = escrituraCompleta && !reloj.arranco &&
+        System.nanoTime() - completaNs > 300_000_000L
 
     /** El ultimo frame ya se ha drenado, incluyendo el redondeo a muestras. */
     val agotada: Boolean get() = escrituraCompleta &&
@@ -98,8 +108,10 @@ internal class SalidaAudio(
             while (sonando) {
                 val n = mezclador.leer(f, 1024)
                 if (n <= 0) {
+                    completaNs = System.nanoTime()
                     escrituraCompleta = framesEscritos >= framesObjetivo
                     if (sonando && !escrituraCompleta) fallo = true
+                    if (escrituraCompleta) rellenarSilencio(s, arrancada)
                     break
                 }
                 for (i in 0 until n * Pcm.CANALES) s[i] = (f[i] * 32767f).coerceIn(-32768f, 32767f).toInt().toShort()
@@ -126,6 +138,25 @@ internal class SalidaAudio(
         }
     }
 
+    /**
+     * En MODE_STREAM la pista no empieza a sonar hasta llenar su buffer: si el
+     * tramo que queda es mas corto (play justo antes del final), no sonaria
+     * nunca y la imagen se quedaria quieta. Se completa con silencio, que no
+     * cuenta en [framesEscritos]: el reloj no pasa del final real.
+     */
+    private fun rellenarSilencio(s: ShortArray, arrancada: Boolean) {
+        s.fill(0)
+        var faltan = pista.bufferSizeInFrames.toLong() * Pcm.CANALES
+        var empezo = arrancada
+        while (faltan > 0 && sonando) {
+            val r = pista.write(s, 0, minOf(s.size.toLong(), faltan).toInt())
+            if (r < 0) return
+            if (r == 0) { Thread.yield(); continue }
+            faltan -= r
+            if (!empezo) { pista.play(); empezo = true }
+        }
+    }
+
     /** Posicion continua del altavoz; se consulta solamente desde el hilo GL. */
     fun sonados(): Long {
         val ahora = System.nanoTime()
@@ -135,7 +166,9 @@ internal class SalidaAudio(
         if (ultimoUnderrun >= 0 && underruns > ultimoUnderrun) resincronizarTimestamp(ahora)
         ultimoUnderrun = underruns
         var marca: RelojAudio.Marca? = null
-        if (reproduciendo && ahora >= siguienteTimestampNs) {
+        // Hasta que el reloj acepte el primer timestamp se pregunta en cada
+        // fotograma: es el que dice cuando empieza a sonar de verdad.
+        if (reproduciendo && (ahora >= siguienteTimestampNs || !reloj.tieneMarca)) {
             if (pista.getTimestamp(timestamp)) {
                 marca = RelojAudio.Marca(timestamp.framePosition, timestamp.nanoTime)
                 val anterior = ultimoTimestamp
@@ -151,9 +184,10 @@ internal class SalidaAudio(
             // sin timestamps se usa el cabezal interpolado y se reintenta luego.
             siguienteTimestampNs = ahora + if (timestampEstable || intentosSinTimestamp >= 20) 10_000_000_000L else 100_000_000L
         }
-        val estabaCongelado = reloj.congelado
         val posicion = reloj.posicion(ahora, cabezal, framesEscritos, reproduciendo, underruns, marca)
-        if (!estabaCongelado && reloj.congelado) resincronizarTimestamp(ahora)
+        // Congelado, el reloj descarta las marcas: no cuentan para darlo por
+        // estable, y al recuperarse hace falta una nueva enseguida.
+        if (reloj.congelado) resincronizarTimestamp(ahora)
         alLeer?.invoke(Lectura(ahora, cabezal, framesEscritos, marca?.frames, marca?.nanoTime, posicion, reloj.congelado))
         return posicion
     }
