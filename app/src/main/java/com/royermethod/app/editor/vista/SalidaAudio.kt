@@ -3,6 +3,7 @@ package com.royermethod.app.editor.vista
 import android.content.Context
 import android.media.AudioAttributes
 import android.media.AudioFormat
+import android.media.AudioTimestamp
 import android.media.AudioTrack
 import android.net.Uri
 import com.royermethod.app.editor.audio.DecodificadorAudio
@@ -35,7 +36,26 @@ internal class SalidaAudio(
     private val pista: AudioTrack
     @Volatile
     private var sonando = true
+    @Volatile
+    private var framesEscritos = 0L
+    @Volatile
+    private var escrituraCompleta = false
+    @Volatile
+    var fallo = false
+        private set
     private val hilo: Thread
+    private val framesObjetivo = (total - desde).coerceAtLeast(0L)
+    private val reloj = RelojAudio(Pcm.HZ)
+    private val timestamp = AudioTimestamp()
+    private var siguienteTimestampNs = 0L
+    private var ultimoTimestamp: RelojAudio.Marca? = null
+    private var timestampEstable = false
+    private var intentosSinTimestamp = 0
+    private var ultimoUnderrun = -1
+
+    /** El ultimo frame ya se ha drenado, incluyendo el redondeo a muestras. */
+    val agotada: Boolean get() = escrituraCompleta &&
+        maxOf(reloj.ultimaPosicion, reloj.cabezalObservado) >= framesObjetivo
 
     init {
         val minimo = AudioTrack.getMinBufferSize(Pcm.HZ, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
@@ -66,29 +86,76 @@ internal class SalidaAudio(
         val f = FloatArray(1024 * Pcm.CANALES)
         val s = ShortArray(1024 * Pcm.CANALES)
         var arrancada = false
+        var shortsEscritos = 0L
         try {
             while (sonando) {
                 val n = mezclador.leer(f, 1024)
-                if (n <= 0) break
-                for (i in 0 until n * 2) s[i] = (f[i] * 32767f).coerceIn(-32768f, 32767f).toInt().toShort()
+                if (n <= 0) {
+                    escrituraCompleta = framesEscritos >= framesObjetivo
+                    if (sonando && !escrituraCompleta) fallo = true
+                    break
+                }
+                for (i in 0 until n * Pcm.CANALES) s[i] = (f[i] * 32767f).coerceIn(-32768f, 32767f).toInt().toShort()
                 var escritos = 0
-                while (escritos < n * 2 && sonando) {
-                    val r = pista.write(s, escritos, n * 2 - escritos)
-                    if (r < 0) return
+                while (escritos < n * Pcm.CANALES && sonando) {
+                    val r = pista.write(s, escritos, n * Pcm.CANALES - escritos)
+                    if (r < 0) {
+                        if (sonando) fallo = true
+                        return
+                    }
+                    if (r == 0) { Thread.yield(); continue }
                     escritos += r
+                    shortsEscritos += r
+                    framesEscritos = shortsEscritos / Pcm.CANALES
                     // Arranca con algo ya en el buffer: si no, el primer trozo sale a tirones
                     if (!arrancada) { pista.play(); arrancada = true }
                 }
             }
         } catch (_: Exception) {
-            // Sin sonido la vista previa sigue: el reloj cae al del sistema
+            // El hilo GL toma una base nueva antes de pasar al reloj del sistema.
+            if (sonando) fallo = true
         } finally {
             mezclador.cerrar()
         }
     }
 
-    /** Frames que ya han sonado por el altavoz, desde [desde]. */
-    fun sonados(): Long = pista.playbackHeadPosition.toLong() and 0xffffffffL
+    /** Posicion continua del altavoz; se consulta solamente desde el hilo GL. */
+    fun sonados(): Long {
+        val ahora = System.nanoTime()
+        val cabezal = pista.playbackHeadPosition.toLong() and 0xffffffffL
+        val underruns = pista.underrunCount
+        val reproduciendo = sonando && pista.playState == AudioTrack.PLAYSTATE_PLAYING
+        if (ultimoUnderrun >= 0 && underruns > ultimoUnderrun) resincronizarTimestamp(ahora)
+        ultimoUnderrun = underruns
+        var marca: RelojAudio.Marca? = null
+        if (reproduciendo && ahora >= siguienteTimestampNs) {
+            if (pista.getTimestamp(timestamp)) {
+                marca = RelojAudio.Marca(timestamp.framePosition, timestamp.nanoTime)
+                val anterior = ultimoTimestamp
+                if (anterior != null && marca.frames > anterior.frames && marca.nanoTime > anterior.nanoTime) timestampEstable = true
+                ultimoTimestamp = marca
+                intentosSinTimestamp = 0
+            } else {
+                timestampEstable = false
+                ultimoTimestamp = null
+                intentosSinTimestamp++
+            }
+            // Tras dos informes que avanzan basta un ancla ocasional. En rutas
+            // sin timestamps se usa el cabezal interpolado y se reintenta luego.
+            siguienteTimestampNs = ahora + if (timestampEstable || intentosSinTimestamp >= 20) 10_000_000_000L else 100_000_000L
+        }
+        val estabaCongelado = reloj.congelado
+        val posicion = reloj.posicion(ahora, cabezal, framesEscritos, reproduciendo, underruns, marca)
+        if (!estabaCongelado && reloj.congelado) resincronizarTimestamp(ahora)
+        return posicion
+    }
+
+    private fun resincronizarTimestamp(ahora: Long) {
+        timestampEstable = false
+        ultimoTimestamp = null
+        intentosSinTimestamp = 0
+        siguienteTimestampNs = ahora
+    }
 
     fun parar() {
         sonando = false

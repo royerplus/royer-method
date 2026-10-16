@@ -18,6 +18,7 @@ internal class Contenedor(archivo: File, private val pistasEsperadas: Int) {
     private val muxer = MediaMuxer(archivo.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
     private var pistas = 0
     private var arrancado = false
+    private val tipos = HashMap<Int, String>()
 
     private class Guardado(val pista: Int, val datos: ByteBuffer, val tiempo: Long, val banderas: Int)
 
@@ -26,6 +27,7 @@ internal class Contenedor(archivo: File, private val pistasEsperadas: Int) {
     fun pista(formato: MediaFormat): Int {
         check(!arrancado) { "pista despues de arrancar" }
         val i = muxer.addTrack(formato)
+        formato.getString(MediaFormat.KEY_MIME)?.let { tipos[i] = it }
         pistas++
         if (pistas == pistasEsperadas) {
             muxer.start()
@@ -41,6 +43,14 @@ internal class Contenedor(archivo: File, private val pistasEsperadas: Int) {
     }
 
     fun escribir(pista: Int, datos: ByteBuffer, info: MediaCodec.BufferInfo) {
+        val mime = tipos[pista]
+        if (SincronizacionVideo.admite(mime)) {
+            // El indice sync se basa en el NAL real, no en una bandera que
+            // algunos codecs repiten en el B inmediatamente posterior al IDR.
+            val clave = SincronizacionVideo.esClave(mime!!, datos, info.offset, info.size)
+            info.flags = if (clave) info.flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
+                else info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME.inv()
+        }
         datos.position(info.offset)
         datos.limit(info.offset + info.size)
         if (arrancado) {

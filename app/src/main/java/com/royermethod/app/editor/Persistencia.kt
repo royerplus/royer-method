@@ -15,6 +15,7 @@ import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Continuo
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Encuadre
+import com.royermethod.app.editor.modelo.EfectoVideo
 import com.royermethod.app.editor.modelo.Filtro
 import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
@@ -23,10 +24,14 @@ import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Movimiento
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.PistaAudio
+import com.royermethod.app.editor.modelo.PiezaVideo
 import com.royermethod.app.editor.modelo.Proyecto
+import com.royermethod.app.editor.modelo.ProgresoEfecto
 import com.royermethod.app.editor.modelo.Recorte
+import com.royermethod.app.editor.modelo.RegionUv
 import com.royermethod.app.editor.modelo.Texto
 import com.royermethod.app.editor.modelo.TipoOrigen
+import com.royermethod.app.editor.modelo.TipoEfectoVideo
 import com.royermethod.app.editor.modelo.Transicion
 import org.json.JSONArray
 import org.json.JSONObject
@@ -111,13 +116,19 @@ object Persistencia {
         put("filtro", c.filtro.name)
         put("intensidadFiltro", c.intensidadFiltro.toDouble())
         put("encuadre", encuadre(c.encuadre))
-        put("claves", JSONArray().apply {
-            c.claves.forEach { k ->
+        put("claves", claves(c.claves))
+        put("piezas", JSONArray().apply {
+            c.piezas.forEach { p ->
                 put(JSONObject().apply {
-                    put("t", k.tiempoUs)
-                    put("encuadre", encuadre(k.encuadre))
-                    put("curva", k.curva.name)
-                    k.bezier?.let { b -> put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })) }
+                    put("nombre", p.nombre)
+                    put("region", JSONObject().apply {
+                        put("izquierda", p.region.izquierda.toDouble())
+                        put("arriba", p.region.arriba.toDouble())
+                        put("derecha", p.region.derecha.toDouble())
+                        put("abajo", p.region.abajo.toDouble())
+                    })
+                    put("encuadre", encuadre(p.encuadre))
+                    put("claves", claves(p.claves))
                 })
             }
         })
@@ -126,6 +137,28 @@ object Persistencia {
         put("duracionEntrada", c.duracionEntradaUs)
         put("duracionSalida", c.duracionSalidaUs)
         put("continua", continuas(c.continua))
+        put("efectos", JSONArray().apply {
+            c.efectos.forEach { e ->
+                put(JSONObject().apply {
+                    put("tipo", e.tipo.name)
+                    put("inicio", e.inicioUs)
+                    put("fin", e.finUs)
+                    put("intensidad", e.intensidad.toDouble())
+                    put("rapidez", e.rapidez.toDouble())
+                    put("desfase", e.desfaseUs)
+                    put("fundidoEntrada", e.fundidoEntradaUs)
+                    put("fundidoSalida", e.fundidoSalidaUs)
+                    put("duracionBase", e.duracionBaseUs)
+                    put("activo", e.activo)
+                    put("progresos", JSONArray().apply {
+                        e.progresos.forEach { p -> put(JSONObject().apply {
+                            put("t", p.tiempoUs)
+                            put("valor", p.valor.toDouble())
+                        }) }
+                    })
+                })
+            }
+        })
         put("transicion", c.transicion.name)
         put("duracionTransicion", c.duracionTransicionUs)
         put("ajusteTransicion", JSONObject().apply {
@@ -137,6 +170,17 @@ object Persistencia {
         })
         put("fluido", c.fluido)
         put("calidad", c.calidad.toDouble())
+    }
+
+    private fun claves(l: List<Clave>) = JSONArray().apply {
+        l.forEach { k ->
+            put(JSONObject().apply {
+                put("t", k.tiempoUs)
+                put("encuadre", encuadre(k.encuadre))
+                put("curva", k.curva.name)
+                k.bezier?.let { b -> put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })) }
+            })
+        }
     }
 
     internal fun salida(s: AjustesSalida) = JSONObject().apply {
@@ -300,25 +344,14 @@ object Persistencia {
             filtro = o.enumeracion("filtro", Filtro.NINGUNO),
             intensidadFiltro = o.f("intensidadFiltro", 1f),
             encuadre = o.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
-            claves = o.optJSONArray("claves")?.let { a ->
-                (0 until a.length()).map { i ->
-                    val k = a.getJSONObject(i)
-                    Clave(
-                        k.optLong("t"),
-                        k.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
-                        k.enumeracion("curva", Curva.SUAVE),
-                        k.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let { b ->
-                            fun v(i: Int) = b.optDouble(i, 0.0).toFloat()
-                            Bezier(v(0).coerceIn(0f, 1f), v(1), v(2).coerceIn(0f, 1f), v(3))
-                        }
-                    )
-                }
-            } ?: emptyList(),
+            claves = clavesDe(o.optJSONArray("claves")),
+            piezas = piezasDe(o.optJSONArray("piezas")),
             entrada = movimientosDe(o.optJSONArray("entrada")),
             salida = movimientosDe(o.optJSONArray("salida")),
             duracionEntradaUs = o.optLong("duracionEntrada", d.duracionEntradaUs),
             duracionSalidaUs = o.optLong("duracionSalida", d.duracionSalidaUs),
             continua = continuasDe(o.optJSONArray("continua")),
+            efectos = efectosDe(o.optJSONArray("efectos")),
             transicion = o.enumeracion("transicion", Transicion.NINGUNA),
             duracionTransicionUs = o.optLong("duracionTransicion", d.duracionTransicionUs),
             ajusteTransicion = o.optJSONObject("ajusteTransicion")?.let { a ->
@@ -345,6 +378,72 @@ object Persistencia {
             desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
             muestras = s.optInt("muestras", d.muestras)
         )
+    }
+
+    private fun clavesDe(a: JSONArray?): List<Clave> {
+        if (a == null) return emptyList()
+        return (0 until a.length()).mapNotNull { i ->
+            val k = a.optJSONObject(i) ?: return@mapNotNull null
+            Clave(
+                k.optLong("t"),
+                k.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
+                k.enumeracion("curva", Curva.SUAVE),
+                k.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let { b ->
+                    fun v(i: Int) = b.optDouble(i, 0.0).toFloat().takeIf { it.isFinite() } ?: 0f
+                    Bezier(v(0).coerceIn(0f, 1f), v(1), v(2).coerceIn(0f, 1f), v(3))
+                }
+            )
+        }
+    }
+
+    private fun piezasDe(a: JSONArray?): List<PiezaVideo> {
+        if (a == null) return emptyList()
+        return (0 until a.length()).mapNotNull { i ->
+            val p = a.optJSONObject(i) ?: return@mapNotNull null
+            val r = p.optJSONObject("region")
+            val region = if (r == null) RegionUv() else RegionUv(
+                r.f("izquierda", 0f), r.f("arriba", 0f), r.f("derecha", 1f), r.f("abajo", 1f)
+            ).acotada()
+            PiezaVideo(
+                nombre = p.optString("nombre", "Parte ${i + 1}"),
+                region = region,
+                encuadre = p.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
+                claves = clavesDe(p.optJSONArray("claves"))
+            )
+        }
+    }
+
+    internal fun efectosDe(a: JSONArray?): List<EfectoVideo> {
+        if (a == null) return emptyList()
+        return (0 until a.length()).mapNotNull { i ->
+            val e = a.optJSONObject(i) ?: return@mapNotNull null
+            val tipo = runCatching { TipoEfectoVideo.valueOf(e.optString("tipo")) }.getOrNull()
+                ?: return@mapNotNull null
+            val inicio = e.optLong("inicio").coerceAtLeast(0)
+            val fin = e.optLong("fin").coerceAtLeast(0)
+            if (fin <= inicio) return@mapNotNull null
+            fun numero(clave: String, defecto: Float, min: Float, max: Float): Float =
+                e.f(clave, defecto).takeIf { it.isFinite() }?.coerceIn(min, max) ?: defecto
+            EfectoVideo(
+                tipo = tipo,
+                inicioUs = inicio,
+                finUs = fin,
+                intensidad = numero("intensidad", 1f, 0f, 3f),
+                rapidez = numero("rapidez", 1f, 0.1f, 10f),
+                desfaseUs = e.optLong("desfase").coerceAtLeast(0),
+                fundidoEntradaUs = e.optLong("fundidoEntrada").coerceAtLeast(0),
+                fundidoSalidaUs = e.optLong("fundidoSalida").coerceAtLeast(0),
+                duracionBaseUs = e.optLong("duracionBase").coerceAtLeast(0),
+                activo = e.optBoolean("activo", true),
+                progresos = e.optJSONArray("progresos")?.let { puntos ->
+                    (0 until puntos.length()).mapNotNull punto@ { j ->
+                        val p = puntos.optJSONObject(j) ?: return@punto null
+                        val valor = p.f("valor", Float.NaN).takeIf { it.isFinite() } ?: return@punto null
+                        ProgresoEfecto(p.optLong("t").coerceAtLeast(0), valor.coerceIn(0f, 1f))
+                    }
+                } ?: emptyList()
+            )
+        }
     }
 
     internal fun continuasDe(a: JSONArray?): List<Continuo> {

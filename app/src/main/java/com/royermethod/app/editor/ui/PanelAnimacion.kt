@@ -43,9 +43,11 @@ import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Combinaciones
 import com.royermethod.app.editor.modelo.Continuo
 import com.royermethod.app.editor.modelo.Curva
+import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Movimiento
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.Chip
 import com.royermethod.app.ui.components.Cuadricula
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Escala
@@ -58,6 +60,7 @@ import com.royermethod.app.ui.components.Pestanas
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
+import kotlin.math.roundToLong
 
 /**
  * Animaciones de un bloque.
@@ -86,10 +89,17 @@ fun PanelAnimacion(estado: EstadoEditor) {
 private fun EntradaOSalida(estado: EstadoEditor, c: Clip, entrada: Boolean) {
     val piezas = if (entrada) c.entrada else c.salida
     val duracion = if (entrada) c.duracionEntradaUs else c.duracionSalidaUs
+    val maximo = c.duracionUs.coerceAtLeast(0)
+    val minimo = min(Linea.tiempoDe(1), maximo)
+    fun verDuracion(us: Long) {
+        estado.reproduciendo = false
+        val local = if (entrada) us / 2 else c.duracionUs - us / 2
+        estado.irA((estado.inicioElegido ?: 0L) + local.coerceIn(0, maximo))
+    }
     fun poner(l: List<Movimiento>, arrastre: Boolean = false) = estado.cambiarClip(arrastre) {
         // Al poner la primera, una duracion que quepa en el bloque
         val dur = if ((if (entrada) it.entrada else it.salida).isEmpty() && l.isNotEmpty())
-            min(AjustesEditor.duracionAnimacionUs, it.duracionUs / 2).coerceAtLeast(100_000)
+            min(AjustesEditor.duracionAnimacionUs, it.duracionUs / 2).coerceIn(minimo, maximo)
         else if (entrada) it.duracionEntradaUs else it.duracionSalidaUs
         if (entrada) it.copy(entrada = l, duracionEntradaUs = dur) else it.copy(salida = l, duracionSalidaUs = dur)
     }
@@ -107,18 +117,18 @@ private fun EntradaOSalida(estado: EstadoEditor, c: Clip, entrada: Boolean) {
     }
     if (piezas.isEmpty()) return
     Spacer(Modifier.height(4.dp))
-    Deslizador(
-        "Duracion", duracion / 1e6f, 0.1f, maxDuracion(c),
-        onCambio = { v ->
-            estado.cambiarClip(true) {
-                val us = (v * 1e6).toLong()
+    TiempoFotogramas(
+        "Duracion", duracion, minimo, maximo,
+        onCambio = { us, arrastre ->
+            estado.cambiarClip(arrastre) {
                 if (entrada) it.copy(duracionEntradaUs = us) else it.copy(duracionSalidaUs = us)
             }
-        },
-        neutro = 0.1f, paso = 0.1f, texto = { "%.1f s".format(it) }
+            verDuracion(us)
+        }
     )
     Piezas(
         piezas,
+        duracionUs = duracion.coerceIn(minimo, maximo),
         onCambio = { l, arrastre -> poner(l, arrastre) },
         guardada = listas.any { it.piezas == piezas },
         onGuardar = {
@@ -133,6 +143,7 @@ private fun EntradaOSalida(estado: EstadoEditor, c: Clip, entrada: Boolean) {
 @Composable
 private fun Piezas(
     piezas: List<Movimiento>,
+    duracionUs: Long,
     onCambio: (List<Movimiento>, Boolean) -> Unit,
     guardada: Boolean,
     onGuardar: () -> Unit
@@ -165,7 +176,7 @@ private fun Piezas(
                     Text(m.tipo.nombre, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = Ink.White90)
                     Text(
                         "${(m.intensidad * 100).toInt()}%  ·  ${m.curva.nombre}" +
-                            if (m.desde > 0f || m.hasta < 1f) "  ·  ${(m.desde * 100).toInt()}–${(m.hasta * 100).toInt()}%" else "",
+                            if (m.desde > 0f || m.hasta < 1f) "  ·  ${"%.3f–%.3f s".format(m.desde * duracionUs / 1e6, m.hasta * duracionUs / 1e6)}" else "",
                         style = MaterialTheme.typography.labelSmall, color = Ink.White50
                     )
                 }
@@ -175,8 +186,19 @@ private fun Piezas(
                 Column(Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
                     Deslizador("Cuanto", m.intensidad, 0f, 3f, { v -> cambiar(m.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
                     Opciones(Curva.values().toList(), m.curva, { it.nombre }, { cu -> cambiar(m.copy(curva = cu), false) })
-                    Deslizador("Empieza", m.desde, 0f, 0.9f, { v -> cambiar(m.copy(desde = v, hasta = maxOf(m.hasta, v + 0.1f))) }, texto = { "${(it * 100).toInt()}%" })
-                    Deslizador("Termina", m.hasta, 0.1f, 1f, { v -> cambiar(m.copy(hasta = v, desde = minOf(m.desde, v - 0.1f))) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+                    if (duracionUs > 0) {
+                        val inicio = (m.desde * duracionUs).toLong().coerceIn(0, duracionUs)
+                        val fin = (m.hasta * duracionUs).toLong().coerceIn(inicio, duracionUs)
+                        // El motor admite tramos desde 0.001 de la animacion;
+                        // para tiempos usuales el limite real es un fotograma.
+                        val paso = min(duracionUs, maxOf(Linea.tiempoDe(1), (duracionUs * 0.001).roundToLong()))
+                        TiempoFotogramas("Empieza", inicio, 0, (fin - paso).coerceAtLeast(0)) { us, arrastre ->
+                            cambiar(m.copy(desde = us.toFloat() / duracionUs), arrastre)
+                        }
+                        TiempoFotogramas("Termina", fin, (inicio + paso).coerceAtMost(duracionUs), duracionUs) { us, arrastre ->
+                            cambiar(m.copy(hasta = us.toFloat() / duracionUs), arrastre)
+                        }
+                    }
                 }
             }
         }
@@ -189,6 +211,40 @@ private fun Piezas(
             agregando = false
             abierta = piezas.size
         }, Modifier.padding(top = 6.dp))
+    }
+}
+
+/** Unidades reales y pasos exactos de 30 fps, tambien para tramos menores de 0.1 s. */
+@Composable
+internal fun TiempoFotogramas(
+    titulo: String,
+    valorUs: Long,
+    minimoUs: Long,
+    maximoUs: Long,
+    onCambio: (Long, Boolean) -> Unit
+) {
+    val maximo = maxOf(minimoUs, maximoUs)
+    val valor = valorUs.coerceIn(minimoUs, maximo)
+    fun cuantizar(us: Long) = Linea.tiempoDe((us.coerceAtLeast(0) * Linea.FPS / 1_000_000.0).roundToLong()).coerceIn(minimoUs, maximo)
+    if (maximo > minimoUs) {
+        Deslizador(
+            titulo, valor / 1e6f, minimoUs / 1e6f, maximo / 1e6f,
+            { v -> onCambio(cuantizar((v * 1e6).toLong()), true) },
+            texto = { "%.3f s".format(it) }
+        )
+    } else {
+        Text("$titulo  ${"%.3f s".format(valor / 1e6)}", style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.padding(vertical = 8.dp))
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Chip("−1 f", false, {
+            val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
+            onCambio(Linea.tiempoDe((n - 1).coerceAtLeast(0)).coerceIn(minimoUs, maximo), false)
+        })
+        Chip("+1 f", false, {
+            val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
+            onCambio(Linea.tiempoDe(n + 1).coerceIn(minimoUs, maximo), false)
+        })
+        Text("1 f = 0.033 s", style = MaterialTheme.typography.bodySmall, color = Ink.White50)
     }
 }
 

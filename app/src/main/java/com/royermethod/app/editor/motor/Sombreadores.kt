@@ -194,7 +194,12 @@ uniform float uConMascara;
 uniform vec2 uMascDir;
 uniform float uMascSuave;
 uniform float uMascRadial;
+uniform float uMascInvertida;
 uniform float uRadio;
+uniform vec2 uRadioDir;
+uniform float uEspejoBordes;
+uniform float uConRegionFuente;
+uniform vec4 uRegionFuente;
 uniform float uNitidez;
 uniform float uBrillo;
 uniform float uContraste;
@@ -215,18 +220,35 @@ const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 vec4 tomar(vec2 uv) {
     vec2 lo = uRecorte.xy + uTexel * 0.5;
     vec2 hi = uRecorte.zw - uTexel * 0.5;
+    if (uEspejoBordes > 0.0) {
+        vec2 q = (uv - lo) / max(hi - lo, uTexel);
+        q = vec2(1.0) - abs(mod(q, 2.0) - vec2(1.0));
+        uv = lo + q * (hi - lo);
+    }
     return texture2D(sTex, clamp(uv, lo, hi));
 }
 
-vec4 muestra(vec2 uv, vec2 pixel, vec2 desp) {
-    if (uRadio > 0.0) {
+vec4 tomarRgb(vec2 uv, vec2 desp) {
+    vec4 c = tomar(uv);
+    if (uRgb > 0.0) {
+        vec4 r = tomar(uv + desp);
+        vec4 b = tomar(uv - desp);
+        c = vec4(r.r, c.g, b.b, max(c.a, max(r.a, b.a)));
+    }
+    return c;
+}
+
+vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY) {
+    if (uRadio > 0.0 || uRadioDir.x > 0.0 || uRadioDir.y > 0.0) {
         // Disco de muestras en espiral: sin tablas, que GLSL ES 1 no admite
         vec4 s = vec4(0.0);
         for (int j = 0; j < 12; j++) {
             float fj = float(j);
             float r = sqrt((fj + 0.5) / 12.0);
             float a = fj * 2.39996;
-            s += tomar(uv + vec2(cos(a), sin(a)) * r * uRadio * pixel);
+            vec2 delta = vec2(cos(a), sin(a)) * r * uRadio * pixel
+                       + cos(a) * r * ejeX + sin(a) * r * ejeY;
+            s += tomarRgb(uv + delta, desp);
         }
         return s / 12.0;
     }
@@ -284,14 +306,27 @@ void main() {
                   * clamp((uRecorte.z - uv.x) / pu + 0.5, 0.0, 1.0)
                   * clamp((uv.y - uRecorte.y) / pv + 0.5, 0.0, 1.0)
                   * clamp((uRecorte.w - uv.y) / pv + 0.5, 0.0, 1.0);
+        cob = mix(cob, 1.0, clamp(uEspejoBordes, 0.0, 1.0));
+        // Las partes conservan la geometria de la foto completa. Este corte
+        // viaja con la textura; no vuelve a encajar cada mitad en el lienzo.
+        // Bordes compartidos complementarios: al juntarse no aparece una raya.
+        if (uConRegionFuente > 0.5) {
+            cob *= (uRegionFuente.x <= 0.0 ? 1.0 : step(uRegionFuente.x, uv.x))
+                 * (uRegionFuente.y <= 0.0 ? 1.0 : step(uRegionFuente.y, uv.y))
+                 * (uRegionFuente.z >= 1.0 ? 1.0 : 1.0 - step(uRegionFuente.z, uv.x))
+                 * (uRegionFuente.w >= 1.0 ? 1.0 : 1.0 - step(uRegionFuente.w, uv.y));
+        }
         if (uConMascara > 0.5) {
             float d = uMascRadial > 0.5 ? length(p - 0.5 * uLienzo) : dot(p - 0.5 * uLienzo, uMascDir);
-            cob *= clamp((uBorde[i] - d) / uMascSuave + 0.5, 0.0, 1.0);
+            float mascara = clamp((uBorde[i] - d) / uMascSuave + 0.5, 0.0, 1.0);
+            cob *= uMascInvertida > 0.5 ? 1.0 - mascara : mascara;
         }
         float a = cob * uOpac[i];
         // Un pixel del lienzo hacia la derecha, en la textura: la separacion del RGB
         vec2 desp = uRgb * vec2(m[0][0], m[0][1]);
-        if (a > 0.0) suma += muestra(uv, vec2(pu, pv), desp) * a;
+        vec2 ejeX = uRadioDir.x * vec2(m[0][0], m[0][1]);
+        vec2 ejeY = uRadioDir.y * vec2(m[1][0], m[1][1]);
+        if (a > 0.0) suma += muestra(uv, vec2(pu, pv), desp, ejeX, ejeY) * a;
     }
     suma /= uN;
     if (suma.a > 0.0 && (uNeutro < 0.5 || uLuz != 0.0 || uNegativo > 0.0)) {

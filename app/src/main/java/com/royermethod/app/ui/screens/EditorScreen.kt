@@ -12,11 +12,15 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.royermethod.app.editor.Persistencia
+import com.royermethod.app.editor.PaqueteProyecto
 import com.royermethod.app.editor.exportar.Exportacion
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Origen
@@ -36,6 +40,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import java.util.UUID
 
 /**
  * El editor en el telefono: une la pantalla (que no sabe nada de Android)
@@ -58,6 +63,8 @@ fun EditorScreen(onVolver: () -> Unit) {
     }
     val prev = remember { Previsualizador(context) }
     val recursos = remember { RecursosAndroid(context) }
+    var operandoProyecto by remember { mutableStateOf(false) }
+    var porGuardar by remember { mutableStateOf<Proyecto?>(null) }
 
     DisposableEffect(Unit) {
         estado.alCambiar = { prev.proyecto(it) }
@@ -117,6 +124,48 @@ fun EditorScreen(onVolver: () -> Unit) {
         importar(listOfNotNull(uri)) { p, o -> Edicion.agregarAudio(p, o.first(), t).first }
     }
 
+    val abrirProyecto = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null && !operandoProyecto) alcance.launch {
+            operandoProyecto = true
+            prev.pausar()
+            estado.avisar("Abriendo proyecto...")
+            val resultado = withContext(Dispatchers.IO) {
+                val carpeta = File(context.filesDir, "editor/importados/${UUID.randomUUID()}")
+                runCatching {
+                    val entrada = context.contentResolver.openInputStream(uri) ?: error("No se puede abrir el archivo")
+                    entrada.use { PaqueteProyecto.leer(it, carpeta) }
+                }.onFailure { carpeta.deleteRecursively() }
+            }
+            resultado.onSuccess { p ->
+                estado.elegir(null)
+                estado.panel = null
+                estado.hacer { p }
+                estado.irA(0)
+                estado.avisar("Proyecto abierto. Puedes deshacer para volver al anterior")
+            }.onFailure { estado.avisar(it.message ?: "No se pudo abrir el proyecto") }
+            operandoProyecto = false
+        }
+    }
+    val guardarProyecto = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(PaqueteProyecto.MIME)) { uri ->
+        val proyecto = porGuardar
+        porGuardar = null
+        if (uri != null && proyecto != null && !operandoProyecto) alcance.launch {
+            operandoProyecto = true
+            estado.avisar("Guardando proyecto con sus archivos...")
+            val resultado = withContext(Dispatchers.IO) {
+                runCatching {
+                    val salida = context.contentResolver.openOutputStream(uri, "wt") ?: error("No se puede guardar el archivo")
+                    salida.use { stream ->
+                        PaqueteProyecto.escribir(proyecto, stream) { o -> context.contentResolver.openInputStream(Uri.parse(o.uri)) }
+                    }
+                }
+            }
+            resultado.onSuccess { estado.avisar("Proyecto guardado con sus fotos, videos y sonidos") }
+                .onFailure { estado.avisar(it.message ?: "No se pudo guardar el proyecto") }
+            operandoProyecto = false
+        }
+    }
+
     BackHandler {
         when {
             estado.panel != null -> estado.panel = null
@@ -142,7 +191,18 @@ fun EditorScreen(onVolver: () -> Unit) {
         },
         onCancelarExportar = { Exportacion.cancelar() },
         onCompartir = { compartir(context, Exportacion.guardado) },
-        onCerrarExportar = { Exportacion.limpiar() }
+        onCerrarExportar = { Exportacion.limpiar() },
+        onAbrirProyecto = {
+            if (operandoProyecto) estado.avisar("Espera a que termine el archivo actual")
+            else abrirProyecto.launch(arrayOf(PaqueteProyecto.MIME, "application/octet-stream", "application/x-zip-compressed"))
+        },
+        onGuardarProyecto = {
+            if (operandoProyecto) estado.avisar("Espera a que termine el archivo actual")
+            else {
+                porGuardar = estado.proyecto
+                guardarProyecto.launch("Proyecto-Royer.royer")
+            }
+        }
     ) { modificador ->
         AndroidView(
             factory = { ctx -> TextureView(ctx).apply { surfaceTextureListener = Superficie(prev) } },

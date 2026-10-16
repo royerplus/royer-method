@@ -30,6 +30,8 @@ enum class Panel(val titulo: String) {
     VELOCIDAD("Velocidad"),
     VOLUMEN("Volumen"),
     ANIMACION("Animar"),
+    PIEZAS("Partes de la imagen"),
+    EFECTOS("Efectos de video"),
     TRANSICION("Transicion"),
     COLOR("Color y filtros"),
     ENCUADRE("Encuadre"),

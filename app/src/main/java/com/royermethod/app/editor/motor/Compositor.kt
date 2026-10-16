@@ -11,6 +11,7 @@ import com.royermethod.app.editor.modelo.Paso
 import com.royermethod.app.editor.modelo.PasoClip
 import com.royermethod.app.editor.modelo.PasoGrupo
 import com.royermethod.app.editor.modelo.PasoLinea
+import com.royermethod.app.editor.modelo.PasoPartes
 import com.royermethod.app.editor.modelo.PasoSolido
 import com.royermethod.app.editor.modelo.Texto
 import java.util.IdentityHashMap
@@ -37,6 +38,7 @@ class Compositor(
     private val capa = Programa(Sombreadores.VERTICE, Sombreadores.CAPA)
     private val solido = Programa(Sombreadores.VERTICE, Sombreadores.SOLIDO)
     private val linea = Programa(Sombreadores.VERTICE, Sombreadores.LINEA)
+    private val copiaExacta = Programa(Sombreadores.VERTICE, COPIA_EXACTA)
 
     private val videos = ArrayList<FuenteVideo>()
     /** Archivos que no se pudieron abrir, con el cuadro en que fallaron. */
@@ -46,6 +48,9 @@ class Compositor(
     private val fondos = HashMap<Any, Pair<Long, List<Lamina>>>()
     /** Laminas del tamano del lienzo para montar escenas aparte. */
     private val grupos = ArrayList<Lamina>()
+    /** Dos destinos reutilizados para cualquier numero de muestras o partes. */
+    private var muestraPartes: Lamina? = null
+    private var promedioPartes: Lamina? = null
 
     /** Lo que se mide para la escena: videos e imagenes por sus metadatos, textos maquetados. */
     val medidor = MaquetaTexto.medidor
@@ -66,8 +71,13 @@ class Compositor(
         numero++
         // 1. que cada fuente tenga su fotograma, antes de tocar el destino
         val texturas = IdentityHashMap<PasoClip, Textura>()
+        val preparadas = HashMap<ClaveTextura, Textura?>()
         for (paso in cuadro.clips) {
-            if (paso.visible) preparar(paso)?.let { texturas[paso] = it }
+            if (!paso.visible) continue
+            val clave = ClaveTextura(paso.clip.id, paso.tiempoArchivoUs, paso.exposicionUs, paso.esFondo,
+                paso.anchoEnLienzo, paso.altoEnLienzo, paso.escalaTexto)
+            if (!preparadas.containsKey(clave)) preparadas[clave] = preparar(paso)
+            preparadas[clave]?.let { texturas[paso] = it }
         }
 
         // 2. las escenas que van aparte, cada una en su lamina. Antes que el
@@ -108,12 +118,56 @@ class Compositor(
             is PasoSolido -> dibujarSolido(paso, voltear)
             is PasoLinea -> dibujarLinea(paso, voltear)
             is PasoClip -> texturas[paso]?.let { dibujarClip(paso, it, voltear) }
+            is PasoPartes -> dibujarPartes(paso, texturas, voltear)
             // No hay grupos dentro de grupos
             is PasoGrupo -> Unit
         }
     }
 
     private class Textura(val id: Int, val ancho: Int, val alto: Int)
+    private data class ClaveTextura(val clip: Long, val tiempo: Long, val exposicion: Long,
+        val fondo: Boolean, val ancho: Float, val alto: Float, val escalaTexto: Float)
+
+    /** Compone por instante antes de promediar, para conservar alfa y oclusion. */
+    private fun dibujarPartes(p: PasoPartes, texturas: Map<PasoClip, Textura>, voltear: Boolean) {
+        if (!p.visible) return
+        val anterior = IntArray(1)
+        val vista = IntArray(4)
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, anterior, 0)
+        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, vista, 0)
+        val muestra = muestraPartes ?: Lamina(ancho, alto).also { muestraPartes = it }
+        val promedio = promedioPartes ?: Lamina(ancho, alto).also { promedioPartes = it }
+        promedio.activar()
+        GLES20.glClearColor(0f, 0f, 0f, 0f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        for (i in 0 until p.muestras) {
+            muestra.activar()
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            for (parte in p.partes) {
+                val textura = texturas[parte] ?: continue
+                dibujarClip(parte.muestra(i), textura, voltear = true)
+            }
+            promedio.activar()
+            // Media incremental equivalente a sumar cada muestra con peso1/N.
+            // El alfa constante1 queda exactamente1 tambien en destinos RGBA8.
+            val peso = 1f / (i + 1)
+            GLES20.glBlendColor(0f, 0f, 0f, peso)
+            GLES20.glBlendFunc(GLES20.GL_CONSTANT_ALPHA, GLES20.GL_ONE_MINUS_CONSTANT_ALPHA)
+            copiarExacto(muestra.textura, voltear = true)
+        }
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, anterior[0])
+        GLES20.glViewport(vista[0], vista[1], vista[2], vista[3])
+        aplicarMezcla(p.mezcla)
+        copiarExacto(promedio.textura, voltear)
+    }
+
+    private fun copiarExacto(textura: Int, voltear: Boolean) {
+        copiaExacta.usar()
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textura)
+        GLES20.glUniform1i(copiaExacta.u("sTex"), 0)
+        copiaExacta.dibujar(voltear)
+    }
 
     // ------------------------------------------------------------------
     // Fuentes
@@ -327,12 +381,7 @@ class Compositor(
 
     private fun dibujarClip(p: PasoClip, t: Textura, voltear: Boolean) {
         capa.usar()
-        when (p.mezcla) {
-            Mezcla.NORMAL -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-            Mezcla.PANTALLA -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_COLOR)
-            Mezcla.SUMAR -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
-            Mezcla.MULTIPLICAR -> GLES20.glBlendFunc(GLES20.GL_DST_COLOR, GLES20.GL_ONE_MINUS_SRC_ALPHA)
-        }
+        aplicarMezcla(p.mezcla)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, t.id)
         GLES20.glUniform1i(capa.u("sTex"), 0)
@@ -349,6 +398,11 @@ class Compositor(
         // El fondo: la miniatura se suaviza con un radio de un par de sus pixeles
         val radio = if (p.esFondo) alto * 0.035f else p.desenfoque
         GLES20.glUniform1f(capa.u("uRadio"), radio)
+        GLES20.glUniform2f(capa.u("uRadioDir"), if (p.esFondo) 0f else p.desenfoqueX, if (p.esFondo) 0f else p.desenfoqueY)
+        GLES20.glUniform1f(capa.u("uEspejoBordes"), if (p.esFondo) 0f else p.espejoBordes)
+        val region = if (p.esFondo) null else p.recorteFuente
+        GLES20.glUniform1f(capa.u("uConRegionFuente"), if (region != null) 1f else 0f)
+        if (region != null) GLES20.glUniform4f(capa.u("uRegionFuente"), region.izquierda, region.arriba, region.derecha, region.abajo)
 
         val c = p.color
         GLES20.glUniform1f(capa.u("uNitidez"), if (p.esFondo) 0f else c.nitidez)
@@ -368,6 +422,15 @@ class Compositor(
         capa.dibujar(voltear)
     }
 
+    private fun aplicarMezcla(mezcla: Mezcla) {
+        when (mezcla) {
+            Mezcla.NORMAL -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            Mezcla.PANTALLA -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_COLOR)
+            Mezcla.SUMAR -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
+            Mezcla.MULTIPLICAR -> GLES20.glBlendFunc(GLES20.GL_DST_COLOR, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        }
+    }
+
     /** Una escena montada aparte, puesta encima con su movimiento y su mascara. */
     private fun dibujarGrupo(p: PasoGrupo, l: Lamina, voltear: Boolean) {
         capa.usar()
@@ -383,6 +446,9 @@ class Compositor(
         else GLES20.glUniform4f(capa.u("uRecorte"), 0f, 0f, 1f, 1f)
         mascara(p.mascara)
         GLES20.glUniform1f(capa.u("uRadio"), 0f)
+        GLES20.glUniform2f(capa.u("uRadioDir"), 0f, 0f)
+        GLES20.glUniform1f(capa.u("uEspejoBordes"), 0f)
+        GLES20.glUniform1f(capa.u("uConRegionFuente"), 0f)
         GLES20.glUniform1f(capa.u("uNitidez"), 0f)
         GLES20.glUniform1f(capa.u("uNeutro"), 1f)
         GLES20.glUniform1f(capa.u("uLuz"), 0f)
@@ -403,6 +469,7 @@ class Compositor(
 
     private fun mascara(m: Mascara?) {
         GLES20.glUniform1f(capa.u("uConMascara"), if (m != null) 1f else 0f)
+        GLES20.glUniform1f(capa.u("uMascInvertida"), if (m?.invertida == true) 1f else 0f)
         if (m != null) {
             GLES20.glUniform2f(capa.u("uMascDir"), m.dirX, m.dirY)
             GLES20.glUniform1f(capa.u("uMascSuave"), m.suave.coerceAtLeast(0.5f))
@@ -413,6 +480,8 @@ class Compositor(
     fun soltar() {
         grupos.forEach { it.soltar() }
         grupos.clear()
+        muestraPartes?.soltar(); muestraPartes = null
+        promedioPartes?.soltar(); promedioPartes = null
         videos.forEach { it.soltar() }
         videos.clear()
         imagenes.values.forEach { it.soltar() }
@@ -422,10 +491,16 @@ class Compositor(
         fondos.values.forEach { par -> par.second.forEach { it.soltar() } }
         fondos.clear()
         fluidez?.soltar()
-        reduccion.soltar(); copiaPlana.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
+        reduccion.soltar(); copiaPlana.soltar(); copiaExacta.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
     }
 
     private companion object {
+        const val COPIA_EXACTA = """
+precision mediump float;
+varying vec2 vPos;
+uniform sampler2D sTex;
+void main() { gl_FragColor = texture2D(sTex, vPos); }
+"""
         const val MAX_VIDEOS = 6
 
         /** Cuadros que se espera antes de volver a intentar abrir un archivo que fallo. */

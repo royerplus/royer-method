@@ -50,6 +50,10 @@ data class Clip(
     val duracionSalidaUs: Long = 500_000,
     /** Lo que se mueve durante todo el bloque. Tambien se combinan. */
     val continua: List<Continuo> = emptyList(),
+    /** Efectos de video colocados libremente dentro del bloque. */
+    val efectos: List<EfectoVideo> = emptyList(),
+    /** Partes de la misma fuente con regiones y movimientos independientes. */
+    val piezas: List<PiezaVideo> = emptyList(),
     /** Paso al bloque siguiente de la pista principal. En capas no se usa. */
     val transicion: Transicion = Transicion.NINGUNA,
     val duracionTransicionUs: Long = 500_000,
@@ -70,6 +74,17 @@ data class Clip(
      */
     val calidad: Float = 1f
 ) {
+    /** Se calcula una vez por version del clip; permite fusionar partes reunidas. */
+    internal val piezasCubrenFuente: Boolean by lazy {
+        if (piezas.isEmpty()) false else {
+            val regiones = piezas.map { it.region.acotada() }
+            val area = regiones.sumOf { it.ancho.toDouble() * it.alto }
+            kotlin.math.abs(area - 1.0) < 1e-6 && regiones.indices.none { a ->
+                (a + 1 until regiones.size).any { b -> regiones[a].interseccion(regiones[b]) != null }
+            }
+        }
+    }
+
     init {
         require((origen == null) != (texto == null)) { "un clip es archivo o texto" }
     }
@@ -126,7 +141,12 @@ data class Clip(
     fun conVelocidad(v: Float): Clip {
         if (!esVideo || v == velocidad) return copy(velocidad = v)
         val f = velocidad.toDouble() / v
-        val nuevo = copy(velocidad = v, claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) })
+        val nuevo = copy(
+            velocidad = v,
+            claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
+            efectos = efectos.map { it.tiempoEscalado(f) },
+            piezas = piezas.map { it.tiempoEscalado(f) }
+        )
         val dur = nuevo.duracionUs
         return nuevo.copy(
             duracionEntradaUs = duracionEntradaUs.coerceAtMost(dur),
@@ -145,7 +165,7 @@ data class Clip(
         const val IMAGEN_POR_DEFECTO_US = 3_000_000L
 
         /** Lo minimo que puede quedar un bloque al recortar o dividir. */
-        const val MINIMO_US = 100_000L
+        const val MINIMO_US = 33_333L
     }
 }
 
@@ -374,7 +394,9 @@ enum class Transicion(val nombre: String) {
     CIRCULO("Circulo"),
     ZOOM_GIRO("Zoom y giro"),
     /** Zoom de golpe con destello en el cambio. */
-    IMPACTO("Impacto")
+    IMPACTO("Impacto"),
+    /** La escena saliente se aplasta para descubrir la que esta debajo. */
+    APLASTAR("Aplastar")
 }
 
 /** Lo que se puede cambiar de una transicion ademas de su duracion. */

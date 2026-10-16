@@ -63,7 +63,7 @@ class Escena(
 
         // 3. capas, de abajo arriba
         for (c in Linea.capasEn(proyecto.capas, t)) {
-            pasos.add(dibujo(c.clip, t, c.inicioUs, k, c.mezcla))
+            pasos.addAll(dibujos(c.clip, t, c.inicioUs, k, c.mezcla))
         }
 
         // Las escenas que al final no se mueven ni se mezclan van directas
@@ -95,13 +95,43 @@ class Escena(
      *
      * @param inicio donde empieza el bloque en la linea de tiempo
      */
-    private fun dibujo(
+    private fun dibujos(
         clip: Clip,
         t: Long,
         inicio: Long,
         k: Int,
         mezcla: Mezcla,
         transicion: ((Int) -> Efecto)? = null
+    ): List<Paso> {
+        if (clip.piezas.isEmpty()) return listOf(dibujo(clip, t, inicio, k, mezcla, transicion))
+        val partes = clip.piezas.map { dibujo(clip, t, inicio, k, mezcla, transicion, it) }
+        // Una sola textura completa sirve a todas las partes; no se copia de
+        // nuevo a otro tamano al pasar de la mitad superior a la inferior.
+        val w = partes.maxOf { it.anchoEnLienzo }
+        val h = partes.maxOf { it.altoEnLienzo }
+        val texto = partes.maxOf { it.escalaTexto }
+        if (clip.piezasCubrenFuente && partes.drop(1).all { mismaTrayectoria(partes.first(), it) }) {
+            // Promediar dos particiones y mezclarlas despues por OVER daria
+            // alfa0.75 en un pixel cubierto a medias por cada una. Reunidas,
+            // la fuente completa se muestrea una sola vez y no deja costura.
+            return listOf(partes.first().copy(recorteFuente = null, anchoEnLienzo = w, altoEnLienzo = h, escalaTexto = texto))
+        }
+        val comunes = partes.map { it.copy(anchoEnLienzo = w, altoEnLienzo = h, escalaTexto = texto, mezcla = Mezcla.NORMAL) }
+        return listOf(PasoPartes(comunes, mezcla))
+    }
+
+    private fun mismaTrayectoria(a: PasoClip, b: PasoClip): Boolean =
+        a.opacidades.contentEquals(b.opacidades) && a.matrices.size == b.matrices.size &&
+            a.matrices.indices.all { a.matrices[it].contentEquals(b.matrices[it]) }
+
+    private fun dibujo(
+        clip: Clip,
+        t: Long,
+        inicio: Long,
+        k: Int,
+        mezcla: Mezcla,
+        transicion: ((Int) -> Efecto)? = null,
+        pieza: PiezaVideo? = null
     ): PasoClip {
         val ts = instantes(t, k)
         val matrices = ArrayList<FloatArray>(ts.size)
@@ -110,33 +140,49 @@ class Escena(
         val bordes = FloatArray(ts.size) { SIN_BORDE }
         var mascara: Mascara? = null
         var desenfoque = 0f
+        var desenfoqueX = 0f
+        var desenfoqueY = 0f
         var escalaMax = 0f
         var anchoMax = 0f
         var altoMax = 0f
+        var contraido = false
 
         val (cw, ch) = medidor.medidas(clip, alto)
         for ((i, ti) in ts.withIndex()) {
-            val local = ti - inicio
+            val local = (ti - inicio).coerceIn(0, (clip.duracionUs - 1).coerceAtLeast(0))
             var e = encuadreEn(clip, local)
             var op = e.opacidad
             // Entrada y salida
-            val anim = animacion(clip, local)
+            val anim = animacion(clip, local).y(efectosVideo(clip, local))
             e = anim.aplicar(e)
             op *= anim.opacidad
             if (anim.desenfoque > 0f) desenfoque += anim.desenfoque / ts.size
+            desenfoqueX += anim.desenfoqueX / ts.size
+            desenfoqueY += anim.desenfoqueY / ts.size
+            var escalaX = anim.escalaX
+            var escalaY = anim.escalaY
             // Lo que imponga la transicion encima
-            var conMascara = false
+            var conMascara = anim.mascara != null
+            if (anim.mascara != null) {
+                mascara = anim.mascara
+                bordes[i] = anim.borde
+            }
             if (transicion != null) {
                 val a = transicion(i)
                 e = a.aplicar(e)
                 op *= a.opacidad
                 if (a.desenfoque > 0f) desenfoque += a.desenfoque / ts.size
+                desenfoqueX += a.desenfoqueX / ts.size
+                desenfoqueY += a.desenfoqueY / ts.size
+                escalaX *= a.escalaX
+                escalaY *= a.escalaY
                 if (a.mascara != null) {
                     mascara = a.mascara
                     bordes[i] = a.borde
                     conMascara = true
                 }
             }
+            if (escalaX < 0.999f || escalaY < 0.999f) contraido = true
             if (anim.revelar >= 0f && !conMascara) {
                 // La mascara de revelar va en el espacio del lienzo, a lo ancho
                 // de donde cae el bloque.
@@ -144,20 +190,29 @@ class Escena(
                 mascara = Mascara(1f, 0f, suave = 6f)
                 bordes[i] = caja.first + (caja.second - caja.first) * anim.revelar - ancho / 2f
             }
-            val m = matriz(clip, e, cw, ch)
+            val relativa = pieza?.encuadreEn(local)
+            val base = matriz(clip, e, cw, ch, escalaX, escalaY)
+            val m = if (pieza != null && relativa != null) moverPieza(base, pieza.region.acotada(), relativa, clip.encuadre.recorte) else base
+            if (relativa != null) op *= relativa.opacidad
             matrices.add(m)
             opacidades[i] = op.coerceIn(0f, 1f)
-            escalaMax = max(escalaMax, e.escala)
+            val escalaPieza = relativa?.escala?.coerceAtLeast(0f) ?: 1f
+            escalaMax = max(escalaMax, e.escala * max(escalaX, escalaY) * escalaPieza)
             val (w, h) = tamano(clip, e, cw, ch)
-            anchoMax = max(anchoMax, w)
-            altoMax = max(altoMax, h)
+            anchoMax = max(anchoMax, w * escalaX * escalaPieza)
+            altoMax = max(altoMax, h * escalaY * escalaPieza)
         }
 
         val localCentro = t - inicio
+        // Fuera de un iris invertido tiene que verse entero. Su borde neutro
+        // esta al otro lado que el de las mascaras que dejan ver el interior.
+        if (mascara?.invertida == true) for (i in bordes.indices) {
+            if (bordes[i] == SIN_BORDE) bordes[i] = -SIN_BORDE
+        }
         // Flashes y RGB son luz, no movimiento: van en el instante del
         // fotograma, sin promediar el obturador. Si no, el flash que cae justo
         // en el golpe saldria a medias, mezclado con el final del anterior.
-        val luces = animacion(clip, localCentro).y(destellos(clip, localCentro))
+        val luces = animacion(clip, localCentro).y(destellos(clip, localCentro)).y(efectosVideo(clip, localCentro))
         return PasoClip(
             clip = clip,
             tiempoArchivoUs = clip.tiempoArchivo(localCentro),
@@ -175,7 +230,45 @@ class Escena(
             escalaTexto = escalaMax,
             luz = luces.luz.coerceIn(-1f, 1f),
             rgb = luces.rgb.coerceIn(0f, alto * 0.1f),
-            negativo = luces.negativo.coerceIn(0f, 1f)
+            negativo = luces.negativo.coerceIn(0f, 1f),
+            // Un borde repetido no debe rellenar el hueco de un cierre.
+            espejoBordes = if (contraido) 0f else luces.espejoBordes.coerceIn(0f, 1f),
+            desenfoqueX = desenfoqueX,
+            desenfoqueY = desenfoqueY,
+            recorteFuente = pieza?.region?.acotada()
+        )
+    }
+
+    /** Compone Mbase * inversa(Tpieza), con pivote en su region visible. */
+    private fun moverPieza(m: FloatArray, region: RegionUv, e: Encuadre, recorte: Recorte): FloatArray {
+        if (e.x == 0f && e.y == 0f && e.escala == 1f && e.rotacion == 0f) return m
+        if (!e.x.isFinite() || !e.y.isFinite() || !e.escala.isFinite() || !e.rotacion.isFinite() || e.escala < 1e-6f) return FUERA.copyOf()
+        if (e.escala == 1f && e.rotacion == 0f) {
+            return m.copyOf().also {
+                it[6] = m[6] - m[0] * e.x * ancho - m[3] * e.y * alto
+                it[7] = m[7] - m[1] * e.x * ancho - m[4] * e.y * alto
+            }
+        }
+        val visible = region.interseccion(RegionUv(recorte.izquierda, recorte.arriba, 1f - recorte.derecha, 1f - recorte.abajo)) ?: region
+        val det = m[0] * m[4] - m[3] * m[1]
+        if (abs(det) < 1e-16f) return FUERA.copyOf()
+        val u = visible.centroX - m[6]
+        val v = visible.centroY - m[7]
+        val cx = (u * m[4] - m[3] * v) / det
+        val cy = (m[0] * v - u * m[1]) / det
+        val r = Math.toRadians(e.rotacion.toDouble())
+        val a = cos(r).toFloat() / e.escala
+        val b = sin(r).toFloat() / e.escala
+        val c = -b
+        val d = a
+        val dx = e.x * ancho
+        val dy = e.y * alto
+        val tx = cx - a * (cx + dx) - b * (cy + dy)
+        val ty = cy - c * (cx + dx) - d * (cy + dy)
+        return floatArrayOf(
+            m[0] * a + m[3] * c, m[1] * a + m[4] * c, 0f,
+            m[0] * b + m[3] * d, m[1] * b + m[4] * d, 0f,
+            m[0] * tx + m[3] * ty + m[6], m[1] * tx + m[4] * ty + m[7], 1f
         )
     }
 
@@ -187,10 +280,10 @@ class Escena(
      * cuenta se hace con las matrices reales, asi que tambien sale cuando el
      * bloque deja hueco solo durante una animacion o una transicion.
      */
-    private fun fondoDe(delante: PasoClip, local: Long): PasoClip? {
+    private fun fondoDe(delante: PasoClip, local: Long, forzar: Boolean = false): PasoClip? {
         val clip = delante.clip
         if (clip.esTexto) return null
-        if (cubre(delante)) return null
+        if (!forzar && cubre(delante)) return null
         val (cw, ch) = medidor.medidas(clip, alto)
         if (cw <= 0f || ch <= 0f) return null
         val e = Encuadre(ajuste = Ajuste.CUBRIR, escala = 1.15f)
@@ -220,6 +313,7 @@ class Escena(
 
     /** ¿El bloque tapa el lienzo entero en todas sus muestras? */
     private fun cubre(p: PasoClip): Boolean {
+        if (p.recorteFuente != null) return false
         if (p.mascara != null) return false
         val r = p.clip.encuadre.recorte
         val margen = 1e-4f
@@ -398,21 +492,38 @@ class Escena(
                 encima.add(PasoSolido(ajuste.color, destello(1.4f, 2.2f), debajo = false))
             }
 
+            Transicion.APLASTAR -> {
+                val vertical = abs(by) >= abs(bx)
+                ladoA = Lado(aEscena = { i ->
+                    val escala = (1f - ps[i]).coerceIn(0f, 1f).pow(fuerza.coerceIn(0.1f, 3f)).coerceAtLeast(0.001f)
+                    Efecto(escalaX = if (vertical) 1f else escala, escalaY = if (vertical) escala else 1f)
+                })
+                ladoB = Lado()
+            }
+
             // Fundido, y cualquier cosa que no tenga dibujo propio
             else -> Unit
         }
 
-        escena(pasos, a, t, inicioA, k, ladoA)
-        escena(pasos, b, t, inicioB, k, ladoB)
+        if (tipo == Transicion.APLASTAR) {
+            escena(pasos, b, t, inicioB, k, ladoB)
+            escena(pasos, a, t, inicioA, k, ladoA)
+        } else {
+            escena(pasos, a, t, inicioA, k, ladoA)
+            escena(pasos, b, t, inicioB, k, ladoB)
+        }
         pasos.addAll(encima)
     }
 
     /** Un lado de la transicion: su fondo y su bloque, aparte si hace falta. */
     private fun escena(pasos: MutableList<Paso>, clip: Clip, t: Long, inicio: Long, k: Int, lado: Lado) {
         val dentro = ArrayList<Paso>(3)
-        val delante = dibujo(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip)
-        if (proyecto.fondo == Fondo.DESENFOCADO) fondoDe(delante, t - inicio)?.let { dentro.add(it) }
-        dentro.add(delante)
+        val delante = dibujos(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip)
+        if (proyecto.fondo == Fondo.DESENFOCADO) {
+            val base = if (clip.piezas.isEmpty()) delante.first() as PasoClip else dibujo(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip)
+            fondoDe(base, t - inicio, forzar = clip.piezas.isNotEmpty())?.let { dentro.add(it) }
+        }
+        dentro.addAll(delante)
 
         val ef = lado.aEscena
         if (ef == null) {
@@ -426,7 +537,7 @@ class Escena(
             PasoGrupo(
                 // Con su color de fondo: la escena es opaca y tapa la otra
                 pasos = listOf(PasoSolido(colorFondo(), floatArrayOf(1f))) + dentro,
-                matrices = efs.map { desplazamiento(it.dx, it.dy) },
+                matrices = efs.map { desplazamiento(it.dx, it.dy, it.escalaX, it.escalaY) },
                 opacidades = FloatArray(n) { efs[it].opacidad.coerceIn(0f, 1f) },
                 mascara = efs.firstNotNullOfOrNull { it.mascara },
                 bordes = FloatArray(n) { if (efs[it].mascara != null) efs[it].borde else SIN_BORDE },
@@ -436,8 +547,12 @@ class Escena(
     }
 
     /** Del lienzo a la escena movida [dx], [dy] lienzos. */
-    private fun desplazamiento(dx: Float, dy: Float): FloatArray =
-        floatArrayOf(1f / ancho, 0f, 0f, 0f, 1f / alto, 0f, -dx, -dy, 1f)
+    private fun desplazamiento(dx: Float, dy: Float, escalaX: Float = 1f, escalaY: Float = 1f): FloatArray {
+        val sx = escalaX.coerceAtLeast(0.001f)
+        val sy = escalaY.coerceAtLeast(0.001f)
+        return floatArrayOf(1f / (ancho * sx), 0f, 0f, 0f, 1f / (alto * sy), 0f,
+            0.5f - (0.5f + dx) / sx, 0.5f - (0.5f + dy) / sy, 1f)
+    }
 
     // ------------------------------------------------------------------
     // Encuadre en el tiempo
@@ -697,6 +812,89 @@ class Escena(
         return r
     }
 
+    /** Efectos libres del bloque, compartidos por vista previa y exportacion. */
+    internal fun efectosVideo(clip: Clip, local: Long): Efecto {
+        var r = Efecto()
+        for (ef in clip.efectos) {
+            val i = ef.fuerzaEn(local)
+            if (i <= 0f) continue
+            val s = ef.segundosEn(local)
+            val golpe = (1f - fase(s, GOLPE)).pow(4)
+            val e = when (ef.tipo) {
+                TipoEfectoVideo.SACUDIDA -> {
+                    val dx = 0.03f * i * ruido(s * 24f, 1.3f)
+                    val dy = 0.02f * i * ruido(s * 27f, 5.9f)
+                    val giro = 3f * i * ruido(s * 20f, 8.1f)
+                    Efecto(dx = dx, dy = dy, rotacion = giro, escala = cubrir(0.03f * i, 0.02f * i, 3f * i))
+                }
+                TipoEfectoVideo.SACUDIDA_VERTICAL -> {
+                    val dy = 0.035f * i * sin(s * 76f)
+                    Efecto(dy = dy, rotacion = i * sin(s * 59f), escala = cubrir(0f, 0.035f * i, i))
+                }
+                TipoEfectoVideo.ZOOM_RITMO -> Efecto(escala = 1f + 0.15f * i * golpe)
+                TipoEfectoVideo.FLASH -> Efecto(luz = i * golpe)
+                TipoEfectoVideo.FLASH_NEGRO -> Efecto(luz = -i * golpe)
+                TipoEfectoVideo.ESTROBO -> Efecto(luz = if (fase(s, GOLPE / 2f) < 0.18f) i else 0f)
+                TipoEfectoVideo.RGB -> Efecto(rgb = alto * 0.012f * i * (0.6f + 0.4f * abs(ruido(s * 12f, 2.5f))))
+                TipoEfectoVideo.NEGATIVO -> Efecto(negativo = if (fase(s, GOLPE) < 0.4f) i.coerceAtMost(1f) else 0f)
+                TipoEfectoVideo.DESENFOQUE -> Efecto(desenfoque = alto * 0.025f * i)
+                TipoEfectoVideo.GLITCH -> {
+                    val k = floor(s * 25f)
+                    val dx = 0.035f * i * ruido(k, 1.7f)
+                    val dy = 0.015f * i * ruido(k, 9.2f)
+                    Efecto(
+                        dx = dx, dy = dy, escala = cubrir(0.035f * i, 0.015f * i, 0f),
+                        opacidad = if (ruido(k, 5.3f) > 0.55f) (1f - 0.6f * i).coerceAtLeast(0f) else 1f,
+                        rgb = alto * 0.009f * i * abs(ruido(k, 4.4f))
+                    )
+                }
+                TipoEfectoVideo.TWITCH -> {
+                    val ciclo = s / 1f
+                    if (fase(s, 1f) >= 0.25f) Efecto() else {
+                        val k = floor(s * 24f)
+                        val dx = 0.03f * i * ruido(k, 2.8f + floor(ciclo) * 3.1f)
+                        val dy = 0.015f * i * ruido(k, 5.2f + floor(ciclo) * 3.1f)
+                        Efecto(
+                            dx = dx, dy = dy,
+                            escala = cubrir(0.03f * i, 0.015f * i, 0f) + 0.1f * i * abs(ruido(k, 1.4f)),
+                            rgb = alto * 0.012f * i * abs(ruido(k, 6.1f + floor(ciclo) * 3.1f))
+                        )
+                    }
+                }
+                TipoEfectoVideo.CIRCULO_CERRAR, TipoEfectoVideo.CIRCULO_ABRIR -> {
+                    val radio = kotlin.math.sqrt(ancho.toFloat() * ancho + alto.toFloat() * alto) / 2f + 4f
+                    val abrir = ef.tipo == TipoEfectoVideo.CIRCULO_ABRIR
+                    val progreso = ef.progresoEn(local)
+                    val suave = alto * 0.003f + 0.5f
+                    val borde = if (abrir) radio * 0.3f * i.coerceAtMost(1f) * (1f - progreso)
+                        else radio * (1f - progreso * i.coerceAtMost(1f))
+                    Efecto(
+                        mascara = Mascara(0f, 0f, suave, radial = true, invertida = abrir),
+                        // Radio cero tiene que terminar por completo, sin el
+                        // punto semitransparente que dejaria el borde suave.
+                        borde = if (borde <= 0f) -suave / 2f else borde
+                    )
+                }
+                TipoEfectoVideo.BORDES_ESPEJO -> Efecto(espejoBordes = i.coerceAtMost(1f))
+                TipoEfectoVideo.DESENFOQUE_HORIZONTAL -> Efecto(desenfoqueX = alto * 0.04f * i)
+                TipoEfectoVideo.DESENFOQUE_VERTICAL -> Efecto(desenfoqueY = alto * 0.04f * i)
+                TipoEfectoVideo.CERRAR_VERTICAL -> Efecto(escalaY = (1f - ef.progresoEn(local) * i.coerceAtMost(1f)).coerceAtLeast(0.001f))
+                TipoEfectoVideo.CERRAR_HORIZONTAL -> Efecto(escalaX = (1f - ef.progresoEn(local) * i.coerceAtMost(1f)).coerceAtLeast(0.001f))
+                TipoEfectoVideo.REVELAR_HORIZONTAL -> {
+                    val p = (ef.progresoEn(local) * i.coerceAtMost(1f)).coerceIn(0f, 1f)
+                    val borde = when {
+                        p <= 0f -> -ancho / 2f - 1f
+                        p >= 1f -> ancho / 2f + 1f
+                        else -> ancho * (p - 0.5f)
+                    }
+                    Efecto(mascara = Mascara(1f, 0f, suave = 2f), borde = borde)
+                }
+            }
+            r = r.y(e)
+        }
+        return r
+    }
+
     // ------------------------------------------------------------------
     // Geometria
     // ------------------------------------------------------------------
@@ -752,10 +950,10 @@ class Escena(
      * muestra del obturador, y promediarlas. Devuelve una matriz 3x3 por
      * columnas, lista para OpenGL.
      */
-    fun matriz(clip: Clip, e: Encuadre, cw: Float, ch: Float): FloatArray {
+    fun matriz(clip: Clip, e: Encuadre, cw: Float, ch: Float, escalaX: Float = 1f, escalaY: Float = 1f): FloatArray {
         val s = base(clip, e, cw, ch) * e.escala
-        val w = cw * e.recorte.ancho * s
-        val h = ch * e.recorte.alto * s
+        val w = cw * e.recorte.ancho * s * escalaX
+        val h = ch * e.recorte.alto * s * escalaY
         // Un bloque encogido a nada (el arranque de un rebote, por ejemplo)
         // dividiria entre cero. Se manda todo fuera de la textura: no se ve.
         if (w < 1e-3f || h < 1e-3f) return FUERA.copyOf()
@@ -895,7 +1093,12 @@ data class Efecto(
     /** Rojo y azul separados, en pixeles del lienzo. */
     val rgb: Float = 0f,
     /** 0 normal, 1 colores invertidos. */
-    val negativo: Float = 0f
+    val negativo: Float = 0f,
+    val escalaX: Float = 1f,
+    val escalaY: Float = 1f,
+    val espejoBordes: Float = 0f,
+    val desenfoqueX: Float = 0f,
+    val desenfoqueY: Float = 0f
 ) {
     fun aplicar(e: Encuadre): Encuadre = e.copy(
         x = e.x + dx,
@@ -910,7 +1113,9 @@ data class Efecto(
         opacidad * o.opacidad, desenfoque + o.desenfoque, mascara ?: o.mascara,
         if (mascara != null) borde else o.borde,
         if (revelar >= 0f) revelar else o.revelar,
-        luz + o.luz, rgb + o.rgb, max(negativo, o.negativo)
+        luz + o.luz, rgb + o.rgb, max(negativo, o.negativo),
+        escalaX * o.escalaX, escalaY * o.escalaY, max(espejoBordes, o.espejoBordes),
+        desenfoqueX + o.desenfoqueX, desenfoqueY + o.desenfoqueY
     )
 }
 
@@ -928,18 +1133,20 @@ data class Mascara(
     val dirY: Float,
     val suave: Float,
     /** En circulo: d es la distancia al centro del lienzo y se ve lo de dentro. */
-    val radial: Boolean = false
+    val radial: Boolean = false,
+    val invertida: Boolean = false
 )
 
 /** Un fotograma descrito: que dibujar, en orden de abajo arriba. */
 data class Cuadro(val numero: Long, val tiempoUs: Long, val pasos: List<Paso>) {
     /** Bloques que tienen que tener su fotograma listo para dibujar este. */
-    val clips: List<PasoClip> get() = pasos.flatMap {
-        when (it) {
-            is PasoClip -> listOf(it)
-            is PasoGrupo -> if (it.visible) it.pasos.filterIsInstance<PasoClip>() else emptyList()
-            else -> emptyList()
-        }
+    val clips: List<PasoClip> get() = pasos.flatMap { clipsDe(it) }
+
+    private fun clipsDe(paso: Paso): List<PasoClip> = when (paso) {
+        is PasoClip -> listOf(paso)
+        is PasoPartes -> if (paso.visible) paso.partes else emptyList()
+        is PasoGrupo -> if (paso.visible) paso.pasos.flatMap { clipsDe(it) } else emptyList()
+        else -> emptyList()
     }
 }
 
@@ -1000,10 +1207,21 @@ data class PasoClip(
     /** Rojo y azul separados, en pixeles del lienzo. */
     val rgb: Float = 0f,
     /** Colores invertidos, de 0 a 1. */
-    val negativo: Float = 0f
+    val negativo: Float = 0f,
+    val espejoBordes: Float = 0f,
+    val desenfoqueX: Float = 0f,
+    val desenfoqueY: Float = 0f,
+    /** Mascara en UV de la fuente completa, sin cambiar su geometria. */
+    val recorteFuente: RegionUv? = null
 ) : Paso() {
 
     val muestras: Int get() = matrices.size
+
+    /** Una sola exposicion, para componer las partes antes de promediarlas. */
+    fun muestra(indice: Int): PasoClip {
+        val i = indice.coerceIn(0, matrices.lastIndex)
+        return copy(matrices = listOf(matrices[i]), opacidades = floatArrayOf(opacidades[i]), bordes = floatArrayOf(bordes[i]))
+    }
 
     override fun simplificado(): Paso =
         if (quieto(matrices, mascara, bordes)) copy(
@@ -1014,6 +1232,22 @@ data class PasoClip(
 
     /** Si no se ve, no hace falta ni decodificarlo. */
     val visible: Boolean get() = opacidades.any { it > 0.002f }
+}
+
+/** Primero compone cada instante de las partes; despues promedia el conjunto. */
+data class PasoPartes(val partes: List<PasoClip>, val mezcla: Mezcla = Mezcla.NORMAL) : Paso() {
+    val muestras: Int get() = partes.maxOfOrNull { it.muestras } ?: 1
+    val visible: Boolean get() = partes.any { it.visible }
+
+    override fun simplificado(): Paso {
+        // La opacidad tambien debe conservar su correlacion temporal entre
+        // piezas: promediarla antes del OVER cambiaria el resultado.
+        val quietas = partes.all { p ->
+            p.matrices.all { it.contentEquals(p.matrices.first()) } &&
+                p.opacidades.all { it == p.opacidades.first() } && p.bordes.all { it == p.bordes.first() }
+        }
+        return if (quietas) copy(partes = partes.map { it.muestra(0) }) else this
+    }
 }
 
 /**

@@ -35,6 +35,7 @@ enum class Formato(val nombre: String, val ancho: Int, val alto: Int) {
     VERTICAL("9:16", 9, 16),
     HORIZONTAL("16:9", 16, 9),
     CUADRADO("1:1", 1, 1),
+    RETRATO_3_4("3:4", 3, 4),
     RETRATO("4:5", 4, 5);
 
     /**

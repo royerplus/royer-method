@@ -703,6 +703,22 @@ private fun DrawScope.bloque(
             if (fin > 0) drawRect(Ink.White70, Offset(xb + c.duracionUs * pxUs - fin, y0), Size(fin, 3.dp.toPx()))
             if (c.continua.isNotEmpty()) drawRect(Ink.White30, Offset(x0, y0), Size(ancho, 1.5.dp.toPx()))
         }
+        if (c.efectos.isNotEmpty()) {
+            // Cada raya conserva el intervalo real del efecto, incluso con transiciones.
+            val xb = x0 - (pz.desde - pz.inicio) * pxUs
+            c.efectos.take(3).forEachIndexed { i, efecto ->
+                val xa = xb + efecto.inicioUs * pxUs
+                val xf = xb + min(efecto.finUs, c.duracionUs) * pxUs
+                if (xf > xa) drawRect(
+                    if (efecto.activo) Ink.White90 else Ink.White30,
+                    Offset(xa, y0 + (6 + i * 4).dp.toPx()), Size(xf - xa, 2.dp.toPx())
+                )
+            }
+            if (ancho > 55.dp.toPx()) texto(
+                medidor, "FX ${c.efectos.size}", Offset(x0 + 7.dp.toPx(), y0 + 23.dp.toPx()),
+                Ink.White90, 8.5f, maxAncho = ancho - 10.dp.toPx()
+            )
+        }
     }
     if (elegido) {
         drawRoundRect(Ink.White, Offset(x0, y0), Size(x1 - x0, alto), radio, style = Stroke(2.dp.toPx()))

@@ -85,6 +85,8 @@ fun PantallaEditor(
     onCancelarExportar: () -> Unit,
     onCompartir: () -> Unit,
     onCerrarExportar: () -> Unit,
+    onAbrirProyecto: () -> Unit = {},
+    onGuardarProyecto: () -> Unit = {},
     modifier: Modifier = Modifier,
     vista: @Composable (Modifier) -> Unit
 ) {
@@ -135,7 +137,7 @@ fun PantallaEditor(
                             }
                             else -> Column(Modifier.fillMaxSize()) {
                                 LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxWidth().weight(1f))
-                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido)
+                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto)
                             }
                         }
                     }
@@ -151,6 +153,8 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.VELOCIDAD -> PanelVelocidad(estado)
         Panel.VOLUMEN -> PanelVolumen(estado)
         Panel.ANIMACION -> PanelAnimacion(estado)
+        Panel.PIEZAS -> PanelPiezas(estado)
+        Panel.EFECTOS -> PanelEfectos(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
         Panel.COLOR -> PanelColor(estado)
         Panel.ENCUADRE -> PanelEncuadre(estado)
@@ -271,7 +275,14 @@ private fun BotonClave(estado: EstadoEditor) {
 
 /** La fila de herramientas: cambia segun lo elegido. */
 @Composable
-private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, onAgregarCapa: () -> Unit, onAgregarSonido: () -> Unit) {
+private fun Herramientas(
+    estado: EstadoEditor,
+    onAgregarPrincipal: () -> Unit,
+    onAgregarCapa: () -> Unit,
+    onAgregarSonido: () -> Unit,
+    onAbrirProyecto: () -> Unit,
+    onGuardarProyecto: () -> Unit
+) {
     val s = estado.seleccion
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
     Row(
@@ -292,10 +303,21 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                     // Elige lo que hay en la pista principal bajo el cabezal
                     val p = estado.proyecto
                     val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
-                    val c = en?.segundo ?: en?.primero
+                    val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
+                        ?: en?.segundo ?: en?.primero
                     if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
                 })
                 Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
+                Herramienta(Glifos.ajustes, "Efectos", {
+                    val p = estado.proyecto
+                    val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
+                    val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
+                        ?: en?.segundo ?: en?.primero
+                    if (c != null) {
+                        estado.elegir(Seleccion.Bloque(c.id))
+                        estado.panel = Panel.EFECTOS
+                    } else estado.avisar("Selecciona una foto, un video o una capa para agregar efectos")
+                })
                 Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
                 Herramienta(Glifos.texto, "Texto", {
                     var nuevo = 0L
@@ -305,6 +327,8 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                 })
                 Herramienta(Glifos.audio, "Sonido", onAgregarSonido)
                 Herramienta(Glifos.formato, "Formato", { estado.panel = Panel.FORMATO })
+                Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
+                Herramienta(Glifos.guardar, "Guardar proyecto", onGuardarProyecto)
             }
             is Seleccion.Sonido -> {
                 val id = s.id
@@ -328,6 +352,8 @@ private fun Herramientas(estado: EstadoEditor, onAgregarPrincipal: () -> Unit, o
                 if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
                 if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
                 Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
+                Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
+                Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
                 if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
                 Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
                 Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })

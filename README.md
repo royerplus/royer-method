@@ -47,9 +47,34 @@ cada resultado en la galería. Para dejarlo trabajando de noche.
   mueve; los bordes lo recortan; pellizcar acerca la línea de tiempo.
 - Animaciones de entrada, salida y continuas. Cada una es una lista de
   piezas que se combinan y se ajustan (fuerza, curva, cuándo empieza y
-  acaba), y se pueden guardar como propias. Duraciones desde 0,1 s.
+  acaba), y se pueden guardar como propias. Duraciones desde un fotograma
+  (0,033 s a 30 fps), con ajuste de cuadro en cuadro.
+- Partes de la imagen con regiones UV: separar mitades superior e inferior o
+  izquierda y derecha, y ajustar los límites de cada región sin volver a llenar
+  el lienzo con ella. Cada parte conserva el encuadre del bloque y tiene posición,
+  escala, giro, opacidad y fotogramas clave independientes, con curvas y Bézier.
+  Se pueden duplicar, quitar y ajustar sus tiempos fotograma a fotograma.
+- Efectos de video independientes de la entrada y salida: 19 tipos, incluidos
+  iris, cierres, revelado horizontal (`REVELAR_HORIZONTAL`), bordes en espejo y
+  desenfoque horizontal y vertical. Cada
+  efecto tiene inicio, fin, intensidad, rapidez, fundidos y activación; se
+  pueden combinar, duplicar y recortar sin reiniciar su movimiento.
+- Puntos de progreso editables para los iris, cierres y revelado horizontal:
+  permiten reproducir el recorrido de una máscara medido en una referencia,
+  controlando su avance en cada instante del efecto.
+- Capas que se solapan: la imagen entrante puede animarse debajo mientras
+  la anterior cierra su máscara. Los efectos aparecen como barras en los bloques.
 - Transiciones con duración, ritmo, dirección, color y fuerza.
 - Fotogramas clave con curvas editables a mano.
+- Vista previa con reloj de audio continuo (`RelojAudio`): interpola las marcas
+  de `AudioTimestamp`, limita el avance a las muestras escritas y al cabezal
+  observado, y se detiene si falta audio. `Choreographer` programa el dibujo
+  desde el hilo GL al ritmo de la pantalla. El objetivo es mantener 30 fps;
+  el rendimiento final debe verificarse en el teléfono con el proyecto real.
+- Formato 3:4, además de los formatos vertical, horizontal, cuadrado y 4:5.
+- Abrir y guardar proyectos `.royer` con todos sus medios incluidos. La
+  importación conserva el montaje anterior en deshacer y copia los archivos
+  a la app para que el proyecto siga funcionando al mover el paquete.
 - Exporta a 30 fps exactos (comprobados en el archivo), H.265 si el
   teléfono lo tiene y si no H.264, con el bitrate repartido según lo que se
   mueve en cada tramo. Los videos de menos de 30 fps generan los fotogramas
@@ -78,6 +103,22 @@ https://github.com/royerplus/royer-method/releases/download/prueba/RoyerMethod.a
 
 Solo se compila para `arm64-v8a`. Es lo que lleva cualquier teléfono capaz de
 mover Vulkan con computación, que es lo que exigen los modelos.
+
+Para probar sin sustituir una instalación con otra firma:
+
+```
+gradlew assemblePrueba
+```
+
+Genera una variante optimizada llamada **Royer Method · Prueba**, con el
+identificador `com.royermethod.app.prueba`. `testDebugUnitTest` comprueba el
+modelo, las partes de imagen, los efectos, el reloj de audio, la persistencia
+y los paquetes. Las pruebas optativas de
+`ProyectoRealIntegrationTest` exportan y miden la vista previa en un teléfono
+con un proyecto real, dejando sus informes junto al MP4. El informe de vista
+previa separa cuadros publicados por EGL, tiempos de CPU y swap, y actualizaciones
+de `TextureView` asociadas a la marca real de cada buffer. Esas mediciones son las
+que permiten comprobar la fluidez de una compilación concreta.
 
 ## Estructura
 

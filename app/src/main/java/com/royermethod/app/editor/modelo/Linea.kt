@@ -209,7 +209,8 @@ object Linea {
         if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
         // Un flash o un negativo cambia todos los pixeles de golpe: el
         // codificador no puede aprovechar el fotograma anterior
-        if (en != null && golpea(en.primero, en.localPrimero)) f *= 1.25f
+        if (en != null && (golpea(en.primero, en.localPrimero) ||
+                en.segundo?.let { golpea(it, en.localSegundo) } == true)) f *= 1.25f
         // Lo que el usuario le pidio a ese bloque: en una transicion, la media de los dos
         if (en != null) f *= en.segundo?.let { (en.primero.calidad + it.calidad) / 2f } ?: en.primero.calidad
         // Lo que va encima tambien hay que pagarlo
@@ -219,6 +220,7 @@ object Linea {
             seMueve(c.clip, t - c.inicioUs) -> 0.25f
             else -> 0.1f
         }
+        if (encima.any { golpea(it.clip, t - it.inicioUs) }) f *= 1.15f
         return f.coerceIn(0.2f, 3.3f)
     }
 
@@ -234,6 +236,14 @@ object Linea {
             r.add(c.claves.minOf { it.tiempoUs })
             r.add(c.claves.maxOf { it.tiempoUs })
         }
+        for (pieza in c.piezas) if (pieza.claves.size >= 2) {
+            r.add(pieza.claves.minOf { it.tiempoUs }.coerceAtLeast(0))
+            r.add(pieza.claves.maxOf { it.tiempoUs }.coerceAtMost(c.duracionUs))
+        }
+        for (e in c.efectos) if (e.activo && e.intensidad > 0f) {
+            r.add(e.inicioUs)
+            r.add(e.finUs)
+        }
         return r
     }
 
@@ -245,8 +255,14 @@ object Linea {
         AnimacionContinua.SHAKE_FLASH, AnimacionContinua.ESTROBO, AnimacionContinua.RGB, AnimacionContinua.TWITCH
     )
 
+    private val EFECTOS_FUERTES = setOf(
+        TipoEfectoVideo.FLASH, TipoEfectoVideo.FLASH_NEGRO, TipoEfectoVideo.ESTROBO,
+        TipoEfectoVideo.NEGATIVO, TipoEfectoVideo.RGB, TipoEfectoVideo.GLITCH, TipoEfectoVideo.TWITCH
+    )
+
     /** ¿En [local] hay flashes, RGB o sacudidas fuertes? */
     private fun golpea(c: Clip, local: Long): Boolean {
+        if (c.efectos.any { it.tipo in EFECTOS_FUERTES && it.activoEn(local) }) return true
         if (c.continua.any { it.tipo in CONTINUAS_FUERTES }) return true
         if (local < c.duracionEntradaUs && c.entrada.any { it.tipo in PIEZAS_FUERTES }) return true
         if (local >= c.duracionUs - c.duracionSalidaUs && c.salida.any { it.tipo in PIEZAS_FUERTES }) return true
@@ -255,6 +271,8 @@ object Linea {
 
     /** ¿Algo de [c] cambia de un fotograma al siguiente en [local]? */
     private fun seMueve(c: Clip, local: Long): Boolean {
+        if (c.efectos.any { it.activoEn(local) }) return true
+        if (c.piezas.any { it.claves.size >= 2 && local >= it.claves.minOf { k -> k.tiempoUs } && local < it.claves.maxOf { k -> k.tiempoUs } }) return true
         if (c.continua.isNotEmpty()) return true
         if (c.entrada.isNotEmpty() && local < c.duracionEntradaUs) return true
         if (c.salida.isNotEmpty() && local >= c.duracionUs - c.duracionSalidaUs) return true

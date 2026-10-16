@@ -16,6 +16,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
 
         // Solo arm64. Es lo que lleva cualquier telefono capaz de mover
         // Vulkan con computacion, que es lo que exige el modelo, y ncnn son
@@ -44,6 +45,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Permite validar el editor en el telefono sin sustituir la app instalada.
+            applicationIdSuffix = ".prueba"
+            versionNameSuffix = "-prueba"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -56,6 +62,13 @@ android {
             // comprobaciones extra de Compose y va notablemente mas lento, asi
             // que juzgar la fluidez con el APK debug enganaba.
             signingConfig = signingConfigs.getByName("debug")
+        }
+        create("prueba") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prueba"
+            versionNameSuffix = "-prueba"
+            matchingFallbacks += listOf("release")
+            proguardFiles("proguard-prueba.pro")
         }
     }
 
@@ -87,4 +100,10 @@ dependencies {
     // se prueba en el ordenador: ./gradlew test
     testImplementation(libs.junit)
     testImplementation(libs.json)
+    // Clases de prueba incluidas en Android. Solo se compilan para androidTest;
+    // las proporciona el telefono mediante uses-library, no se empaquetan stubs.
+    androidTestCompileOnly(files(
+        "${android.sdkDirectory}/platforms/android-${android.compileSdk}/optional/android.test.base.jar",
+        "${android.sdkDirectory}/platforms/android-${android.compileSdk}/optional/android.test.runner.jar"
+    ))
 }

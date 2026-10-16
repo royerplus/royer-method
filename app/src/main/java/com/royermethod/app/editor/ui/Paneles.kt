@@ -460,7 +460,7 @@ fun PanelCurva(estado: EstadoEditor) {
  * y el vertical cuanto se ha llegado: mas inclinada, mas rapido.
  */
 @Composable
-private fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
+internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
     val gestos = LocalGestos.current
     val actual by androidx.compose.runtime.rememberUpdatedState(b)
     val cambio by androidx.compose.runtime.rememberUpdatedState(onCambio)

@@ -182,6 +182,8 @@ object Edicion {
         val a = c.copy(
             hastaUs = corte,
             claves = clavesA,
+            efectos = c.efectos.mapNotNull { it.recortado(0, local) },
+            piezas = c.piezas.map { it.recortada(0, local) },
             salida = emptyList(),
             fundidoSalidaUs = 0,
             transicion = Transicion.NINGUNA
@@ -190,6 +192,8 @@ object Edicion {
             id = nid,
             desdeUs = corte,
             claves = clavesB,
+            efectos = c.efectos.mapNotNull { it.recortado(local, c.duracionUs) },
+            piezas = c.piezas.map { it.recortada(local, c.duracionUs) },
             entrada = emptyList(),
             fundidoEntradaUs = 0
         )
@@ -219,7 +223,15 @@ object Edicion {
             it.copy(
                 desdeUs = d,
                 hastaUs = h,
-                claves = claves.map { k -> k.copy(tiempoUs = k.tiempoUs - corrimiento) }
+                claves = claves.map { k -> k.copy(tiempoUs = k.tiempoUs - corrimiento) },
+                efectos = it.efectos.mapNotNull { ef ->
+                    val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
+                    ef.recortado(corrimiento, corrimiento + duracion)
+                },
+                piezas = it.piezas.map { pieza ->
+                    val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
+                    pieza.recortada(corrimiento, corrimiento + duracion)
+                }
             )
         }
     }

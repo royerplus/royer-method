@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.AjusteTransicion
 import com.royermethod.app.editor.modelo.Edicion
+import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Transicion
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.Cuadricula
@@ -53,12 +54,13 @@ import com.royermethod.app.ui.components.Opciones
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
+import kotlin.math.roundToLong
 
-private val CON_DIRECCION = setOf(Transicion.EMPUJAR, Transicion.DESLIZAR, Transicion.LINEA, Transicion.BARRIDO)
+private val CON_DIRECCION = setOf(Transicion.EMPUJAR, Transicion.DESLIZAR, Transicion.LINEA, Transicion.BARRIDO, Transicion.APLASTAR)
 private val CON_COLOR = setOf(Transicion.LINEA, Transicion.DESTELLO, Transicion.IMPACTO)
 private val CON_FUERZA = setOf(
     Transicion.LINEA, Transicion.DESLIZAR, Transicion.ZOOM, Transicion.DESENFOQUE,
-    Transicion.GIRO, Transicion.ZOOM_GIRO, Transicion.IMPACTO
+    Transicion.GIRO, Transicion.ZOOM_GIRO, Transicion.IMPACTO, Transicion.APLASTAR
 )
 
 private val COLORES_LUZ = listOf(0xFFFFFFFF, 0xFFFFE9B0, 0xFFFF3B5C, 0xFFFF9F1C, 0xFF5BFF8F, 0xFF2EC4FF, 0xFF7B61FF, 0xFFFF6AD5).map { it.toInt() }
@@ -77,18 +79,28 @@ fun PanelTransicion(estado: EstadoEditor) {
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
     // Una transicion no puede comerse mas de la mitad de ninguno de los dos
-    val maximo = (min(a.duracionUs, b.duracionUs) / 2).coerceAtLeast(100_000L)
+    val minimo = Linea.tiempoDe(1)
+    val maximo = Linea.tiempoDe(Linea.fotogramaEn(min(a.duracionUs, b.duracionUs) / 2)).coerceAtLeast(0)
 
     Cuadricula(Transicion.values().toList()) { t, mod ->
         Mosaico(t.nombre, a.transicion == t, {
+            if (t != Transicion.NINGUNA && maximo < minimo) {
+                estado.avisar("Alarga ambos bloques para que quepa un fotograma de transicion")
+                return@Mosaico
+            }
             cambiar {
                 val dur = if (it.transicion == Transicion.NINGUNA) AjustesEditor.duracionTransicionUs else it.duracionTransicionUs
                 // Los barridos empiezan algo inclinados; si ya se giro a mano, se respeta
                 val aj = it.ajusteTransicion
                 val barrido = t == Transicion.LINEA || t == Transicion.BARRIDO
                 val recto = aj.angulo % 90f == 0f
-                val angulo = if (barrido && recto) AjusteTransicion.ANGULO_BARRIDO else aj.angulo
-                it.copy(transicion = t, duracionTransicionUs = dur.coerceAtMost(maximo), ajusteTransicion = aj.copy(angulo = angulo))
+                val angulo = when {
+                    t == Transicion.APLASTAR && it.transicion != Transicion.APLASTAR -> 90f
+                    barrido && recto -> AjusteTransicion.ANGULO_BARRIDO
+                    else -> aj.angulo
+                }
+                val tiempo = if (maximo >= minimo) Linea.tiempoDe((dur * Linea.FPS / 1_000_000.0).roundToLong()).coerceIn(minimo, maximo) else 0
+                it.copy(transicion = t, duracionTransicionUs = tiempo, ajusteTransicion = aj.copy(angulo = angulo))
             }
             // Que se vea entera: el cabezal salta a un poco antes
             val ini = com.royermethod.app.editor.modelo.Linea.inicios(estado.proyecto.principal)
@@ -102,11 +114,17 @@ fun PanelTransicion(estado: EstadoEditor) {
     }
     val aj = a.ajusteTransicion
     Spacer(Modifier.height(4.dp))
-    Deslizador(
-        "Duracion", a.duracionTransicionUs.coerceAtMost(maximo) / 1e6f, 0.1f, maximo / 1e6f,
-        { v -> cambiar(true) { it.copy(duracionTransicionUs = (v * 1e6).toLong()) } },
-        neutro = 0.1f, paso = 0.1f, texto = { "%.1f s".format(it) }
-    )
+    if (maximo >= minimo) {
+        TiempoFotogramas("Duracion", Linea.solape(a, b), minimo, maximo) { us, arrastre ->
+            cambiar(arrastre) { it.copy(duracionTransicionUs = us) }
+            estado.reproduciendo = false
+            val inicios = Linea.inicios(estado.proyecto.principal)
+            estado.irA(inicios[i + 1] + us / 2)
+        }
+        Text("Los dos bloques se superponen durante este tramo.", style = MaterialTheme.typography.bodySmall, color = Ink.White50, modifier = Modifier.padding(top = 6.dp))
+    } else {
+        Text("Los bloques son demasiado cortos para un fotograma de transicion.", style = MaterialTheme.typography.bodyMedium, color = Ink.White50)
+    }
     Etiqueta("Ritmo")
     Opciones(Curva.values().toList(), aj.curva, { it.nombre }, { c -> cambiar { it.copy(ajusteTransicion = it.ajusteTransicion.copy(curva = c)) } })
     if (a.transicion in CON_DIRECCION) {
@@ -273,6 +291,10 @@ private fun DrawScope.dibujoTransicion(t: Transicion, col: Color) {
         Transicion.CIRCULO -> {
             drawRoundRect(tenue, Offset(0f, y), Size(w, h), radio)
             drawCircle(col, h * 0.38f, center)
+        }
+        Transicion.APLASTAR -> {
+            drawRoundRect(tenue, Offset(0f, y), Size(w, h), radio)
+            drawRoundRect(col, Offset(0f, y + h * 0.38f), Size(w, h * 0.24f), radio)
         }
         Transicion.ZOOM_GIRO -> {
             drawRoundRect(tenue, Offset(0f, y), Size(w, h), radio)
