@@ -151,3 +151,24 @@ Se generó paquete nuevo de21capas/307claves/4piezas/24efectos; el script acaba 
 Compilación final iniciada: `testDebugUnitTest assemblePrueba assembleDebugAndroidTest`. Kotlin debug/prueba e instrumentación compilaron y testDebugUnitTest terminó sin fallos antes del cierre. Consultar nota de resultado final y los XML de app/build/test-results/testDebugUnitTest. No instalar ni asumir que la APK anterior contiene todo si build final no terminó.
 
 **RESULTADO FINAL: BUILD SUCCESSFUL (1m14s). 99 pruebas,0fallos. APK prueba y APK instrumentación generadas. El paquete .royer se regeneró con los últimos ajustes (SHA256 a3f363188db62dfa2fde06117c67fc04630a11298276f2870e80a1ff88313de9). Nada nuevo instalado/exportado/medido en el celular. No hay compilaciones ni agentes trabajando. Próximo paso: instalar nueva .prueba e instrumentación, exportar y medir según instrucciones de arriba.**
+
+## Estado al 2026-10-16 (Claude)
+
+Hecho:
+
+- Export 1 (resultados/export-medido-1): 411 fotogramas, 30 fps, 0 avisos, 0 irregulares. Revisado cuadro a cuadro: coinciden las mitades 149–159 y 259–269, el iris de B, el agujero de C, los giros, los bordes espejo, los barridos de G (232–241 y 342–352) y el fundido final. Fallaban los latigazos borrosos (172, 200, 228, 255–256 y +110).
+- Persistencia: -0.0 se lee como 0 (commit 947577d); el test de exportar fallaba por eso.
+- Fastseek: stss marca solo los IDR reales (1, 120, 240, 360); 8 búsquedas con ffmpeg dan el cuadro exacto.
+- Fluidez de la vista previa: precarga de fotos en otro hilo (commit e0532d0). Pasó de 403 fotogramas / 29,06 fps / 6 saltos a 409 / 29,67 fps / 0 saltos. Solo quedan huecos de 100–150 ms al arrancar.
+- Latigazos medidos en analisis/forense/latigazos-medidos.json y latigazos-diagonales.json (scripts en el scratchpad: latigazo.py y diagonal.py). El generador (royer-method-work/replicar_medida.py; copia previa en resultados/replicar_medida.antes-latigazos.py) mete un desplazamiento + DESENFOQUE_H/V apilado en esos cuadros, y deja los progresos de iris, agujero y barrido quietos mientras el obturador está abierto.
+- Export 2 (resultados/export-medido-2, también en el teléfono en Movies/RoyerMethod/replica-medida-2.mp4): 411 fotogramas a 30 fps; los latigazos ya se ven, pero con rayas finas. El commit 916162e (corrimiento de muestras por obturador) debería quitarlas: NO probado aún en el teléfono.
+- El teléfono se exporta en 4,9 s si la app está al frente. En segundo plano, "Hiber" de Infinix congela la app: lanzar MainActivity de .prueba justo después de am instrument.
+
+Falta:
+
+1. Instalar el APK nuevo, exportar (export 3) y revisar los latigazos (rayas) y el resto cuadro a cuadro.
+2. Anillo de B en 186: posición y radio bien, pero más grueso y brillante que la referencia. Con el progreso quieto por obturador debería afinarse; comprobar. El brillo depende de la foto.
+3. El intro queda congelado bajo las mitades (149–159); en la referencia se mueve. No se puede usar ese tramo del original porque ya trae las mitades.
+4. B282 tuvo un ajuste flojo; se usa el valor de B172.
+
+.royer actual: resultados/replica-medida-testprueba1.royer, SHA256 d3ee6fdab9440c1210e22684c3e99466c83b5cd61031f81dea579d92392da68d (no probado con el último APK).
