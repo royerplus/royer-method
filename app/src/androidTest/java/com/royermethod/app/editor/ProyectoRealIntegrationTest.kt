@@ -402,6 +402,45 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
         return JSONObject().put("comprobaciones", comprobaciones).put("correcto", true)
     }
 
+    /**
+     * Diagnostico del arranque del sonido: que dicen el cabezal y los
+     * timestamps de AudioTrack en el primer segundo. Lo usa el reloj de la
+     * vista previa; sirve para ver por que la imagen se detiene al empezar.
+     */
+    fun testDiagnosticoArranqueAudio() {
+        val context = instrumentation.targetContext
+        assertTrue("Ejecutar en la variante .prueba", context.packageName.endsWith(".prueba"))
+        val guardado = File(context.filesDir, "editor/proyecto.json")
+        assertTrue("Importa primero el proyecto con testImportarYExportarProyectoReal", guardado.isFile)
+        val p = Persistencia.deTexto(guardado.readText(Charsets.UTF_8)) ?: error("No se entiende el proyecto guardado")
+        val segs = com.royermethod.app.editor.audio.PlanAudio.de(p)
+        assertTrue("El proyecto no tiene sonido", segs.isNotEmpty())
+        val lecturas = ArrayList<com.royermethod.app.editor.vista.SalidaAudio.Lectura>()
+        val inicio = System.nanoTime()
+        val s = com.royermethod.app.editor.vista.SalidaAudio(context, segs, com.royermethod.app.editor.audio.PlanAudio.total(p), 0L)
+        s.alLeer = { lecturas.add(it) }
+        try {
+            while (System.nanoTime() - inicio < 1_200_000_000L) {
+                s.sonados()
+                SystemClock.sleep(4)
+            }
+        } finally {
+            s.parar()
+        }
+        val filas = JSONArray()
+        for (l in lecturas) filas.put(JSONObject().apply {
+            put("ms", (l.nanoTime - inicio) / 1e6)
+            put("cabezal", l.cabezal)
+            put("escritos", l.escritos)
+            put("marcaFrames", l.marcaFrames ?: JSONObject.NULL)
+            put("marcaMs", l.marcaNanoTime?.let { (it - inicio) / 1e6 } ?: JSONObject.NULL)
+            put("posicion", l.posicion)
+            put("congelado", l.congelado)
+        })
+        val externas = context.getExternalFilesDir(null) ?: error("No hay almacenamiento externo de la app")
+        escribirAtomico(File(externas, "pruebas/arranque-audio.json"), JSONObject().put("lecturas", filas).toString(1))
+    }
+
     private fun escribirAtomico(archivo: File, texto: String) {
         archivo.parentFile?.let { check(it.mkdirs() || it.isDirectory) }
         val atomico = AtomicFile(archivo)

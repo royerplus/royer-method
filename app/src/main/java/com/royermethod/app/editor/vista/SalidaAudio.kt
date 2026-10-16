@@ -53,6 +53,13 @@ internal class SalidaAudio(
     private var intentosSinTimestamp = 0
     private var ultimoUnderrun = -1
 
+    /** Diagnostico opcional: lo que se leyo del dispositivo en cada consulta. */
+    data class Lectura(
+        val nanoTime: Long, val cabezal: Long, val escritos: Long,
+        val marcaFrames: Long?, val marcaNanoTime: Long?, val posicion: Long, val congelado: Boolean
+    )
+    var alLeer: ((Lectura) -> Unit)? = null
+
     /** El ultimo frame ya se ha drenado, incluyendo el redondeo a muestras. */
     val agotada: Boolean get() = escrituraCompleta &&
         maxOf(reloj.ultimaPosicion, reloj.cabezalObservado) >= framesObjetivo
@@ -147,6 +154,7 @@ internal class SalidaAudio(
         val estabaCongelado = reloj.congelado
         val posicion = reloj.posicion(ahora, cabezal, framesEscritos, reproduciendo, underruns, marca)
         if (!estabaCongelado && reloj.congelado) resincronizarTimestamp(ahora)
+        alLeer?.invoke(Lectura(ahora, cabezal, framesEscritos, marca?.frames, marca?.nanoTime, posicion, reloj.congelado))
         return posicion
     }
 
