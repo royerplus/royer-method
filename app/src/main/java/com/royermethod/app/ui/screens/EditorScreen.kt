@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.SurfaceTexture
 import android.net.Uri
+import android.provider.DocumentsContract
 import android.view.Surface
 import android.view.TextureView
 import androidx.activity.compose.BackHandler
@@ -21,6 +22,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
 import com.royermethod.app.editor.Persistencia
 import com.royermethod.app.editor.PaqueteProyecto
+import com.royermethod.app.editor.ImportadosProyecto
+import com.royermethod.app.editor.limpiarSiFallaProyecto
 import com.royermethod.app.editor.exportar.Exportacion
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Origen
@@ -36,6 +39,7 @@ import com.royermethod.app.editor.vista.Importar
 import com.royermethod.app.editor.vista.Previsualizador
 import com.royermethod.app.editor.vista.RecursosAndroid
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -57,14 +61,22 @@ fun EditorScreen(onVolver: () -> Unit) {
 
     // Un proyecto guardado vacio no tiene nada que conservar: se empieza con
     // los ajustes de ahora (formato, fondo, salida), por si cambiaron.
+    val proyectoGuardado = remember { cargar(context) }
+    val limpiezaImportados = remember {
+        ImportadosProyecto.alIniciar(File(context.filesDir, "editor/importados"), proyectoGuardado)
+    }
     val estado = remember {
-        val guardado = cargar(context)?.takeIf { it.principal.isNotEmpty() || it.capas.isNotEmpty() || it.audios.isNotEmpty() }
+        val guardado = proyectoGuardado?.takeIf { it.principal.isNotEmpty() || it.capas.isNotEmpty() || it.audios.isNotEmpty() }
         EstadoEditor(guardado ?: AjustesEditor.proyectoNuevo())
     }
     val prev = remember { Previsualizador(context) }
     val recursos = remember { RecursosAndroid(context) }
     var operandoProyecto by remember { mutableStateOf(false) }
     var porGuardar by remember { mutableStateOf<Proyecto?>(null) }
+
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) { limpiezaImportados.limpiar() }
+    }
 
     DisposableEffect(Unit) {
         estado.alCambiar = { prev.proyecto(it) }
@@ -129,21 +141,26 @@ fun EditorScreen(onVolver: () -> Unit) {
             operandoProyecto = true
             prev.pausar()
             estado.avisar("Abriendo proyecto...")
-            val resultado = withContext(Dispatchers.IO) {
-                val carpeta = File(context.filesDir, "editor/importados/${UUID.randomUUID()}")
-                runCatching {
-                    val entrada = context.contentResolver.openInputStream(uri) ?: error("No se puede abrir el archivo")
-                    entrada.use { PaqueteProyecto.leer(it, carpeta) }
-                }.onFailure { carpeta.deleteRecursively() }
-            }
-            resultado.onSuccess { p ->
+            val carpeta = File(context.filesDir, "editor/importados/${UUID.randomUUID()}")
+            try {
+                val p = limpiarSiFallaProyecto(limpiar = { carpeta.deleteRecursively() }) {
+                    withContext(Dispatchers.IO) {
+                        val entrada = context.contentResolver.openInputStream(uri) ?: error("No se puede abrir el archivo")
+                        entrada.use { PaqueteProyecto.leer(it, carpeta) }
+                    }
+                }
                 estado.elegir(null)
                 estado.panel = null
                 estado.hacer { p }
                 estado.irA(0)
                 estado.avisar("Proyecto abierto. Puedes deshacer para volver al anterior")
-            }.onFailure { estado.avisar(it.message ?: "No se pudo abrir el proyecto") }
-            operandoProyecto = false
+            } catch (cancelacion: CancellationException) {
+                throw cancelacion
+            } catch (fallo: Exception) {
+                estado.avisar(fallo.message ?: "No se pudo abrir el proyecto")
+            } finally {
+                operandoProyecto = false
+            }
         }
     }
     val guardarProyecto = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(PaqueteProyecto.MIME)) { uri ->
@@ -152,17 +169,23 @@ fun EditorScreen(onVolver: () -> Unit) {
         if (uri != null && proyecto != null && !operandoProyecto) alcance.launch {
             operandoProyecto = true
             estado.avisar("Guardando proyecto con sus archivos...")
-            val resultado = withContext(Dispatchers.IO) {
-                runCatching {
-                    val salida = context.contentResolver.openOutputStream(uri, "wt") ?: error("No se puede guardar el archivo")
-                    salida.use { stream ->
-                        PaqueteProyecto.escribir(proyecto, stream) { o -> context.contentResolver.openInputStream(Uri.parse(o.uri)) }
+            try {
+                limpiarSiFallaProyecto(limpiar = { DocumentsContract.deleteDocument(context.contentResolver, uri) }) {
+                    withContext(Dispatchers.IO) {
+                        val salida = context.contentResolver.openOutputStream(uri, "wt") ?: error("No se puede guardar el archivo")
+                        salida.use { stream ->
+                            PaqueteProyecto.escribir(proyecto, stream) { o -> context.contentResolver.openInputStream(Uri.parse(o.uri)) }
+                        }
                     }
                 }
+                estado.avisar("Proyecto guardado con sus fotos, videos y sonidos")
+            } catch (cancelacion: CancellationException) {
+                throw cancelacion
+            } catch (fallo: Exception) {
+                estado.avisar(fallo.message ?: "No se pudo guardar el proyecto")
+            } finally {
+                operandoProyecto = false
             }
-            resultado.onSuccess { estado.avisar("Proyecto guardado con sus fotos, videos y sonidos") }
-                .onFailure { estado.avisar(it.message ?: "No se pudo guardar el proyecto") }
-            operandoProyecto = false
         }
     }
 

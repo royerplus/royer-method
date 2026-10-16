@@ -432,7 +432,7 @@ object Persistencia {
                 finUs = fin,
                 intensidad = numero("intensidad", 1f, 0f, 3f),
                 rapidez = numero("rapidez", 1f, 0.1f, 10f),
-                desfaseUs = e.optLong("desfase").coerceAtLeast(0),
+                desfaseUs = e.optLong("desfase"),
                 fundidoEntradaUs = e.optLong("fundidoEntrada").coerceAtLeast(0),
                 fundidoSalidaUs = e.optLong("fundidoSalida").coerceAtLeast(0),
                 duracionBaseUs = e.optLong("duracionBase").coerceAtLeast(0),

@@ -68,14 +68,17 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
             if (cabezal <= cabezalAlCongelar) return ultimaPosicion
             congelado = false
         }
-        // Un timestamp que llega antes del primer avance tambien vale: es justo
-        // el que dice cuando empieza a sonar.
+        // Una marca positiva puede llegar antes del primer avance del cabezal.
+        // En el arranque algunos dispositivos devuelven frame 0 con una fecha
+        // que sigue avanzando mientras el altavoz aun espera. Usarla de ancla
+        // adelanta la imagen; la primera marca real obliga luego a congelarla.
+        // Hasta tener una posicion positiva esperamos en el cuadro inicial.
         if (nuevaMarca != null) {
             val frames = extender(nuevaMarca.frames, cabezal)
             // Un timestamp puede estar en el futuro: el audio ya tiene una
             // presentacion comprometida. Se conserva el delta negativo.
             val distanciaNs = ahoraNs - nuevaMarca.nanoTime
-            if (distanciaNs in -5_000_000_000L..5_000_000_000L && frames in 0L..escritos) {
+            if (distanciaNs in -5_000_000_000L..5_000_000_000L && frames in 1L..escritos) {
                 val candidata = frames + framesDe(distanciaNs)
                 if (kotlin.math.abs(candidata - cabezal) <= hz * 2L) marca = Marca(frames, nuevaMarca.nanoTime)
             }

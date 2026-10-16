@@ -163,6 +163,18 @@ void main() {
 }
 """
 
+    /** Sin reducir ni filtrar de nuevo: la copia no debe perder nitidez en Mali. */
+    const val COPIA_EXACTA = """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vPos;
+uniform sampler2D sTex;
+void main() { gl_FragColor = texture2D(sTex, vPos); }
+"""
+
     /**
      * Un bloque sobre el lienzo.
      *
@@ -200,6 +212,7 @@ uniform vec2 uRadioDir;
 uniform float uEspejoBordes;
 uniform float uConRegionFuente;
 uniform vec4 uRegionFuente;
+uniform vec4 uBordesCompartidos;
 uniform float uNitidez;
 uniform float uBrillo;
 uniform float uContraste;
@@ -327,12 +340,20 @@ void main() {
         cob = mix(cob, 1.0, clamp(uEspejoBordes, 0.0, 1.0));
         // Las partes conservan la geometria de la foto completa. Este corte
         // viaja con la textura; no vuelve a encajar cada mitad en el lienzo.
-        // Bordes compartidos complementarios: al juntarse no aparece una raya.
+        // Cada corte expuesto ocupa un pixel del lienzo, tambien al girarlo.
+        // Solo las juntas de igual matriz en esta muestra son complementarias:
+        // suavizar ambas y mezclarlas por OVER dejaria una raya con alfa0.75.
         if (uConRegionFuente > 0.5) {
-            cob *= (uRegionFuente.x <= 0.0 ? 1.0 : step(uRegionFuente.x, uv.x))
-                 * (uRegionFuente.y <= 0.0 ? 1.0 : step(uRegionFuente.y, uv.y))
-                 * (uRegionFuente.z >= 1.0 ? 1.0 : 1.0 - step(uRegionFuente.z, uv.x))
-                 * (uRegionFuente.w >= 1.0 ? 1.0 : 1.0 - step(uRegionFuente.w, uv.y));
+            vec4 suave = clamp(vec4(uv.x - uRegionFuente.x, uv.y - uRegionFuente.y,
+                                    uRegionFuente.z - uv.x, uRegionFuente.w - uv.y)
+                               / vec4(pu, pv, pu, pv) + 0.5, 0.0, 1.0);
+            vec4 duro = vec4(step(uRegionFuente.x, uv.x), step(uRegionFuente.y, uv.y),
+                             1.0 - step(uRegionFuente.z, uv.x), 1.0 - step(uRegionFuente.w, uv.y));
+            vec4 lados = mix(suave, duro, uBordesCompartidos);
+            cob *= (uRegionFuente.x <= 0.0 ? 1.0 : lados.x)
+                 * (uRegionFuente.y <= 0.0 ? 1.0 : lados.y)
+                 * (uRegionFuente.z >= 1.0 ? 1.0 : lados.z)
+                 * (uRegionFuente.w >= 1.0 ? 1.0 : lados.w);
         }
         if (uConMascara > 0.5) {
             float d = uMascRadial > 0.5 ? length(p - 0.5 * uLienzo) : dot(p - 0.5 * uLienzo, uMascDir);

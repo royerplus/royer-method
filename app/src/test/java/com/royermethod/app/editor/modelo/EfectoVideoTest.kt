@@ -12,6 +12,38 @@ class EfectoVideoTest {
     private fun escena(c: Clip) = Escena(Proyecto(principal = listOf(c), fondo = Fondo.NEGRO), 576, 1024, medidor)
 
     @Test
+    fun ampliarElFinExtiendeElFundidoYElProgresoHastaElNuevoBorde() {
+        val flash = EfectoVideo(TipoEfectoVideo.FLASH, finUs = 500_000,
+            fundidoSalidaUs = 250_000).conRango(0, 3_000_000)
+        assertEquals(3_000_000L, flash.duracionBaseUs)
+        assertEquals(1f, flash.fuerzaEn(2_500_000), 0f)
+        assertEquals(0.5f, flash.fuerzaEn(2_875_000), 0f)
+        val iris = EfectoVideo(TipoEfectoVideo.CIRCULO_CERRAR, finUs = 500_000)
+            .conRango(0, 3_000_000)
+        assertEquals(0.5f, iris.progresoEn(1_500_000), 0f)
+        // Un efecto ya recortado conserva el tiempo recorrido en su nueva base.
+        val recortado = flash.recortado(1_000_000, 3_000_000)!!.conRango(0, 4_000_000)
+        assertEquals(5_000_000L, recortado.duracionBaseUs)
+        assertEquals(1f, recortado.fuerzaEn(3_500_000), 0f)
+        assertEquals(0.5f, recortado.fuerzaEn(3_875_000), 0f)
+    }
+
+    @Test
+    fun moverInicioAtrasYAdelanteNoDesplazaElRelojNiLosPuntos() {
+        val original = EfectoVideo(TipoEfectoVideo.CIRCULO_CERRAR, 1_000_000, 3_000_000,
+            duracionBaseUs = 2_000_000, fundidoEntradaUs = 200_000,
+            progresos = listOf(ProgresoEfecto(0, 0f), ProgresoEfecto(2_000_000, 1f)))
+        val antes = original.conRango(966_667, original.finUs)
+        assertEquals(-33_333L, antes.desfaseUs)
+        for (t in listOf(1_000_000L, 1_050_000L, 2_500_000L)) {
+            assertEquals(original.segundosEn(t), antes.segundosEn(t), 0f)
+            assertEquals(original.progresoEn(t), antes.progresoEn(t), 0f)
+            assertEquals(original.fuerzaEn(t), antes.fuerzaEn(t), 0f)
+        }
+        assertEquals(original, antes.conRango(original.inicioUs, original.finUs))
+    }
+
+    @Test
     fun unaLineaQueAcabaYUnIrisQueEmpiezaEnElMismoFotogramaNoMezclanSusBordes() {
         // Revela hasta 1 s y desde ahi cierra en circulo. Con desenfoque de
         // movimiento, el fotograma de 1 s tiene muestras de las dos.

@@ -35,7 +35,8 @@ object PaqueteProyecto {
             for (origen in origenes) {
                 zip.putNextEntry(ZipEntry(rutas.getValue(origen.uri)))
                 val entrada = abrir(origen) ?: error("No se puede leer ${origen.nombre}")
-                entrada.use { it.copyTo(zip) }
+                val bytes = entrada.use { it.copyTo(zip) }
+                require(bytes > 0) { "El archivo ${origen.nombre} esta vacio" }
                 zip.closeEntry()
             }
         }
@@ -69,6 +70,7 @@ object PaqueteProyecto {
                     }
                 }
                 if (e.name == MANIFIESTO) json = destino.readText(Charsets.UTF_8)
+                else require(tamano > 0) { "El archivo ${e.name} esta vacio" }
                 zip.closeEntry()
             }
         }

@@ -207,6 +207,8 @@ Pendiente: el tirón del cuadro 194; el intro congelado bajo las mitades (límit
 
 ## Errores confirmados por la revisión de código, aún sin arreglar
 
+**Actualización de Codex, 2026-10-16 06:25 UTC:** los ocho errores de esta lista histórica ya están corregidos y probados en la carpeta local. Ver el cierre y las mediciones al final de este documento.
+
 Una revisión independiente de los cambios de la réplica confirmó 14 errores, cada uno con su escenario comprobado. Ya están arreglados: los 2 de Escena (máscaras mezcladas en un fotograma y fondo de más con mitades juntas, commit 2169ce4) y los 4 del reloj (7fab2d8, 9f42ea4, 5f1ebc9). Quedan estos 8, en orden de importancia. Ninguno afecta a la exportación de la réplica.
 
 1. **Cierre al tocar un efecto que empieza en el último fotograma** (`editor/ui/PanelEfectos.kt`, línea ~178; gravedad alta). Ejemplo: un video de 3 s con un efecto en [2.966.667, 3.000.000] µs, puesto a velocidad 2x. En el borde Fin queda minimo = inicio + 33.333 > maximo = duración. Entonces `coerceIn(minimo, maximo)` lanza IllegalArgumentException al mover el deslizador, al pulsar ±1 f o "Al cabezal". Arreglo: pasar `(efecto.inicioUs + minimo).coerceAtMost(c.duracionUs)` y, dentro de BordeEfecto, usar `coerceIn(minimo, maxOf(minimo, maximo))`.
@@ -219,3 +221,61 @@ Una revisión independiente de los cambios de la réplica confirmó 14 errores, 
 8. **Borde de corte de las piezas dentado** (`Sombreadores.kt`, línea ~314, `step()`). Una pieza girada y quieta tiene un borde en escalera. Arreglo: usar una rampa suave como en `uRecorte`, salvo en los bordes compartidos con otra pieza de matriz idéntica en esa muestra (un uniform vec4 por dibujo), para no crear costura. Gravedad baja.
 
 Para probar en la nube sin Android se usó un arnés JVM (Compose de escritorio + android-all) que compila `app/src/main/java` y corre `app/src/test/java`. En el PC basta con `testDebugUnitTest`.
+
+## Estado final al 2026-10-16 06:25 UTC (Codex; 2026-10-15 23:25 en Tijuana)
+
+Se leyó el documento completo y se continuó desde `e6200a2`, en la rama `claude/project-thread-skalim`. Primero se trabajó sólo en la carpeta, por indicación del usuario; después autorizó explícitamente subir estos cambios a GitHub. Se consultó el remoto antes de publicar: seguía en `e6200a2`, sin divergencia. No se añadieron MP4, .royer, APK ni archivos de `royer-method-work` a git. En EditorPro-main únicamente se modificó `CELULAR.md` para reservar y liberar el teléfono.
+
+### Vista previa, primero medida sobre e6200a2 y después con los arreglos
+
+Se compiló e instaló exclusivamente `com.royermethod.app.prueba` y su APK de instrumentación. La app normal `com.royermethod.app` conserva exactamente versión, primera instalación y última actualización; las fichas antes/después están en el directorio de validación indicado abajo. No se desinstaló ninguna app ni se borró logcat.
+
+- El cambio ya existente que libera decodificadores fuera del hilo de dibujo sí arregla el cuadro 194. En la medición final su CPU es **5,523 ms** (versión 6: **53,776 ms**); el intervalo de publicación 193→194 es **32,301 ms** (antes **84,587 ms**). La presentación Texture de ese tramo es **33,196 ms**.
+- El arranque de e6200a2 todavía aceptaba una marca `AudioTimestamp` de cero muestras y luego detenía la imagen al recibir la primera marca real. `testDiagnosticoArranqueAudio` permitió medirlo. Se corrigió `RelojAudio`: sólo una marca con posición positiva puede establecer esa referencia; se conserva el tiempo negativo de una presentación comprometida en el futuro. Dos regresiones JVM cubren ambos casos.
+- Medición final con `testPrevisualizarProyectoReal`: **411 cuadros publicados, cero saltos de índice, 29,674 fps** incluyendo la preparación; **410 presentaciones Texture, cero saltos, 30,008 fps**, con una presentación sin marca asociada. Desde el primer movimiento, los intervalos de presentación iniciales son 33,3–33,7 ms. Ya no aparece la congelación de ~202 ms después de haber empezado a avanzar.
+- **Límite pendiente:** la primera presentación tarda **217,638 ms**. El cuadro inicial se publica a 18,340 ms y se espera a preparar el audio. No se afirma respuesta instantánea ni ausencia total de variaciones: el máximo intervalo Texture del resto de la prueba fue 68,475 ms. Reducir esa preparación requiere preparar decodificador/AudioTrack antes de play y gestionar su invalidación por edición, seek y cancelación; no se adelantó artificialmente el reloj.
+
+Antes de tocar los ocho errores se reexportó para validar el reloj: diferencia media de los 411 cuadros RGB contra export 6 = **0,438442/255**. Cumple el límite solicitado.
+
+### Ocho errores corregidos, empezando por el cierre del panel
+
+1. **Panel de efectos y último fotograma acelerado.** Se limita el mínimo de Fin a la duración real y se defienden los controles contra límites invertidos. Cambiar Fin conserva el inicio aunque el tramo restante dure menos de un fotograma. Dos casos en `ControlesEfectoTest` prueban el video de 3 s a 2x y todos los caminos de acotación. Este arreglo y sus dos pruebas se ejecutaron antes de los demás.
+2. **Extensión de duración base.** `EfectoVideo.conRango` amplía la base hasta el nuevo final, incluyendo el desfase. Regresión con Flash, fundido de salida, iris y efecto previamente recortado en `EfectoVideoTest`.
+3. **Continuidad al mover Inicio.** Se permiten desfases negativos en el modelo y en `Persistencia`. Pruebas de retroceder/avanzar un fotograma, intensidad/progreso/reloj y guardar/abrir en `EfectoVideoTest` y `PersistenciaTest`.
+4. **Importaciones huérfanas o canceladas.** `ImportadosProyecto` captura candidatas al abrir el editor y limpia en IO sólo si se pudo leer el guardado. Conserva referencias de principal, capas y audio, así como proyectos en deshacer e importaciones posteriores al snapshot. La limpieza por fallo/cancelación envuelve también la vuelta de `withContext`, se ejecuta con `NonCancellable + IO` y relanza la cancelación. Regresiones en `ImportadosProyectoTest`.
+5. **Guardado parcial.** Fallar o cancelar elimina el documento SAF mediante `DocumentsContract.deleteDocument`. `PaqueteProyecto` rechaza medios de cero bytes tanto al escribir como al leer. Pruebas de última fuente ilegible, borrado del parcial, cancelación al retornar de IO, preservación del error original y ZIP con medio vacío.
+6. **Copia de textura a alta resolución.** `COPIA_EXACTA` usa `highp` con fallback a `mediump`. Prueba GPU real a 1080×1920: **error medio 0/255**, precisión de fragmento 23 bits, con patrón de detalle de un píxel.
+7. **Selección de puntos con rapidez distinta de uno.** Ida/vuelta en Double con ceil/round y selección del punto más próximo dentro de `ceil(rapidez)`; editar y quitar actúan sobre su tiempo original. Dos regresiones con seis rapideces, tiempos superiores a la precisión entera de Float, desfase negativo y el último microsegundo.
+8. **Bordes dentados de piezas.** Rampa de un píxel en cortes expuestos; juntas complementarias sólo si las matrices finales coinciden en esa muestra. `CortesPiezas` subdivide únicamente los dibujos cuando el vecino cubre parte del borde, sin cambiar el proyecto ni la textura. Seis regresiones JVM y tres GPU de giro, junta completa y vecino parcial. GPU: 548 píxeles de cobertura parcial; diferencia máxima entero/mitades **1/255**; junta parcial **255/255** en 44 muestras y 68 píxeles suaves en la parte expuesta.
+
+### Validación y archivos finales
+
+Build final: `testDebugUnitTest assemblePrueba assembleDebugAndroidTest` **BUILD SUCCESSFUL**. **132 pruebas JVM, cero fallos**; las cuatro pruebas de `SombreadoresIntegrationTest` pasaron en el Infinix X6871, Android 35. También pasaron `testPrevisualizarProyectoReal` y `testImportarYExportarProyectoReal`. No hay builds ni pruebas del teléfono en ejecución.
+
+El export final de la app tiene **411 cuadros, 30 fps, 576×768, 13,7 s, cero avisos de fuentes y cero cuadros irregulares**. Se decodificaron y compararon los 411 cuadros RGB completos contra `export-medido-6/replica-medida-6.mp4`: **diferencia media 0,867356/255 = 0,003401394 normalizado**, menor que **1/255 = 0,003921569**. No es identidad binaria: el peor cuadro tiene diferencia media 3,236122/255; el límite solicitado era la media del video completo. Esta medición compara con export 6, no vuelve a demostrar coincidencia con el video de referencia original.
+
+Todos los resultados, fuera de git:
+
+`C:/Users/PC/Downloads/royer-method-work/resultados/validacion-codex-e6200a2/`
+
+- `preview-final-informe.json`, `preview-final.log`: última medición de vista previa.
+- `replica-final.mp4`, `replica-final-informe.json`, `export-final.log`: exportación final, sin reemplazar export 6 ni la entrega anterior.
+- `comparacion-final-export6.json`: diferencia completa, con media por fotograma.
+- `shaders-final.log`: medidas de las cuatro regresiones GPU.
+- `arranque-audio.json`, `preview-1-informe.json`, `preview-2-informe.json`: diagnóstico y mediciones previas.
+- `comparacion-reloj-export6.json`: control de exportación antes de los ocho arreglos.
+- `original-package-antes.txt`, `original-package-despues.txt`: ficha de la app normal sin cambios.
+
+APK instalada: `app/build/outputs/apk/prueba/app-prueba.apk`, SHA256 `f59d257434716f81d4ec21999cf4378aafab2be539267772fb5dc3d6ba8ad2f0`.
+MP4 final: SHA256 `7471ca3dab994943c60160f96e2e268fd798850ca9c8c29a1225164494282ca1`.
+El paquete utilizado sigue siendo el de export 6, SHA256 `d284575fa5422e764a0d8cb48601b29ba60d1422b3c25131816fb8f3325f34f4`.
+
+El proyecto quedó guardado en .prueba y se relanzó su MainActivity. Teléfono liberado en `EditorPro-main/CELULAR.md` con línea de historial. Se mantienen los límites de material anotados por Claude (intro congelado bajo mitades, brillo de B y falta de medida fiable de G351).
+
+### Entrega al celular y publicación autorizada, 2026-10-15 23:31 Tijuana
+
+El usuario pidió subir el código a la misma rama y enviar el MP4 a su galería. Se copió el export final a `Movies/RoyerMethod/replica-codex-8-arreglos.mp4`, sin reemplazar entregas anteriores. El SHA256 en el celular coincide con el archivo local y MediaStore confirma el video indexado (id `1000296182`, 3.649.960 bytes). La galería puede mostrarlo en la carpeta RoyerMethod.
+
+Se comprobó también el APK instalado de `com.royermethod.app.prueba`: SHA256 `f59d257434716f81d4ec21999cf4378aafab2be539267772fb5dc3d6ba8ad2f0`, idéntico a la compilación validada. Última actualización de .prueba: 2026-10-15 23:21:37. La app normal sigue intacta.
+
+Esta tanda corrige las herramientas existentes y su renderizado; no incorpora tipos nuevos de animaciones, transiciones ni efectos al catálogo.

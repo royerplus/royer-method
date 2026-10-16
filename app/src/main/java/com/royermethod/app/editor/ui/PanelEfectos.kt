@@ -89,17 +89,10 @@ fun PanelEfectos(estado: EstadoEditor) {
     }
 
     fun rango(desde: Long, hasta: Long, arrastre: Boolean = false) {
-        val ini = desde.coerceIn(0, (c.duracionUs - minimo).coerceAtLeast(0))
-        val fin = hasta.coerceIn(ini + minimo, c.duracionUs)
+        val ini = desde.coerceIn(0, (c.duracionUs - 1).coerceAtLeast(0))
+        val fin = hasta.coerceIn(minimoFinEfecto(ini, minimo, c.duracionUs), c.duracionUs)
         cambiar(arrastre) { e ->
-            e.copy(
-                inicioUs = ini,
-                finUs = fin,
-                // Recortar conserva el reloj y los puntos de la trayectoria.
-                // La rapidez es el control para comprimir el movimiento.
-                desfaseUs = (e.desfaseUs + ini - e.inicioUs).coerceAtLeast(0),
-                duracionBaseUs = e.duracionBaseUs.takeIf { it > 0 } ?: e.duracionUs
-            )
+            e.conRango(ini, fin)
         }
     }
 
@@ -175,9 +168,10 @@ fun PanelEfectos(estado: EstadoEditor) {
         onCabezal = { rango((estado.tiempo - inicioBloque).coerceIn(0, (efecto.finUs - minimo).coerceAtLeast(0)), efecto.finUs) }
     )
     BordeEfecto(
-        "Fin", efecto.finUs, efecto.inicioUs + minimo, c.duracionUs, c.duracionUs,
+        "Fin", efecto.finUs, minimoFinEfecto(efecto.inicioUs, minimo, c.duracionUs), c.duracionUs, c.duracionUs,
         onCambio = { t, arrastre -> rango(efecto.inicioUs, t, arrastre); ver((t - minimo).coerceAtLeast(efecto.inicioUs)) },
-        onCabezal = { rango(efecto.inicioUs, (estado.tiempo - inicioBloque).coerceIn(efecto.inicioUs + minimo, c.duracionUs)) }
+        onCabezal = { rango(efecto.inicioUs, acotarBordeEfecto(estado.tiempo - inicioBloque,
+            minimoFinEfecto(efecto.inicioUs, minimo, c.duracionUs), c.duracionUs)) }
     )
     BotonBorde("Usar todo el bloque", { rango(0, c.duracionUs) })
 
@@ -190,12 +184,14 @@ fun PanelEfectos(estado: EstadoEditor) {
         Nota("Registra puntos para reproducir una trayectoria medida. El tiempo pertenece a este efecto.")
         val base = efecto.duracionBaseUs.takeIf { it > 0 } ?: efecto.duracionUs
         val localFx = (estado.tiempo - inicioBloque).coerceIn(efecto.inicioUs, efecto.finUs)
-        val fase = (((localFx - efecto.inicioUs + efecto.desfaseUs) * efecto.rapidez).toLong()).coerceIn(0, base)
+        val fase = efecto.faseControl(localFx)
+        val puntoActual = efecto.puntoEnFase(fase)
+        val faseEdicion = puntoActual?.tiempoUs ?: fase
         fun progreso(valor: Float, arrastre: Boolean) = cambiar(arrastre) { actual ->
             val puntos = actual.progresos.ifEmpty { listOf(ProgresoEfecto(0, 0f), ProgresoEfecto(base, 1f)) }
-            actual.copy(progresos = (puntos.filter { it.tiempoUs != fase } + ProgresoEfecto(fase, valor)).sortedBy { it.tiempoUs })
+            actual.copy(progresos = (puntos.filter { it.tiempoUs != faseEdicion } + ProgresoEfecto(faseEdicion, valor)).sortedBy { it.tiempoUs })
         }
-        Deslizador("Progreso en ${tiempoEfecto(fase)}", efecto.progresoEn(localFx), 0f, 1f,
+        Deslizador("Progreso en ${tiempoEfecto(faseEdicion)}", puntoActual?.valor ?: efecto.progresoEn(localFx), 0f, 1f,
             { v -> progreso(v, true) }, texto = { "${(it * 100).roundToLong()}%" })
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             BotonBorde("Registrar punto", { progreso(efecto.progresoEn(localFx), false) })
@@ -204,15 +200,14 @@ fun PanelEfectos(estado: EstadoEditor) {
         efecto.progresos.chunked(3).forEach { fila ->
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 fila.forEach { punto ->
-                    Chip("${tiempoEfecto(punto.tiempoUs)} · ${(punto.valor * 100).roundToLong()}%", punto.tiempoUs == fase, {
-                        val reloj = ((punto.tiempoUs / efecto.rapidez) - efecto.desfaseUs).toLong() + efecto.inicioUs
-                        ver(reloj)
+                    Chip("${tiempoEfecto(punto.tiempoUs)} · ${(punto.valor * 100).roundToLong()}%", punto == puntoActual, {
+                        ver(efecto.localDelPunto(punto))
                     })
                 }
             }
         }
-        if (efecto.progresos.any { it.tiempoUs == fase }) BotonBorde("Quitar punto actual", {
-            cambiar { it.copy(progresos = it.progresos.filter { p -> p.tiempoUs != fase }) }
+        if (puntoActual != null) BotonBorde("Quitar punto actual", {
+            cambiar { it.copy(progresos = it.progresos.filter { p -> p.tiempoUs != puntoActual.tiempoUs }) }
         })
     }
     if (efecto.duracionUs > 0) {
@@ -237,14 +232,14 @@ private fun BordeEfecto(
 ) {
     if (alcance > 0) {
         Deslizador(titulo, valor / 1e6f, 0f, alcance / 1e6f, { v ->
-            onCambio(aFotograma((v * 1e6).toLong()).coerceIn(minimo, maximo), true)
+            onCambio(acotarBordeEfecto(aFotograma((v * 1e6).toLong()), minimo, maximo), true)
         }, texto = { tiempoEfecto((it * 1e6).toLong()) })
     } else {
         Text("$titulo  ${tiempoEfecto(valor)}", style = MaterialTheme.typography.bodyMedium, color = Ink.White70)
     }
     Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Chip("−1 f", false, { onCambio(Linea.tiempoDe((Linea.fotogramaEn(valor) - 1).coerceAtLeast(0)).coerceIn(minimo, maximo), false) })
-        Chip("+1 f", false, { onCambio(Linea.tiempoDe(Linea.fotogramaEn(valor) + 1).coerceIn(minimo, maximo), false) })
+        Chip("−1 f", false, { onCambio(acotarBordeEfecto(Linea.tiempoDe((Linea.fotogramaEn(valor) - 1).coerceAtLeast(0)), minimo, maximo), false) })
+        Chip("+1 f", false, { onCambio(acotarBordeEfecto(Linea.tiempoDe(Linea.fotogramaEn(valor) + 1), minimo, maximo), false) })
         Chip("Al cabezal", false, onCabezal)
     }
 }

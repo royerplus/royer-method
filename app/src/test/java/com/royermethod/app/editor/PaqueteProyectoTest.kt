@@ -49,4 +49,27 @@ class PaqueteProyectoTest {
             assertThrows(IllegalArgumentException::class.java) { PaqueteProyecto.leer(ByteArrayInputStream(out.toByteArray()), dir) }
         } finally { dir.deleteRecursively() }
     }
+
+    @Test fun rechazaMediosVaciosAunqueElZipYElManifiestoSeanValidos() {
+        val p = Proyecto(principal = listOf(Clip(1, origen = Origen("medios/00000.jpg", "foto.jpg", TipoOrigen.IMAGEN))))
+        val out = ByteArrayOutputStream()
+        ZipOutputStream(out).use { z ->
+            z.putNextEntry(ZipEntry("proyecto.json"))
+            z.write(Persistencia.aTexto(p).toByteArray())
+            z.closeEntry()
+            z.putNextEntry(ZipEntry("medios/00000.jpg"))
+            z.closeEntry()
+        }
+        val dir = Files.createTempDirectory("royer-paquete-").toFile()
+        try {
+            assertThrows(IllegalArgumentException::class.java) { PaqueteProyecto.leer(ByteArrayInputStream(out.toByteArray()), dir) }
+        } finally { dir.deleteRecursively() }
+    }
+
+    @Test fun guardarUnaFuenteVaciaTambienFalla() {
+        val p = Proyecto(principal = listOf(Clip(1, origen = Origen("content://fotos/1", "foto.jpg", TipoOrigen.IMAGEN))))
+        assertThrows(IllegalArgumentException::class.java) {
+            PaqueteProyecto.escribir(p, ByteArrayOutputStream()) { ByteArrayInputStream(byteArrayOf()) }
+        }
+    }
 }

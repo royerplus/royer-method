@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.opengl.GLES20
 import com.royermethod.app.editor.modelo.Cuadro
+import com.royermethod.app.editor.modelo.BordesPieza
 import com.royermethod.app.editor.modelo.Mascara
 import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Origen
@@ -16,6 +17,7 @@ import com.royermethod.app.editor.modelo.PasoLinea
 import com.royermethod.app.editor.modelo.PasoPartes
 import com.royermethod.app.editor.modelo.PasoSolido
 import com.royermethod.app.editor.modelo.Texto
+import com.royermethod.app.editor.modelo.cortesEn
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
@@ -44,7 +46,7 @@ class Compositor(
     private val capa = Programa(Sombreadores.VERTICE, Sombreadores.CAPA)
     private val solido = Programa(Sombreadores.VERTICE, Sombreadores.SOLIDO)
     private val linea = Programa(Sombreadores.VERTICE, Sombreadores.LINEA)
-    private val copiaExacta = Programa(Sombreadores.VERTICE, COPIA_EXACTA)
+    private val copiaExacta = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_EXACTA)
 
     private val videos = ArrayList<FuenteVideo>()
     /** Archivos que no se pudieron abrir, con el cuadro en que fallaron. */
@@ -191,9 +193,11 @@ class Compositor(
         for (i in 0 until p.muestras) {
             muestra.activar()
             GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
-            for (parte in p.partes) {
+            for (corte in p.cortesEn(i)) {
+                val parte = p.partes[corte.parte]
                 val textura = texturas[parte] ?: continue
-                dibujarClip(parte.muestra(i), textura, voltear = true)
+                dibujarClip(parte.muestra(i).copy(recorteFuente = corte.region), textura,
+                    voltear = true, compartidos = corte.compartidos)
             }
             promedio.activar()
             // Media incremental equivalente a sumar cada muestra con peso1/N.
@@ -438,7 +442,7 @@ class Compositor(
         linea.dibujar(voltear)
     }
 
-    private fun dibujarClip(p: PasoClip, t: Textura, voltear: Boolean) {
+    private fun dibujarClip(p: PasoClip, t: Textura, voltear: Boolean, compartidos: BordesPieza = BordesPieza.NINGUNO) {
         capa.usar()
         aplicarMezcla(p.mezcla)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
@@ -462,6 +466,9 @@ class Compositor(
         val region = if (p.esFondo) null else p.recorteFuente
         GLES20.glUniform1f(capa.u("uConRegionFuente"), if (region != null) 1f else 0f)
         if (region != null) GLES20.glUniform4f(capa.u("uRegionFuente"), region.izquierda, region.arriba, region.derecha, region.abajo)
+        GLES20.glUniform4f(capa.u("uBordesCompartidos"),
+            if (compartidos.izquierda) 1f else 0f, if (compartidos.arriba) 1f else 0f,
+            if (compartidos.derecha) 1f else 0f, if (compartidos.abajo) 1f else 0f)
 
         val c = p.color
         GLES20.glUniform1f(capa.u("uNitidez"), if (p.esFondo) 0f else c.nitidez)
@@ -566,12 +573,6 @@ class Compositor(
     }
 
     private companion object {
-        const val COPIA_EXACTA = """
-precision mediump float;
-varying vec2 vPos;
-uniform sampler2D sTex;
-void main() { gl_FragColor = texture2D(sTex, vPos); }
-"""
         const val MAX_VIDEOS = 6
 
         /** Cuadros que se espera antes de volver a intentar abrir un archivo que fallo. */

@@ -7,7 +7,7 @@ data class EfectoVideo(
     val finUs: Long,
     val intensidad: Float = 1f,
     val rapidez: Float = 1f,
-    /** Tiempo ya recorrido antes de recortar o dividir: el patron no reinicia. */
+    /** Tiempo recorrido: puede ser negativo al ampliar el comienzo del tramo. */
     val desfaseUs: Long = 0,
     val fundidoEntradaUs: Long = 0,
     val fundidoSalidaUs: Long = 0,
@@ -18,6 +18,15 @@ data class EfectoVideo(
     val progresos: List<ProgresoEfecto> = emptyList()
 ) {
     val duracionUs: Long get() = (finUs - inicioUs).coerceAtLeast(0)
+
+    /** Cambiar los bordes conserva el reloj y extiende su base si hace falta. */
+    fun conRango(inicio: Long, fin: Long): EfectoVideo {
+        require(inicio >= 0 && fin > inicio)
+        val desfase = desfaseUs + inicio - inicioUs
+        val base = duracionBaseUs.takeIf { it > 0 } ?: duracionUs
+        return copy(inicioUs = inicio, finUs = fin, desfaseUs = desfase,
+            duracionBaseUs = maxOf(base, desfase + fin - inicio))
+    }
 
     fun activoEn(localUs: Long): Boolean =
         activo && intensidad.isFinite() && intensidad > 0f && localUs >= inicioUs && localUs < finUs

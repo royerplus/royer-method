@@ -8,6 +8,17 @@ import org.junit.Test
 class PersistenciaTest {
 
     @Test
+    fun elDesfaseNegativoDelEfectoSobreviveAlGuardarYAbrir() {
+        val efecto = EfectoVideo(TipoEfectoVideo.CIRCULO_CERRAR, 1_000_000, 3_000_000)
+            .conRango(966_667, 3_000_000)
+        val p = Proyecto(siguienteId = 2, principal = listOf(Clip(1, texto = Texto("x"),
+            hastaUs = 4_000_000, efectos = listOf(efecto))))
+        val q = Persistencia.deTexto(Persistencia.aTexto(p))!!
+        assertEquals(p, q)
+        assertEquals(-33_333L, q.principal.single().efectos.single().desfaseUs)
+    }
+
+    @Test
     fun idaYVueltaSinPerderNada() {
         val video = Origen("content://v/1", "clip.mp4", TipoOrigen.VIDEO, 1920, 1080, 4_000_000, 23.976f, true, 90, 12345)
         val p = Proyecto(
