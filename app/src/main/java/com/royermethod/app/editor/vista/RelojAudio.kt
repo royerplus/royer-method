@@ -7,6 +7,12 @@ package com.royermethod.app.editor.vista
  * El reloj nunca adelanta datos que no se hayan escrito ni mas de una rafaga
  * respecto al cabezal observado. Si se agota el audio se queda quieto; al
  * recuperarse espera a que el dispositivo alcance la ultima posicion mostrada.
+ *
+ * El cabezal cuenta lo que el sistema ya consumio, que va por delante de lo
+ * que suena (la latencia de salida: ~80 ms en el altavoz, ~200 ms en
+ * Bluetooth). Solo el timestamp dice lo que suena. Al arrancar, sin timestamp
+ * todavia, el reloj espera en vez de correr con el cabezal: si corriera, al
+ * llegar el primer timestamp quedaria por detras y la imagen se pararia.
  */
 internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L) {
     data class Marca(val frames: Long, val nanoTime: Long)
@@ -22,7 +28,12 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
     private var ultimoCabezal = 0L
     val cabezalObservado: Long get() = ultimoCabezal
     private var ultimoAvanceNs = 0L
+    private var primerAvanceNs = 0L
     private var huboAvance = false
+    /** El dispositivo ya empezo a consumir audio. */
+    val arranco: Boolean get() = huboAvance
+    /** Hay un timestamp aceptado: la posicion sale de lo que suena. */
+    val tieneMarca: Boolean get() = marca != null
     private var ultimoUnderrun = -1
     private var cabezalAlCongelar = 0L
     private var marca: Marca? = null
@@ -41,6 +52,7 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
             rafagaFrames = maxOf(rafagaFrames, (cabezal - ultimoCabezal).coerceAtMost(maxRafaga))
             ultimoCabezal = cabezal
             ultimoAvanceNs = ahoraNs
+            if (!huboAvance) primerAvanceNs = ahoraNs
             huboAvance = true
         }
         val seAgoto = ultimoUnderrun >= 0 && underruns > ultimoUnderrun
@@ -56,10 +68,8 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
             if (cabezal <= cabezalAlCongelar) return ultimaPosicion
             congelado = false
         }
-        // Antes de que arranque el altavoz no usamos el tiempo de preparacion
-        // del decoder como si hubiera sido tiempo de reproduccion.
-        if (!huboAvance) return ultimaPosicion
-
+        // Un timestamp que llega antes del primer avance tambien vale: es justo
+        // el que dice cuando empieza a sonar.
         if (nuevaMarca != null) {
             val frames = extender(nuevaMarca.frames, cabezal)
             // Un timestamp puede estar en el futuro: el audio ya tiene una
@@ -70,7 +80,12 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
                 if (kotlin.math.abs(candidata - cabezal) <= hz * 2L) marca = Marca(frames, nuevaMarca.nanoTime)
             }
         }
+        // Antes de que arranque el altavoz no usamos el tiempo de preparacion
+        // del decoder como si hubiera sido tiempo de reproduccion.
+        if (!huboAvance) return ultimaPosicion
         val m = marca
+        // Sin timestamp, el cabezal solo sirve de respaldo pasado el arranque.
+        if (m == null && ahoraNs - primerAvanceNs < GRACIA_SIN_MARCA_NS) return ultimaPosicion
         val candidata = if (m != null) m.frames + framesDe(ahoraNs - m.nanoTime)
         else cabezal + framesDe((ahoraNs - ultimoAvanceNs).coerceAtLeast(0L))
         val limite = minOf(escritos.coerceAtLeast(0L), cabezal + rafagaFrames)
@@ -87,5 +102,10 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
         if (candidato < referencia - 0x8000_0000L) candidato += 0x1_0000_0000L
         else if (candidato > referencia + 0x8000_0000L) candidato -= 0x1_0000_0000L
         return candidato
+    }
+
+    private companion object {
+        /** Cuanto se espera al primer timestamp antes de fiarse del cabezal. */
+        const val GRACIA_SIN_MARCA_NS = 400_000_000L
     }
 }
