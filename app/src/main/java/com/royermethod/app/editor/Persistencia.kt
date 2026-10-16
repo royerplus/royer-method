@@ -3,10 +3,13 @@ package com.royermethod.app.editor
 import com.royermethod.app.editor.modelo.Ajuste
 import com.royermethod.app.editor.modelo.AjusteTransicion
 import com.royermethod.app.editor.modelo.AjustesColor
+import com.royermethod.app.editor.modelo.AjustesEfecto
 import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Alineacion
 import com.royermethod.app.editor.modelo.Animacion
+import com.royermethod.app.editor.modelo.AnimacionAplicada
 import com.royermethod.app.editor.modelo.AnimacionContinua
+import com.royermethod.app.editor.modelo.AnimacionEnEfecto
 import com.royermethod.app.editor.modelo.Bezier
 import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Capa
@@ -21,6 +24,7 @@ import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
 import com.royermethod.app.editor.modelo.Fuente
 import com.royermethod.app.editor.modelo.Mezcla
+import com.royermethod.app.editor.modelo.MomentoAnimacion
 import com.royermethod.app.editor.modelo.Movimiento
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.PistaAudio
@@ -117,6 +121,7 @@ object Persistencia {
         put("intensidadFiltro", c.intensidadFiltro.toDouble())
         put("encuadre", encuadre(c.encuadre))
         put("claves", claves(c.claves))
+        c.clavesOriginales?.let { put("clavesOriginales", claves(it)) }
         put("piezas", JSONArray().apply {
             c.piezas.forEach { p ->
                 put(JSONObject().apply {
@@ -129,6 +134,7 @@ object Persistencia {
                     })
                     put("encuadre", encuadre(p.encuadre))
                     put("claves", claves(p.claves))
+                    p.clavesOriginales?.let { put("clavesOriginales", claves(it)) }
                 })
             }
         })
@@ -137,6 +143,7 @@ object Persistencia {
         put("duracionEntrada", c.duracionEntradaUs)
         put("duracionSalida", c.duracionSalidaUs)
         put("continua", continuas(c.continua))
+        if (c.animaciones.isNotEmpty()) put("animaciones", JSONArray().apply { c.animaciones.forEach { put(aplicada(it)) } })
         put("efectos", JSONArray().apply {
             c.efectos.forEach { e ->
                 put(JSONObject().apply {
@@ -156,6 +163,17 @@ object Persistencia {
                             put("valor", p.valor.toDouble())
                         }) }
                     })
+                    // Lo nuevo solo si no esta por defecto: los archivos sin
+                    // herramientas de movimiento quedan como antes.
+                    if (e.id != 0L) put("id", e.id)
+                    if (e.grupo.isNotEmpty()) put("grupo", e.grupo)
+                    if (e.ajustes != AjustesEfecto()) put("ajustes", ajustes(e.ajustes))
+                    e.animacion?.let { a -> put("animacion", JSONObject().apply {
+                        put("nombre", a.nombre)
+                        put("momento", a.momento.name)
+                        if (a.piezas.isNotEmpty()) put("piezas", movimientos(a.piezas))
+                        if (a.continuas.isNotEmpty()) put("continuas", continuas(a.continuas))
+                    }) }
                 })
             }
         })
@@ -170,6 +188,39 @@ object Persistencia {
         })
         put("fluido", c.fluido)
         put("calidad", c.calidad.toDouble())
+    }
+
+    /** Un numero solo si es finito y no es el de por defecto. JSON no admite NaN. */
+    private fun JSONObject.numero(clave: String, v: Float, defecto: Float) {
+        if (v.isFinite() && v != defecto) put(clave, v.toDouble())
+    }
+
+    private fun ajustes(a: AjustesEfecto) = JSONObject().apply {
+        val d = AjustesEfecto()
+        numero("angulo", a.angulo, d.angulo)
+        numero("desde", a.desde, d.desde)
+        numero("hasta", a.hasta, d.hasta)
+        if (a.curva != d.curva) put("curva", a.curva.name)
+        a.bezier?.let { b ->
+            val v = listOf(b.x1, b.y1, b.x2, b.y2)
+            if (v.all { it.isFinite() }) put("bezier", JSONArray(v.map { it.toDouble() }))
+        }
+        numero("centroX", a.centroX, d.centroX)
+        numero("centroY", a.centroY, d.centroY)
+        numero("grosor", a.grosor, d.grosor)
+        numero("suavidad", a.suavidad, d.suavidad)
+        if (a.invertir) put("invertir", true)
+        if (a.vertical) put("vertical", true)
+    }
+
+    private fun aplicada(a: AnimacionAplicada) = JSONObject().apply {
+        put("id", a.id)
+        put("nombre", a.nombre)
+        put("momento", a.momento.name)
+        if (a.piezas.isNotEmpty()) put("piezas", movimientos(a.piezas))
+        if (a.continuas.isNotEmpty()) put("continuas", continuas(a.continuas))
+        if (a.duracionUs != 500_000L) put("duracion", a.duracionUs)
+        if (!a.activa) put("activa", false)
     }
 
     private fun claves(l: List<Clave>) = JSONArray().apply {
@@ -347,7 +398,9 @@ object Persistencia {
             intensidadFiltro = o.f("intensidadFiltro", 1f),
             encuadre = o.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
             claves = clavesDe(o.optJSONArray("claves")),
+            clavesOriginales = o.optJSONArray("clavesOriginales")?.let { clavesDe(it) },
             piezas = piezasDe(o.optJSONArray("piezas")),
+            animaciones = aplicadasDe(o.optJSONArray("animaciones")),
             entrada = movimientosDe(o.optJSONArray("entrada")),
             salida = movimientosDe(o.optJSONArray("salida")),
             duracionEntradaUs = o.optLong("duracionEntrada", d.duracionEntradaUs),
@@ -410,9 +463,63 @@ object Persistencia {
                 nombre = p.optString("nombre", "Parte ${i + 1}"),
                 region = region,
                 encuadre = p.optJSONObject("encuadre")?.let { encuadreDe(it) } ?: Encuadre(),
-                claves = clavesDe(p.optJSONArray("claves"))
+                claves = clavesDe(p.optJSONArray("claves")),
+                clavesOriginales = p.optJSONArray("clavesOriginales")?.let { clavesDe(it) }
             )
         }
+    }
+
+    internal fun aplicadasDe(a: JSONArray?): List<AnimacionAplicada> {
+        if (a == null) return emptyList()
+        val d = AnimacionAplicada(0, "", MomentoAnimacion.ENTRADA)
+        return (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            // Un momento que esta version no conoce: se ignora, como un tipo nuevo
+            val momento = runCatching { MomentoAnimacion.valueOf(o.optString("momento")) }.getOrNull()
+                ?: return@mapNotNull null
+            AnimacionAplicada(
+                id = o.optLong("id"),
+                nombre = o.optString("nombre", ""),
+                momento = momento,
+                piezas = movimientosDe(o.optJSONArray("piezas")),
+                continuas = continuasDe(o.optJSONArray("continuas")),
+                duracionUs = o.optLong("duracion", d.duracionUs).coerceAtLeast(0),
+                activa = o.optBoolean("activa", d.activa)
+            )
+        }
+    }
+
+    private fun ajustesDe(o: JSONObject?): AjustesEfecto {
+        val d = AjustesEfecto()
+        o ?: return d
+        fun n(clave: String, defecto: Float) = o.f(clave, defecto).takeIf { it.isFinite() } ?: defecto
+        return AjustesEfecto(
+            angulo = n("angulo", d.angulo),
+            desde = n("desde", d.desde),
+            hasta = n("hasta", d.hasta),
+            curva = o.enumeracion("curva", d.curva),
+            bezier = o.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let { b ->
+                fun v(i: Int) = b.optDouble(i, 0.0).toFloat().takeIf { it.isFinite() }?.plus(0f) ?: 0f
+                Bezier(v(0).coerceIn(0f, 1f), v(1), v(2).coerceIn(0f, 1f), v(3))
+            },
+            centroX = n("centroX", d.centroX),
+            centroY = n("centroY", d.centroY),
+            grosor = n("grosor", d.grosor).coerceAtLeast(0f),
+            suavidad = n("suavidad", d.suavidad).coerceAtLeast(0f),
+            invertir = o.optBoolean("invertir", d.invertir),
+            vertical = o.optBoolean("vertical", d.vertical)
+        )
+    }
+
+    private fun animacionEnEfectoDe(o: JSONObject?): AnimacionEnEfecto? {
+        o ?: return null
+        val momento = runCatching { MomentoAnimacion.valueOf(o.optString("momento")) }.getOrNull() ?: return null
+        return AnimacionEnEfecto(
+            nombre = o.optString("nombre", ""),
+            momento = momento,
+            piezas = movimientosDe(o.optJSONArray("piezas")),
+            continuas = continuasDe(o.optJSONArray("continuas"))
+        )
     }
 
     internal fun efectosDe(a: JSONArray?): List<EfectoVideo> {
@@ -443,7 +550,11 @@ object Persistencia {
                         val valor = p.f("valor", Float.NaN).takeIf { it.isFinite() } ?: return@punto null
                         ProgresoEfecto(p.optLong("t").coerceAtLeast(0), valor.coerceIn(0f, 1f))
                     }
-                } ?: emptyList()
+                } ?: emptyList(),
+                id = e.optLong("id").coerceAtLeast(0),
+                grupo = e.optString("grupo", ""),
+                ajustes = ajustesDe(e.optJSONObject("ajustes")),
+                animacion = animacionEnEfectoDe(e.optJSONObject("animacion"))
             )
         }
     }
