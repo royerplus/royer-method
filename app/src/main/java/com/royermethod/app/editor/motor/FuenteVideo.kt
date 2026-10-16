@@ -323,11 +323,32 @@ class FuenteVideo(
     }
 
     fun soltar() {
+        soltarDecodificador()
+        soltarGl()
+    }
+
+    /** Ya no queda nada del decodificador; falta [soltarGl]. */
+    @Volatile
+    var decodificadorSuelto = false
+        private set
+
+    /**
+     * La parte lenta (parar y liberar el decodificador cuesta decenas de
+     * milisegundos en algunos moviles). No toca OpenGL: puede ir en otro hilo,
+     * y despues [soltarGl] en el del contexto.
+     */
+    fun soltarDecodificador() {
         if (pendiente >= 0) runCatching { decodificador.releaseOutputBuffer(pendiente, false) }
+        pendiente = -1
         runCatching { decodificador.stop() }
         runCatching { decodificador.release() }
         runCatching { extractor.release() }
         runCatching { superficie.release() }
+        decodificadorSuelto = true
+    }
+
+    /** Lo que vive en el contexto de OpenGL; en su hilo y despues del decodificador. */
+    fun soltarGl() {
         runCatching { superficieTextura.release() }
         GLES20.glDeleteTextures(1, intArrayOf(texturaOes), 0)
         copia?.soltar()

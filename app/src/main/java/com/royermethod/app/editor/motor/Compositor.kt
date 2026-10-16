@@ -20,6 +20,7 @@ import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.math.ceil
 
 /**
@@ -58,6 +59,13 @@ class Compositor(
     /** Lo pedido al hilo de precarga y todavia no subido a la GPU. */
     private val pedidas = ConcurrentHashMap.newKeySet<String>()
     private var precargador: ExecutorService? = null
+    /**
+     * Videos que se estan cerrando: el decodificador se suelta en otro hilo
+     * (parar un MediaCodec costaba 25-50 ms en el fotograma en que tocaba
+     * cerrarlo) y lo de OpenGL despues, aqui, cuando ya termino.
+     */
+    private val cerrando = ArrayList<FuenteVideo>()
+    private var cerrador: ExecutorService? = null
     @Volatile
     private var soltado = false
     /** Hasta 1.5 veces el lienzo: deja hacer zoom sin que se pixele. */
@@ -372,12 +380,22 @@ class Compositor(
     private fun cerrar(v: FuenteVideo) {
         fluidez?.olvidar(v)
         fondos.remove(v)?.second?.forEach { it.soltar() }
-        v.soltar()
         videos.remove(v)
+        val hilo = cerrador ?: Executors.newSingleThreadExecutor { r -> Thread(r, "cerrar-video") }
+            .also { cerrador = it }
+        cerrando.add(v)
+        hilo.execute { v.soltarDecodificador() }
+    }
+
+    /** Termina en este hilo los cierres cuyo decodificador ya se solto. */
+    private fun terminarCierres() {
+        val listos = cerrando.filter { it.decodificadorSuelto }
+        for (v in listos) { v.soltarGl(); cerrando.remove(v) }
     }
 
     /** Cierra lo que ya no se usa, para no acumular decodificadores abiertos. */
     private fun limpiar() {
+        terminarCierres()
         val viejos = videos.filter { numero - it.usadaEn > RETENER }
         for (v in viejos) cerrar(v)
         val imgViejas = imagenes.filterValues { numero - it.usadaEn > RETENER }
@@ -531,6 +549,12 @@ class Compositor(
         promedioPartes?.soltar(); promedioPartes = null
         videos.forEach { it.soltar() }
         videos.clear()
+        // Los que se estaban cerrando: esperar al decodificador antes de
+        // borrar su textura, que todavia podria estar escribiendo en ella.
+        cerrador?.let { it.shutdown(); runCatching { it.awaitTermination(2, TimeUnit.SECONDS) } }
+        cerrador = null
+        cerrando.forEach { if (!it.decodificadorSuelto) it.soltarDecodificador(); it.soltarGl() }
+        cerrando.clear()
         imagenes.values.forEach { it.soltar() }
         imagenes.clear()
         textos.values.forEach { it.soltar() }
