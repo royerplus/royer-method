@@ -90,8 +90,23 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     var reproduciendo by mutableStateOf(false)
     var seleccion by mutableStateOf<Seleccion?>(null)
     var panel by mutableStateOf<Panel?>(null)
-    /** Zoom de la linea de tiempo: cuantos dp ocupa un segundo. */
+    /**
+     * Zoom de la linea de tiempo: cuantos dp ocupa un segundo. Mejor cambiarlo
+     * con [ponerZoom], que respeta el limite vigente (normal o fino).
+     */
     var dpPorSegundo by mutableFloatStateOf(64f)
+    /**
+     * Zoom fino desbloqueado (mantener pulsado ampliar): deja llegar hasta
+     * [ZOOM_FINO_MAX] para colocar claves al milisegundo. Es de esta sesion,
+     * no se guarda; [zoomNormal] lo apaga.
+     */
+    var zoomFino by mutableStateOf(false)
+    /**
+     * Un panel pide que el de efectos se abra con este efecto (por su id)
+     * elegido, p. ej. al convertir una animacion en efecto. Lo consume el
+     * panel de efectos y lo vuelve a poner en null.
+     */
+    var efectoAElegir by mutableStateOf<Long?>(null)
     /** Mensaje corto que se ensena un momento sobre la imagen. */
     var aviso by mutableStateOf<String?>(null)
         private set
@@ -102,6 +117,12 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     var alCambiar: (Proyecto) -> Unit = {}
     /** Lo llama cuando el usuario mueve el cabezal. */
     var alBuscar: (Long) -> Unit = {}
+    /**
+     * Para la vista previa en el acto (no un cuadro despues, como al cambiar
+     * [reproduciendo]). Lo usa [pausarEn]; EditorScreen lo cablea a
+     * Previsualizador.pausar.
+     */
+    var alPausar: () -> Unit = {}
 
     private var gestoAbierto = false
     private var gestoGuardado = false
@@ -214,6 +235,52 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
         alBuscar(tiempo)
     }
 
+    /**
+     * Deja la reproduccion parada y el cabezal exactamente en [t] (p. ej. al
+     * aplicar una animacion: al comienzo del bloque y en pausa).
+     *
+     * Con `reproduciendo = false; irA(t)` el cabezal no quedaba exacto si
+     * estaba sonando: la vista previa recibia la busqueda todavia en marcha,
+     * volvia a arrancar el sonido desde [t] y, al llegarle la pausa un cuadro
+     * despues, se quedaba donde iba ese reloj (unos milisegundos mas alla).
+     * Aqui la pausa llega antes que la busqueda, asi que la vista previa ya
+     * esta parada cuando se mueve el cabezal y nada lo vuelve a correr.
+     * [alPausar] se llama siempre: puede que la interfaz ya dijera "pausa" y
+     * la vista previa todavia no se hubiera enterado; parar algo parado no hace
+     * nada.
+     */
+    fun pausarEn(t: Long) {
+        reproduciendo = false
+        alPausar()
+        irA(t)
+    }
+
+    // ------------------------------------------------------------------
+    // Zoom de la linea de tiempo
+    // ------------------------------------------------------------------
+
+    /** El zoom mayor que se permite ahora mismo. */
+    val zoomMaximo: Float
+        get() = if (zoomFino) ZOOM_FINO_MAX else ZOOM_MAX
+
+    /**
+     * Pone el zoom (dp por segundo) dentro de [ZOOM_MIN]..[zoomMaximo]. Es lo
+     * que deben usar el pellizco y los botones de ampliar/reducir de la linea
+     * de tiempo, en vez de asignar [dpPorSegundo] con [ZOOM_MAX] a mano: asi el
+     * zoom fino, una vez desbloqueado (`zoomFino = true`), llega hasta 1 ms =
+     * 60 dp sin tocar nada mas.
+     */
+    fun ponerZoom(dpPorSegundo: Float) {
+        if (dpPorSegundo.isNaN()) return
+        this.dpPorSegundo = dpPorSegundo.coerceIn(ZOOM_MIN, zoomMaximo)
+    }
+
+    /** Apaga el zoom fino y, si estaba mas ampliado, vuelve al limite normal. */
+    fun zoomNormal() {
+        zoomFino = false
+        if (dpPorSegundo > ZOOM_MAX) dpPorSegundo = ZOOM_MAX
+    }
+
     fun avisar(texto: String) {
         aviso = texto
         avisoN++
@@ -274,6 +341,8 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
         const val MAX_DESHACER = 100
         const val ZOOM_MIN = 8f
         const val ZOOM_MAX = 900f
+        /** Zoom fino: 60 000 dp por segundo, o sea 1 ms = 60 dp (se coloca con el dedo). */
+        const val ZOOM_FINO_MAX = 60_000f
         /** Lo que se puede pasar el cabezal del final. */
         const val MARGEN_CABEZAL_US = 30_000_000L
     }

@@ -81,6 +81,9 @@ fun EditorScreen(onVolver: () -> Unit) {
     DisposableEffect(Unit) {
         estado.alCambiar = { prev.proyecto(it) }
         estado.alBuscar = { prev.irA(it) }
+        // Pausa en el acto: pausarEn la pide antes de mover el cabezal, asi la
+        // busqueda llega con la vista previa ya parada y el cabezal queda exacto
+        estado.alPausar = { prev.pausar() }
         prev.alTiempo = { estado.tiempo = it }
         prev.alReproducir = { estado.reproduciendo = it }
         prev.proyecto(estado.proyecto)

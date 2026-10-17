@@ -130,10 +130,17 @@ fun PantallaEditor(
                             )
                             que.isNotEmpty() -> {
                                 val p = Panel.valueOf(que)
-                                HojaPanel(p.titulo, onCerrar = {
+                                val cerrar = {
                                     estado.panel = null
                                     if (estado.seleccion is Seleccion.Paso) estado.elegir(null)
-                                }) { ContenidoPanel(estado, p) }
+                                }
+                                // Animar y Efectos montan su propia hoja (acciones en la
+                                // fila del titulo y zona fija); el resto, la de siempre
+                                when (p) {
+                                    Panel.ANIMACION -> HojaAnimacion(estado, cerrar)
+                                    Panel.EFECTOS -> HojaEfectos(estado, cerrar)
+                                    else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
+                                }
                             }
                             else -> Column(Modifier.fillMaxSize()) {
                                 LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxWidth().weight(1f))
@@ -152,9 +159,9 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
     when (p) {
         Panel.VELOCIDAD -> PanelVelocidad(estado)
         Panel.VOLUMEN -> PanelVolumen(estado)
-        Panel.ANIMACION -> PanelAnimacion(estado)
+        // Van con su hoja: HojaAnimacion y HojaEfectos
+        Panel.ANIMACION, Panel.EFECTOS -> Unit
         Panel.PIEZAS -> PanelPiezas(estado)
-        Panel.EFECTOS -> PanelEfectos(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
         Panel.COLOR -> PanelColor(estado)
         Panel.ENCUADRE -> PanelEncuadre(estado)
@@ -226,8 +233,11 @@ private fun Transporte(estado: EstadoEditor) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            Text(reloj(estado.tiempo), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp), color = Ink.White)
-            Text(" / " + reloj(estado.duracion), style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.5.sp), color = Ink.White50)
+            // El cabezal, en pausa con milesimas (0,005 s y 0,001 s se distinguen);
+            // sonando, decimas, que no bailan a 30 cambios por segundo. La duracion
+            // sigue en decimas: con las dos en milesimas no cabe en 360 dp
+            Text(reloj(estado.tiempo, milesimas = !estado.reproduciendo), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp), color = Ink.White, maxLines = 1, softWrap = false)
+            Text(" / " + reloj(estado.duracion), style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.5.sp), color = Ink.White50, maxLines = 1, softWrap = false)
         }
         Box(
             Modifier
