@@ -148,7 +148,7 @@ fun Lienzo(
                                         if (abs(r - recto) < 4f) r = recto
                                         val s = (inicial.escala * zoom).coerceIn(0.05f, 20f)
                                         estado.ajustar { q ->
-                                            Edicion.ajustarEncuadre(q, id, t) { it.copy(x = x, y = y, rotacion = r, escala = s) }
+                                            Edicion.ajustarEncuadre(q, id, t, toleranciaClaves()) { it.copy(x = x, y = y, rotacion = r, escala = s) }
                                         }
                                         ev.changes.forEach { it.consume() }
                                     }

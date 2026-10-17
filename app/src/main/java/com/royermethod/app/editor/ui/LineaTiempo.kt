@@ -52,6 +52,8 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.PistaAudio
 import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.Transicion
+import com.royermethod.app.editor.modelo.mueveSiempre
+import com.royermethod.app.editor.modelo.tramosAnimacion
 import com.royermethod.app.ui.components.Gestos
 import com.royermethod.app.ui.components.segundos
 import com.royermethod.app.ui.theme.Estilo
@@ -283,7 +285,8 @@ fun LineaTiempo(
                                 if (ev.changes.none { it.pressed }) break
                                 val z = ev.calculateZoom()
                                 if (z != 1f) {
-                                    estado.dpPorSegundo = (estado.dpPorSegundo * z).coerceIn(EstadoEditor.ZOOM_MIN, EstadoEditor.ZOOM_MAX)
+                                    // Acota al zoom normal o, si esta desbloqueado, al fino
+                                    estado.ponerZoom(estado.dpPorSegundo * z)
                                 }
                                 ev.changes.forEach { it.consume() }
                             }
@@ -694,14 +697,17 @@ private fun DrawScope.bloque(
             if (c.esVideo && c.velocidad != 1f) etiqueta += "  ·  ${"%.2g".format(c.velocidad)}x"
             texto(medidor, etiqueta, Offset(x0 + 7.dp.toPx(), y1 - 9.dp.toPx()), Color.White.copy(alpha = 0.92f), 9.5f, maxAncho = ancho - 10.dp.toPx())
         }
-        if (c.entrada.isNotEmpty() || c.salida.isNotEmpty() || c.continua.isNotEmpty()) {
+        // Las heredadas y las aplicadas (Clip.animaciones) se marcan igual
+        val (tramoEntrada, tramoSalida) = c.tramosAnimacion()
+        val siempre = c.mueveSiempre()
+        if (tramoEntrada > 0 || tramoSalida > 0 || siempre) {
             // Una raya arriba marca que el bloque lleva animacion
-            val ini = if (c.entrada.isNotEmpty()) c.duracionEntradaUs * pxUs else 0f
-            val fin = if (c.salida.isNotEmpty()) c.duracionSalidaUs * pxUs else 0f
+            val ini = tramoEntrada * pxUs
+            val fin = tramoSalida * pxUs
             val xb = x0 - (pz.desde - pz.inicio) * pxUs
             if (ini > 0) drawRect(Ink.White70, Offset(xb, y0), Size(ini, 3.dp.toPx()))
             if (fin > 0) drawRect(Ink.White70, Offset(xb + c.duracionUs * pxUs - fin, y0), Size(fin, 3.dp.toPx()))
-            if (c.continua.isNotEmpty()) drawRect(Ink.White30, Offset(x0, y0), Size(ancho, 1.5.dp.toPx()))
+            if (siempre) drawRect(Ink.White30, Offset(x0, y0), Size(ancho, 1.5.dp.toPx()))
         }
         if (c.efectos.isNotEmpty()) {
             // Cada raya conserva el intervalo real del efecto, incluso con transiciones.

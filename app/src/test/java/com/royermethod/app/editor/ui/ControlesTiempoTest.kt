@@ -114,7 +114,8 @@ class ControlesTiempoTest {
 
     @Test fun laToleranciaDeClavesDependeDelAjuste() {
         assertEquals(Edicion.TOLERANCIA_CLAVE, TiempoCampo.toleranciaClaves(true))
-        assertEquals(200L, TiempoCampo.toleranciaClaves(false))
+        assertEquals(Edicion.TOLERANCIA_FINA, TiempoCampo.toleranciaClaves(false))
+        assertEquals(200L, Edicion.TOLERANCIA_FINA)
         // 0,001 s y 0,005 s son claves distintas sin el ajuste
         assertTrue(5_000L - 1_000L > TiempoCampo.toleranciaClaves(false))
     }

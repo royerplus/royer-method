@@ -469,6 +469,43 @@ class HerramientasEfectoTest {
         }
     }
 
+    /** Cuanto se ve de la imagen en un punto (px desde el centro del lienzo), con la cuenta del sombreador CAPA. */
+    private fun seVe(e: Efecto, x: Float, y: Float): Float {
+        val m = e.mascara ?: return 1f
+        val qx = x - m.centroX
+        val qy = y - m.centroY
+        val d = if (m.radial) sqrt(qx * qx + qy * qy) else qx * m.dirX + qy * m.dirY
+        var v = ((e.borde - d) / m.suave + 0.5f).coerceIn(0f, 1f)
+        if (m.grosor > 0f && abs(e.borde) < 15_000f) v *= ((d - (e.borde - m.grosor)) / m.suave + 0.5f).coerceIn(0f, 1f)
+        return if (m.invertida) 1f - v else v
+    }
+
+    @Test
+    fun elAnilloQueSeAbreDejaVerLoDeDebajoYAcabaConLaImagenEntera() {
+        val c = Clip(1, origen = video)
+        val ef = CatalogoEfectos.aplicar(CatalogoEfectos.combinaciones.single { it.nombre == "Anillo que se abre" }, c, 0).efectos.single()
+        val conAnillo = c.copy(efectos = listOf(ef))
+        val esquinas = listOf(-W / 2f to -H / 2f, W / 2f to -H / 2f, -W / 2f to H / 2f, W / 2f to H / 2f)
+        val puntos = esquinas + (0f to 0f)
+        // Al empezar no tapa nada
+        val inicio = efecto(conAnillo, 0)
+        for ((x, y) in puntos) assertEquals("($x, $y) al empezar", 1f, seVe(inicio, x, y), 0f)
+        // A mitad: el centro ya se ve y una banda hacia las esquinas deja ver lo de debajo
+        val mitad = efecto(conAnillo, 300_000)
+        assertEquals(1f, seVe(mitad, 0f, 0f), 0f)
+        val diagonal = (0..200).map { n -> seVe(mitad, W / 2f * n / 200f, H / 2f * n / 200f) }
+        assertTrue(diagonal.any { it == 0f })
+        assertEquals(1f, diagonal.first(), 0f)
+        // Al acabar el anillo ha salido por las esquinas: la imagen entera,
+        // igual que justo despues del tramo (sin aparecer de golpe)
+        for (t in longArrayOf(570_000, 590_000, 599_999)) {
+            val e = efecto(conAnillo, t)
+            for ((x, y) in puntos) assertEquals("($x, $y) en $t", 1f, seVe(e, x, y), 0f)
+            for (n in 0..200) assertEquals(1f, seVe(e, W / 2f * n / 200f, H / 2f * n / 200f), 0f)
+        }
+        assertNull(efecto(conAnillo, 600_000).mascara)
+    }
+
     @Test
     fun lasCombinacionesLlevanLoQueDicen() {
         val c = Clip(1, origen = video)
@@ -480,7 +517,7 @@ class HerramientasEfectoTest {
         assertEquals(500_000L, m[1].fundidoSalidaUs)
         val anillo = de("Anillo que se abre").single()
         assertEquals(600_000L, anillo.duracionUs)
-        assertEquals(AjustesEfecto(desde = 0f, hasta = 1.15f, grosor = 0.15f, curva = Curva.SALIDA), anillo.ajustes)
+        assertEquals(AjustesEfecto(desde = 0f, hasta = 1.15f, grosor = 0.15f, curva = Curva.SALIDA, invertir = true), anillo.ajustes)
         val l = de("Latigazo con desenfoque")
         assertEquals(listOf(TipoEfectoVideo.LATIGAZO, TipoEfectoVideo.DESENFOQUE_DIRECCIONAL, TipoEfectoVideo.BORDES_ESPEJO), l.map { it.tipo })
         assertTrue(l.all { it.inicioUs == 0L && it.finUs == 300_000L })

@@ -77,11 +77,8 @@ fun toleranciaClaves(): Long = TiempoCampo.toleranciaClaves(AjustesEditor.ajusta
  */
 internal object TiempoCampo {
 
-    /** El de Edicion.TOLERANCIA_FINA (0,0002 s); cuando exista alli, usar esa. */
-    const val TOLERANCIA_FINA_US = 200L
-
     fun toleranciaClaves(ajustarFotogramas: Boolean): Long =
-        if (ajustarFotogramas) Edicion.TOLERANCIA_CLAVE else TOLERANCIA_FINA_US
+        if (ajustarFotogramas) Edicion.TOLERANCIA_CLAVE else Edicion.TOLERANCIA_FINA
 
     /**
      * Segundos de un deslizador a microsegundos, redondeando: con Float,

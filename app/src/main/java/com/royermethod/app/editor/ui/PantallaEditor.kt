@@ -266,16 +266,18 @@ private fun BotonClave(estado: EstadoEditor) {
     val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
     val local = estado.localElegido
     val activo = c != null && local != null
-    val hay = activo && c!!.claves.any { kotlin.math.abs(it.tiempoUs - local!!) <= Edicion.TOLERANCIA_CLAVE }
+    // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s: claves a una milesima son distintas
+    val tolerancia = toleranciaClaves()
+    val hay = activo && Edicion.claveCercana(c!!.claves, local!!, tolerancia) != null
     BotonIcono(
         if (hay) Glifos.romboLleno else Glifos.rombo,
         {
             val clip = c ?: return@BotonIcono
             val l = local ?: return@BotonIcono
             if (hay) {
-                estado.hacer { Edicion.quitarClave(it, clip.id, estado.tiempo) }
+                estado.hacer { Edicion.quitarClave(it, clip.id, estado.tiempo, tolerancia) }
             } else {
-                estado.hacer { Edicion.ponerClave(it, clip.id, estado.tiempo, clip.encuadreEn(l)) }
+                estado.hacer { Edicion.ponerClave(it, clip.id, estado.tiempo, clip.encuadreEn(l), tolerancia) }
                 if (clip.claves.isEmpty()) estado.avisar("Mueve el cabezal y cambia el bloque: se crea otro fotograma clave")
             }
         },

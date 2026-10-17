@@ -163,6 +163,8 @@ private fun ColumnScope.Editor() {
         texto = { "%.1f s".format(it) })
     Interruptor("Imanes", AjustesEditor.imanes, { v -> guardar { AjustesEditor.imanes = v } },
         "Al mover o recortar, los bloques se pegan al cabezal y a los cortes")
+    Interruptor("Ajustar a fotogramas", AjustesEditor.ajustarFotogramas, { v -> guardar { AjustesEditor.ajustarFotogramas = v } },
+        "Los tiempos de claves y efectos se pegan a los fotogramas de 30 fps. Apagado se colocan a la milesima: 0,005 s, 0,001 s")
 
     Spacer(Modifier.height(10.dp))
     Etiqueta("Exportar")

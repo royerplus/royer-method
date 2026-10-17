@@ -265,7 +265,7 @@ fun PanelEncuadre(estado: EstadoEditor) {
     val id = c.id
     val e = c.encuadreEn(estado.localElegido ?: 0)
     fun cambiar(arrastre: Boolean = true, f: (com.royermethod.app.editor.modelo.Encuadre) -> com.royermethod.app.editor.modelo.Encuadre) {
-        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.ajustarEncuadre(it, id, estado.tiempo, f) }
+        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.ajustarEncuadre(it, id, estado.tiempo, toleranciaClaves(), f) }
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
     if (c.claves.isNotEmpty()) {
@@ -428,7 +428,8 @@ fun DrawScope.dibujoCurva(f: (Float) -> Float, color: Color) {
 fun PanelCurva(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
     val local = estado.localElegido
-    val clave = local?.let { l -> c.claves.firstOrNull { kotlin.math.abs(it.tiempoUs - l) <= Edicion.TOLERANCIA_CLAVE } }
+    val tolerancia = toleranciaClaves()
+    val clave = local?.let { l -> Edicion.claveCercana(c.claves, l, tolerancia) }
     if (clave == null) {
         Text(
             "Pon el cabezal sobre un fotograma clave (los rombos del bloque) para cambiar como se mueve hasta el siguiente.",
@@ -437,13 +438,13 @@ fun PanelCurva(estado: EstadoEditor) {
         Hueco()
         BotonLleno("Poner uno aqui", {
             val ini = estado.inicioElegido ?: return@BotonLleno
-            estado.hacer { Edicion.ponerClave(it, c.id, estado.tiempo, c.encuadreEn(estado.tiempo - ini)) }
+            estado.hacer { Edicion.ponerClave(it, c.id, estado.tiempo, c.encuadreEn(estado.tiempo - ini), tolerancia) }
         }, activo = local != null)
         return
     }
     val t = estado.tiempo
     fun poner(f: (com.royermethod.app.editor.modelo.Clave) -> com.royermethod.app.editor.modelo.Clave, arrastre: Boolean = false) {
-        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.cambiarClave(it, c.id, t, f) }
+        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.cambiarClave(it, c.id, t, tolerancia, f) }
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
     val ultima = c.claves.maxOf { it.tiempoUs } == clave.tiempoUs
@@ -468,7 +469,7 @@ fun PanelCurva(estado: EstadoEditor) {
         EditorBezier(b, { nb -> poner({ it.copy(bezier = nb) }, arrastre = true) })
     }
     Hueco(10)
-    BotonBorde("Quitar este fotograma clave", { estado.hacer { Edicion.quitarClave(it, c.id, t) } }, glifo = Glifos.papelera)
+    BotonBorde("Quitar este fotograma clave", { estado.hacer { Edicion.quitarClave(it, c.id, t, tolerancia) } }, glifo = Glifos.papelera)
 }
 
 /**

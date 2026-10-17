@@ -15,7 +15,6 @@ import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.Bezier
 import com.royermethod.app.editor.modelo.Clave
 import com.royermethod.app.editor.modelo.Curva
-import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.PiezaVideo
 import com.royermethod.app.editor.modelo.RegionUv
@@ -29,7 +28,6 @@ import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.Opciones
 import com.royermethod.app.ui.components.Pestanas
 import com.royermethod.app.ui.theme.Ink
-import kotlin.math.abs
 
 /** Regiones independientes de una fuente; ninguna vuelve a llenar el lienzo. */
 @Composable
@@ -129,7 +127,9 @@ fun PanelPiezas(estado: EstadoEditor) {
         estado.irA(inicio + us)
     }
     val clavesVisibles = pieza.claves.filter { it.tiempoUs in 0L..clip.duracionUs }.sortedBy { it.tiempoUs }
-    val clave = clavesVisibles.firstOrNull { abs(it.tiempoUs - local) <= Edicion.TOLERANCIA_CLAVE }
+    // La mas cercana dentro del bloque; sin el ajuste a fotogramas, a 0,0002 s o menos
+    val tolerancia = toleranciaClaves()
+    val clave = pieza.claveCercana(local, tolerancia, clip.duracionUs)
     if (clavesVisibles.isNotEmpty()) {
         Opciones(clavesVisibles, clave, { "%.3f s".format(it.tiempoUs / 1e6) }, {
             estado.reproduciendo = false
@@ -139,8 +139,8 @@ fun PanelPiezas(estado: EstadoEditor) {
     BotonBorde(if (clave == null) "Poner clave de esta parte" else "Quitar clave de esta parte", {
         estado.reproduciendo = false
         cambiar { p ->
-            if (clave != null) p.copy(claves = p.claves.filter { it.tiempoUs != clave.tiempoUs })
-            else p.ponerPose(local, clip.duracionUs) { it }
+            if (clave != null) p.sinClave(local, tolerancia, clip.duracionUs)
+            else p.conPose(local, clip.duracionUs, tolerancia) { it }
         }
     }, glifo = if (clave == null) Glifos.rombo else Glifos.romboLleno)
     Spacer(Modifier.height(6.dp))
@@ -151,7 +151,7 @@ fun PanelPiezas(estado: EstadoEditor) {
         fun transformar(f: (Encuadre) -> Encuadre) {
             estado.reproduciendo = false
             estado.irA(inicio + local)
-            cambiar(true) { it.ponerPose(local, clip.duracionUs, f) }
+            cambiar(true) { it.conPose(local, clip.duracionUs, tolerancia, f) }
         }
         Deslizador("Desplazamiento X", pose.x, -2f, 2f, { v -> transformar { it.copy(x = v) } }, neutro = 0f, texto = { "%.3f anchos".format(it) })
         Deslizador("Desplazamiento Y", pose.y, -2f, 2f, { v -> transformar { it.copy(y = v) } }, neutro = 0f, texto = { "%.3f altos".format(it) })
@@ -159,7 +159,7 @@ fun PanelPiezas(estado: EstadoEditor) {
         Deslizador("Giro", pose.rotacion, -360f, 360f, { v -> transformar { it.copy(rotacion = v) } }, neutro = 0f, texto = { "%.1f°".format(it) })
         Deslizador("Opacidad", pose.opacidad, 0f, 1f, { v -> transformar { it.copy(opacidad = v) } }, neutro = 1f, texto = { "%.1f%%".format(it * 100) })
         BotonBorde("Restablecer esta pose", {
-            cambiar { it.ponerPose(local, clip.duracionUs) { Encuadre() } }
+            cambiar { it.conPose(local, clip.duracionUs, tolerancia) { Encuadre() } }
         })
         if (clave != null) {
             Spacer(Modifier.height(8.dp))
@@ -200,15 +200,6 @@ fun PanelPiezas(estado: EstadoEditor) {
         Deslizador("Punto 2 · tiempo", bezier.x2, 0f, 1f, { v -> cambiarClave(true) { it.copy(bezier = (it.bezier ?: bezier).copy(x2 = v)) } }, neutro = 1f, texto = { "%.3f".format(it) })
         Deslizador("Punto 2 · avance", bezier.y2, -0.3f, 1.3f, { v -> cambiarClave(true) { it.copy(bezier = (it.bezier ?: bezier).copy(y2 = v)) } }, neutro = 1f, texto = { "%.3f".format(it) })
     }
-}
-
-/** Al editar lejos de la primera clave, se conserva una pose inicial. */
-private fun PiezaVideo.ponerPose(local: Long, duracion: Long, cambio: (Encuadre) -> Encuadre): PiezaVideo {
-    val previa = claves.firstOrNull { it.tiempoUs in 0L..duracion && abs(it.tiempoUs - local) <= Edicion.TOLERANCIA_CLAVE }
-    val t = previa?.tiempoUs ?: local.coerceIn(0L, duracion)
-    val base = if (claves.isEmpty() && t > Edicion.TOLERANCIA_CLAVE) listOf(Clave(0, encuadre)) else emptyList()
-    val nueva = (previa ?: Clave(t, encuadreEn(t))).copy(encuadre = cambio(encuadreEn(t)))
-    return copy(claves = (claves.filter { it.tiempoUs != t } + base + nueva).sortedBy { it.tiempoUs })
 }
 
 @Composable

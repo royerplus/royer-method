@@ -42,7 +42,7 @@ El usuario rechazó la primera versión por ser una adaptación. Su corrección 
 Todo está guardado en el checkout, sin commit ni push. El repo estaba limpio al comienzo. No hay PR solicitado.
 
 1. Modelo de efectos temporales independientes `EfectoVideo`, persistencia, recorte/división/velocidad con fase conservada, panel Efectos, barras FX en timeline. Tipos incluyen iris, bordes espejo, blur direccional, RGB, luz, etc.
-2. Precisión mínima de1fotograma (33.333 ms), controles de duración/keyframes/Bézier y formato3:4.
+2. Controles de duración/keyframes/Bézier y formato 3:4. La antigua precisión mínima de 1 fotograma (33.333 ms) ya no rige: ver «Herramientas de movimiento» al final.
 3. `PaqueteProyecto`: ZIP .royer portátil con proyecto.json y medios, import/export SAF y validación de rutas/límites.
 4. `SincronizacionVideo.kt` + `Contenedor`: filtra flags sync falsos del encoder examinando NAL IDR/IRAP. Primer MP4 lineal estaba bien pero fastseek fallaba porque stss marcaba también B-frames como sync. Hay pruebas unitarias, **falta verificar un nuevo MP4 real con búsquedas**.
 5. Nuevo `PiezaVideo`, `RegionUv`, `Clip.piezas`, keyframes propios y persistencia. Mantienen el mapa de textura completa: cortar una mitad NO vuelve a llenar el lienzo. Encuadre de pieza es delta en pantalla. Panel Partes permite UV, posición, escala, giro, opacidad, claves/curvas, recortar/dividir/velocidad conservando trayectoria.
@@ -279,3 +279,21 @@ El usuario pidió subir el código a la misma rama y enviar el MP4 a su galería
 Se comprobó también el APK instalado de `com.royermethod.app.prueba`: SHA256 `f59d257434716f81d4ec21999cf4378aafab2be539267772fb5dc3d6ba8ad2f0`, idéntico a la compilación validada. Última actualización de .prueba: 2026-10-15 23:21:37. La app normal sigue intacta.
 
 Esta tanda corrige las herramientas existentes y su renderizado; no incorpora tipos nuevos de animaciones, transiciones ni efectos al catálogo.
+
+## Herramientas de movimiento (pedido del 2026-10-16 07:25, fase A integrada el 2026-10-17)
+
+Rama local `wt/integra-a`: une `wt/efectos`, `wt/animaciones`, `wt/claves` y `wt/comun` sobre 20d9e35. Faltan los paneles nuevos y la línea de tiempo (fase B).
+
+- **Efectos nuevos** (`modelo/EfectoVideo.kt`, `Escena.efectosVideo`, `modelo/CatalogoEfectos.kt`): MOVER, ZOOM, GIRAR, LATIGAZO, DESENFOQUE_DIRECCIONAL, CIRCULO (círculo o anillo con centro y grosor), BARRIDO y MITADES, que parte el bloque en dos piezas sintéticas. Se ajustan con `AjustesEfecto`: desde/hasta, ángulo, curva o Bézier, centro, grosor, suavidad, invertir y corte vertical. Con sus valores por defecto, los efectos viejos (la SACUDIDA incluida) dan exactamente lo mismo que antes.
+- **Combinaciones rápidas** (también son los ejemplos editables): Mitades que se juntan, Círculo que se abre, Anillo que se abre, Latigazo con desenfoque y Sacudida con desenfoque. El anillo va invertido: su banda deja ver lo de debajo y, al salir por las esquinas, la imagen queda entera. Cada efecto queda independiente, con su id, y comparte grupo con los demás de la combinación (`moverGrupo`).
+- **Animaciones acumulables** (`Clip.animaciones`, `modelo/Animaciones.kt`): las entradas, salidas y continuas heredadas se unifican sin cambiar ni un bit. La duración inicial depende del tipo y del largo del bloque. `convertirEnEfecto` lo hace en un solo paso: quita la animación y pone un efecto ANIMACION. `limitacionesConversion` explica lo que deja de seguir al bloque.
+- **Tiempo preciso**: `TiempoPreciso` (texto, leer, ajustar) y `AjustesEditor.ajustarFotogramas`, que se cambia en Personalizar > Ajustar a fotogramas. También `CampoTiempo` y `EstadoEditor.pausarEn`, que deja el cabezal exacto aunque se esté reproduciendo. El zoom fino lo forman `zoomFino`, `ZOOM_FINO_MAX` = 60 000 dp/s (1 ms = 60 dp), `ponerZoom` y `zoomNormal`. El reloj sale con milésimas en pausa.
+- **Claves**: `Edicion.TOLERANCIA_CLAVE` = 16 ms (con el ajuste a fotogramas) y `Edicion.TOLERANCIA_FINA` = 0,2 ms (sin él); `toleranciaClaves()` elige una u otra. Con la fina pueden convivir claves en 0, 0,001 y 0,005 s. Herramientas: `Edicion.claveCercana` y `Edicion.moverClave`, con sus equivalentes para partes en `PiezaVideo`.
+- **Simplificador** (`modelo/Trayectoria.kt`; `Edicion.simplificarClaves`, `restaurarClaves`, `descartarOriginales` y las versiones `…Pieza`): guarda el original en `clavesOriginales`, que se persiste en el clip y en la parte.
+  - Tolerancia por defecto: 0,5 px de exportación y 0,5/255 de opacidad.
+  - Métrica: `hypot(Δx·W, Δy·H) + R·|Δescala| + R·|Δgiro|·π/180`, con W×H las medidas de exportación y R la media diagonal. Se mide en los centros de fotograma a 30 fps, en las muestras del obturador (como `Escena`) y en los tiempos de clave.
+  - Es exacta para desplazamientos; para escala y giro es una aproximación.
+  - Limitación: una sola curva por tramo para los cinco canales, así que las curvas en el plano conservan muchas claves.
+- **Pendiente de esta línea**:
+  - Fase B: paneles nuevos de Efectos y Animación, y en la línea de tiempo los botones de zoom, la pulsación de 2 s, las claves arrastrables y la regla a 1 ms. También el simplificador en la interfaz y el banco de vista previa.
+  - En el teléfono: el teclado decimal del campo de tiempo, la pausa exacta con sonido real, y los uniformes nuevos y la precisión mediump del anillo y del centro.

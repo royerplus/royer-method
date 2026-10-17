@@ -159,8 +159,11 @@ object CatalogoEfectos {
         "Circulo que se abre" to listOf(
             Pieza(CIRCULO, 500_000, AjustesEfecto(desde = 0f, hasta = 1f, curva = Curva.SUAVE))
         ),
+        // Invertido: la banda del anillo es la que deja ver lo de debajo. Al
+        // acabar ha salido por las esquinas (1.15 - 0.15 = todo el radio) y la
+        // imagen queda entera, sin el salto de volver a aparecer de golpe.
         "Anillo que se abre" to listOf(
-            Pieza(CIRCULO, 600_000, AjustesEfecto(desde = 0f, hasta = 1.15f, grosor = 0.15f, curva = Curva.SALIDA))
+            Pieza(CIRCULO, 600_000, AjustesEfecto(desde = 0f, hasta = 1.15f, grosor = 0.15f, curva = Curva.SALIDA, invertir = true))
         ),
         "Latigazo con desenfoque" to listOf(
             Pieza(LATIGAZO, 300_000, ajustesDe(LATIGAZO)),
@@ -178,7 +181,8 @@ object CatalogoEfectos {
         CombinacionEfectos("Mitades que se juntan",
             "Las dos mitades llegan desde arriba y abajo con un rastro que se apaga al juntarse."),
         CombinacionEfectos("Circulo que se abre", "Un circulo desde el centro descubre la imagen."),
-        CombinacionEfectos("Anillo que se abre", "Un anillo crece desde el centro y se pierde por los bordes."),
+        CombinacionEfectos("Anillo que se abre",
+            "Un anillo crece desde el centro y deja ver lo de debajo; al salir por los bordes la imagen queda entera."),
         CombinacionEfectos("Latigazo con desenfoque",
             "Sale disparada hacia un lado y vuelve por el otro, con rastro y bordes espejo."),
         CombinacionEfectos("Sacudida con desenfoque", "La sacudida de siempre con un desenfoque suave que entra y sale.")

@@ -193,7 +193,8 @@ data class Conversion(val clip: Clip, val efecto: EfectoVideo)
  * sin fundidos. Null si no existe o no es [convertible].
  */
 fun Clip.convertirEnEfecto(idAnimacion: Long): Conversion? {
-    val u = conAnimacionesUnificadas()
+    // Con ids en los efectos de proyectos viejos (0): el nuevo se puede elegir por el suyo
+    val u = conAnimacionesUnificadas().conIdsEfectos()
     val a = u.animaciones.firstOrNull { it.id == idAnimacion } ?: return null
     if (!a.convertible()) return null
     val dur = u.duracionUs
@@ -218,7 +219,7 @@ fun Clip.convertirEnEfecto(idAnimacion: Long): Conversion? {
         desfaseUs = desfase,
         duracionBaseUs = base,
         activo = a.activa,
-        id = (u.efectos.maxOfOrNull { it.id } ?: 0L).coerceAtLeast(0L) + 1,
+        id = u.siguienteIdEfecto(),
         animacion = AnimacionEnEfecto(a.nombre, a.momento, a.piezas, a.continuas)
     )
     return Conversion(u.copy(animaciones = u.animaciones.filter { it.id != idAnimacion }, efectos = u.efectos + efecto), efecto)

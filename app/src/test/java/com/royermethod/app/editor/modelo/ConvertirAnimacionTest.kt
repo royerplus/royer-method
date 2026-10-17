@@ -148,6 +148,21 @@ class ConvertirAnimacionTest {
     }
 
     @Test
+    fun enUnProyectoViejoLosEfectosSinIdRecibenUnoYElNuevoNoSeRepite() {
+        // Efectos guardados por un APK viejo: id 0
+        val viejos = listOf(EfectoVideo(TipoEfectoVideo.SACUDIDA, 0, 500_000), EfectoVideo(TipoEfectoVideo.RGB, 600_000, 900_000))
+        val c = video().copy(efectos = viejos, entrada = listOf(Movimiento(Animacion.ZOOM_ENTRA)))
+        val id = c.conAnimacionesUnificadas().animaciones.single().id
+        val conv = convertirIgual(c, id, "viejo")
+        val ids = conv.clip.efectos.map { it.id }
+        assertEquals(ids.size, ids.toSet().size)
+        assertTrue(ids.all { it > 0 })
+        assertEquals(1, conv.clip.efectos.count { it.id == conv.efecto.id })
+        // Los de antes no cambian salvo el id
+        assertEquals(viejos, conv.clip.efectos.dropLast(1).map { it.copy(id = 0) })
+    }
+
+    @Test
     fun loQueSeConvierteYDondeQueda() {
         val c = video().copy(animaciones = listOf(
             AnimacionAplicada(1, "Zoom", MomentoAnimacion.ENTRADA, listOf(Movimiento(Animacion.ZOOM_ENTRA)), duracionUs = 400_000),
