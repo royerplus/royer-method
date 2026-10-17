@@ -204,8 +204,10 @@ class ClavesFinasTest {
         val paso = escena(fino, true).cuadro(0).clips.single()
         assertEquals(8, paso.matrices.size)
         val exp = 1_000_000.0 / Linea.FPS * 0.5
+        val ins = Trayectoria.instantes(fino.duracionUs, 8, fino.claves)
         for (i in 0 until 8) {
             val ti = (((i + 0.5) / 8 - 0.5) * exp).toLong().coerceAtLeast(0)
+            assertTrue(ti in ins)
             assertArrayEquals(sin.cuadroEn(ti).clips.single().matrices.single(), paso.matrices[i], 0f)
         }
         // Las muestras de despues del 0 ya se han movido: 0,001, 0,003 y 0,005 dentro del primer fotograma

@@ -470,6 +470,90 @@ object Edicion {
         return if (animado(ahora) == animado(nuevo)) q else ponerClave(q, id, ini + local, nuevo, tolerancia)
     }
 
+    // ------------------------------------------------------------------
+    // Simplificar trayectorias
+    // ------------------------------------------------------------------
+
+    /**
+     * Quita las claves que sobran en la trayectoria del bloque [id] sin que
+     * se aparte mas de [tol] (ver [Trayectoria]) en ningun instante que se
+     * dibuja al exportar. Guarda las de antes en [Clip.clavesOriginales] para
+     * poder volver; si ya habia unas guardadas, se quedan esas (las de antes
+     * de la primera simplificacion). El error del informe es el de este paso,
+     * sobre las claves que tenia: para probar otra tolerancia desde el
+     * original, [restaurarClaves] y esto en el mismo paso de deshacer.
+     *
+     * @return null si el bloque no existe o no tiene claves. Si no se puede
+     *   quitar ninguna, el proyecto sale igual.
+     */
+    fun simplificarClaves(p: Proyecto, id: Long, tol: Tolerancia = Tolerancia()): Pair<Proyecto, Simplificacion>? {
+        val c = clip(p, id) ?: return null
+        if (c.claves.isEmpty()) return null
+        val ini = inicio(p, id) ?: return null
+        val (w, h) = medidasSalida(p)
+        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), c.claves, ini)
+        val s = Trayectoria.simplificar(c.claves, ins, w, h, tol, quitarRepetidas = false)
+        if (s.claves == c.claves) return p to s
+        return cambiar(p, id) { it.copy(claves = s.claves, clavesOriginales = it.clavesOriginales ?: it.claves) } to s
+    }
+
+    /** Vuelve a las claves de antes de simplificar y olvida la copia. */
+    fun restaurarClaves(p: Proyecto, id: Long): Proyecto {
+        val c = clip(p, id) ?: return p
+        val o = c.clavesOriginales ?: return p
+        return cambiar(p, id) { it.copy(claves = o, clavesOriginales = null) }
+    }
+
+    /** Se queda con las simplificadas: olvida las de antes. */
+    fun descartarOriginales(p: Proyecto, id: Long): Proyecto {
+        val c = clip(p, id) ?: return p
+        if (c.clavesOriginales == null) return p
+        return cambiar(p, id) { it.copy(clavesOriginales = null) }
+    }
+
+    /**
+     * Lo mismo para la parte [indice] del bloque [id]. Las partes evaluan sus
+     * claves sin repetidas y pueden tener claves fuera del bloque (las que
+     * encierran un tramo recortado): esas quedan como estaban.
+     */
+    fun simplificarPieza(p: Proyecto, id: Long, indice: Int, tol: Tolerancia = Tolerancia()): Pair<Proyecto, Simplificacion>? {
+        val c = clip(p, id) ?: return null
+        val pieza = c.piezas.getOrNull(indice) ?: return null
+        if (pieza.claves.isEmpty()) return null
+        val ini = inicio(p, id) ?: return null
+        val (w, h) = medidasSalida(p)
+        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), pieza.claves, ini)
+        val s = Trayectoria.simplificar(pieza.claves, ins, w, h, tol, quitarRepetidas = true)
+        if (s.claves == pieza.claves) return p to s
+        return cambiarPieza(p, id, indice) {
+            it.copy(claves = s.claves, clavesOriginales = it.clavesOriginales ?: it.claves)
+        } to s
+    }
+
+    fun restaurarPieza(p: Proyecto, id: Long, indice: Int): Proyecto {
+        val o = clip(p, id)?.piezas?.getOrNull(indice)?.clavesOriginales ?: return p
+        return cambiarPieza(p, id, indice) { it.copy(claves = o, clavesOriginales = null) }
+    }
+
+    fun descartarOriginalesPieza(p: Proyecto, id: Long, indice: Int): Proyecto {
+        if (clip(p, id)?.piezas?.getOrNull(indice)?.clavesOriginales == null) return p
+        return cambiarPieza(p, id, indice) { it.copy(clavesOriginales = null) }
+    }
+
+    private fun cambiarPieza(p: Proyecto, id: Long, indice: Int, f: (PiezaVideo) -> PiezaVideo): Proyecto =
+        cambiar(p, id) { c ->
+            if (indice !in c.piezas.indices) c
+            else c.copy(piezas = c.piezas.toMutableList().also { it[indice] = f(it[indice]) })
+        }
+
+    /** Pixeles de exportacion: con ellos se mide el error de una trayectoria. */
+    private fun medidasSalida(p: Proyecto): Pair<Float, Float> =
+        p.formato.medidas(p.salida.ladoCorto).let { it.first.toFloat() to it.second.toFloat() }
+
+    /** Muestras del obturador por fotograma al exportar, como [Escena]. */
+    private fun muestrasSalida(p: Proyecto): Int =
+        if (p.salida.desenfoqueMovimiento) p.salida.muestras.coerceIn(1, Escena.MAX_MUESTRAS) else 1
+
     /** Medio fotograma: lo que se considera "el mismo instante" para un clave. */
     const val TOLERANCIA_CLAVE = 16_000L
 
