@@ -1,6 +1,6 @@
 # Head bop de test2xd
 
-Estado actual: **V8**, diez posiciones oculares y transición continua del parpadeo lento. Conserva movimiento V6, borrador V4 y anteriores; sin nuevos cambios Android.
+Estado actual: **V9**, encuadre de foto inicial ajustado para alinear la cara con el rig; cuello, movimiento y parpadeos V8 intactos.
 
 Rama separada: `codex/head-bop-test2xd`, basada en `6ca0760`. No se ha mezclado con el trabajo de Claude.
 
@@ -107,3 +107,10 @@ El generador `crear_headbop-v8.py` parte de V6, conservando siete capas original
 La exportación nativa V8 pasó: 472 cuadros, 1080×1080, 30 fps, 15,733333 s, cero irregulares y cero avisos de fuentes. Se pausó al quedar .prueba detrás de Instagram y terminó al volver a primer plano; su tiempo de proceso no sirve como benchmark. Se inspeccionaron 25 poses consecutivas a intervalos de un fotograma desde 8,133 s, una captura intermedia a 8,300 y el segundo cierre a 12,330. No se hizo un benchmark de fluidez ni se afirma naturalidad perfecta o coincidencia exacta con una referencia.
 
 Paquete final `proyecto-headbop-v8/headbop-test2xd.royer`, SHA256 `3356ecf7112343bf8dd2a9990811044dd3339197fb766c78322914b9d5cb3a5b` (el primer hash V8 fue sustituido antes de exportar tras corregir el orden de dos poses). Video `validacion-v8/headbop-v8.mp4`, SHA256 `d9198e34c2575b0fd4f77c0600f6696a7c137bac3b4da968173a1bf25df4cd6a`. En galería: `Movies/RoyerMethod/headbop-test2xd-v8-parpadeo-fluido.mp4`; editable `Download/RoyerMethod/headbop-test2xd-v8.royer`, también cargado en .prueba después de reiniciar sólo esa variante. Hashes, MediaStore, borrador V4 y fechas/versiones de la app normal comprobados; CELULAR.md LIBRE. Medios, proyectos y archivos de trabajo no se suben a git.
+## V9 · cara alineada en el fundido inicial · 2026-10-17
+
+Sólo se modificó el encuadre de la foto original id2 y los mismos cuatro parámetros en sus tres claves. Escala uniforme0,835825001867422, x−0,000048777190598954165, y+0,02717746612163515, giro0,06278970587806137°. Tiempos, opacidad y curvas intactos; cero claves nuevas y18medios idénticos. Rig, cuello, parpadeos y todo contenido desde1,1s permanecen iguales. Generador fuera de git: crear_headbop-v9.py; ajustes/manifiesto en proyecto-headbop-v9.
+
+Registro SIFT/RANSAC de30rasgos faciales predice error medio29,79→1,29px a1080 (validación dejando un punto fuera:1,39pxmedio). Son mediciones de colocación de fuentes, no coincidencia exacta del diseño completo. Diagnóstico en analisis/registro-cara-intro-v9.json; revisión independiente en analisis/alineacion-cara-v9. Se inspeccionaron fotogramas nativos0,600/0,867/1,150s del resultado; no se calculó otra métrica SIFT sobre MP4 por petición de entrega urgente del usuario.
+
+Exportación nativa V9:472cuadros,1080×1080,30fps,15,733333s,cero irregulares y avisos. Sin cambios Android/APK ni benchmark de fluidez. Paquete SHA2564f29974f627278b18881718ea2b892818d27743e1a299ae1b5a33d249f35f641; video SHA2569513d297b6c4596405e04c803ed2e9929324bb1970c2f21ae9b830a813b71f38. Locales proyecto-headbop-v9/headbop-test2xd.royer y validacion-v9/headbop-v9.mp4. Entrega en Movies/RoyerMethod/headbop-test2xd-v9-cara-alineada.mp4 y Download/RoyerMethod/headbop-test2xd-v9.royer; galería/hashes confirmados. .prueba reiniciada para cargar V9, normal sin cambios de fechas/versiones; CELULAR.md LIBRE. Sólo documentación a git.
