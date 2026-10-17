@@ -103,14 +103,20 @@ class Escena(
         mezcla: Mezcla,
         transicion: ((Int) -> Efecto)? = null
     ): List<Paso> {
-        if (clip.piezas.isEmpty()) return listOf(dibujo(clip, t, inicio, k, mezcla, transicion))
-        val partes = clip.piezas.map { dibujo(clip, t, inicio, k, mezcla, transicion, it) }
+        // Las mitades de un efecto se dibujan como dos piezas, por el mismo
+        // camino que las partes hechas a mano. Si ya hay partes, mandan ellas.
+        val mitades = if (clip.piezas.isEmpty()) mitadesEn(clip, t, inicio, k) else null
+        if (clip.piezas.isEmpty() && mitades == null) return listOf(dibujo(clip, t, inicio, k, mezcla, transicion))
+        val partes = if (mitades != null) mitades.piezas.mapIndexed { n, it ->
+            dibujo(clip, t, inicio, k, mezcla, transicion, it, mitades.pose(n))
+        } else clip.piezas.map { dibujo(clip, t, inicio, k, mezcla, transicion, it) }
         // Una sola textura completa sirve a todas las partes; no se copia de
         // nuevo a otro tamano al pasar de la mitad superior a la inferior.
         val w = partes.maxOf { it.anchoEnLienzo }
         val h = partes.maxOf { it.altoEnLienzo }
         val texto = partes.maxOf { it.escalaTexto }
-        if (clip.piezasCubrenFuente && partes.drop(1).all { mismaTrayectoria(partes.first(), it) }) {
+        val cubren = mitades != null || clip.piezasCubrenFuente
+        if (cubren && partes.drop(1).all { mismaTrayectoria(partes.first(), it) }) {
             // Promediar dos particiones y mezclarlas despues por OVER daria
             // alfa0.75 en un pixel cubierto a medias por cada una. Reunidas,
             // la fuente completa se muestrea una sola vez y no deja costura.
@@ -123,6 +129,51 @@ class Escena(
     private fun mismaTrayectoria(a: PasoClip, b: PasoClip): Boolean =
         a.opacidades.contentEquals(b.opacidades) && a.matrices.size == b.matrices.size &&
             a.matrices.indices.all { a.matrices[it].contentEquals(b.matrices[it]) }
+
+    /** Las dos mitades de un efecto MITADES y como se mueve cada una en cada muestra. */
+    private class Mitades(val piezas: List<PiezaVideo>, val pose: (Int) -> (Long) -> Encuadre)
+
+    /**
+     * Si un efecto MITADES actua en alguna muestra de este fotograma, el bloque
+     * se parte en dos. La pose se calcula en cada muestra con el instante
+     * acotado al tramo: en el fotograma del borde todas las muestras ven las
+     * mitades (separadas al empezar, juntas al acabar) y el rastro no parpadea.
+     * Con varios, manda el ultimo de la lista.
+     */
+    private fun mitadesEn(clip: Clip, t: Long, inicio: Long, k: Int): Mitades? {
+        if (clip.efectos.none { it.tipo == TipoEfectoVideo.MITADES }) return null
+        val ultimo = (clip.duracionUs - 1).coerceAtLeast(0)
+        val ts = instantes(t, k)
+        val ef = clip.efectos.lastOrNull { e ->
+            e.tipo == TipoEfectoVideo.MITADES && ts.any { e.activoEn((it - inicio).coerceIn(0, ultimo)) }
+        } ?: return null
+        val a = ef.ajustes
+        val r = clip.encuadre.recorte
+        // El corte, en medio de lo que se ve del bloque. Las dos regiones salen
+        // del mismo numero: comparten el borde exacto y juntas cubren la fuente.
+        val piezas = if (a.vertical) {
+            val c = r.izquierda + (1f - r.izquierda - r.derecha) / 2f
+            val izquierda = PiezaVideo("Izquierda", RegionUv(0f, 0f, c, 1f))
+            val derecha = PiezaVideo("Derecha", RegionUv(c, 0f, 1f, 1f))
+            // En espejo la izquierda de la fuente queda a la derecha del lienzo
+            if (clip.encuadre.espejo) listOf(derecha, izquierda) else listOf(izquierda, derecha)
+        } else {
+            val c = r.arriba + (1f - r.arriba - r.abajo) / 2f
+            listOf(PiezaVideo("Arriba", RegionUv(0f, 0f, 1f, c)), PiezaVideo("Abajo", RegionUv(0f, c, 1f, 1f)))
+        }
+        val (ux, uy) = direccion(a.angulo)
+        val desde = ef.inicioUs
+        val hasta = (ef.finUs - 1).coerceAtLeast(desde)
+        // La A llega desde el lado contrario al angulo y avanza hacia el; la B al reves
+        return Mitades(piezas) { n ->
+            { local ->
+                val pl = local.coerceIn(desde, hasta)
+                val off = ef.valorEn(pl) * ef.fuerzaEn(pl)
+                val s = if (n == 0) -off else off
+                Encuadre(x = s * ux + 0f, y = s * uy + 0f)
+            }
+        }
+    }
 
     /**
      * Un paso lleva una sola mascara para todas las muestras del obturador,
@@ -162,9 +213,14 @@ class Escena(
         return manda
     }
 
-    /** Si dos mascaras miden el borde igual y se puede pasar de una a otra. */
+    /**
+     * Si dos mascaras miden el borde igual y se puede pasar de una a otra. El
+     * centro y el grosor del anillo cuentan: el mismo borde con otro centro o
+     * con otro grosor recorta otra cosa.
+     */
     private fun mismaClase(a: Mascara, b: Mascara): Boolean =
         a.radial == b.radial && a.invertida == b.invertida &&
+            a.centroX == b.centroX && a.centroY == b.centroY && a.grosor == b.grosor &&
             (a.radial || (a.dirX == b.dirX && a.dirY == b.dirY))
 
     private fun dibujo(
@@ -174,7 +230,9 @@ class Escena(
         k: Int,
         mezcla: Mezcla,
         transicion: ((Int) -> Efecto)? = null,
-        pieza: PiezaVideo? = null
+        pieza: PiezaVideo? = null,
+        /** Pose de la pieza en cada muestra, si no sale de sus claves (las mitades de un efecto). */
+        pose: ((Long) -> Encuadre)? = null
     ): PasoClip {
         val ts = instantes(t, k)
         val matrices = ArrayList<FloatArray>(ts.size)
@@ -233,7 +291,7 @@ class Escena(
                 mascaras[i] = Mascara(1f, 0f, suave = 6f)
                 bordes[i] = caja.first + (caja.second - caja.first) * anim.revelar - ancho / 2f
             }
-            val relativa = pieza?.encuadreEn(local)
+            val relativa = if (pieza == null) null else pose?.invoke(local) ?: pieza.encuadreEn(local)
             val base = matriz(clip, e, cw, ch, escalaX, escalaY)
             val m = if (pieza != null && relativa != null) moverPieza(base, pieza.region.acotada(), relativa, clip.encuadre.recorte) else base
             if (relativa != null) op *= relativa.opacidad
@@ -865,12 +923,74 @@ class Escena(
      */
     private fun efectoDeAnimacion(ef: EfectoVideo, local: Long, fuerza: Float): Efecto = Efecto()
 
+    /**
+     * Ida y vuelta del latigazo, en lienzos: en la primera mitad se va hacia
+     * el angulo con la curva; en la mitad entra por el lado contrario (un
+     * lienzo antes o despues, con bordes espejo es la misma imagen y no queda
+     * hueco) y vuelve a su sitio con la curva al reves.
+     */
+    private fun latigazo(ef: EfectoVideo, local: Long): Float {
+        val p = ef.progresoEn(local)
+        val a = ef.ajustes
+        return if (p < 0.5f) a.desde * a.avance(2f * p) else -a.desde * a.avance(2f - 2f * p)
+    }
+
+    /** Del centro de la mascara a la esquina mas lejana del lienzo, con margen. */
+    private fun radioQueCubre(cx: Float, cy: Float): Float {
+        if (cx == 0f && cy == 0f) return kotlin.math.sqrt(ancho.toFloat() * ancho + alto.toFloat() * alto) / 2f + 4f
+        val x = ancho / 2f + abs(cx)
+        val y = alto / 2f + abs(cy)
+        return kotlin.math.sqrt(x * x + y * y) + 4f
+    }
+
+    /**
+     * Circulo o anillo con su centro. El valor es el radio en fraccion del que
+     * cubre todo el lienzo desde ese centro; el grosor, en la misma fraccion.
+     */
+    private fun circulo(ef: EfectoVideo, local: Long): Efecto {
+        val a = ef.ajustes
+        val cx = a.centroX * ancho + 0f
+        val cy = a.centroY * alto + 0f
+        val radio = radioQueCubre(cx, cy)
+        val suave = if (a.suavidad > 0f) a.suavidad * alto else alto * 0.003f + 0.5f
+        val borde = ef.valorEn(local) * radio
+        return Efecto(
+            mascara = Mascara(0f, 0f, suave, radial = true, invertida = a.invertir, centroX = cx, centroY = cy,
+                grosor = (a.grosor * radio).takeIf { it.isFinite() }?.coerceAtLeast(0f) ?: 0f),
+            // Radio cero: nada, sin el punto que dejaria el borde suave
+            borde = if (borde <= 0f) -suave / 2f else borde
+        )
+    }
+
+    /**
+     * Un borde recto que avanza hacia el angulo desde fuera del lienzo hasta
+     * fuera del otro lado. El valor es cuanto se ha descubierto, de 0 a 1.
+     */
+    private fun barrido(ef: EfectoVideo, local: Long): Efecto {
+        val a = ef.ajustes
+        val (ux, uy) = direccion(a.angulo)
+        val suave = if (a.suavidad > 0f) a.suavidad * alto else 2f
+        val largo = (abs(ux) * ancho + abs(uy) * alto) / 2f + suave
+        val v = ef.valorEn(local)
+        val borde = when {
+            v <= 0f -> -largo - 1f
+            v >= 1f -> largo + 1f
+            else -> -largo + v * 2f * largo
+        }
+        return Efecto(
+            mascara = Mascara(ux, uy, suave, invertida = a.invertir, centroX = a.centroX * ancho + 0f, centroY = a.centroY * alto + 0f),
+            borde = borde
+        )
+    }
+
     /** Efectos libres del bloque, compartidos por vista previa y exportacion. */
     internal fun efectosVideo(clip: Clip, local: Long): Efecto {
         var r = Efecto()
         for (ef in clip.efectos) {
             val i = ef.fuerzaEn(local)
-            if (i <= 0f) continue
+            // El circulo y el barrido solo usan la intensidad para encenderse:
+            // un fundido no debe destapar la imagen entera en su primer instante.
+            if (i <= 0f && !(ef.tipo in SIN_FUNDIDOS && ef.activoEn(local))) continue
             val s = ef.segundosEn(local)
             val golpe = (1f - fase(s, GOLPE)).pow(4)
             val e = when (ef.tipo) {
@@ -915,14 +1035,16 @@ class Escena(
                     }
                 }
                 TipoEfectoVideo.CIRCULO_CERRAR, TipoEfectoVideo.CIRCULO_ABRIR -> {
-                    val radio = kotlin.math.sqrt(ancho.toFloat() * ancho + alto.toFloat() * alto) / 2f + 4f
+                    val cx = ef.ajustes.centroX * ancho + 0f
+                    val cy = ef.ajustes.centroY * alto + 0f
+                    val radio = radioQueCubre(cx, cy)
                     val abrir = ef.tipo == TipoEfectoVideo.CIRCULO_ABRIR
                     val progreso = ef.progresoEn(local)
                     val suave = alto * 0.003f + 0.5f
                     val borde = if (abrir) radio * 0.3f * i.coerceAtMost(1f) * (1f - progreso)
                         else radio * (1f - progreso * i.coerceAtMost(1f))
                     Efecto(
-                        mascara = Mascara(0f, 0f, suave, radial = true, invertida = abrir),
+                        mascara = Mascara(0f, 0f, suave, radial = true, invertida = abrir, centroX = cx, centroY = cy),
                         // Radio cero tiene que terminar por completo, sin el
                         // punto semitransparente que dejaria el borde suave.
                         borde = if (borde <= 0f) -suave / 2f else borde
@@ -940,11 +1062,28 @@ class Escena(
                         p >= 1f -> ancho / 2f + 1f
                         else -> ancho * (p - 0.5f)
                     }
-                    Efecto(mascara = Mascara(1f, 0f, suave = 2f), borde = borde)
+                    Efecto(mascara = Mascara(1f, 0f, suave = 2f, centroX = ef.ajustes.centroX * ancho + 0f,
+                        centroY = ef.ajustes.centroY * alto + 0f), borde = borde)
                 }
-                // ESQUELETO: se rellenan en el trabajo de efectos
-                TipoEfectoVideo.MOVER, TipoEfectoVideo.ZOOM, TipoEfectoVideo.GIRAR, TipoEfectoVideo.LATIGAZO,
-                TipoEfectoVideo.DESENFOQUE_DIRECCIONAL, TipoEfectoVideo.CIRCULO, TipoEfectoVideo.BARRIDO -> Efecto()
+                TipoEfectoVideo.MOVER -> {
+                    val (ux, uy) = direccion(ef.ajustes.angulo)
+                    val v = ef.valorEn(local) * i
+                    Efecto(dx = v * ux, dy = v * uy)
+                }
+                TipoEfectoVideo.ZOOM -> Efecto(escala = 1f + (ef.valorEn(local) - 1f) * i)
+                TipoEfectoVideo.GIRAR -> Efecto(rotacion = ef.valorEn(local) * i)
+                TipoEfectoVideo.LATIGAZO -> {
+                    val (ux, uy) = direccion(ef.ajustes.angulo)
+                    val v = latigazo(ef, local) * i
+                    Efecto(dx = v * ux, dy = v * uy)
+                }
+                TipoEfectoVideo.DESENFOQUE_DIRECCIONAL -> {
+                    val (ux, uy) = rastro(ef.ajustes.angulo)
+                    val radio = alto * 0.04f * i
+                    Efecto(desenfoqueX = radio * ux, desenfoqueY = radio * uy)
+                }
+                TipoEfectoVideo.CIRCULO -> circulo(ef, local)
+                TipoEfectoVideo.BARRIDO -> barrido(ef, local)
                 // Las mitades no son un Efecto: parten el bloque en dibujos()
                 TipoEfectoVideo.MITADES -> Efecto()
                 TipoEfectoVideo.ANIMACION -> efectoDeAnimacion(ef, local, i)
@@ -1042,6 +1181,39 @@ class Escena(
 
         /** Medio segundo por golpe: 120 por minuto, lo de casi toda la musica de edits. */
         const val GOLPE = 0.5f
+
+        /** Efectos que no se funden: la intensidad solo los enciende o los apaga. */
+        private val SIN_FUNDIDOS = setOf(TipoEfectoVideo.CIRCULO, TipoEfectoVideo.BARRIDO)
+
+        /**
+         * Hacia donde apunta [grados] (0 derecha, 90 abajo), en vector unitario.
+         * Exacto en los multiplos de 90: un movimiento a la izquierda no se
+         * desvia una millonesima hacia arriba.
+         */
+        fun direccion(grados: Float): Pair<Float, Float> {
+            if (!grados.isFinite()) return 1f to 0f
+            val g = ((grados % 360f) + 360f) % 360f
+            return when (g) {
+                0f, 360f -> 1f to 0f
+                90f -> 0f to 1f
+                180f -> -1f to 0f
+                270f -> 0f to -1f
+                else -> {
+                    val r = Math.toRadians(g.toDouble())
+                    cos(r).toFloat() to sin(r).toFloat()
+                }
+            }
+        }
+
+        /**
+         * La direccion de un rastro: una linea, asi que [grados] y [grados] + 180
+         * son el mismo. Siempre hacia la derecha (o hacia abajo si es vertical),
+         * para que dos rastros iguales sumen en vez de anularse.
+         */
+        fun rastro(grados: Float): Pair<Float, Float> {
+            val (x, y) = direccion(grados)
+            return if (x < -1e-6f || (abs(x) <= 1e-6f && y < 0f)) (-x + 0f) to (-y + 0f) else x to y
+        }
 
         private val GOLPES = setOf(
             Animacion.FLASH, Animacion.FLASH_NEGRO, Animacion.ESTROBO, Animacion.NEGATIVO,

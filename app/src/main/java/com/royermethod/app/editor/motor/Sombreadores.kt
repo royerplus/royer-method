@@ -207,6 +207,8 @@ uniform vec2 uMascDir;
 uniform float uMascSuave;
 uniform float uMascRadial;
 uniform float uMascInvertida;
+uniform vec2 uMascCentro;
+uniform float uMascGrosor;
 uniform float uRadio;
 uniform vec2 uRadioDir;
 uniform float uEspejoBordes;
@@ -252,15 +254,16 @@ vec4 tomarRgb(vec2 uv, vec2 desp) {
 }
 
 vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
-    if (uRadio <= 0.0 && (uRadioDir.x > 0.0 || uRadioDir.y > 0.0)) {
+    if (uRadio <= 0.0 && (uRadioDir.x != 0.0 || uRadioDir.y != 0.0)) {
         // Solo en una direccion: muestras repartidas por igual a lo largo de
         // la linea, como el rastro de un movimiento. El disco de abajo deja
         // copias separadas cuando el rastro es largo. Una muestra cada ~3 px
         // del lienzo (entre 16 y 64): con menos, un rastro de 500 px deja
         // rayas finas. Cada muestra del obturador y cada pixel corren las
         // suyas una fraccion del paso ([fase] y un ruido fijo), asi que lo
-        // que queda es grano y no lineas.
-        float n = clamp(ceil(2.0 * (uRadioDir.x + uRadioDir.y) / 3.0), 16.0, 64.0);
+        // que queda es grano y no lineas. Va en cualquier angulo: una x o una
+        // y negativas inclinan la linea hacia el otro lado.
+        float n = clamp(ceil(2.0 * (abs(uRadioDir.x) + abs(uRadioDir.y)) / 3.0), 16.0, 64.0);
         float ruido = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
         vec4 s = vec4(0.0);
         for (int j = 0; j < 64; j++) {
@@ -270,7 +273,7 @@ vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
         }
         return s / n;
     }
-    if (uRadio > 0.0 || uRadioDir.x > 0.0 || uRadioDir.y > 0.0) {
+    if (uRadio > 0.0 || uRadioDir.x != 0.0 || uRadioDir.y != 0.0) {
         // Disco de muestras en espiral: sin tablas, que GLSL ES 1 no admite
         vec4 s = vec4(0.0);
         for (int j = 0; j < 12; j++) {
@@ -356,8 +359,13 @@ void main() {
                  * (uRegionFuente.w >= 1.0 ? 1.0 : lados.w);
         }
         if (uConMascara > 0.5) {
-            float d = uMascRadial > 0.5 ? length(p - 0.5 * uLienzo) : dot(p - 0.5 * uLienzo, uMascDir);
+            vec2 q = p - (0.5 * uLienzo + uMascCentro);
+            float d = uMascRadial > 0.5 ? length(q) : dot(q, uMascDir);
             float mascara = clamp((uBorde[i] - d) / uMascSuave + 0.5, 0.0, 1.0);
+            // Anillo: tambien se corta por dentro, [uMascGrosor] antes del borde.
+            // Un borde de SIN_BORDE es una muestra sin mascara y se ve entera.
+            if (uMascGrosor > 0.0 && abs(uBorde[i]) < 15000.0)
+                mascara *= clamp((d - (uBorde[i] - uMascGrosor)) / uMascSuave + 0.5, 0.0, 1.0);
             cob *= uMascInvertida > 0.5 ? 1.0 - mascara : mascara;
         }
         float a = cob * uOpac[i];

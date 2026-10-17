@@ -540,6 +540,8 @@ class Compositor(
             GLES20.glUniform2f(capa.u("uMascDir"), m.dirX, m.dirY)
             GLES20.glUniform1f(capa.u("uMascSuave"), m.suave.coerceAtLeast(0.5f))
             GLES20.glUniform1f(capa.u("uMascRadial"), if (m.radial) 1f else 0f)
+            GLES20.glUniform2f(capa.u("uMascCentro"), m.centroX, m.centroY)
+            GLES20.glUniform1f(capa.u("uMascGrosor"), m.grosor.coerceAtLeast(0f))
         }
     }
 
