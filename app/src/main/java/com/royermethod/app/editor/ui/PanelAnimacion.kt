@@ -47,7 +47,6 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Movimiento
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonIcono
-import com.royermethod.app.ui.components.Chip
 import com.royermethod.app.ui.components.Cuadricula
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Escala
@@ -61,6 +60,16 @@ import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
 import kotlin.math.roundToLong
+
+/**
+ * La hoja del panel de animacion. Por ahora solo envuelve a [PanelAnimacion];
+ * es el sitio para poner acciones en la fila del titulo y la zona fija de
+ * [HojaPanel].
+ */
+@Composable
+fun HojaAnimacion(estado: EstadoEditor, onCerrar: () -> Unit) {
+    HojaPanel(Panel.ANIMACION.titulo, onCerrar) { PanelAnimacion(estado) }
+}
 
 /**
  * Animaciones de un bloque.
@@ -211,40 +220,6 @@ private fun Piezas(
             agregando = false
             abierta = piezas.size
         }, Modifier.padding(top = 6.dp))
-    }
-}
-
-/** Unidades reales y pasos exactos de 30 fps, tambien para tramos menores de 0.1 s. */
-@Composable
-internal fun TiempoFotogramas(
-    titulo: String,
-    valorUs: Long,
-    minimoUs: Long,
-    maximoUs: Long,
-    onCambio: (Long, Boolean) -> Unit
-) {
-    val maximo = maxOf(minimoUs, maximoUs)
-    val valor = valorUs.coerceIn(minimoUs, maximo)
-    fun cuantizar(us: Long) = Linea.tiempoDe((us.coerceAtLeast(0) * Linea.FPS / 1_000_000.0).roundToLong()).coerceIn(minimoUs, maximo)
-    if (maximo > minimoUs) {
-        Deslizador(
-            titulo, valor / 1e6f, minimoUs / 1e6f, maximo / 1e6f,
-            { v -> onCambio(cuantizar((v * 1e6).toLong()), true) },
-            texto = { "%.3f s".format(it) }
-        )
-    } else {
-        Text("$titulo  ${"%.3f s".format(valor / 1e6)}", style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.padding(vertical = 8.dp))
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Chip("−1 f", false, {
-            val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
-            onCambio(Linea.tiempoDe((n - 1).coerceAtLeast(0)).coerceIn(minimoUs, maximo), false)
-        })
-        Chip("+1 f", false, {
-            val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
-            onCambio(Linea.tiempoDe(n + 1).coerceIn(minimoUs, maximo), false)
-        })
-        Text("1 f = 0.033 s", style = MaterialTheme.typography.bodySmall, color = Ink.White50)
     }
 }
 

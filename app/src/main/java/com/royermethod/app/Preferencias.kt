@@ -56,6 +56,7 @@ object Preferencias {
             put("duracionTransicion", AjustesEditor.duracionTransicionUs)
             put("duracionAnimacion", AjustesEditor.duracionAnimacionUs)
             put("imanes", AjustesEditor.imanes)
+            put("ajustarFotogramas", AjustesEditor.ajustarFotogramas)
             put("mias", JSONArray().apply {
                 AjustesEditor.mias.forEach { c ->
                     put(JSONObject().put("nombre", c.nombre).put("piezas", Persistencia.movimientos(c.piezas)))
@@ -88,6 +89,7 @@ object Preferencias {
             AjustesEditor.duracionTransicionUs = e.optLong("duracionTransicion", 400_000L).coerceIn(100_000L, 3_000_000L)
             AjustesEditor.duracionAnimacionUs = e.optLong("duracionAnimacion", 400_000L).coerceIn(100_000L, 3_000_000L)
             AjustesEditor.imanes = e.optBoolean("imanes", true)
+            AjustesEditor.ajustarFotogramas = e.optBoolean("ajustarFotogramas", true)
             AjustesEditor.mias = lista(e.optJSONArray("mias")) { nombre, a ->
                 Persistencia.movimientosDe(a).takeIf { it.isNotEmpty() }?.let { Combinaciones.Combinacion(nombre, it) }
             }

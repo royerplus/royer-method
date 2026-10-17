@@ -26,6 +26,12 @@ object AjustesEditor {
     var duracionAnimacionUs by mutableLongStateOf(400_000L)
     /** Que al mover o recortar los bloques se peguen al cabezal y a los cortes. */
     var imanes by mutableStateOf(true)
+    /**
+     * Que los tiempos que se escriben o se arrastran (claves, efectos) se
+     * peguen a los fotogramas de 30 fps. Apagado se colocan al milisegundo o
+     * menos (0,005 s, 0,001 s).
+     */
+    var ajustarFotogramas by mutableStateOf(true)
     /** Animaciones combinadas por el usuario. */
     var mias by mutableStateOf<List<Combinaciones.Combinacion>>(emptyList())
     var continuasMias by mutableStateOf<List<Pair<String, List<Continuo>>>>(emptyList())

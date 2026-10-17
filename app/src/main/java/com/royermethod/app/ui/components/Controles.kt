@@ -155,6 +155,10 @@ enum class Escala { LINEAL, LOGARITMICA }
  * Deslizador propio: barra fina con el tramo desde el valor neutro
  * iluminado, y el valor escrito al lado. Tocar el valor lo devuelve al
  * neutro. Un arrastre entero es un solo paso de deshacer.
+ *
+ * [iman] = false quita el salto al neutro cerca de el (para tiempos finos);
+ * [cabecera] = false dibuja solo la barra, para quien pone su propia fila
+ * de titulo y valor encima (CampoTiempo).
  */
 @Composable
 fun Deslizador(
@@ -167,7 +171,9 @@ fun Deslizador(
     neutro: Float = desde,
     escala: Escala = Escala.LINEAL,
     paso: Float = 0f,
-    texto: (Float) -> String = { "%.0f".format(it) }
+    texto: (Float) -> String = { "%.0f".format(it) },
+    iman: Boolean = true,
+    cabecera: Boolean = true
 ) {
     val gestos = LocalGestos.current
     val cambio by rememberUpdatedState(onCambio)
@@ -182,12 +188,12 @@ fun Deslizador(
         }
         if (paso > 0f) v = Math.round(v / paso) * paso
         // El neutro "imanta": es el valor al que mas se vuelve
-        if (abs(aPos(v) - aPos(neutro)) < 0.015f) v = neutro
+        if (iman && abs(aPos(v) - aPos(neutro)) < 0.015f) v = neutro
         return v.coerceIn(desde, hasta)
     }
 
     Column(modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        if (cabecera) Row(verticalAlignment = Alignment.CenterVertically) {
             Text(etiqueta, style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.weight(1f))
             Text(
                 texto(valor),
@@ -491,8 +497,16 @@ fun segundos(us: Long): String {
     return if (s < 10) "%.1f s".format(s) else "%.0f s".format(s)
 }
 
-/** "00:07.4" para el reloj del editor. */
-fun reloj(us: Long): String {
+/**
+ * "00:07.4" para el reloj del editor; con [milesimas], "00:07.433" (en pausa,
+ * para ver si el cabezal esta en 0,005 s o en 0,001 s).
+ */
+fun reloj(us: Long, milesimas: Boolean = false): String {
+    if (milesimas) {
+        val ms = us.coerceAtLeast(0) / 1_000
+        val s = ms / 1_000
+        return "%02d:%02d.%03d".format(s / 60, s % 60, ms % 1_000)
+    }
     val decimas = us / 100_000
     val s = decimas / 10
     return "%02d:%02d.%d".format(s / 60, s % 60, decimas % 10)

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -90,9 +91,22 @@ import kotlin.math.min
  * Hoja de abajo con un panel. Ocupa el sitio de la linea de tiempo y la
  * barra de herramientas: la imagen sigue a la vista y del mismo tamano, asi
  * que cada cambio se ve mientras se hace.
+ *
+ * [acciones] va en la fila del titulo, entre el titulo y el boton de cerrar
+ * (p. ej. "Animaciones (2) ▾  +"). [fijo] queda debajo del titulo sin
+ * desplazarse, encima del [contenido], que es lo unico que se desliza (p. ej.
+ * una duracion que no debe perderse al bajar por un catalogo). Sin ellos la
+ * hoja es la de siempre.
  */
 @Composable
-fun HojaPanel(titulo: String, onCerrar: () -> Unit, modifier: Modifier = Modifier, contenido: @Composable ColumnScope.() -> Unit) {
+fun HojaPanel(
+    titulo: String,
+    onCerrar: () -> Unit,
+    modifier: Modifier = Modifier,
+    acciones: (@Composable RowScope.() -> Unit)? = null,
+    fijo: (@Composable ColumnScope.() -> Unit)? = null,
+    contenido: @Composable ColumnScope.() -> Unit
+) {
     Column(
         modifier
             .fillMaxSize()
@@ -104,8 +118,10 @@ fun HojaPanel(titulo: String, onCerrar: () -> Unit, modifier: Modifier = Modifie
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(titulo, style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.2.sp), color = Ink.White, modifier = Modifier.weight(1f))
+            acciones?.invoke(this)
             BotonIcono(Glifos.listo, onCerrar)
         }
+        if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), content = fijo)
         Column(
             Modifier
                 .fillMaxWidth()

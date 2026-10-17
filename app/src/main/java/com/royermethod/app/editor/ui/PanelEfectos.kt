@@ -50,6 +50,16 @@ import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.roundToLong
 
+/**
+ * La hoja del panel de efectos. Por ahora solo envuelve a [PanelEfectos]; es
+ * el sitio para poner acciones en la fila del titulo y la zona fija de
+ * [HojaPanel].
+ */
+@Composable
+fun HojaEfectos(estado: EstadoEditor, onCerrar: () -> Unit) {
+    HojaPanel(Panel.EFECTOS.titulo, onCerrar) { PanelEfectos(estado) }
+}
+
 /** Efectos acumulables, cada uno con su propio intervalo en el reloj del bloque. */
 @Composable
 fun PanelEfectos(estado: EstadoEditor) {
