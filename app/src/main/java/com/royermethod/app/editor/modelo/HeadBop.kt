@@ -39,7 +39,9 @@ data class HeadBop(
     /** Recorrido vertical máximo, en fracción del alto del lienzo. */
     val rebote: Float = 0.025f,
     /** Sólo balanceo secundario del pelo: no cambia el movimiento heredado. */
-    val arrastre: Float = 1f
+    val arrastre: Float = 1f,
+    /** 0 mantiene el perfil original; 1 añade arco, cabeceo y recuperación suaves. */
+    val naturalidad: Float = 0f
 ) {
     val duracionUs: Long get() = (finUs - inicioUs).coerceAtLeast(0)
 
@@ -94,6 +96,10 @@ data class HeadBop(
         val golpe = segundos * tempo / 60.0
         val lado = sin(PI * golpe).toFloat()
         val salto = (1.0 - cos(2.0 * PI * golpe)).toFloat()
+        val mezcla = naturalidad.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: 0f
+        val natural = if (mezcla > 0f) perfilNatural(golpe) else null
+        fun mezclar(clasico: Float, nuevo: Float): Float = clasico + (nuevo - clasico) * mezcla
+        val balanceo = natural?.let { mezclar(lado, it.giro) } ?: lado
         val grados = giro.takeIf { it.isFinite() }?.coerceIn(0f, 45f) ?: 7f
         val recorrido = rebote.takeIf { it.isFinite() }?.coerceIn(0f, 0.25f) ?: 0.025f
         val det = base[0] * base[4] - base[3] * base[1]
@@ -103,12 +109,18 @@ data class HeadBop(
             val y = (v.takeIf { it.isFinite() } ?: 0.5f).coerceIn(-1f, 2f) - base[7]
             return (x * base[4] - y * base[3]) / det to (base[0] * y - base[1] * x) / det
         }
-        fun mover(m: FloatArray, px: Float, py: Float, giro: Float, dx: Float, dy: Float): FloatArray {
+        fun mover(m: FloatArray, px: Float, py: Float, giro: Float, dx: Float, dy: Float,
+            escalaY: Float = 1f): FloatArray {
             val r = Math.toRadians((giro * fuerza).toDouble())
             val c = cos(r).toFloat(); val s = sin(r).toFloat()
             // Mbase * inversa(Tpantalla). El PNG puede tener otra escala,
             // recorte o giro: importa que sus pivotes coincidan en el lienzo.
-            val a = c; val b = s; val d = -s; val e = c
+            // La pequeña proyección de cabeceo ocurre sobre el cuello, en el
+            // eje local de la cabeza. Su inversa se compone con el giro.
+            val proyeccion = 1f - (1f - escalaY) * fuerza.coerceAtMost(1f)
+            val a = c; val b = s
+            val d = if (proyeccion == 1f) -s else -s / proyeccion
+            val e = if (proyeccion == 1f) c else c / proyeccion
             val (x, y) = pantalla(px, py)
             val tx = x - a * (x + dx * anchoLienzo * fuerza) - b * (y + dy * altoLienzo * fuerza)
             val ty = y - d * (x + dx * anchoLienzo * fuerza) - e * (y + dy * altoLienzo * fuerza)
@@ -117,23 +129,59 @@ data class HeadBop(
                 m[0] * b + m[3] * e, m[1] * b + m[4] * e, 0f,
                 m[0] * tx + m[3] * ty + m[6], m[1] * tx + m[4] * ty + m[7], 1f)
         }
-        fun cabeza(m: FloatArray = base) = mover(m, cuelloX, cuelloY, grados * lado,
-            recorrido * 0.24f * lado, -0.5f * recorrido * salto)
+        fun cabeza(m: FloatArray = base) = mover(m, cuelloX, cuelloY, grados * balanceo,
+            natural?.let { mezclar(recorrido * 0.24f * lado, recorrido * it.x) }
+                ?: (recorrido * 0.24f * lado),
+            natural?.let { mezclar(-0.5f * recorrido * salto, recorrido * it.y) }
+                ?: (-0.5f * recorrido * salto),
+            natural?.let { 1f - 0.012f * mezcla * it.cabeceo } ?: 1f)
         return when (rol) {
             RolHeadBop.CABEZA -> cabeza()
             RolHeadBop.CABELLO -> {
                 val atras = golpe - retardoUs.coerceAtLeast(0) / 1_000_000.0 * tempo / 60.0
-                val arrastre = sin(PI * atras).toFloat() - lado
+                val clasico = sin(PI * atras).toFloat() - lado
+                val arrastre = natural?.let { mezclar(clasico, perfilNatural(atras).giro - it.giro) }
+                    ?: clasico
                 val secundaria = this.arrastre.takeIf { it.isFinite() }?.coerceIn(0f, 3f) ?: 1f
                 // Forward = Tpadre * Tpelo * Tbase: la raíz del pelo viaja
                 // exactamente con la cabeza, incluso con PNG recortados.
                 cabeza(mover(base, pivoteX, pivoteY, grados * arrastre * secundaria, 0f, 0f))
             }
-            RolHeadBop.CUERPO -> mover(base, pivoteX, pivoteY, -grados * 0.14f * lado, 0f, -recorrido * 0.12f * salto)
-            RolHeadBop.MANO_IZQUIERDA -> mover(base, pivoteX, pivoteY, grados * 0.9f * sin(PI * golpe - 0.35).toFloat(),
-                0f, -recorrido * 0.2f * salto)
-            RolHeadBop.MANO_DERECHA -> mover(base, pivoteX, pivoteY, -grados * 0.9f * sin(PI * golpe + 0.35).toFloat(),
-                0f, -recorrido * 0.2f * salto)
+            RolHeadBop.CUERPO -> mover(base, pivoteX, pivoteY, -grados * 0.14f * balanceo, 0f,
+                natural?.let { mezclar(-recorrido * 0.12f * salto, recorrido * 0.24f * it.y) }
+                    ?: (-recorrido * 0.12f * salto))
+            RolHeadBop.MANO_IZQUIERDA -> mover(base, pivoteX, pivoteY,
+                natural?.let { mezclar(grados * 0.9f * sin(PI * golpe - 0.35).toFloat(),
+                    grados * 0.72f * perfilNatural(golpe - 0.35 / PI).giro) }
+                    ?: (grados * 0.9f * sin(PI * golpe - 0.35).toFloat()),
+                0f, natural?.let { mezclar(-recorrido * 0.2f * salto, recorrido * 0.4f * it.y) }
+                    ?: (-recorrido * 0.2f * salto))
+            RolHeadBop.MANO_DERECHA -> mover(base, pivoteX, pivoteY,
+                natural?.let { mezclar(-grados * 0.9f * sin(PI * golpe + 0.35).toFloat(),
+                    -grados * 0.72f * perfilNatural(golpe + 0.35 / PI).giro) }
+                    ?: (-grados * 0.9f * sin(PI * golpe + 0.35).toFloat()),
+                0f, natural?.let { mezclar(-recorrido * 0.2f * salto, recorrido * 0.4f * it.y) }
+                    ?: (-recorrido * 0.2f * salto))
         }
     }
+}
+
+private data class PerfilNatural(val giro: Float, val x: Float, val y: Float, val cabeceo: Float)
+
+/** Un compás de cuatro golpes, sin ruido, saltos de fase ni deriva acumulada. */
+private fun perfilNatural(golpe: Double): PerfilNatural {
+    val frase = PI * golpe / 2.0
+    val acento = 0.93 + 0.07 * cos(frase)
+    val angulo = PI * golpe + 0.10 * sin(frase)
+    // El tercer armónico aplana suavemente la reversa, sin congelar la cabeza.
+    val giro = (sin(angulo) + 0.10 * sin(3.0 * angulo)) / 0.90
+    val retrasado = golpe - 0.15
+    // Fase monotónica: llegar al gesto y recuperarse duran tiempos diferentes.
+    val fase = 2.0 * PI * (retrasado + 0.055 * (1.0 - cos(2.0 * PI * retrasado)))
+    val cabeceo = (0.5 - 0.5 * cos(fase)) * acento
+    return PerfilNatural(
+        ((0.76 * giro + 0.06 * sin(fase)) * acento).toFloat(),
+        (0.085 * giro + 0.015 * sin(fase)).toFloat(),
+        (-0.72 * cabeceo - 0.10 * giro * giro * acento).toFloat(),
+        cabeceo.toFloat())
 }

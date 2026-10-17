@@ -10,6 +10,102 @@ class HeadBopTest {
     private val h = HeadBop(finUs = 8_000_000, fundidoUs = 0)
     private fun matriz(h: HeadBop, t: Long) = h.matrizEn(identidad, t, 1000f, 1000f, 1f, 1f)
     private fun igual(a: FloatArray, b: FloatArray) = assertArrayEquals(a, b, 1e-5f)
+    private fun destino(m: FloatArray, u: Float, v: Float): Pair<Float, Float> {
+        val det = m[0] * m[4] - m[1] * m[3]
+        val x = u - m[6]; val y = v - m[7]
+        return (x * m[4] - y * m[3]) / det to (m[0] * y - m[1] * x) / det
+    }
+
+    @Test fun naturalidadCeroConservaLasMatricesDelBorradorV4() {
+        // Muestras guardadas del perfil V4: incluye el arrastre y ambos brazos.
+        val esperadas = listOf(
+            floatArrayOf(0.9962708f, -0.08628198f, 0f, 0.08628198f, 0.9962708f, 0f, -0.051327273f, 0.05812335f, 1f),
+            floatArrayOf(0.9931257f, -0.117053054f, 0f, 0.117053054f, 0.9931257f, 0f, -0.05854421f, 0.07529034f, 1f),
+            floatArrayOf(0.99992687f, 0.01209422f, 0f, -0.01209422f, 0.99992687f, 0f, 0.003628551f, -0.003025383f, 1f),
+            floatArrayOf(0.99503434f, -0.09953203f, 0f, 0.09953203f, 0.99503434f, 0f, -0.026879119f, 0.056230873f, 1f),
+            floatArrayOf(0.9989248f, 0.04635957f, 0f, -0.04635957f, 0.9989248f, 0f, 0.0142136775f, -0.017862588f, 1f))
+        RolHeadBop.values().forEachIndexed { i, rol ->
+            assertArrayEquals(esperadas[i], matriz(h.copy(rol = rol), 375_000), 1e-7f)
+            assertArrayEquals(matriz(h.copy(rol = rol), 375_000),
+                matriz(h.copy(rol = rol, naturalidad = Float.NaN), 375_000), 0f)
+        }
+    }
+
+    @Test fun perfilNaturalEsContinuoYRepiteElCompasSinDeriva() {
+        for (rol in RolHeadBop.values()) {
+            val natural = h.copy(rol = rol, naturalidad = 0.9f, desfaseUs = -1_000_000)
+            igual(matriz(natural, 175_000), matriz(natural, 2_175_000))
+            for (t in listOf(250_000L, 500_000L, 750_000L, 1_000_000L, 1_500_000L, 2_000_000L)) {
+                val antes = matriz(natural, t - 100)
+                val despues = matriz(natural, t + 100)
+                assertTrue(despues.all { it.isFinite() })
+                for (i in antes.indices) assertEquals(antes[i], despues[i], 0.001f)
+            }
+        }
+        val natural = h.copy(naturalidad = 1f)
+        assertFalse(matriz(natural, 175_000).contentEquals(matriz(natural, 1_175_000)))
+    }
+
+    @Test fun perfilNaturalDescribeUnArcoConMenosDesplazamientoLateral() {
+        val natural = h.copy(naturalidad = 1f)
+        val puntos = (0..40).map { destino(matriz(natural, it * 50_000L), h.cuelloX, h.cuelloY) }
+        val lateral = puntos.maxOf { it.first } - puntos.minOf { it.first }
+        val vertical = puntos.maxOf { it.second } - puntos.minOf { it.second }
+        assertTrue(lateral < 0.006f)
+        assertTrue(vertical > 0.01f && vertical < 0.025f)
+    }
+
+    @Test fun proyeccionDeCabeceoMantieneElCuelloYNoSuperaDoceMilesimas() {
+        val natural = h.copy(naturalidad = 1f, giro = 0f, rebote = 0f)
+        val m = matriz(natural, 250_000)
+        val cuello = destino(m, natural.cuelloX, natural.cuelloY)
+        assertEquals(natural.cuelloX, cuello.first, 1e-6f)
+        assertEquals(natural.cuelloY, cuello.second, 1e-6f)
+        val coronilla = destino(m, natural.cuelloX, natural.cuelloY - 0.4f)
+        val proyeccion = (cuello.second - coronilla.second) / 0.4f
+        assertTrue(proyeccion < 0.999f && proyeccion >= 0.988f)
+        assertEquals(natural.cuelloX, coronilla.first, 1e-6f)
+    }
+
+    @Test fun cabelloNaturalHeredaLaProyeccionInclusoConOtroEncuadre() {
+        val cabeza = h.copy(naturalidad = 0.9f)
+        val pelo = cabeza.copy(rol = RolHeadBop.CABELLO, cuelloX = 0.7f, cuelloY = 1.02f, arrastre = 0f)
+        val baseCabeza = floatArrayOf(0.001f, 0f, 0f, 0f, 0.001f, 0f, 0f, 0f, 1f)
+        val basePelo = floatArrayOf(0.002f, 0f, 0f, 0f, 0.002f, 0f, -0.3f, -0.14f, 1f)
+        for (t in listOf(125_000L, 375_000L, 1_150_000L)) {
+            val a = cabeza.matrizEn(baseCabeza, t, 1000f, 1000f, 1000f, 1000f)
+            val b = pelo.matrizEn(basePelo, t, 1000f, 1000f, 1000f, 1000f)
+            for ((x, y) in listOf(500f to 580f, 450f to 600f, 600f to 300f)) {
+                val ca = destino(a, x / 1000, y / 1000)
+                val cb = destino(b, x / 500 - 0.3f, y / 500 - 0.14f)
+                assertEquals(ca.first, cb.first, 0.001f)
+                assertEquals(ca.second, cb.second, 0.001f)
+            }
+            igual(matriz(cabeza, t), matriz(cabeza.copy(rol = RolHeadBop.CABELLO, retardoUs = 0), t))
+        }
+    }
+
+    @Test fun arrastreNaturalConservaLaRaizSobreLaCabezaQueCabecea() {
+        val cabeza = h.copy(naturalidad = 0.9f)
+        val pelo = cabeza.copy(rol = RolHeadBop.CABELLO, pivoteX = 0.35f, pivoteY = 0.22f)
+        for (t in listOf(125_000L, 375_000L, 1_150_000L)) {
+            val raizCabeza = destino(matriz(cabeza, t), pelo.pivoteX, pelo.pivoteY)
+            val raizPelo = destino(matriz(pelo, t), pelo.pivoteX, pelo.pivoteY)
+            assertEquals(raizCabeza.first, raizPelo.first, 1e-5f)
+            assertEquals(raizCabeza.second, raizPelo.second, 1e-5f)
+        }
+    }
+
+    @Test fun recorteYVelocidadConservanElNuevoPerfilSinCrearClaves() {
+        val natural = h.copy(naturalidad = 0.9f, fundidoUs = 400_000, desfaseUs = 90_000)
+        val recortado = natural.recortado(400_000, 6_000_000)!!
+        val lento = natural.tiempoEscalado(2.0)
+        assertEquals(0.9f, recortado.naturalidad, 0f)
+        for (t in listOf(80_000L, 600_000L, 1_500_000L)) {
+            igual(matriz(natural, t + 400_000), matriz(recortado, t))
+            igual(matriz(natural, t), matriz(lento, t * 2))
+        }
+    }
 
     @Test fun sinMovimientoFueraDelIntervaloYConIntensidadCero() {
         val limitado = h.copy(inicioUs = 1_000_000, finUs = 2_000_000)

@@ -56,6 +56,10 @@ internal fun PanelHeadBop(estado: EstadoEditor, clip: Clip) {
         { v -> cambiar { it.copy(giro = v) } }, neutro = 7f, texto = { "%.1f°".format(it) })
     Deslizador("Rebote vertical", h.rebote, 0f, 0.15f,
         { v -> cambiar { it.copy(rebote = v) } }, neutro = 0.025f, texto = { "%.1f %%".format(it * 100) })
+    Deslizador("Naturalidad", h.naturalidad, 0f, 1f,
+        { v -> cambiar { it.copy(naturalidad = v) } }, neutro = 0f, texto = { "%.0f %%".format(it * 100) })
+    Text("Añade anticipación y acentos al movimiento. Copia el ritmo para mantener unidos cabeza y cabello.",
+        style = MaterialTheme.typography.bodySmall)
     Deslizador("Desfase musical", h.desfaseUs / 1_000_000f, -2f, 2f,
         { v -> cambiar { it.copy(desfaseUs = (v * 1_000_000).roundToLong()) } },
         neutro = 0f, texto = { "%+.3f s".format(it) })

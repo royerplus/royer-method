@@ -58,3 +58,17 @@ Los tutoriales de YouTube sólo permitieron consultar descripciones indexadas; n
 ## Entrega V4
 
 Video registrado en la galería del teléfono: Movies/RoyerMethod/headbop-test2xd-v4.mp4. Proyecto editable: Download/RoyerMethod/headbop-test2xd-v4.royer; también quedó como proyecto activo de Royer Method · Prueba. Hash SHA256 del video local y copiado: 84045cc34791642403b762e9924b92e030216df408b9ea67579878d56084a912. CELULAR.md liberado al terminar.
+
+## Borrador V4 y revisión V5 · 2026-10-17
+
+El usuario aprobó la dirección de V4 y pidió guardarla como borrador antes de naturalizar la cabeza. Su paquete y MP4 permanecen intactos en `borradores/V4-aprobada/` del material local. En el teléfono, el borrador editable está en `Download/RoyerMethod/Borradores/headbop-v4-aprobado.royer`; conserva SHA256 `4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836`.
+
+Nuevo control **Animar → Head bop → Naturalidad**, de 0 a 100 %. Mezcla la trayectoria clásica con una frase suave de cuatro golpes, giro más contenido, anticipación, recuperación asimétrica y cabeceo con proyección vertical máxima de 1,2 % alrededor del cuello. El cabello hereda también esa proyección y su arrastre usa la misma trayectoria retardada. No añade claves. Guardar, recortar, cambiar velocidad y copiar ritmo preservan el nuevo parámetro; copiar ritmo sincroniza Naturalidad para mantener compatibles cabeza y cabello. Valor ausente o cero conserva el perfil V4.
+
+V5 cambia únicamente tres parámetros en cada una de las seis instancias: Naturalidad 0,9, giro 4,8° y rebote 0,010. Nueve medios idénticos byte por byte; 72 claves, intro, música, geometría y pivotes intactos. El generador reproducible es `crear_headbop-v5.py`, fuera de git; paquete `proyecto-headbop-v5/headbop-test2xd.royer`, SHA256 `58985dc1b7ac6eb34d65a6a4791809d6b8659b1ccebacbef9624df44fea6dea1`.
+
+Compilación de .prueba e instrumentación correctas; **161 pruebas JVM pasaron**, incluidas compatibilidad V4, continuidad del perfil, pivote del cabeceo, unión del cabello, recorte/velocidad, persistencia y sincronización. Exportación final nativa V5: 472 cuadros, 1080×1080, 30 fps, 15,733333 s, cero cuadros irregulares y cero avisos de fuentes. Se inspeccionaron varias poses nativas entre 7,05–8,80 s y capturas a 8 y 13,2 s. No sustituye a la valoración del usuario sobre la naturalidad.
+
+Se conserva el primer intento fallido: 472 procesados pero sólo 467 muestras codificadas y dos intervalos irregulares. Se había abierto MainActivity avanzada la exportación; no está confirmada la causa. La repetición con la actividad abierta desde el principio dio 472/472 y cero irregulares. No se alteró el codec a partir de esa única muestra ni se hizo un benchmark de fluidez; rendimiento y comprobación táctil completa siguen pendientes.
+
+Entrega V5 en galería: `Movies/RoyerMethod/headbop-test2xd-v5-natural.mp4`; proyecto editable en `Download/RoyerMethod/headbop-test2xd-v5-natural.royer`, también activo en .prueba. Video SHA256 `89a18eb6a066ff9c0e8a9f6848fc0dfe46963d455475a422cf6a0f1a2bef91f7`. Informes, capturas y logs locales en `validacion-v5/`. Sólo se actualizó .prueba; las fechas y versiones de la app normal coinciden antes/después. CELULAR.md liberado.

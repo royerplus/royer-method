@@ -197,7 +197,7 @@ object Persistencia {
         put("fundido", h.fundidoUs); put("activo", h.activo)
         put("recorte", h.recorteUs); put("duracionBase", h.duracionBaseUs)
         put("giro", h.giro.toDouble()); put("rebote", h.rebote.toDouble())
-        put("arrastre", h.arrastre.toDouble())
+        put("arrastre", h.arrastre.toDouble()); put("naturalidad", h.naturalidad.toDouble())
     }
 
     internal fun salida(s: AjustesSalida) = JSONObject().apply {
@@ -483,7 +483,7 @@ object Persistencia {
             fundidoUs = o.optLong("fundido", 120_000).coerceAtLeast(0), activo = o.optBoolean("activo", true),
             recorteUs = o.optLong("recorte"), duracionBaseUs = o.optLong("duracionBase").coerceAtLeast(0),
             giro = numero("giro", 7f, 0f, 45f), rebote = numero("rebote", 0.025f, 0f, 0.25f),
-            arrastre = numero("arrastre", 1f, 0f, 3f))
+            arrastre = numero("arrastre", 1f, 0f, 3f), naturalidad = numero("naturalidad", 0f, 0f, 1f))
     }
 
     internal fun continuasDe(a: JSONArray?): List<Continuo> {

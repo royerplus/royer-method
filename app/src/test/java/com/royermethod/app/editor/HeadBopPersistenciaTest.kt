@@ -11,7 +11,7 @@ class HeadBopPersistenciaTest {
                 headBop = HeadBop(rol, 200_000, 2_900_000, 123.4f, 0.7f, -33_000,
                     1.5f, 75_000, 0.33f, 0.67f, 0.22f, 0.11f, 90_000,
                     activo = false, recorteUs = 53_000, duracionBaseUs = 3_000_000, giro = 8.5f, rebote = 0.04f,
-                    arrastre = 0.35f)))
+                    arrastre = 0.35f, naturalidad = 0.9f)))
         }
         val p = Proyecto(capas = capas, siguienteId = 6)
         assertEquals(p, Persistencia.deTexto(Persistencia.aTexto(p)))
@@ -42,5 +42,27 @@ class HeadBopPersistenciaTest {
         assertEquals(-1f, h.cuelloY, 0f)
         assertEquals(0L, h.retardoUs)
         assertEquals(-1000L, h.desfaseUs)
+    }
+
+    @Test fun naturalidadAusenteConservaMovimientoAnteriorYAcotaValoresNuevos() {
+        fun leer(naturalidad: String = "") = Persistencia.deTexto("""{"principal":[{"id":1,"texto":{"contenido":"x"},"headBop":{"rol":"CABEZA","inicio":0,"fin":1000000$naturalidad}}]}""")!!.principal.single().headBop!!
+        assertEquals(0f, leer().naturalidad, 0f)
+        assertEquals(0f, leer(",\"naturalidad\":-3").naturalidad, 0f)
+        assertEquals(1f, leer(",\"naturalidad\":4").naturalidad, 0f)
+        assertEquals(0.9f, leer(",\"naturalidad\":0.9").naturalidad, 0f)
+    }
+
+    @Test fun copiarRitmoComparteNaturalidadSinCambiarPivotesNiIntensidad() {
+        val cabeza = Clip(1, texto = Texto("cabeza"), headBop = HeadBop(finUs = 1_000_000,
+            bpm = 107.7f, naturalidad = 0.9f))
+        val cabello = Clip(2, texto = Texto("cabello"), headBop = HeadBop(RolHeadBop.CABELLO,
+            finUs = 1_000_000, intensidad = 0.6f, cuelloX = 0.3f, pivoteY = 0.2f))
+        val p = Proyecto(principal = listOf(cabeza), capas = listOf(Capa(0, 1, cabello)))
+        val sincronizado = EdicionHeadBop.sincronizar(p, cabeza.id).capas.single().clip.headBop!!
+        assertEquals(0.9f, sincronizado.naturalidad, 0f)
+        assertEquals(107.7f, sincronizado.bpm, 0f)
+        assertEquals(0.6f, sincronizado.intensidad, 0f)
+        assertEquals(0.3f, sincronizado.cuelloX, 0f)
+        assertEquals(0.2f, sincronizado.pivoteY, 0f)
     }
 }
