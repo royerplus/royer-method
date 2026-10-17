@@ -139,13 +139,24 @@ internal class EleccionEfectos(id: Long?, catalogo: Boolean) {
     var id by mutableStateOf(id)
     var catalogo by mutableStateOf(catalogo)
 
-    companion object {
-        val Guardar = listSaver<EleccionEfectos, Any>(
-            save = { listOf(it.id ?: -1L, it.catalogo) },
-            restore = { EleccionEfectos((it[0] as Long).takeIf { v -> v > 0 }, it[1] as Boolean) }
-        )
+    /**
+     * Otro panel pide [pedido] (convertir una animacion en efecto): si esta
+     * en el bloque se elige y se sale del catalogo. Devuelve si lo eligio; el
+     * pedido se consume igual (si no esta aqui, ya no tiene sentido).
+     */
+    fun atender(pedido: Long?, vista: Clip): Boolean {
+        if (pedido == null || vista.efectos.none { it.id == pedido }) return false
+        id = pedido
+        catalogo = false
+        return true
     }
 }
+
+/** Para recordar la eleccion al girar el telefono. Fuera de la clase: asi esta no necesita Compose para probarse. */
+private val GuardarEleccion = listSaver<EleccionEfectos, Any>(
+    save = { listOf(it.id ?: -1L, it.catalogo) },
+    restore = { EleccionEfectos((it[0] as Long).takeIf { v -> v > 0 }, it[1] as Boolean) }
+)
 
 /**
  * Lo que comparten las tres partes de la hoja (boton, franja y contenido) y
@@ -153,7 +164,7 @@ internal class EleccionEfectos(id: Long?, catalogo: Boolean) {
  * momento; las acciones cambian el proyecto con lo que haya al tocarlas.
  * El cabezal ([local]) solo se lee dentro de las acciones, nunca al componer.
  */
-private class PanelFx(
+internal class PanelFx(
     val estado: EstadoEditor,
     /** El bloque con ids en todos sus efectos. */
     val vista: Clip,
@@ -244,20 +255,16 @@ private class PanelFx(
 private fun recordarPanel(estado: EstadoEditor, c: Clip): PanelFx {
     val vista = remember(c) { c.conIdsEfectos() }
     val pedido = estado.efectoAElegir
-    val eleccion = rememberSaveable(c.id, saver = EleccionEfectos.Guardar) {
+    val eleccion = rememberSaveable(c.id, saver = GuardarEleccion) {
         // Al abrir: el que pidio otro panel, o el que esta bajo el cabezal (sin
         // apuntarse al tiempo: si no, el panel se recompondria al reproducir)
-        val pedidoAqui = pedido?.takeIf { id -> vista.efectos.any { it.id == id } }
         val local = Snapshot.withoutReadObservation { estado.localElegido }
-        EleccionEfectos(pedidoAqui ?: TramosEfecto.elegidoAlAbrir(vista.efectos, local), vista.efectos.isEmpty())
+        EleccionEfectos(TramosEfecto.elegidoAlAbrir(vista.efectos, local, pedido), vista.efectos.isEmpty())
     }
-    // Otro panel pide un efecto (convertir una animacion): se elige y se consume
+    // Otro panel pide un efecto (al abrir o con el panel ya abierto): se elige y se consume
     LaunchedEffect(pedido, vista) {
-        val id = pedido ?: return@LaunchedEffect
-        if (vista.efectos.any { it.id == id }) {
-            eleccion.id = id
-            eleccion.catalogo = false
-        }
+        if (pedido == null) return@LaunchedEffect
+        eleccion.atender(pedido, vista)
         estado.efectoAElegir = null
     }
     val repetir = remember(c.id) { mutableStateOf<Long?>(null) }
@@ -325,7 +332,7 @@ private fun descripcionGrupo(nombre: String): String? = when (nombre) {
 @Composable
 private fun Catalogo(p: PanelFx) {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
-    Pestanas(listOf("Efectos", "Combinaciones"), pestana, { pestana = it })
+    Pestanas(listOf("Efectos", "Combinaciones rapidas"), pestana, { pestana = it })
     Nota("Se pone donde esta el cabezal.", Modifier.padding(bottom = 2.dp))
     if (pestana == 0) {
         val cuantos = remember(p.vista.efectos) { TramosEfecto.cuantosPorTipo(p.vista.efectos) }
@@ -439,27 +446,24 @@ private fun Aplicados(p: PanelFx) {
 @Composable
 private fun Elegido(p: PanelFx, e: EfectoVideo) {
     val parametros = CatalogoEfectos.parametros(e.tipo)
-    val minimo = TramosEfecto.duracionMinima(p.fotogramas, p.dur)
+    val minimo = TramosEfecto.minimo(e, p.fotogramas, p.dur)
     val forma = parametros.filter { it in FORMA }
 
     Cabecera(p, e)
-    // Lo de siempre, a la vista sin desplazar: el tramo exacto y la fuerza
+    // Lo de siempre, a la vista sin desplazar: donde empieza (mueve el efecto
+    // entero, con lo que dura), cuanto dura y su fuerza
     CampoTiempo(
-        "Inicio", e.inicioUs, 0, (e.finUs - minimo).coerceAtLeast(0),
-        { us, arrastre ->
-            p.cambiar(arrastre) { x -> TramosEfecto.conRango(x, acotarBordeEfecto(us, 0, (x.finUs - minimo).coerceAtLeast(0)), x.finUs) }
-        },
+        "Inicio", e.inicioUs, 0, (p.dur - e.duracionUs).coerceAtLeast(0),
+        { us, arrastre -> p.cambiar(arrastre) { x -> TramosEfecto.conInicio(x, us, p.dur) } },
         deslizador = false, origenUs = p.inicioBloque
     )
+    // La duracion se pega al fotograma contando desde donde empieza el
+    // efecto en la linea: asi el final cae en un cuadro que se exporta
     val maxDuracion = (p.dur - e.inicioUs).coerceAtLeast(0)
     CampoTiempo(
         "Duracion", e.duracionUs, minimo.coerceAtMost(maxDuracion), maxDuracion,
-        { us, arrastre ->
-            p.cambiar(arrastre) { x ->
-                TramosEfecto.conRango(x, x.inicioUs, acotarBordeEfecto(x.inicioUs + us, minimoFinEfecto(x.inicioUs, minimo, p.dur), p.dur))
-            }
-        },
-        deslizador = false
+        { us, arrastre -> p.cambiar(arrastre) { x -> TramosEfecto.conDuracion(x, us, p.dur, minimo) } },
+        deslizador = false, origenUs = p.inicioBloque + e.inicioUs
     )
     if (Parametro.INTENSIDAD in parametros) {
         FilaValor("Intensidad", e.intensidad, 0f, 3f, neutro = 1f, paso = 0.01f, texto = { "${(it * 100).roundToLong()}%" }) { v ->
@@ -483,6 +487,7 @@ private fun Elegido(p: PanelFx, e: EfectoVideo) {
         val resumen = if (e.fundidoEntradaUs == 0L && e.fundidoSalidaUs == 0L) "Sin suavizar" else
             "${TiempoPreciso.texto(e.fundidoEntradaUs)} / ${TiempoPreciso.texto(e.fundidoSalidaUs)}"
         Seccion("Entrada y salida", resumen, abiertaSuave, { abiertaSuave = it }) {
+            Nota("La intensidad crece al empezar y se apaga al acabar.", Modifier.padding(bottom = 2.dp))
             CampoTiempo("Entrada suave", e.fundidoEntradaUs, 0, e.duracionUs, { us, arrastre ->
                 p.cambiar(arrastre) { it.copy(fundidoEntradaUs = us.coerceIn(0, it.duracionUs)) }
             })
@@ -498,7 +503,10 @@ private fun Elegido(p: PanelFx, e: EfectoVideo) {
 private val FORMA = setOf(Parametro.DESDE, Parametro.HASTA, Parametro.ANGULO, Parametro.CURVA, Parametro.CENTRO,
     Parametro.GROSOR, Parametro.SUAVIDAD, Parametro.INVERTIR, Parametro.CORTE_VERTICAL)
 
-/** Nombre, encendido, probar, duplicar o separar del grupo, y quitar. */
+/**
+ * Nombre, encendido, probar, duplicar (si va suelto) y quitar. Si es de una
+ * combinacion, debajo su grupo y "Separar del grupo".
+ */
 @Composable
 private fun Cabecera(p: PanelFx, e: EfectoVideo) {
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -509,20 +517,24 @@ private fun Cabecera(p: PanelFx, e: EfectoVideo) {
                 color = if (e.activo) Ink.White else Ink.White50,
                 maxLines = 1, overflow = TextOverflow.Ellipsis
             )
-            val detalle = listOfNotNull(
-                e.grupo.takeIf { it.isNotEmpty() }?.let { "Grupo: $it" },
-                "Apagado".takeIf { !e.activo }
-            ).joinToString(" · ")
-            if (detalle.isNotEmpty()) {
-                Text(detalle, style = MaterialTheme.typography.bodyMedium, color = Ink.White50, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
+            if (!e.activo) Nota("Apagado")
         }
         MiniInterruptor(e.activo) { v -> p.cambiar { it.copy(activo = v) } }
         val probando = p.estado.reproduciendo && p.repetir.value != null
         BotonIcono(if (probando) Glifos.pausa else Glifos.play, { p.probar(e) })
         if (e.grupo.isEmpty()) BotonIcono(Glifos.duplicar, { p.duplicar(e.id) })
-        else Chip("Separar", false, { p.cambiarBloque { it.separadoDelGrupo(e.id) } })
         BotonIcono(Glifos.papelera, { p.quitar(e.id) })
+    }
+    if (e.grupo.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "De \"${e.grupo}\"",
+                style = MaterialTheme.typography.bodyMedium, color = Ink.White50,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+            )
+            Spacer(Modifier.width(8.dp))
+            ChipPequeno("Separar del grupo") { p.cambiarBloque { it.separadoDelGrupo(e.id) } }
+        }
     }
 }
 
@@ -543,33 +555,52 @@ private fun MiniInterruptor(activo: Boolean, onCambio: (Boolean) -> Unit) {
     }
 }
 
+/** Una pastilla baja (36 dp) para acciones que acompanan a una linea de texto. */
+@Composable
+private fun ChipPequeno(texto: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .heightIn(min = 36.dp)
+            .clip(esquinas(18.dp))
+            .background(Ink.White08)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(texto, style = MaterialTheme.typography.bodyMedium, color = Ink.White90, maxLines = 1)
+    }
+}
+
+/**
+ * Lo demas del tiempo: el final exacto, recortar el principio sin mover el
+ * resto, ponerlo en el cabezal o en todo el bloque y mover su grupo.
+ */
 @Composable
 private fun SeccionTiempo(p: PanelFx, e: EfectoVideo, minimo: Long) {
     InterruptorFotogramas(Modifier.padding(vertical = 4.dp))
     CampoTiempo(
         "Fin", e.finUs, minimoFinEfecto(e.inicioUs, minimo, p.dur), p.dur,
-        { us, arrastre ->
-            p.cambiar(arrastre) { x -> TramosEfecto.conRango(x, x.inicioUs, acotarBordeEfecto(us, minimoFinEfecto(x.inicioUs, minimo, p.dur), p.dur)) }
-        },
+        { us, arrastre -> p.cambiar(arrastre) { x -> TramosEfecto.conFin(x, us, p.dur, minimo) } },
         deslizador = false, origenUs = p.inicioBloque
     )
-    val paso = if (p.fotogramas) "1 f" else "1 ms"
-    FilaChips("Mover") {
-        Chip("−$paso", false, { p.cambiar { TramosEfecto.moverUnPaso(it, -1, p.dur, p.fotogramas, p.inicioBloque) } })
-        Chip("+$paso", false, { p.cambiar { TramosEfecto.moverUnPaso(it, 1, p.dur, p.fotogramas, p.inicioBloque) } })
-        // Empieza donde esta el cabezal, con lo que dura
-        Chip("Al cabezal", false, { val t = p.cabezal(); p.cambiar { it.desplazado(t - it.inicioUs, p.dur) } })
-    }
+    CampoTiempo(
+        "Recortar inicio", e.inicioUs, 0, (e.finUs - minimo).coerceAtLeast(0),
+        { us, arrastre -> p.cambiar(arrastre) { x -> TramosEfecto.conInicioRecortado(x, us, minimo) } },
+        deslizador = false, origenUs = p.inicioBloque
+    )
+    Nota("Inicio mueve el efecto entero. Recortar quita o devuelve un trozo de un borde sin mover lo demas.",
+        Modifier.padding(bottom = 2.dp))
     FilaChips(null) {
+        // Empieza donde esta el cabezal, con lo que dura
+        Chip("Al cabezal", false, { val t = p.cabezal(); p.cambiar { TramosEfecto.conInicio(it, t, p.dur) } })
+        Chip("Fin al cabezal", false, { val t = p.cabezal(); p.cambiar { TramosEfecto.conFin(it, t, p.dur, minimo) } })
         Chip("Ver inicio", false, { p.ver(e.inicioUs) })
-        Chip("Fin al cabezal", false, {
-            val t = p.cabezal()
-            p.cambiar { x -> TramosEfecto.conRango(x, x.inicioUs, acotarBordeEfecto(t, minimoFinEfecto(x.inicioUs, minimo, p.dur), p.dur)) }
-        })
-        Chip("Todo el bloque", false, { p.cambiar { TramosEfecto.conRango(it, 0, p.dur) } })
+        Chip("Todo el bloque", false, { p.cambiar { TramosEfecto.todoElBloque(it, p.dur) } })
     }
     if (e.grupo.isNotEmpty()) {
-        Nota("Mover el grupo: todos los de \"${e.grupo}\" a la vez, sin descolocarse.", Modifier.padding(top = 6.dp))
+        Etiqueta("Mover el grupo")
+        Nota("Todos los de \"${e.grupo}\" a la vez, sin descolocarse.")
+        val paso = if (p.fotogramas) "1 f" else "1 ms"
         FilaChips(null) {
             Chip("−$paso", false, { p.cambiarBloque { it.conGrupoMovido(e.id, -pasoGrupo(p)) } })
             Chip("+$paso", false, { p.cambiarBloque { it.conGrupoMovido(e.id, pasoGrupo(p)) } })

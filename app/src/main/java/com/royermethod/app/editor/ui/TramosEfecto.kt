@@ -17,13 +17,19 @@ import kotlin.math.roundToLong
 /*
  * Las cuentas del panel de efectos, sin Compose (se prueban en el ordenador):
  * la franja (mini linea de tiempo del bloque con un carril por solape), el
- * arrastre de un tramo y las acciones sobre los efectos del bloque.
+ * arrastre de un tramo, los campos de tiempo y las acciones sobre los
+ * efectos del bloque.
  *
- * Tiempos en microsegundos del reloj del bloque. Los efectos se eligen por
- * id; los de proyectos viejos no tienen, asi que el panel trabaja con
- * [Clip.conIdsEfectos], que da siempre los mismos ids a la misma lista: lo
- * elegido sigue siendo lo mismo antes y despues del primer cambio (que es
- * cuando se guardan) y tras deshacer. Los ids no cambian la imagen.
+ * Tiempos en microsegundos del reloj del bloque. Mover un tramo
+ * ([EfectoVideo.desplazado]) lleva su reloj con el: lo que pasaba al
+ * principio sigue pasando al principio. Recortar ([EfectoVideo.conRango])
+ * deja el reloj quieto y quita o devuelve un trozo por un borde.
+ *
+ * Los efectos se eligen por id; los de proyectos viejos no tienen, asi que
+ * el panel trabaja con [Clip.conIdsEfectos], que da siempre los mismos ids a
+ * la misma lista: lo elegido sigue siendo lo mismo antes y despues del primer
+ * cambio (que es cuando se guardan) y tras deshacer. Los ids no cambian la
+ * imagen.
  */
 internal object TramosEfecto {
 
@@ -69,7 +75,7 @@ internal object TramosEfecto {
 
     /** De x en la franja al tiempo del bloque, dentro de 0..[duracionUs]. */
     fun tiempo(xPx: Float, duracionUs: Long, anchoPx: Float, margenPx: Float): Long {
-        if (duracionUs <= 0) return 0
+        if (duracionUs <= 0 || xPx.isNaN()) return 0
         val f = ((xPx - margenPx) / util(anchoPx, margenPx)).toDouble().coerceIn(0.0, 1.0)
         return (f * duracionUs).roundToLong().coerceIn(0, duracionUs)
     }
@@ -111,6 +117,8 @@ internal object TramosEfecto {
         }
     }
 
+    private fun carrilEn(y: Float, altoCarrilPx: Float): Int = floor(y / altoCarrilPx).toInt()
+
     /**
      * La barra que se toca en (x, y): de las que cubren x (con [holguraPx] a
      * cada lado, para que las cortas se puedan tocar), la del carril mas
@@ -119,17 +127,65 @@ internal object TramosEfecto {
      */
     fun tocada(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, holguraPx: Float, elegida: Long?): Barra? {
         if (barras.isEmpty() || altoCarrilPx <= 0f) return null
-        val carril = floor(y / altoCarrilPx).toInt()
+        val carril = carrilEn(y, altoCarrilPx)
         return barras
             .filter { x >= it.x0 - holguraPx && x <= it.x1 + holguraPx }
             .minWithOrNull(compareBy<Barra>({ abs(it.carril - carril) }, { if (it.id == elegida) 0 else 1 }, { it.x1 - it.x0 }))
     }
 
-    // ---- Iman y arrastre ----
+    /**
+     * Lo que se arrastra si el dedo empieza en (x, y): la elegida tiene
+     * preferencia aunque el dedo caiga en el carril de al lado (los carriles
+     * son bajos y el pulgar ancho); si no, la que se toca. Null en vacio.
+     */
+    fun agarrada(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?): Pair<Barra, Agarre>? {
+        if (barras.isEmpty() || altoCarrilPx <= 0f) return null
+        val carril = carrilEn(y, altoCarrilPx)
+        barras.firstOrNull { it.id == elegida }?.let { b ->
+            val a = agarre(x, b.x0, b.x1, asaPx)
+            if (a != null && abs(b.carril - carril) <= 1) return b to a
+        }
+        val b = tocada(barras, x, y, altoCarrilPx, asaPx, elegida) ?: return null
+        val a = agarre(x, b.x0, b.x1, asaPx) ?: return null
+        return b to a
+    }
+
+    // ---- Nombres en las barras ----
+
+    enum class Rotulo { DENTRO, FUERA, CORTADO, NADA }
+
+    /**
+     * Donde va el nombre de una barra: dentro si cabe entero; si no, a su
+     * derecha si ahi hay hueco libre en el carril ([libreDerechaPx]); si no,
+     * dentro y cortado con "..." si queda sitio para algo ([minimoCortadoPx]).
+     */
+    fun rotulo(anchoTextoPx: Float, anchoBarraPx: Float, rellenoPx: Float, libreDerechaPx: Float, minimoCortadoPx: Float): Rotulo = when {
+        anchoTextoPx + 2 * rellenoPx <= anchoBarraPx -> Rotulo.DENTRO
+        anchoTextoPx + rellenoPx <= libreDerechaPx -> Rotulo.FUERA
+        anchoBarraPx - 2 * rellenoPx >= minimoCortadoPx -> Rotulo.CORTADO
+        else -> Rotulo.NADA
+    }
+
+    /** Hueco libre a la derecha de la barra [i] en su carril, hasta la siguiente o hasta [finPx]. */
+    fun libreDerecha(barras: List<Barra>, i: Int, finPx: Float): Float {
+        val b = barras[i]
+        val siguiente = barras.filterIndexed { j, o -> j != i && o.carril == b.carril && o.x0 >= b.x1 }.minOfOrNull { it.x0 } ?: finPx
+        return (siguiente - b.x1).coerceAtLeast(0f)
+    }
+
+    // ---- Iman y limites ----
 
     /** Lo menos que dura un efecto: un fotograma con el iman, si no 1 ms (nunca mas que el bloque). */
     fun duracionMinima(fotogramas: Boolean, duracionBloqueUs: Long): Long =
         (if (fotogramas) Linea.tiempoDe(1) else 1_000L).coerceIn(1, duracionBloqueUs.coerceAtLeast(1))
+
+    /**
+     * Lo menos que puede quedar [e] al recortarlo: [duracionMinima], salvo que
+     * ya dure menos (un tiempo escrito sin iman): entonces no se le obliga a
+     * crecer solo por tocarlo.
+     */
+    fun minimo(e: EfectoVideo, fotogramas: Boolean, duracionBloqueUs: Long): Long =
+        minOf(duracionMinima(fotogramas, duracionBloqueUs), e.duracionUs).coerceAtLeast(1)
 
     /**
      * Un tiempo arrastrado, pegado al fotograma que se exporta (contando desde
@@ -153,6 +209,29 @@ internal object TramosEfecto {
     fun conRango(e: EfectoVideo, inicioUs: Long, finUs: Long): EfectoVideo =
         if (inicioUs < 0 || finUs <= inicioUs || (inicioUs == e.inicioUs && finUs == e.finUs)) e else e.conRango(inicioUs, finUs)
 
+    // ---- Los campos de tiempo del panel ----
+
+    /** "Inicio": lleva el tramo entero a [us], con lo que dura y su reloj, sin salir del bloque. */
+    fun conInicio(e: EfectoVideo, us: Long, duracionBloqueUs: Long): EfectoVideo =
+        e.desplazado(us.coerceAtLeast(0) - e.inicioUs, duracionBloqueUs)
+
+    /** "Recortar inicio": el principio va a [us] y el final se queda (reloj quieto). */
+    fun conInicioRecortado(e: EfectoVideo, us: Long, minimoUs: Long): EfectoVideo =
+        conRango(e, acotarBordeEfecto(us, 0, (e.finUs - minimoUs).coerceAtLeast(0)), e.finUs)
+
+    /** "Fin": el final va a [us] y el principio se queda (reloj quieto; la base crece si hace falta). */
+    fun conFin(e: EfectoVideo, us: Long, duracionBloqueUs: Long, minimoUs: Long): EfectoVideo =
+        conRango(e, e.inicioUs, acotarBordeEfecto(us, minimoFinEfecto(e.inicioUs, minimoUs, duracionBloqueUs), duracionBloqueUs))
+
+    /** "Duracion": el final queda a [us] del principio (como [conFin]). */
+    fun conDuracion(e: EfectoVideo, us: Long, duracionBloqueUs: Long, minimoUs: Long): EfectoVideo =
+        conFin(e, e.inicioUs + us.coerceAtLeast(0), duracionBloqueUs, minimoUs)
+
+    /** "Todo el bloque": de 0 al final, recortando o devolviendo por los dos bordes. */
+    fun todoElBloque(e: EfectoVideo, duracionBloqueUs: Long): EfectoVideo = conRango(e, 0, duracionBloqueUs)
+
+    // ---- Arrastre en la franja ----
+
     /**
      * El efecto tras correr el dedo [deltaUs] desde que se agarro [base]:
      * siempre se calcula desde la base, asi un arrastre de ida y vuelta deja
@@ -160,7 +239,7 @@ internal object TramosEfecto {
      *  - MOVER: el tramo entero, con lo que dura y su reloj (el inicio pegado
      *    al iman y el tramo dentro del bloque).
      *  - INICIO/FIN: recorta ese borde conservando el reloj ([EfectoVideo.conRango]),
-     *    dejando al menos [duracionMinima] y sin salir del bloque.
+     *    dejando al menos [minimo] y sin salir del bloque.
      */
     fun arrastrar(
         base: EfectoVideo, agarre: Agarre, deltaUs: Long, duracionBloqueUs: Long,
@@ -168,34 +247,12 @@ internal object TramosEfecto {
     ): EfectoVideo {
         val dur = duracionBloqueUs
         if (deltaUs == 0L || dur <= 0 || base.finUs <= base.inicioUs) return base
-        val minimo = duracionMinima(fotogramas, dur)
+        val minimo = minimo(base, fotogramas, dur)
         return when (agarre) {
-            Agarre.MOVER -> {
-                val ini = pegar(base.inicioUs + deltaUs, fotogramas, origenUs)
-                base.desplazado(ini - base.inicioUs, dur)
-            }
-            Agarre.INICIO -> {
-                val ini = acotarBordeEfecto(pegar(base.inicioUs + deltaUs, fotogramas, origenUs), 0, base.finUs - minimo)
-                conRango(base, ini, base.finUs)
-            }
-            Agarre.FIN -> {
-                val fin = acotarBordeEfecto(pegar(base.finUs + deltaUs, fotogramas, origenUs),
-                    minimoFinEfecto(base.inicioUs, minimo, dur), dur)
-                conRango(base, base.inicioUs, fin)
-            }
+            Agarre.MOVER -> conInicio(base, pegar(base.inicioUs + deltaUs, fotogramas, origenUs), dur)
+            Agarre.INICIO -> conInicioRecortado(base, pegar(base.inicioUs + deltaUs, fotogramas, origenUs), minimo)
+            Agarre.FIN -> conFin(base, pegar(base.finUs + deltaUs, fotogramas, origenUs), dur, minimo)
         }
-    }
-
-    /**
-     * Mueve el tramo entero un fotograma (al anterior o al siguiente, como los
-     * -/+ de los campos de tiempo) o, sin iman, 1 ms. Conserva duracion y reloj.
-     */
-    fun moverUnPaso(e: EfectoVideo, sentido: Int, duracionBloqueUs: Long, fotogramas: Boolean, origenUs: Long): EfectoVideo {
-        val dur = duracionBloqueUs
-        if (dur <= 0) return e
-        val ultimoInicio = (dur - e.duracionUs).coerceAtLeast(0)
-        val ini = TiempoCampo.paso(e.inicioUs, sentido, fotogramas, 1_000L, 0, ultimoInicio, origenUs)
-        return e.desplazado(ini - e.inicioUs, dur)
     }
 
     // ---- Nombres y marcas ----
@@ -232,12 +289,14 @@ internal object TramosEfecto {
     }
 
     /**
-     * El efecto que sale elegido al abrir el panel: el ultimo de la lista que
+     * El efecto que sale elegido al abrir el panel: el que pidio otro panel
+     * ([pedido], si esta en el bloque); si no, el ultimo de la lista que
      * actua bajo el cabezal (el de encima), si no el primero que empieza
      * despues, y si no el primero. Null si no hay efectos.
      */
-    fun elegidoAlAbrir(efectos: List<EfectoVideo>, localUs: Long?): Long? {
+    fun elegidoAlAbrir(efectos: List<EfectoVideo>, localUs: Long?, pedido: Long? = null): Long? {
         if (efectos.isEmpty()) return null
+        if (pedido != null && efectos.any { it.id == pedido }) return pedido
         if (localUs != null) {
             efectos.lastOrNull { localUs >= it.inicioUs && localUs < it.finUs }?.let { return it.id }
             efectos.filter { it.inicioUs >= localUs }.minByOrNull { it.inicioUs }?.let { return it.id }
@@ -250,6 +309,40 @@ internal object TramosEfecto {
         val i = efectos.indexOfFirst { it.id == id }
         if (i < 0) return efectos.firstOrNull()?.id
         return (efectos.getOrNull(i - 1) ?: efectos.getOrNull(i + 1))?.id
+    }
+}
+
+/**
+ * Un arrastre de un tramo en la franja: todo el gesto es un paso de deshacer
+ * (entre [EstadoEditor.empezarGesto] y [EstadoEditor.terminarGesto]) y cada
+ * paso se calcula desde el efecto tal como estaba al agarrarlo, no desde el
+ * del paso anterior: ida y vuelta lo deja igual y no se acumulan redondeos.
+ */
+internal class ArrastreTramo(
+    private val estado: EstadoEditor,
+    val base: EfectoVideo,
+    val agarre: TramosEfecto.Agarre,
+    private val duracionBloqueUs: Long,
+    private val origenUs: Long
+) {
+    private var abierto = false
+
+    fun empezar() {
+        if (abierto) return
+        estado.empezarGesto()
+        abierto = true
+    }
+
+    /** El dedo esta [deltaUs] por delante (o por detras) de donde agarro. */
+    fun seguir(deltaUs: Long, fotogramas: Boolean) {
+        val nuevo = TramosEfecto.arrastrar(base, agarre, deltaUs, duracionBloqueUs, fotogramas, origenUs)
+        estado.cambiarClip(arrastre = true) { it.conEfecto(base.id) { nuevo } }
+    }
+
+    fun terminar() {
+        if (!abierto) return
+        estado.terminarGesto()
+        abierto = false
     }
 }
 
