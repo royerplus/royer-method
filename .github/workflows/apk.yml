@@ -1,0 +1,68 @@
+name: APK
+
+# Compila el APK de release en cada push a main o a la rama del editor y lo
+# deja en la release "prueba", con un enlace que no cambia para bajarlo
+# desde el telefono:
+# https://github.com/royerplus/royer-method/releases/download/prueba/RoyerMethod.apk
+
+on:
+  push:
+    branches: [main, claude/project-thread-skalim]
+  workflow_dispatch:
+
+# Una sola a la vez: todas publican en la misma release.
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      # El release se firma con la clave de depuracion. Cada maquina nueva de
+      # GitHub crearia una distinta y el telefono no dejaria instalar encima
+      # sin desinstalar, asi que la primera se guarda en la cache y se reusa.
+      # No va en el repo porque el repo es publico.
+      - name: Clave de firma
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: firma-pruebas-v1
+
+      - name: Crear la clave si no estaba
+        run: |
+          if [ ! -f ~/.android/debug.keystore ]; then
+            mkdir -p ~/.android
+            keytool -genkeypair -keystore ~/.android/debug.keystore -storetype PKCS12 \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
+          fi
+
+      - name: Dependencias nativas
+        run: bash tools/traer_dependencias.sh
+
+      - name: Compilar
+        run: bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease
+
+      - name: Publicar
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk RoyerMethod.apk
+          gh release delete prueba --yes --cleanup-tag || true
+          gh release create prueba RoyerMethod.apk --prerelease --target "$GITHUB_SHA" \
+            --title "Prueba del editor" \
+            --notes "Compilado de $GITHUB_REF_NAME en ${GITHUB_SHA::7}."

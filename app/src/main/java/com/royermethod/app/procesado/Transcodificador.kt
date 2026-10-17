@@ -199,6 +199,10 @@ fun transcodificar(
     val decodificador = MediaCodec.createDecoderByType(
         formatoOrigen.getString(MediaFormat.KEY_MIME)!!
     )
+    // El giro va una sola vez, como aviso en el contenedor. Si el decodificador
+    // lo recibe, lo aplica al pintar en la textura y el video saldria girado
+    // dos veces (y aplastado: las medidas de salida son las del original).
+    if (giro != 0) formatoOrigen.setInteger(MediaFormat.KEY_ROTATION, 0)
     decodificador.configure(formatoOrigen, Surface(reductor.surfaceTexture), null, 0)
 
     val muxer = MediaMuxer(salida.absolutePath, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
