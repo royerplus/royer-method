@@ -372,35 +372,102 @@ object Edicion {
     /**
      * Pone (o sustituye) un fotograma clave con el encuadre de ahora en el
      * instante [tUs] de la linea.
+     *
+     * Si hay una clave a [tolerancia] o menos, se cambia esa (la mas cercana)
+     * y conserva su tiempo y su curva. Con [TOLERANCIA_FINA] se pueden poner
+     * claves a una milesima de segundo unas de otras.
      */
-    fun ponerClave(p: Proyecto, id: Long, tUs: Long, encuadre: Encuadre): Proyecto {
+    fun ponerClave(p: Proyecto, id: Long, tUs: Long, encuadre: Encuadre, tolerancia: Long = TOLERANCIA_CLAVE): Proyecto {
         val ini = inicio(p, id) ?: return p
         val local = (tUs - ini).coerceAtLeast(0)
+        val tol = tolerancia.coerceAtLeast(0)
         return cambiar(p, id) { c ->
-            val previa = c.claves.firstOrNull { kotlin.math.abs(it.tiempoUs - local) <= TOLERANCIA_CLAVE }
+            val previa = claveCercana(c.claves, local, tol)
             val sin = c.claves.filter { it !== previa }
             // El primer fotograma clave fija tambien el de partida: sin esto,
             // el bloque saltaria de su encuadre base al primer clave.
-            val base = if (sin.isEmpty() && previa == null && local > TOLERANCIA_CLAVE) listOf(Clave(0, c.encuadre)) else emptyList()
+            val base = if (sin.isEmpty() && previa == null && local > tol) listOf(Clave(0, c.encuadre)) else emptyList()
             // Si ya habia uno ahi se cambia el encuadre y se le deja su curva
             val nueva = previa?.copy(encuadre = encuadre) ?: Clave(local, encuadre)
             c.copy(claves = (base + sin + nueva).sortedBy { it.tiempoUs })
         }
     }
 
-    fun quitarClave(p: Proyecto, id: Long, tUs: Long): Proyecto {
-        val ini = inicio(p, id) ?: return p
-        val local = tUs - ini
-        return cambiar(p, id) { c -> c.copy(claves = c.claves.filter { kotlin.math.abs(it.tiempoUs - local) > TOLERANCIA_CLAVE }) }
-    }
-
-    /** Cambia el fotograma clave que cae en [tUs] (su curva, por ejemplo). */
-    fun cambiarClave(p: Proyecto, id: Long, tUs: Long, f: (Clave) -> Clave): Proyecto {
+    /**
+     * Quita el fotograma clave mas cercano a [tUs], si esta a [tolerancia] o
+     * menos. Solo ese: los de al lado, aunque esten a una milesima, se quedan.
+     */
+    fun quitarClave(p: Proyecto, id: Long, tUs: Long, tolerancia: Long = TOLERANCIA_CLAVE): Proyecto {
         val ini = inicio(p, id) ?: return p
         val local = tUs - ini
         return cambiar(p, id) { c ->
-            c.copy(claves = c.claves.map { if (kotlin.math.abs(it.tiempoUs - local) <= TOLERANCIA_CLAVE) f(it) else it })
+            val k = claveCercana(c.claves, local, tolerancia) ?: return@cambiar c
+            c.copy(claves = c.claves.filter { it.tiempoUs != k.tiempoUs })
         }
+    }
+
+    /**
+     * Cambia el fotograma clave que cae en [tUs] (su curva, por ejemplo): el
+     * mas cercano a medio fotograma o menos.
+     */
+    fun cambiarClave(p: Proyecto, id: Long, tUs: Long, f: (Clave) -> Clave): Proyecto =
+        cambiarClave(p, id, tUs, TOLERANCIA_CLAVE, f)
+
+    /** Igual, con la clave mas cercana a [tolerancia] o menos y solo esa. */
+    fun cambiarClave(p: Proyecto, id: Long, tUs: Long, tolerancia: Long, f: (Clave) -> Clave): Proyecto {
+        val ini = inicio(p, id) ?: return p
+        val local = tUs - ini
+        return cambiar(p, id) { c ->
+            val k = claveCercana(c.claves, local, tolerancia) ?: return@cambiar c
+            c.copy(claves = c.claves.map { if (it.tiempoUs == k.tiempoUs) f(it) else it })
+        }
+    }
+
+    /**
+     * Lleva el fotograma clave que hay en [desdeUs] a [hastaUs] (instantes de
+     * la linea, como [ponerClave]) con su encuadre, su curva y su Bezier.
+     * Nunca sale del bloque ni queda en tiempo negativo; si en el destino ya
+     * hay otra clave a [tolerancia] o menos, no hace nada (no se pisan).
+     */
+    fun moverClave(p: Proyecto, id: Long, desdeUs: Long, hastaUs: Long, tolerancia: Long = TOLERANCIA_CLAVE): Proyecto {
+        val c = clip(p, id) ?: return p
+        val ini = inicio(p, id) ?: return p
+        val k = claveCercana(c.claves, desdeUs - ini, tolerancia) ?: return p
+        val movidas = movidas(c.claves, k, hastaUs - ini, c.duracionUs, tolerancia) ?: return p
+        return cambiar(p, id) { it.copy(claves = movidas) }
+    }
+
+    /**
+     * La clave mas cercana a [local] a [tolerancia] o menos, o null. A la
+     * misma distancia, la primera de la lista. Es la que tocan [ponerClave],
+     * [quitarClave], [cambiarClave] y [moverClave]; la interfaz la usa para
+     * saber si el cabezal esta sobre una.
+     */
+    fun claveCercana(claves: List<Clave>, local: Long, tolerancia: Long): Clave? {
+        val tol = tolerancia.coerceAtLeast(0)
+        var mejor: Clave? = null
+        var distancia = Long.MAX_VALUE
+        for (k in claves) {
+            val d = kotlin.math.abs(k.tiempoUs - local)
+            if (d <= tol && d < distancia) {
+                mejor = k
+                distancia = d
+            }
+        }
+        return mejor
+    }
+
+    /**
+     * [claves] con [k] (y las que comparten su tiempo, que son un salto)
+     * llevada a [hasta], acotado a [0, duracion]. Null si queda donde estaba
+     * o si el destino pisaria otra clave.
+     */
+    internal fun movidas(claves: List<Clave>, k: Clave, hasta: Long, duracionUs: Long, tolerancia: Long): List<Clave>? {
+        val tol = tolerancia.coerceAtLeast(0)
+        val destino = hasta.coerceIn(0, duracionUs.coerceAtLeast(0))
+        if (destino == k.tiempoUs) return null
+        if (claves.any { it.tiempoUs != k.tiempoUs && kotlin.math.abs(it.tiempoUs - destino) <= tol }) return null
+        return claves.map { if (it.tiempoUs == k.tiempoUs) it.copy(tiempoUs = destino) else it }.sortedBy { it.tiempoUs }
     }
 
     /**
@@ -411,7 +478,11 @@ object Edicion {
      * ese instante, nuevo o el que ya habia: es como funcionan los editores
      * de movil, mover algo con claves crea una clave.
      */
-    fun ajustarEncuadre(p: Proyecto, id: Long, tUs: Long, f: (Encuadre) -> Encuadre): Proyecto {
+    fun ajustarEncuadre(p: Proyecto, id: Long, tUs: Long, f: (Encuadre) -> Encuadre): Proyecto =
+        ajustarEncuadre(p, id, tUs, TOLERANCIA_CLAVE, f)
+
+    /** Igual, con la tolerancia de [ponerClave] (la fina deja claves a una milesima). */
+    fun ajustarEncuadre(p: Proyecto, id: Long, tUs: Long, tolerancia: Long, f: (Encuadre) -> Encuadre): Proyecto {
         val c = clip(p, id) ?: return p
         if (c.claves.isEmpty()) return cambiar(p, id) { it.copy(encuadre = f(it.encuadre)) }
         val ini = inicio(p, id) ?: return p
@@ -422,9 +493,99 @@ object Edicion {
             it.copy(encuadre = it.encuadre.copy(ajuste = nuevo.ajuste, recorte = nuevo.recorte, espejo = nuevo.espejo))
         }
         val animado = { e: Encuadre -> listOf(e.escala, e.x, e.y, e.rotacion, e.opacidad) }
-        return if (animado(ahora) == animado(nuevo)) q else ponerClave(q, id, ini + local, nuevo)
+        return if (animado(ahora) == animado(nuevo)) q else ponerClave(q, id, ini + local, nuevo, tolerancia)
     }
+
+    // ------------------------------------------------------------------
+    // Simplificar trayectorias
+    // ------------------------------------------------------------------
+
+    /**
+     * Quita las claves que sobran en la trayectoria del bloque [id] sin que
+     * se aparte mas de [tol] (ver [Trayectoria]) en ningun instante que se
+     * dibuja al exportar. Guarda las de antes en [Clip.clavesOriginales] para
+     * poder volver; si ya habia unas guardadas, se quedan esas (las de antes
+     * de la primera simplificacion). El error del informe es el de este paso,
+     * sobre las claves que tenia: para probar otra tolerancia desde el
+     * original, [restaurarClaves] y esto en el mismo paso de deshacer.
+     *
+     * @return null si el bloque no existe o no tiene claves. Si no se puede
+     *   quitar ninguna, el proyecto sale igual.
+     */
+    fun simplificarClaves(p: Proyecto, id: Long, tol: Tolerancia = Tolerancia()): Pair<Proyecto, Simplificacion>? {
+        val c = clip(p, id) ?: return null
+        if (c.claves.isEmpty()) return null
+        val ini = inicio(p, id) ?: return null
+        val (w, h) = medidasSalida(p)
+        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), c.claves, ini)
+        val s = Trayectoria.simplificar(c.claves, ins, w, h, tol, quitarRepetidas = false)
+        if (s.claves == c.claves) return p to s
+        return cambiar(p, id) { it.copy(claves = s.claves, clavesOriginales = it.clavesOriginales ?: it.claves) } to s
+    }
+
+    /** Vuelve a las claves de antes de simplificar y olvida la copia. */
+    fun restaurarClaves(p: Proyecto, id: Long): Proyecto {
+        val c = clip(p, id) ?: return p
+        val o = c.clavesOriginales ?: return p
+        return cambiar(p, id) { it.copy(claves = o, clavesOriginales = null) }
+    }
+
+    /** Se queda con las simplificadas: olvida las de antes. */
+    fun descartarOriginales(p: Proyecto, id: Long): Proyecto {
+        val c = clip(p, id) ?: return p
+        if (c.clavesOriginales == null) return p
+        return cambiar(p, id) { it.copy(clavesOriginales = null) }
+    }
+
+    /**
+     * Lo mismo para la parte [indice] del bloque [id]. Las partes evaluan sus
+     * claves sin repetidas y pueden tener claves fuera del bloque (las que
+     * encierran un tramo recortado): esas quedan como estaban.
+     */
+    fun simplificarPieza(p: Proyecto, id: Long, indice: Int, tol: Tolerancia = Tolerancia()): Pair<Proyecto, Simplificacion>? {
+        val c = clip(p, id) ?: return null
+        val pieza = c.piezas.getOrNull(indice) ?: return null
+        if (pieza.claves.isEmpty()) return null
+        val ini = inicio(p, id) ?: return null
+        val (w, h) = medidasSalida(p)
+        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), pieza.claves, ini)
+        val s = Trayectoria.simplificar(pieza.claves, ins, w, h, tol, quitarRepetidas = true)
+        if (s.claves == pieza.claves) return p to s
+        return cambiarPieza(p, id, indice) {
+            it.copy(claves = s.claves, clavesOriginales = it.clavesOriginales ?: it.claves)
+        } to s
+    }
+
+    fun restaurarPieza(p: Proyecto, id: Long, indice: Int): Proyecto {
+        val o = clip(p, id)?.piezas?.getOrNull(indice)?.clavesOriginales ?: return p
+        return cambiarPieza(p, id, indice) { it.copy(claves = o, clavesOriginales = null) }
+    }
+
+    fun descartarOriginalesPieza(p: Proyecto, id: Long, indice: Int): Proyecto {
+        if (clip(p, id)?.piezas?.getOrNull(indice)?.clavesOriginales == null) return p
+        return cambiarPieza(p, id, indice) { it.copy(clavesOriginales = null) }
+    }
+
+    private fun cambiarPieza(p: Proyecto, id: Long, indice: Int, f: (PiezaVideo) -> PiezaVideo): Proyecto =
+        cambiar(p, id) { c ->
+            if (indice !in c.piezas.indices) c
+            else c.copy(piezas = c.piezas.toMutableList().also { it[indice] = f(it[indice]) })
+        }
+
+    /** Pixeles de exportacion: con ellos se mide el error de una trayectoria. */
+    private fun medidasSalida(p: Proyecto): Pair<Float, Float> =
+        p.formato.medidas(p.salida.ladoCorto).let { it.first.toFloat() to it.second.toFloat() }
+
+    /** Muestras del obturador por fotograma al exportar, como [Escena]. */
+    private fun muestrasSalida(p: Proyecto): Int =
+        if (p.salida.desenfoqueMovimiento) p.salida.muestras.coerceIn(1, Escena.MAX_MUESTRAS) else 1
 
     /** Medio fotograma: lo que se considera "el mismo instante" para un clave. */
     const val TOLERANCIA_CLAVE = 16_000L
+
+    /**
+     * Para colocar claves sin el iman a fotogramas: 0,0002 s. Deja poner una
+     * en 0,001 s y otra en 0,005 s y que sean dos.
+     */
+    const val TOLERANCIA_FINA = 200L
 }
