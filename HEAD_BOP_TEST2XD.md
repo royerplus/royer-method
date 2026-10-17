@@ -1,6 +1,6 @@
 # Head bop de test2xd
 
-Estado actual: **V6**, amplitud V4 recuperada y sin compresión de cabeza. V4 sigue guardada como borrador aprobado; V5 fue rechazada por menor movimiento y aplastamiento.
+Estado actual: **V7**, parpadeo lento añadido sobre el movimiento V6. V4 sigue guardada como borrador aprobado. V7 usa el motor V6 ya instalado; no hay cambios nuevos de código Android.
 
 Rama separada: `codex/head-bop-test2xd`, basada en `6ca0760`. No se ha mezclado con el trabajo de Claude.
 
@@ -85,3 +85,14 @@ Compilación .prueba e instrumentación correctas; **163 pruebas JVM pasaron**. 
 Exportación nativa V6 correcta al primer intento: 472 cuadros, 1080×1080, 30 fps, 15,733333 s; cero cuadros irregulares y cero avisos de fuentes. Se inspeccionó una secuencia de poses de 7,05–8,80 s y capturas completas a 7,12 y 7,67 s. Falta la valoración del usuario sobre la naturalidad; no se afirma coincidencia con una referencia ni se ejecutó un benchmark de fluidez.
 
 Video local `validacion-v6/headbop-v6.mp4`, SHA256 `40fb35923f42fd485e5cf2930444c2a455522aad529560d436aff0d6d80e118f`. Entrega en galería `Movies/RoyerMethod/headbop-test2xd-v6-sin-compresion.mp4`; proyecto `Download/RoyerMethod/headbop-test2xd-v6.royer`, también activo en .prueba. Se comprobaron hashes, registro en galería y borrador V4 intacto. Sólo se actualizó .prueba, la app normal conserva fechas/versiones y CELULAR.md quedó LIBRE. No se suben medios, APK ni paquetes a git.
+## V7 · parpadeo facial un poco lento · 2026-10-17
+
+Última petición del usuario: añadir parpadeo lento conservando V6. Se prepararon con el generador de imágenes integrado tres poses oculares de la cabeza: 65 % abierta, 30 % abierta y cerrada. Los PNG completos se usan sólo dentro de dos regiones UV de ojos; el resto de la cara y el cabello siguen viniendo de los medios V6. Fuentes y prompts exactos en `PROMPTS_V7.md`, fuera de git, con copias de assets en el output excluido del worktree.
+
+El proyecto usa únicamente herramientas nativas existentes: tres overlays con piezas UV, movimiento y HeadBop idénticos a Cabeza, debajo del flequillo. Las piezas animan sólo opacidad, con estados intermedios anidados para cubrir el ojo abierto durante el cierre. Cero cambios Android, cero compresión o giro relativo de las piezas oculares. Las siete capas originales conservan contenido/movimiento, sólo se recolocan filas; nueve medios idénticos y las 72 claves V6 intactas. Overlays: 36 claves de movimiento copiadas y 60 claves sólo de opacidad; diez capas en total. El generador es `crear_headbop-v7.py`, fuera de git, y los ajustes están en `proyecto-headbop-v7/ajustes-parpadeo-v7.json`.
+
+Dos eventos: 8,150–8,810 s y 12,050–12,710 s; cada uno dura 0,660 s (cierre 0,240, pausa 0,100, apertura 0,320). No hay parpadeos durante la intro. Se conservan V4/borrador, V6, música, duración y energía del movimiento.
+
+Se reutilizó la compilación V6 de .prueba (163 pruebas JVM aprobadas en esa compilación), sin recompilar ni instalar APK. La prueba nativa de importación/exportación V7 pasó: 472 cuadros, 1080×1080, 30 fps, 15,733333 s; cero irregulares y cero avisos de fuentes. Se revisó una secuencia de poses nativas entre 8,100–8,833 s y capturas completas cerrada/intermedia; sin una unión de parche evidente en esa revisión. Esto no equivale a una medición de fluidez, que sigue pendiente.
+
+Paquete: `proyecto-headbop-v7/headbop-test2xd.royer`, SHA256 `1ff755a3ffbf5852cebddbf18c78ea6d1e1a7c7af19f8132307fe144585c4528`. Video: `validacion-v7/headbop-v7.mp4`, SHA256 `0f3c0b10f527be13339c4dca99c55225e02d210e9c77e3cb715e82e601982cbc`. Entrega: galería `Movies/RoyerMethod/headbop-test2xd-v7-parpadeo-lento.mp4` y editable `Download/RoyerMethod/headbop-test2xd-v7.royer`; hashes y registro en galería confirmados. Se reinició sólo .prueba al final para cargar el proyecto V7 guardado. La app normal conserva fechas/versiones, el borrador V4 mantiene su hash y CELULAR.md quedó LIBRE. Ningún PNG, MP4, .royer ni material de trabajo se sube a git.
