@@ -143,7 +143,12 @@ fun PantallaEditor(
                                 }
                             }
                             else -> Column(Modifier.fillMaxSize()) {
-                                LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxWidth().weight(1f))
+                                // La linea y, encima, el zoom: abajo a la derecha, donde no tapa
+                                // la pista principal ni el "+ Agregar sonido"
+                                Box(Modifier.fillMaxWidth().weight(1f)) {
+                                    LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxSize())
+                                    ControlesZoom(estado, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp))
+                                }
                                 Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto)
                             }
                         }

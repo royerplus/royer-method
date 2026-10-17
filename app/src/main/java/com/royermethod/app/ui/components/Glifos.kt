@@ -51,6 +51,12 @@ object Glifos {
     val cerrar: Glifo = { c -> linea(c, 6f, 6f, 18f, 18f); linea(c, 18f, 6f, 6f, 18f) }
     val listo: Glifo = { c -> camino(c, false, false, 5f, 12.5f, 10f, 17.5f, 19f, 7f) }
     val mas: Glifo = { c -> linea(c, 12f, 5f, 12f, 19f); linea(c, 5f, 12f, 19f, 12f) }
+    val menos: Glifo = { c -> linea(c, 5f, 12f, 19f, 12f) }
+    /** Lupa: volver al zoom normal de la linea de tiempo. */
+    val lupa: Glifo = { c ->
+        circulo(c, 10.5f, 10.5f, 6f)
+        linea(c, 15f, 15f, 20f, 20f)
+    }
 
     val deshacer: Glifo = { c ->
         camino(c, false, false, 8f, 5f, 4f, 9f, 8f, 13f)
