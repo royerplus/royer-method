@@ -110,7 +110,7 @@ internal fun FranjaEfectos(
         val margen = with(densidad) { MARGEN.toPx() }
         val altoCarriles = with(densidad) { zona.toPx() }
         val altoCarril = altoCarriles / n
-        val barras = remember(efectos, dur, anchoPx, margen) {
+        val barras = remember(efectos, carriles, dur, anchoPx, margen) {
             efectos.mapIndexed { i, e ->
                 TramosEfecto.Barra(
                     e.id,
@@ -146,6 +146,8 @@ internal fun FranjaEfectos(
             val local = estado.tiempo - inicioBloque
             if (dur > 0 && local in 0..dur) {
                 val x = TramosEfecto.x(local, dur, size.width, margen)
+                // Borde oscuro para que se vea tambien encima de la barra elegida (blanca)
+                drawLine(Ink.Black, Offset(x, 0f), Offset(x, altoCarriles), 3.5.dp.toPx())
                 drawLine(Ink.White, Offset(x, 0f), Offset(x, altoCarriles), 1.5.dp.toPx())
                 drawCircle(Ink.White, 3.dp.toPx(), Offset(x, 0f))
             }
