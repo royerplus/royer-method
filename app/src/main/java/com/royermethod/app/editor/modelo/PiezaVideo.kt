@@ -69,16 +69,72 @@ data class PiezaVideo(
     /**
      * Conserva las claves que encierran el tramo, aunque queden fuera de sus
      * bordes. Reanclar una Bezier en el corte cambiaria su recorrido interior.
+     * Las de antes de simplificar se recortan igual.
      */
     fun recortada(desdeUs: Long, hastaUs: Long): PiezaVideo {
-        if (claves.isEmpty()) return this
-        val dentro = claves.filter { it.tiempoUs in desdeUs..hastaUs }
-        val anterior = claves.filter { it.tiempoUs < desdeUs }.maxByOrNull { it.tiempoUs }
-        val posterior = claves.filter { it.tiempoUs > hastaUs }.minByOrNull { it.tiempoUs }
-        return copy(claves = (listOfNotNull(anterior) + dentro + listOfNotNull(posterior))
-            .sortedBy { it.tiempoUs }.map { it.copy(tiempoUs = it.tiempoUs - desdeUs) })
+        if (claves.isEmpty() && clavesOriginales == null) return this
+        return copy(
+            claves = recortar(claves, desdeUs, hastaUs),
+            clavesOriginales = clavesOriginales?.let { recortar(it, desdeUs, hastaUs) }
+        )
     }
 
-    fun tiempoEscalado(factor: Double): PiezaVideo =
-        copy(claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * factor).toLong()) })
+    fun tiempoEscalado(factor: Double): PiezaVideo = copy(
+        claves = escalar(claves, factor),
+        clavesOriginales = clavesOriginales?.let { escalar(it, factor) }
+    )
+
+    /**
+     * La clave mas cercana a [local] a [tolerancia] o menos, entre las que
+     * caen dentro del bloque (0 a [duracionUs]): las que encierran un tramo
+     * recortado no se ven ni se tocan desde ahi.
+     */
+    fun claveCercana(local: Long, tolerancia: Long, duracionUs: Long = Long.MAX_VALUE): Clave? =
+        Edicion.claveCercana(claves.filter { it.tiempoUs in 0L..duracionUs }, local, tolerancia)
+
+    /**
+     * Cambia la pose en [local]: en la clave que haya a [tolerancia] o menos
+     * (la mas cercana), o en una nueva. La primera clave lejos del 0 deja
+     * tambien una en el 0 con la pose de antes, para que no salte.
+     */
+    fun conPose(local: Long, duracionUs: Long, tolerancia: Long = Edicion.TOLERANCIA_CLAVE, cambio: (Encuadre) -> Encuadre): PiezaVideo {
+        val tol = tolerancia.coerceAtLeast(0)
+        val previa = claveCercana(local, tol, duracionUs)
+        val t = previa?.tiempoUs ?: local.coerceIn(0L, duracionUs.coerceAtLeast(0))
+        val base = if (claves.isEmpty() && t > tol) listOf(Clave(0, encuadre)) else emptyList()
+        val nueva = (previa ?: Clave(t, encuadreEn(t))).copy(encuadre = cambio(encuadreEn(t)))
+        return copy(claves = (claves.filter { it.tiempoUs != t } + base + nueva).sortedBy { it.tiempoUs })
+    }
+
+    /** Sin la clave mas cercana a [local] (a [tolerancia] o menos). */
+    fun sinClave(local: Long, tolerancia: Long, duracionUs: Long = Long.MAX_VALUE): PiezaVideo {
+        val k = claveCercana(local, tolerancia, duracionUs) ?: return this
+        return copy(claves = claves.filter { it.tiempoUs != k.tiempoUs })
+    }
+
+    /**
+     * La clave que esta en [desdeUs] (la mas cercana dentro del bloque, a
+     * [tolerancia] o menos) llevada a [hastaUs] con su pose y su curva,
+     * dentro de 0 a [duracionUs]. Si en el destino ya hay otra a
+     * [tolerancia] o menos, la parte queda igual.
+     */
+    fun conClaveMovida(desdeUs: Long, hastaUs: Long, duracionUs: Long, tolerancia: Long = Edicion.TOLERANCIA_CLAVE): PiezaVideo {
+        val k = claveCercana(desdeUs, tolerancia, duracionUs) ?: return this
+        val movidas = Edicion.movidas(claves, k, hastaUs, duracionUs, tolerancia) ?: return this
+        return copy(claves = movidas)
+    }
+
+    private companion object {
+        fun recortar(lista: List<Clave>, desdeUs: Long, hastaUs: Long): List<Clave> {
+            if (lista.isEmpty()) return lista
+            val dentro = lista.filter { it.tiempoUs in desdeUs..hastaUs }
+            val anterior = lista.filter { it.tiempoUs < desdeUs }.maxByOrNull { it.tiempoUs }
+            val posterior = lista.filter { it.tiempoUs > hastaUs }.minByOrNull { it.tiempoUs }
+            return (listOfNotNull(anterior) + dentro + listOfNotNull(posterior))
+                .sortedBy { it.tiempoUs }.map { it.copy(tiempoUs = it.tiempoUs - desdeUs) }
+        }
+
+        fun escalar(lista: List<Clave>, factor: Double): List<Clave> =
+            lista.map { it.copy(tiempoUs = (it.tiempoUs * factor).toLong()) }
+    }
 }
