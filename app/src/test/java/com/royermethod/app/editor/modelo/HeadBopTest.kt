@@ -2,6 +2,8 @@ package com.royermethod.app.editor.modelo
 
 import org.junit.Assert.*
 import org.junit.Test
+import kotlin.math.abs
+import kotlin.math.atan2
 import kotlin.math.hypot
 
 class HeadBopTest {
@@ -46,28 +48,81 @@ class HeadBopTest {
         assertFalse(matriz(natural, 175_000).contentEquals(matriz(natural, 1_175_000)))
     }
 
-    @Test fun perfilNaturalDescribeUnArcoConMenosDesplazamientoLateral() {
+    @Test fun perfilNaturalConservaElRecorridoYDescribeUnArco() {
         val natural = h.copy(naturalidad = 1f)
-        val puntos = (0..40).map { destino(matriz(natural, it * 50_000L), h.cuelloX, h.cuelloY) }
+        val puntos = (0..200).map { destino(matriz(natural, it * 10_000L), h.cuelloX, h.cuelloY) }
+        val clasicos = (0..200).map { destino(matriz(h, it * 10_000L), h.cuelloX, h.cuelloY) }
         val lateral = puntos.maxOf { it.first } - puntos.minOf { it.first }
         val vertical = puntos.maxOf { it.second } - puntos.minOf { it.second }
-        assertTrue(lateral < 0.006f)
-        assertTrue(vertical > 0.01f && vertical < 0.025f)
+        val lateralClasico = clasicos.maxOf { it.first } - clasicos.minOf { it.first }
+        val verticalClasico = clasicos.maxOf { it.second } - clasicos.minOf { it.second }
+        assertEquals(lateralClasico, lateral, lateralClasico * 0.12f)
+        assertEquals(verticalClasico, vertical, verticalClasico * 0.05f)
+        assertTrue(puntos.zip(clasicos).any { (a, b) -> abs(a.second - b.second) > 0.003f })
     }
 
-    @Test fun proyeccionDeCabeceoMantieneElCuelloYNoSuperaDoceMilesimas() {
-        val natural = h.copy(naturalidad = 1f, giro = 0f, rebote = 0f)
-        val m = matriz(natural, 250_000)
-        val cuello = destino(m, natural.cuelloX, natural.cuelloY)
-        assertEquals(natural.cuelloX, cuello.first, 1e-6f)
-        assertEquals(natural.cuelloY, cuello.second, 1e-6f)
-        val coronilla = destino(m, natural.cuelloX, natural.cuelloY - 0.4f)
-        val proyeccion = (cuello.second - coronilla.second) / 0.4f
-        assertTrue(proyeccion < 0.999f && proyeccion >= 0.988f)
-        assertEquals(natural.cuelloX, coronilla.first, 1e-6f)
+    @Test fun naturalidadConservaLaAmplitudDeGiroYLaIntensidad() {
+        for (mezcla in listOf(0.8f, 1f)) for (fuerza in listOf(0.4f, 1f, 2f)) {
+            val natural = h.copy(naturalidad = mezcla, intensidad = fuerza)
+            val angulos = (0..400).map {
+                val m = matriz(natural, it * 5_000L)
+                Math.toDegrees(atan2(m[3].toDouble(), m[0].toDouble())).toFloat()
+            }
+            val amplitud = h.giro * fuerza
+            assertEquals(amplitud, angulos.maxOrNull()!!, amplitud * 0.05f)
+            assertEquals(-amplitud, angulos.minOrNull()!!, amplitud * 0.05f)
+        }
     }
 
-    @Test fun cabelloNaturalHeredaLaProyeccionInclusoConOtroEncuadre() {
+    @Test fun todosLosRolesConservanDistanciasYAngulosDuranteElCicloSinAplastar() {
+        // La segunda base tiene giro y una fuente rectangular con otro encuadre.
+        val bases = listOf(identidad, floatArrayOf(
+            0.0009523336f, 0.0001525293f, 0f,
+            -0.0003050586f, 0.0004761668f, 0f, -0.2f, 0.1f, 1f))
+        fun medidas(m: FloatArray): Triple<Double, Double, Double> {
+            // Medir en Double evita cancelar el triángulo pequeño al restar
+            // coordenadas desplazadas muchos píxeles por la animación.
+            val a00 = m[0].toDouble(); val a01 = m[3].toDouble()
+            val a10 = m[1].toDouble(); val a11 = m[4].toDouble()
+            val tx = m[6].toDouble(); val ty = m[7].toDouble()
+            val det = a00 * a11 - a10 * a01
+            fun destinoPreciso(u: Double, v: Double): Pair<Double, Double> {
+                val x = u - tx; val y = v - ty
+                return (x * a11 - y * a01) / det to (a00 * y - a10 * x) / det
+            }
+            val a = destinoPreciso(0.2, 0.2)
+            val b = destinoPreciso(0.8, 0.2)
+            val c = destinoPreciso(0.2, 0.9)
+            val abx = b.first - a.first; val aby = b.second - a.second
+            val acx = c.first - a.first; val acy = c.second - a.second
+            val ab = hypot(abx, aby); val ac = hypot(acx, acy)
+            return Triple(ab, ac, (abx * acx + aby * acy) / (ab * ac))
+        }
+        for (base in bases) {
+            val antes = medidas(base)
+            for (rol in RolHeadBop.values()) for (fuerza in listOf(0.2f, 1f, 3f)) {
+                val natural = h.copy(rol = rol, naturalidad = 0.8f, intensidad = fuerza)
+                for (i in 0..80) {
+                    val m = natural.matrizEn(base, i * 25_000L, 1000f, 2000f, 1000f, 1000f)
+                    val despues = medidas(m)
+                    assertEquals(antes.first, despues.first, maxOf(1e-5, antes.first * 2e-6))
+                    assertEquals(antes.second, despues.second, maxOf(1e-5, antes.second * 2e-6))
+                    assertEquals(antes.third, despues.third, 1e-5)
+                }
+            }
+        }
+    }
+
+    @Test fun giroNaturalMantieneElPivoteDelCuelloSinTraslacion() {
+        val natural = h.copy(naturalidad = 0.8f, rebote = 0f)
+        for (i in 0..80) {
+            val cuello = destino(matriz(natural, i * 25_000L), natural.cuelloX, natural.cuelloY)
+            assertEquals(natural.cuelloX, cuello.first, 1e-6f)
+            assertEquals(natural.cuelloY, cuello.second, 1e-6f)
+        }
+    }
+
+    @Test fun cabelloNaturalHeredaElMovimientoRigidoInclusoConOtroEncuadre() {
         val cabeza = h.copy(naturalidad = 0.9f)
         val pelo = cabeza.copy(rol = RolHeadBop.CABELLO, cuelloX = 0.7f, cuelloY = 1.02f, arrastre = 0f)
         val baseCabeza = floatArrayOf(0.001f, 0f, 0f, 0f, 0.001f, 0f, 0f, 0f, 1f)

@@ -1,5 +1,7 @@
 # Head bop de test2xd
 
+Estado actual: **V6**, amplitud V4 recuperada y sin compresión de cabeza. V4 sigue guardada como borrador aprobado; V5 fue rechazada por menor movimiento y aplastamiento.
+
 Rama separada: `codex/head-bop-test2xd`, basada en `6ca0760`. No se ha mezclado con el trabajo de Claude.
 
 ## Herramienta nativa
@@ -72,3 +74,14 @@ Compilación de .prueba e instrumentación correctas; **161 pruebas JVM pasaron*
 Se conserva el primer intento fallido: 472 procesados pero sólo 467 muestras codificadas y dos intervalos irregulares. Se había abierto MainActivity avanzada la exportación; no está confirmada la causa. La repetición con la actividad abierta desde el principio dio 472/472 y cero irregulares. No se alteró el codec a partir de esa única muestra ni se hizo un benchmark de fluidez; rendimiento y comprobación táctil completa siguen pendientes.
 
 Entrega V5 en galería: `Movies/RoyerMethod/headbop-test2xd-v5-natural.mp4`; proyecto editable en `Download/RoyerMethod/headbop-test2xd-v5-natural.royer`, también activo en .prueba. Video SHA256 `89a18eb6a066ff9c0e8a9f6848fc0dfe46963d455475a422cf6a0f1a2bef91f7`. Informes, capturas y logs locales en `validacion-v5/`. Sólo se actualizó .prueba; las fechas y versiones de la app normal coinciden antes/después. CELULAR.md liberado.
+## Corrección V6 · 2026-10-17
+
+El usuario rechazó V5 por pérdida de movimiento y cabeza aplastada. En V5 coincidían dos reducciones de giro (parámetro 7→4,8 y atenuación del perfil natural), además de una escala vertical animada. V6 elimina por completo la escala/proyección del motor HeadBop: sólo usa rotación y traslación rígidas, incluido el arrastre del cabello. Naturalidad modifica fase, curvas, arco y recuperación; conserva la amplitud, con acentos de ±2 %. El perfil clásico con valor cero sigue pasando sus matrices de referencia V4.
+
+El paquete V6 parte directamente de V4 aprobada. Giro 7° y rebote 0,012 originales en todas las partes; sólo se añade Naturalidad 0,8 a cabeza, cabello trasero y flequillo. Cuerpo y manos mantienen el movimiento clásico V4. Exactamente tres cambios en JSON, nueve medios idénticos y 72 claves idénticas; intro, música, geometría, pivotes y borrador aprobados intactos. Archivo local: `proyecto-headbop-v6/headbop-test2xd.royer`; generador `crear_headbop-v6.py`, ambos fuera de git. SHA256 del paquete: `a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1`.
+
+Compilación .prueba e instrumentación correctas; **163 pruebas JVM pasaron**. Las nuevas verificaciones recorren el ciclo para comprobar distancias/ángulos constantes en todos los roles, intensidades distintas y fuente rectangular girada, amplitud comparable a V4, cuello y herencia del cabello. La medición geométrica del test usa Double al invertir las matrices Float para evitar cancelación numérica; no se relajaron sus tolerancias ni se añadió deformación para satisfacerlas.
+
+Exportación nativa V6 correcta al primer intento: 472 cuadros, 1080×1080, 30 fps, 15,733333 s; cero cuadros irregulares y cero avisos de fuentes. Se inspeccionó una secuencia de poses de 7,05–8,80 s y capturas completas a 7,12 y 7,67 s. Falta la valoración del usuario sobre la naturalidad; no se afirma coincidencia con una referencia ni se ejecutó un benchmark de fluidez.
+
+Video local `validacion-v6/headbop-v6.mp4`, SHA256 `40fb35923f42fd485e5cf2930444c2a455522aad529560d436aff0d6d80e118f`. Entrega en galería `Movies/RoyerMethod/headbop-test2xd-v6-sin-compresion.mp4`; proyecto `Download/RoyerMethod/headbop-test2xd-v6.royer`, también activo en .prueba. Se comprobaron hashes, registro en galería y borrador V4 intacto. Sólo se actualizó .prueba, la app normal conserva fechas/versiones y CELULAR.md quedó LIBRE. No se suben medios, APK ni paquetes a git.
