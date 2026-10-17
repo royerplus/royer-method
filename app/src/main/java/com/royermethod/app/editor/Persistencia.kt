@@ -19,6 +19,7 @@ import com.royermethod.app.editor.modelo.EfectoVideo
 import com.royermethod.app.editor.modelo.Filtro
 import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
+import com.royermethod.app.editor.modelo.HeadBop
 import com.royermethod.app.editor.modelo.Fuente
 import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Movimiento
@@ -29,6 +30,7 @@ import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.ProgresoEfecto
 import com.royermethod.app.editor.modelo.Recorte
 import com.royermethod.app.editor.modelo.RegionUv
+import com.royermethod.app.editor.modelo.RolHeadBop
 import com.royermethod.app.editor.modelo.Texto
 import com.royermethod.app.editor.modelo.TipoOrigen
 import com.royermethod.app.editor.modelo.TipoEfectoVideo
@@ -137,6 +139,7 @@ object Persistencia {
         put("duracionEntrada", c.duracionEntradaUs)
         put("duracionSalida", c.duracionSalidaUs)
         put("continua", continuas(c.continua))
+        c.headBop?.let { put("headBop", headBop(it)) }
         put("efectos", JSONArray().apply {
             c.efectos.forEach { e ->
                 put(JSONObject().apply {
@@ -181,6 +184,20 @@ object Persistencia {
                 k.bezier?.let { b -> put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })) }
             })
         }
+    }
+
+    internal fun headBop(h: HeadBop) = JSONObject().apply {
+        put("rol", h.rol.name)
+        put("inicio", h.inicioUs); put("fin", h.finUs)
+        put("bpm", h.bpm.toDouble()); put("intensidad", h.intensidad.toDouble())
+        put("desfase", h.desfaseUs); put("rapidez", h.rapidez.toDouble())
+        put("retardo", h.retardoUs)
+        put("cuelloX", h.cuelloX.toDouble()); put("cuelloY", h.cuelloY.toDouble())
+        put("pivoteX", h.pivoteX.toDouble()); put("pivoteY", h.pivoteY.toDouble())
+        put("fundido", h.fundidoUs); put("activo", h.activo)
+        put("recorte", h.recorteUs); put("duracionBase", h.duracionBaseUs)
+        put("giro", h.giro.toDouble()); put("rebote", h.rebote.toDouble())
+        put("arrastre", h.arrastre.toDouble())
     }
 
     internal fun salida(s: AjustesSalida) = JSONObject().apply {
@@ -353,6 +370,7 @@ object Persistencia {
             duracionEntradaUs = o.optLong("duracionEntrada", d.duracionEntradaUs),
             duracionSalidaUs = o.optLong("duracionSalida", d.duracionSalidaUs),
             continua = continuasDe(o.optJSONArray("continua")),
+            headBop = headBopDe(o.optJSONObject("headBop")),
             efectos = efectosDe(o.optJSONArray("efectos")),
             transicion = o.enumeracion("transicion", Transicion.NINGUNA),
             duracionTransicionUs = o.optLong("duracionTransicion", d.duracionTransicionUs),
@@ -446,6 +464,26 @@ object Persistencia {
                 } ?: emptyList()
             )
         }
+    }
+
+    internal fun headBopDe(o: JSONObject?): HeadBop? {
+        o ?: return null
+        val rol = runCatching { RolHeadBop.valueOf(o.optString("rol")) }.getOrNull() ?: return null
+        val inicio = o.optLong("inicio").coerceAtLeast(0)
+        val fin = o.optLong("fin")
+        if (fin <= inicio) return null
+        fun numero(clave: String, defecto: Float, min: Float, max: Float): Float =
+            o.f(clave, defecto).takeIf { it.isFinite() }?.coerceIn(min, max) ?: defecto
+        return HeadBop(rol, inicio, fin,
+            bpm = numero("bpm", 120f, 1f, 2400f), intensidad = numero("intensidad", 1f, 0f, 3f),
+            desfaseUs = o.optLong("desfase"), rapidez = numero("rapidez", 1f, 0.001f, 1000f),
+            retardoUs = o.optLong("retardo", 80_000).coerceIn(0, 2_000_000),
+            cuelloX = numero("cuelloX", 0.5f, -1f, 2f), cuelloY = numero("cuelloY", 0.58f, -1f, 2f),
+            pivoteX = numero("pivoteX", 0.5f, -1f, 2f), pivoteY = numero("pivoteY", 0.3f, -1f, 2f),
+            fundidoUs = o.optLong("fundido", 120_000).coerceAtLeast(0), activo = o.optBoolean("activo", true),
+            recorteUs = o.optLong("recorte"), duracionBaseUs = o.optLong("duracionBase").coerceAtLeast(0),
+            giro = numero("giro", 7f, 0f, 45f), rebote = numero("rebote", 0.025f, 0f, 0.25f),
+            arrastre = numero("arrastre", 1f, 0f, 3f))
     }
 
     internal fun continuasDe(a: JSONArray?): List<Continuo> {

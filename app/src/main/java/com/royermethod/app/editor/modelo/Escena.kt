@@ -234,7 +234,8 @@ class Escena(
                 bordes[i] = caja.first + (caja.second - caja.first) * anim.revelar - ancho / 2f
             }
             val relativa = pieza?.encuadreEn(local)
-            val base = matriz(clip, e, cw, ch, escalaX, escalaY)
+            val colocada = matriz(clip, e, cw, ch, escalaX, escalaY)
+            val base = clip.headBop?.matrizEn(colocada, local, cw, ch, ancho.toFloat(), alto.toFloat()) ?: colocada
             val m = if (pieza != null && relativa != null) moverPieza(base, pieza.region.acotada(), relativa, clip.encuadre.recorte) else base
             if (relativa != null) op *= relativa.opacidad
             matrices.add(m)

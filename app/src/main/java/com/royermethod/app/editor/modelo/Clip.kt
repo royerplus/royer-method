@@ -54,6 +54,8 @@ data class Clip(
     val efectos: List<EfectoVideo> = emptyList(),
     /** Partes de la misma fuente con regiones y movimientos independientes. */
     val piezas: List<PiezaVideo> = emptyList(),
+    /** Personaje por capas: movimiento musical y pivotes sin cientos de claves. */
+    val headBop: HeadBop? = null,
     /** Paso al bloque siguiente de la pista principal. En capas no se usa. */
     val transicion: Transicion = Transicion.NINGUNA,
     val duracionTransicionUs: Long = 500_000,
@@ -145,7 +147,8 @@ data class Clip(
             velocidad = v,
             claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
             efectos = efectos.map { it.tiempoEscalado(f) },
-            piezas = piezas.map { it.tiempoEscalado(f) }
+            piezas = piezas.map { it.tiempoEscalado(f) },
+            headBop = headBop?.tiempoEscalado(f)
         )
         val dur = nuevo.duracionUs
         return nuevo.copy(

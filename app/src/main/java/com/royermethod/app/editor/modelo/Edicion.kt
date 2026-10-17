@@ -184,6 +184,7 @@ object Edicion {
             claves = clavesA,
             efectos = c.efectos.mapNotNull { it.recortado(0, local) },
             piezas = c.piezas.map { it.recortada(0, local) },
+            headBop = c.headBop?.recortado(0, local),
             salida = emptyList(),
             fundidoSalidaUs = 0,
             transicion = Transicion.NINGUNA
@@ -194,6 +195,7 @@ object Edicion {
             claves = clavesB,
             efectos = c.efectos.mapNotNull { it.recortado(local, c.duracionUs) },
             piezas = c.piezas.map { it.recortada(local, c.duracionUs) },
+            headBop = c.headBop?.recortado(local, c.duracionUs),
             entrada = emptyList(),
             fundidoEntradaUs = 0
         )
@@ -228,6 +230,8 @@ object Edicion {
                     val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
                     ef.recortado(corrimiento, corrimiento + duracion)
                 },
+                headBop = it.headBop?.recortado(corrimiento, corrimiento +
+                    (if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d)),
                 piezas = it.piezas.map { pieza ->
                     val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
                     pieza.recortada(corrimiento, corrimiento + duracion)

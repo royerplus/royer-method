@@ -66,6 +66,7 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
         assertTrue("Importa primero el proyecto con testImportarYExportarProyectoReal", guardado.isFile)
         val p = Persistencia.deTexto(guardado.readText(Charsets.UTF_8)) ?: error("No se entiende el proyecto guardado")
         assertTrue("No hay fotogramas para previsualizar", Linea.fotogramas(p) > 0)
+        val (anchoSuperficie, altoSuperficie) = p.formato.medidas(576)
         val externas = context.getExternalFilesDir(null) ?: error("No hay almacenamiento externo de la app")
         val archivo = File(externas, "pruebas/preview-informe.json")
         val informe = JSONObject().apply {
@@ -74,8 +75,8 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
             put("app", context.packageName)
             put("dispositivo", "${Build.MANUFACTURER} ${Build.MODEL}")
             put("api", Build.VERSION.SDK_INT)
-            put("anchoSuperficie", 576)
-            put("altoSuperficie", 768)
+            put("anchoSuperficie", anchoSuperficie)
+            put("altoSuperficie", altoSuperficie)
             put("duracionProyectoUs", Linea.duracion(p))
             put("fotogramasEsperados", Linea.fotogramas(p))
         }
@@ -142,7 +143,7 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
                 }
                 prev.proyecto(p)
                 prev.irA(0)
-                marco.addView(vista, FrameLayout.LayoutParams(576, 768, Gravity.CENTER))
+                marco.addView(vista, FrameLayout.LayoutParams(anchoSuperficie, altoSuperficie, Gravity.CENTER))
                 ventana.setContentView(marco)
             }
             assertTrue("No se creo la superficie de vista previa", superficieLista.await(10, TimeUnit.SECONDS))

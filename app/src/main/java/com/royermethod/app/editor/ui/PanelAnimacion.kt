@@ -76,12 +76,13 @@ import kotlin.math.roundToLong
 fun PanelAnimacion(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
     var pestana by rememberSaveable { mutableIntStateOf(0) }
-    Pestanas(listOf("Entrada", "Salida", "Siempre"), pestana, { pestana = it })
+    Pestanas(listOf("Entrada", "Salida", "Siempre", "Head bop"), pestana, { pestana = it })
     Spacer(Modifier.height(6.dp))
     when (pestana) {
         0 -> EntradaOSalida(estado, c, entrada = true)
         1 -> EntradaOSalida(estado, c, entrada = false)
-        else -> Continuas(estado, c)
+        2 -> Continuas(estado, c)
+        else -> PanelHeadBop(estado, c)
     }
 }
 
