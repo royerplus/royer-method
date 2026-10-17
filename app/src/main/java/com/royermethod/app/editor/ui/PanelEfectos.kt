@@ -70,6 +70,7 @@ import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.Pestanas
 import com.royermethod.app.ui.components.esquinas
+import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
@@ -528,9 +529,9 @@ private fun Cabecera(p: PanelFx, e: EfectoVideo) {
     if (e.grupo.isNotEmpty()) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "De \"${e.grupo}\"",
-                style = MaterialTheme.typography.bodyMedium, color = Ink.White50,
-                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                "Grupo ${e.grupo}",
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp * Estilo.letra, letterSpacing = 0.2.sp),
+                color = Ink.White50, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
             )
             Spacer(Modifier.width(8.dp))
             ChipPequeno("Separar del grupo") { p.cambiarBloque { it.separadoDelGrupo(e.id) } }

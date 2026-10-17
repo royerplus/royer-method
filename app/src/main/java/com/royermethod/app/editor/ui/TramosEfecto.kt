@@ -57,6 +57,17 @@ internal object TramosEfecto {
         return r
     }
 
+    /**
+     * Los carriles con los de [fijos] (por id) quietos: mientras se arrastra
+     * una barra nada cambia de carril bajo el dedo; al soltar se reparten de
+     * nuevo. Sin [fijos], [carriles].
+     */
+    fun carriles(efectos: List<EfectoVideo>, fijos: Map<Long, Int>?): IntArray {
+        val r = carriles(efectos)
+        if (fijos == null) return r
+        return IntArray(efectos.size) { i -> fijos[efectos[i].id] ?: r[i] }
+    }
+
     /** Cuantos carriles se dibujan: los que hagan falta, de 1 a [MAX_CARRILES]. */
     fun visibles(carriles: IntArray): Int = ((carriles.maxOrNull() ?: 0) + 1).coerceIn(1, MAX_CARRILES)
 
@@ -134,18 +145,28 @@ internal object TramosEfecto {
     }
 
     /**
-     * Lo que se arrastra si el dedo empieza en (x, y): la elegida tiene
-     * preferencia aunque el dedo caiga en el carril de al lado (los carriles
-     * son bajos y el pulgar ancho); si no, la que se toca. Null en vacio.
+     * A que barra va el dedo en (x, y), para tocar y para arrastrar:
+     *  1. la que esta justo debajo, en su carril (si hay varias, la elegida
+     *     y despues la mas corta);
+     *  2. si ahi no hay ninguna, la elegida, aunque el dedo caiga en el carril
+     *     de al lado o en su asa (los carriles son bajos y el pulgar ancho);
+     *  3. si no, la mas cercana ([tocada]). Null en vacio.
      */
-    fun agarrada(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?): Pair<Barra, Agarre>? {
+    fun objetivo(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?): Barra? {
         if (barras.isEmpty() || altoCarrilPx <= 0f) return null
         val carril = carrilEn(y, altoCarrilPx)
+        barras.filter { it.carril == carril && x >= it.x0 && x <= it.x1 }
+            .minWithOrNull(compareBy<Barra>({ if (it.id == elegida) 0 else 1 }, { it.x1 - it.x0 }))
+            ?.let { return it }
         barras.firstOrNull { it.id == elegida }?.let { b ->
-            val a = agarre(x, b.x0, b.x1, asaPx)
-            if (a != null && abs(b.carril - carril) <= 1) return b to a
+            if (abs(b.carril - carril) <= 1 && agarre(x, b.x0, b.x1, asaPx) != null) return b
         }
-        val b = tocada(barras, x, y, altoCarrilPx, asaPx, elegida) ?: return null
+        return tocada(barras, x, y, altoCarrilPx, asaPx, elegida)
+    }
+
+    /** Lo que se arrastra si el dedo empieza en (x, y): la barra de [objetivo] y que parte. Null en vacio. */
+    fun agarrada(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?): Pair<Barra, Agarre>? {
+        val b = objetivo(barras, x, y, altoCarrilPx, asaPx, elegida) ?: return null
         val a = agarre(x, b.x0, b.x1, asaPx) ?: return null
         return b to a
     }

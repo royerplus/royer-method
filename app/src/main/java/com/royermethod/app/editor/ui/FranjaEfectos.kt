@@ -13,8 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -42,8 +44,12 @@ import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.abs
 
-/** Alto de la zona de carriles y de la regla de debajo: la franja es fija y tiene que ocupar poco. */
+/**
+ * Alto de la zona de carriles y de la regla de debajo: la franja es fija y
+ * tiene que ocupar poco. Con un solo carril basta menos.
+ */
 private val ALTO_CARRILES = 40.dp
+private val ALTO_UN_CARRIL = 32.dp
 private val ALTO_REGLA = 14.dp
 /** Hueco a cada lado para poder agarrar el borde de un efecto que empieza en 0 o acaba al final. */
 private val MARGEN = 8.dp
@@ -60,8 +66,9 @@ private val ASA = 14.dp
  *  - tocar una barra la elige ([onTocar] con su id); tocar vacio, null;
  *  - arrastrar una barra la elige ([onAgarrar]) y la mueve desde el centro
  *    (conserva lo que dura y su reloj) o la recorta desde un borde, con el
- *    iman de [AjustesEditor.ajustarFotogramas]; la elegida se agarra aunque
- *    el dedo caiga en el carril de al lado. Todo el arrastre es un paso de
+ *    iman de [AjustesEditor.ajustarFotogramas]; manda la barra que esta
+ *    justo debajo del dedo y, si no hay ninguna, la elegida aunque el dedo
+ *    caiga en el carril de al lado. Todo el arrastre es un paso de
  *    deshacer, calculado siempre desde el efecto tal como se agarro;
  *  - arrastrar en vacio, o tocar o arrastrar en la regla de abajo, lleva el
  *    cabezal por el bloque (en pausa).
@@ -90,15 +97,18 @@ internal fun FranjaEfectos(
         }
         return
     }
-    val carriles = remember(efectos) { TramosEfecto.carriles(efectos) }
+    // Mientras se arrastra, cada barra se queda en su carril
+    var fijos by remember { mutableStateOf<Map<Long, Int>?>(null) }
+    val carriles = remember(efectos, fijos) { TramosEfecto.carriles(efectos, fijos) }
     val n = TramosEfecto.visibles(carriles)
     val densidad = LocalDensity.current
     val medidor = rememberTextMeasurer()
+    val zona = if (n == 1) ALTO_UN_CARRIL else ALTO_CARRILES
 
-    BoxWithConstraints(modifier.fillMaxWidth().height(ALTO_CARRILES + ALTO_REGLA)) {
+    BoxWithConstraints(modifier.fillMaxWidth().height(zona + ALTO_REGLA)) {
         val anchoPx = constraints.maxWidth.toFloat()
         val margen = with(densidad) { MARGEN.toPx() }
-        val altoCarriles = with(densidad) { ALTO_CARRILES.toPx() }
+        val altoCarriles = with(densidad) { zona.toPx() }
         val altoCarril = altoCarriles / n
         val barras = remember(efectos, dur, anchoPx, margen) {
             efectos.mapIndexed { i, e ->
@@ -112,11 +122,12 @@ internal fun FranjaEfectos(
         }
         // Lo que necesitan los gestos, siempre al dia sin reiniciarlos
         val datos by rememberUpdatedState(
-            DatosFranja(barras, efectos, elegido, dur, inicioBloque, anchoPx, margen, altoCarriles, altoCarril, onTocar, onAgarrar)
+            DatosFranja(barras, efectos, carriles, elegido, dur, inicioBloque, anchoPx, margen, altoCarriles, altoCarril,
+                onTocar, onAgarrar, { fijos = it })
         )
 
         // Barras y nombres: solo cambian con los efectos o la eleccion
-        Canvas(Modifier.fillMaxWidth().height(ALTO_CARRILES)) {
+        Canvas(Modifier.fillMaxWidth().height(zona)) {
             barrasEfectos(efectos, barras, elegido, altoCarril, medidor)
         }
         // Regla: principio y final del bloque
@@ -128,7 +139,7 @@ internal fun FranjaEfectos(
         // Asas del elegido y cabezal, encima. El cabezal se lee aqui, al dibujar
         val sel = barras.firstOrNull { it.id == elegido }
         Canvas(
-            Modifier.fillMaxWidth().height(ALTO_CARRILES + ALTO_REGLA)
+            Modifier.fillMaxWidth().height(zona + ALTO_REGLA)
                 .pointerInput(Unit) { gestos(estado) { datos } }
         ) {
             if (sel != null) asas(sel, altoCarril)
@@ -148,6 +159,7 @@ private val EstiloRegla = TextStyle(fontSize = 10.sp, lineHeight = 12.sp, letter
 private class DatosFranja(
     val barras: List<TramosEfecto.Barra>,
     val efectos: List<EfectoVideo>,
+    val carriles: IntArray,
     val elegido: Long?,
     val dur: Long,
     val inicioBloque: Long,
@@ -156,7 +168,8 @@ private class DatosFranja(
     val altoCarriles: Float,
     val altoCarril: Float,
     val onTocar: (Long?) -> Unit,
-    val onAgarrar: (Long) -> Unit
+    val onAgarrar: (Long) -> Unit,
+    val fijar: (Map<Long, Int>?) -> Unit
 )
 
 /** El fondo, las barras (la elegida al final, encima) y sus nombres. */
@@ -244,7 +257,7 @@ private suspend fun PointerInputScope.gestos(estado: EstadoEditor, datos: () -> 
         val p0 = abajo.position
         // La regla de abajo es solo para el cabezal
         val enRegla = p0.y >= d.altoCarriles
-        val tocada = if (enRegla) null else TramosEfecto.tocada(d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido)
+        val tocada = if (enRegla) null else TramosEfecto.objetivo(d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido)
         val agarrada = if (enRegla) null else TramosEfecto.agarrada(d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido)
         val base = agarrada?.let { (b, _) -> d.efectos.firstOrNull { it.id == b.id } }
         val umbral = viewConfiguration.touchSlop
@@ -269,6 +282,7 @@ private suspend fun PointerInputScope.gestos(estado: EstadoEditor, datos: () -> 
                 if (!arrastrando && abs(dx) > umbral) {
                     arrastrando = true
                     if (base != null && agarrada != null) {
+                        d.fijar(d.efectos.indices.associate { d.efectos[it].id to d.carriles[it] })
                         d.onAgarrar(base.id)
                         tramo = ArrastreTramo(estado, base, agarrada.second, d.dur, d.inicioBloque).also { it.empezar() }
                     }
@@ -280,6 +294,7 @@ private suspend fun PointerInputScope.gestos(estado: EstadoEditor, datos: () -> 
                 else cabezalEn(c.position.x)
             }
         } finally {
+            if (tramo != null) d.fijar(null)
             tramo?.terminar()
         }
     }

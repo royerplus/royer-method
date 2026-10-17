@@ -96,6 +96,20 @@ class TramosEfectoTest {
         assertEquals(1, TramosEfecto.visibles(TramosEfecto.carriles(emptyList())))
     }
 
+    @Test
+    fun mientrasSeArrastraNadieCambiaDeCarril() {
+        val antes = listOf(ef(TipoEfectoVideo.SACUDIDA, 0, 1_000_000, 1), ef(TipoEfectoVideo.FLASH, 500_000, 800_000, 2))
+        val fijos = antes.indices.associate { antes[it].id to TramosEfecto.carriles(antes)[it] }
+        assertEquals(mapOf(1L to 0, 2L to 1), fijos)
+        // El flash se ha movido fuera de la sacudida: solo, iria al carril 0
+        val despues = listOf(antes[0], antes[1].desplazado(1_000_000, dur))
+        assertArrayEquals(intArrayOf(0, 0), TramosEfecto.carriles(despues))
+        assertArrayEquals(intArrayOf(0, 1), TramosEfecto.carriles(despues, fijos))
+        assertArrayEquals(intArrayOf(0, 0), TramosEfecto.carriles(despues, null))
+        // Uno que no estaba (no pasa al arrastrar, pero no rompe) va a su carril normal
+        assertArrayEquals(intArrayOf(0, 1, 0), TramosEfecto.carriles(despues + ef(TipoEfectoVideo.RGB, 3_000_000, 3_500_000, 9), fijos))
+    }
+
     // ---- De tiempo a pixeles y vuelta ----
 
     @Test
@@ -155,17 +169,28 @@ class TramosEfectoTest {
     }
 
     @Test
-    fun laElegidaSeAgarraAunqueElDedoCaigaEnElCarrilDeAlLado() {
-        val barras = listOf(Barra(1, 0f, 300f, 0), Barra(2, 100f, 200f, 1))
+    fun mandaLaBarraDeDebajoYSiNoHayLaElegidaAunqueSeaEnElCarrilDeAlLado() {
         val alto = 12f
-        // El dedo en el carril 0, pero la elegida es la del 1
-        assertEquals(2L to Agarre.MOVER, TramosEfecto.agarrada(barras, 150f, 6f, alto, 14f, 2)?.let { it.first.id to it.second })
-        // Sin eleccion, la del carril del dedo
-        assertEquals(1L, TramosEfecto.agarrada(barras, 150f, 6f, alto, 14f, null)?.first?.id)
+        // El dedo justo encima de otra barra: esa, aunque la elegida este al lado
+        val juntas = listOf(Barra(1, 0f, 300f, 0), Barra(2, 100f, 200f, 1))
+        assertEquals(1L, TramosEfecto.objetivo(juntas, 150f, 6f, alto, 14f, 2)?.id)
+        assertEquals(1L to Agarre.MOVER, TramosEfecto.agarrada(juntas, 150f, 6f, alto, 14f, 2)?.let { it.first.id to it.second })
+        // En un hueco del carril 0 (solo cerca del final de la 1): sin eleccion, la cercana;
+        // con la 2 elegida en el carril de al lado, la 2
+        val hueco = listOf(Barra(1, 0f, 140f, 0), Barra(2, 100f, 200f, 1))
+        assertEquals(1L, TramosEfecto.objetivo(hueco, 150f, 6f, alto, 14f, null)?.id)
+        assertEquals(2L to Agarre.MOVER, TramosEfecto.agarrada(hueco, 150f, 6f, alto, 14f, 2)?.let { it.first.id to it.second })
         // Dos carriles mas alla ya no
-        val tres = barras + Barra(3, 0f, 400f, 3)
-        assertEquals(3L, TramosEfecto.agarrada(tres, 150f, 40f, alto, 14f, 1)?.first?.id)
-        assertNull(TramosEfecto.agarrada(barras, 900f, 6f, alto, 14f, 2))
+        val lejos = listOf(Barra(1, 0f, 300f, 0), Barra(3, 500f, 600f, 3))
+        assertEquals(1L, TramosEfecto.objetivo(lejos, 150f, 40f, alto, 14f, 1)?.id)
+        // La elegida lejos no cuenta: la que cubre esa x, aunque este en otro carril
+        assertEquals(3L, TramosEfecto.objetivo(listOf(Barra(1, 0f, 100f, 0), Barra(3, 0f, 400f, 3)), 150f, 6f, alto, 14f, 3)?.id)
+        // Con varias en el mismo carril (compactado), la elegida
+        val pisadas = listOf(Barra(1, 0f, 300f, 0), Barra(5, 50f, 250f, 0))
+        assertEquals(1L, TramosEfecto.objetivo(pisadas, 100f, 6f, alto, 14f, 1)?.id)
+        assertEquals(5L, TramosEfecto.objetivo(pisadas, 100f, 6f, alto, 14f, null)?.id)
+        assertNull(TramosEfecto.agarrada(juntas, 900f, 6f, alto, 14f, 2))
+        assertNull(TramosEfecto.objetivo(emptyList(), 0f, 0f, alto, 14f, null))
     }
 
     @Test
