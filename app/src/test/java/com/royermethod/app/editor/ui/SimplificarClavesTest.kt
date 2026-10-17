@@ -167,6 +167,7 @@ class SimplificarClavesTest {
         assertEquals("1 px", Simplificador.textoPx(1f))
         assertEquals("0.5 px", Simplificador.textoPx(0.5f))
         assertEquals("2 px", Simplificador.textoPx(2f))
+        assertEquals("Frente al original: error max 0.15 px, opacidad 0/255", Simplificador.textoContra(0.1512f, 0f))
     }
 
     @Test fun sinClavesNoHayNadaQueProbar() {

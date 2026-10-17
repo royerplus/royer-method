@@ -97,10 +97,11 @@ internal object ClavesLinea {
      * Con [fotogramas] cae en el fotograma de la linea mas cercano (los
      * cuadros que se exportan, aunque el bloque empiece a mitad de uno); sin
      * el, al [pasoArrastre] del zoom. Siempre dentro de [limites]; si con el
-     * iman no cabe ningun fotograma, se queda en [tUs].
+     * iman no cabe ningun fotograma, se queda en [tUs]. Sin moverse no
+     * cambia nada: cogerla y soltarla no la redondea.
      */
     fun destino(tUs: Long, dxPx: Double, pxPorUs: Double, inicioUs: Long, limites: LongRange, fotogramas: Boolean): Long {
-        if (pxPorUs <= 0.0 || pxPorUs.isNaN()) return tUs
+        if (dxPx == 0.0 || pxPorUs <= 0.0 || pxPorUs.isNaN()) return tUs
         val bruto = tUs + dxPx / pxPorUs
         if (!fotogramas) {
             val paso = pasoArrastre(1.0 / pxPorUs)

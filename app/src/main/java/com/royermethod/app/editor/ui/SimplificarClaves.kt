@@ -166,6 +166,10 @@ internal object Simplificador {
     /** "opacidad 0.3/255 (limite 0.5/255)" */
     fun textoOpacidad(op: Float, tol: Tolerancia): String =
         "opacidad ${num(op * 255f, 1)}/255 (limite ${num(tol.opacidad * 255f, 1)}/255)"
+
+    /** "Frente al original: error max 0.15 px, opacidad 0/255" */
+    fun textoContra(px: Float, op: Float): String =
+        "Frente al original: error max ${textoPx(px)}, opacidad ${num(op * 255f, 1)}/255"
 }
 
 /**
@@ -252,11 +256,15 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
     }
 
     Etiqueta("Simplificar claves")
-    Nota("Quita las claves que sobran sin apartarse mas de la tolerancia en ningun cuadro exportado.", color = Ink.White50)
-    Opciones(Simplificador.TOLERANCIAS, tolPx, { Simplificador.textoPx(it) }, { tolPx = it })
+    // La primera y la ultima se quedan siempre: con menos de tres no hay que probar
+    val puede = claves.size >= 3
+    if (puede) {
+        Nota("Quita las claves que sobran sin apartarse mas de la tolerancia en ningun cuadro exportado.", color = Ink.White50)
+        Opciones(Simplificador.TOLERANCIAS, tolPx, { Simplificador.textoPx(it) }, { tolPx = it })
+    }
 
     val pr = vigente
-    if (pr != null) {
+    if (puede && pr != null) {
         val s = pr.informe
         Column(
             Modifier
@@ -287,7 +295,7 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
                 BotonBorde("Cerrar", { prueba = null })
             }
         }
-    } else {
+    } else if (puede) {
         BotonBorde(
             if (calculando) "Calculando..." else "Simplificar claves (${claves.size})",
             { if (!calculando) peticion++ }
@@ -298,7 +306,7 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
         Spacer(Modifier.height(8.dp))
         Nota("Original guardado: ${originales.size} claves, ahora ${claves.size}.", color = Ink.White70)
         contra?.let { (px, op) ->
-            Nota("Frente al original: error max ${Simplificador.textoPx(px)}, opacidad ${"%.1f".format(Locale.ROOT, op * 255f)}/255", color = Ink.White50)
+            Nota(Simplificador.textoContra(px, op), color = Ink.White50)
         }
         Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {

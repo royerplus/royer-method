@@ -448,12 +448,6 @@ fun PanelCurva(estado: EstadoEditor) {
     val dentro by remember(c) { derivedStateOf { estado.localElegido != null } }
     val tiempos = remember(c.claves) { c.claves.map { it.tiempoUs }.distinct().sorted() }
     NavegadorClaves(tiempos, tolerancia, { estado.localElegido }) { t -> estado.pausarEn(ini + t) }
-    // Con muchas claves (una replica trae una por fotograma), simplificarlas
-    if (c.claves.size >= 3 || c.clavesOriginales != null) {
-        Hueco(4)
-        SimplificadorClaves(estado, DuenoClaves.Bloque(c.id))
-        Hueco(6)
-    }
     val k = clave
     if (k == null) {
         Hueco(4)
@@ -466,8 +460,19 @@ fun PanelCurva(estado: EstadoEditor) {
             val t = estado.tiempo
             estado.hacer { Edicion.ponerClave(it, c.id, t, c.encuadreEn(t - ini), tolerancia) }
         }, activo = dentro)
-        return
+    } else {
+        ClaveElegida(estado, c, ini, k, tolerancia)
     }
+    // Con muchas claves (una replica trae una por fotograma), simplificarlas
+    if (c.claves.size >= 3 || c.clavesOriginales != null) {
+        Hueco(14)
+        SimplificadorClaves(estado, DuenoClaves.Bloque(c.id))
+    }
+}
+
+/** Lo de la clave que hay bajo el cabezal: su momento, la curva y quitarla. */
+@Composable
+private fun ClaveElegida(estado: EstadoEditor, c: com.royermethod.app.editor.modelo.Clip, ini: Long, k: com.royermethod.app.editor.modelo.Clave, tolerancia: Long) {
     // Todo va a esta clave por su tiempo exacto, no por donde este el cabezal
     val tk = ini + k.tiempoUs
     fun poner(f: (com.royermethod.app.editor.modelo.Clave) -> com.royermethod.app.editor.modelo.Clave, arrastre: Boolean = false) {
@@ -475,11 +480,10 @@ fun PanelCurva(estado: EstadoEditor) {
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
 
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Etiqueta("Momento de esta clave", Modifier.weight(1f))
-        InterruptorFotogramas()
-    }
+    Etiqueta("Momento de esta clave")
     MomentoClave(estado, c.id, ini, k.tiempoUs, ClavesLinea.limites(c.claves, k.tiempoUs, c.duracionUs, tolerancia), tolerancia)
+    Hueco(4)
+    InterruptorFotogramas()
 
     val ultima = c.claves.maxOf { it.tiempoUs } == k.tiempoUs
     Hueco(6)

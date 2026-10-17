@@ -86,6 +86,9 @@ class ClavesLineaTest {
         assertEquals(Linea.tiempoDe(31) - ini, ClavesLinea.destino(5_000, -1e9, fino, ini, lim, fotogramas = true))
         // Si entre las vecinas no cae ningun fotograma, no se mueve
         assertEquals(1_000L, ClavesLinea.destino(1_000, 500.0, fino, ini, 900L..2_000L, fotogramas = true))
+        // Cogerla sin mover el dedo no la lleva al fotograma ni la redondea
+        assertEquals(5_003L, ClavesLinea.destino(5_003, 0.0, fino, ini, lim, fotogramas = true))
+        assertEquals(5_003L, ClavesLinea.destino(5_003, 0.0, normal, ini, lim, fotogramas = false))
     }
 
     @Test fun laPosicionDelCabezalEntreLasClaves() {

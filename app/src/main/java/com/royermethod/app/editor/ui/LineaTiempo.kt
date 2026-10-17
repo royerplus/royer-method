@@ -276,6 +276,8 @@ fun LineaTiempo(
 
                     // ---- Que gesto es ----
                     val umbral = viewConfiguration.touchSlop
+                    // Lo que ya se habia movido el dedo al decidir que es un arrastre
+                    var pasado = Offset.Zero
                     val modo = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
                         var m = Modo.NADA
                         while (true) {
@@ -285,6 +287,7 @@ fun LineaTiempo(
                             if (c == null || !c.pressed) { m = Modo.TOQUE; break }
                             val d = c.position - abajo.position
                             if (d.getDistance() > umbral) {
+                                pasado = d
                                 m = if (abs(d.y) > abs(d.x) * 1.2f && objetivo !is Objetivo.Asa) Modo.VERTICAL else Modo.ARRASTRE
                                 break
                             }
@@ -360,15 +363,20 @@ fun LineaTiempo(
                                     arrastrar(abajo.id) {}
                                 } else {
                                     estado.empezarGesto()
-                                    var acumulado = 0.0
-                                    claveCogida = ClaveCogida(c.id, rombo.local)
+                                    // Desde donde se toco, no desde donde se vio el arrastre:
+                                    // la clave va bajo el dedo
+                                    var acumulado = pasado.x.toDouble()
+                                    fun mover() {
+                                        // Siempre desde como estaba al cogerla: un paso de deshacer
+                                        val d = ClavesLinea.destino(rombo.local, acumulado, pxPorUs, pz.inicio, lim, AjustesEditor.ajustarFotogramas)
+                                        claveCogida = ClaveCogida(c.id, d)
+                                        estado.ajustar { Edicion.moverClave(base, c.id, rombo.t, pz.inicio + d, tol) }
+                                    }
                                     try {
+                                        mover()
                                         arrastrar(abajo.id) { dx ->
                                             acumulado += dx
-                                            // Siempre desde como estaba al cogerla: un paso de deshacer
-                                            val d = ClavesLinea.destino(rombo.local, acumulado, pxPorUs, pz.inicio, lim, AjustesEditor.ajustarFotogramas)
-                                            claveCogida = ClaveCogida(c.id, d)
-                                            estado.ajustar { Edicion.moverClave(base, c.id, rombo.t, pz.inicio + d, tol) }
+                                            mover()
                                         }
                                     } finally {
                                         claveCogida = null
@@ -689,8 +697,9 @@ private fun DrawScope.regla(t0: Long, pxUs: Float, centro: Float, medidor: TextM
     val hasta = t0 + ((size.width - centro) / pxUs).toLong()
     val yTexto = 10.dp.toPx()
     // Al pie, una rayita en cada frontera de fotograma de la linea si caben
+    // holgadas (desde unos 300 dp/s; mas juntas serian un peine)
     val abajo = REGLA.dp.toPx() - 1
-    for (tf in ZoomLinea.fronteras(desde, hasta, pxUs.toDouble(), 6.dp.toPx())) {
+    for (tf in ZoomLinea.fronteras(desde, hasta, pxUs.toDouble(), 10.dp.toPx())) {
         val xf = centro + (tf - t0) * pxUs
         drawLine(if (tf <= duracion) Ink.White30 else Ink.White15, Offset(xf, abajo - 6.dp.toPx()), Offset(xf, abajo), 1.dp.toPx())
     }
