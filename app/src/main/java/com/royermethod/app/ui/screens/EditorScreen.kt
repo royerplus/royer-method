@@ -2,7 +2,13 @@ package com.royermethod.app.ui.screens
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.LinearGradient
+import android.graphics.Paint
+import android.graphics.Shader
 import android.graphics.SurfaceTexture
+import android.graphics.Typeface
 import android.net.Uri
 import android.provider.DocumentsContract
 import android.view.Surface
@@ -26,8 +32,10 @@ import com.royermethod.app.editor.ImportadosProyecto
 import com.royermethod.app.editor.limpiarSiFallaProyecto
 import com.royermethod.app.editor.exportar.Exportacion
 import com.royermethod.app.editor.modelo.Edicion
+import com.royermethod.app.editor.modelo.EjemplosMovimiento
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.Proyecto
+import com.royermethod.app.editor.modelo.TipoOrigen
 import com.royermethod.app.editor.motor.MaquetaTexto
 import com.royermethod.app.editor.ui.AjustesEditor
 import com.royermethod.app.editor.ui.EstadoEditor
@@ -72,6 +80,7 @@ fun EditorScreen(onVolver: () -> Unit) {
     val prev = remember { Previsualizador(context) }
     val recursos = remember { RecursosAndroid(context) }
     var operandoProyecto by remember { mutableStateOf(false) }
+    var haciendoEjemplos by remember { mutableStateOf(false) }
     var porGuardar by remember { mutableStateOf<Proyecto?>(null) }
 
     LaunchedEffect(Unit) {
@@ -228,6 +237,21 @@ fun EditorScreen(onVolver: () -> Unit) {
                 porGuardar = estado.proyecto
                 guardarProyecto.launch("Proyecto-Royer.royer")
             }
+        },
+        onEjemplos = {
+            // Las fotos se pintan fuera del hilo principal; dos toques seguidos no agregan dos veces
+            if (!haciendoEjemplos) alcance.launch {
+                haciendoEjemplos = true
+                try {
+                    val (a, b) = withContext(Dispatchers.IO) {
+                        imagenEjemplo(context, "A", 0xFFE0435A.toInt(), 0xFFF2A33A.toInt()) to
+                            imagenEjemplo(context, "B", 0xFF2D6CDF.toInt(), 0xFF19B3A6.toInt())
+                    }
+                    if (a == null) estado.avisar("No se pudieron crear los ejemplos") else cargarEjemplos(estado, a, b)
+                } finally {
+                    haciendoEjemplos = false
+                }
+            }
         }
     ) { modificador ->
         AndroidView(
@@ -279,6 +303,72 @@ private class Superficie(private val prev: Previsualizador) : TextureView.Surfac
 }
 
 private fun archivo(context: Context) = File(context.filesDir, "editor/proyecto.json")
+
+/**
+ * Mete los ejemplos de movimiento al final de la linea principal (si el
+ * proyecto esta vacio, son el proyecto) en un solo paso de deshacer, y deja el
+ * cabezal parado al comienzo del primero.
+ */
+internal fun cargarEjemplos(estado: EstadoEditor, a: Origen, b: Origen?) {
+    var inicio = 0L
+    estado.hacer { p -> EjemplosMovimiento.agregar(p, a, b).also { inicio = it.inicioUs }.proyecto }
+    estado.elegir(null)
+    estado.pausarEn(inicio)
+    estado.avisar("Ejemplos agregados. Deshacer para quitarlos")
+}
+
+/**
+ * Una foto para los ejemplos, pintada aqui: degradado de [arriba] a [abajo],
+ * rejilla (para ver el movimiento, el giro y el rastro), la cruz del centro y
+ * una letra grande partida por la mitad. Se guarda en editor/ejemplos y se
+ * reutiliza; el numero del nombre cambia si cambia el dibujo.
+ */
+private fun imagenEjemplo(context: Context, letra: String, arriba: Int, abajo: Int): Origen? = runCatching {
+    val w = 1080
+    val h = 1350
+    val carpeta = File(context.filesDir, "editor/ejemplos").apply { mkdirs() }
+    val f = File(carpeta, "ejemplo-${letra.lowercase()}-1.png")
+    if (!f.isFile || f.length() == 0L) {
+        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        try {
+            val c = Canvas(bmp)
+            val p = Paint(Paint.ANTI_ALIAS_FLAG)
+            p.shader = LinearGradient(0f, 0f, 0f, h.toFloat(), arriba, abajo, Shader.TileMode.CLAMP)
+            c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+            p.shader = null
+            p.color = 0x59FFFFFF
+            p.strokeWidth = 3f
+            for (x in 0..w step 90) c.drawLine(x.toFloat(), 0f, x.toFloat(), h.toFloat(), p)
+            for (y in 0..h step 90) c.drawLine(0f, y.toFloat(), w.toFloat(), y.toFloat(), p)
+            p.color = 0xB3FFFFFF.toInt()
+            p.strokeWidth = 8f
+            c.drawLine(w / 2f, 0f, w / 2f, h.toFloat(), p)
+            c.drawLine(0f, h / 2f, w.toFloat(), h / 2f, p)
+            p.style = Paint.Style.STROKE
+            c.drawCircle(w / 2f, h / 2f, w * 0.12f, p)
+            p.style = Paint.Style.FILL
+            p.color = 0xFFFFFFFF.toInt()
+            p.typeface = Typeface.DEFAULT_BOLD
+            p.textAlign = Paint.Align.CENTER
+            p.textSize = h * 0.5f
+            p.setShadowLayer(18f, 0f, 6f, 0x80000000.toInt())
+            c.drawText(letra, w / 2f, h / 2f - (p.descent() + p.ascent()) / 2f, p)
+            p.clearShadowLayer()
+            // Una esquina marcada: se ve si la foto se gira, se refleja o se sale
+            p.color = 0xFFFFD84A.toInt()
+            c.drawRect(0f, 0f, w * 0.15f, h * 0.08f, p)
+            val tmp = File(carpeta, f.name + ".tmp")
+            tmp.outputStream().use { if (!bmp.compress(Bitmap.CompressFormat.PNG, 100, it)) error("no se pudo escribir") }
+            if (!tmp.renameTo(f)) {
+                f.delete()
+                if (!tmp.renameTo(f)) error("no se pudo guardar")
+            }
+        } finally {
+            bmp.recycle()
+        }
+    }
+    Origen(f.toURI().toString(), "Ejemplo $letra.png", TipoOrigen.IMAGEN, w, h, bytes = f.length())
+}.getOrNull()
 
 /**
  * El proyecto guardado. Si existe pero no se entiende, se aparta con otro
