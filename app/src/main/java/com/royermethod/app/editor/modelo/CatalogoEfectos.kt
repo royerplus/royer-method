@@ -44,7 +44,8 @@ object CatalogoEfectos {
     fun parametros(tipo: TipoEfectoVideo): List<Parametro> = when (tipo) {
         MOVER -> listOf(Parametro.DESDE, Parametro.HASTA, Parametro.ANGULO, Parametro.CURVA,
             Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ, Parametro.PROGRESO)
-        ZOOM, GIRAR -> listOf(Parametro.DESDE, Parametro.HASTA, Parametro.CURVA,
+        // El centro es el punto que se queda quieto: el del bloque si no se mueve
+        ZOOM, GIRAR -> listOf(Parametro.DESDE, Parametro.HASTA, Parametro.CURVA, Parametro.CENTRO,
             Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ, Parametro.PROGRESO)
         LATIGAZO -> listOf(Parametro.DESDE, Parametro.ANGULO, Parametro.CURVA,
             Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ, Parametro.PROGRESO)
@@ -100,14 +101,15 @@ object CatalogoEfectos {
         GLITCH -> "Distorsion digital con cortes y separacion de color."
         TWITCH -> "Tirones cortos y rapidos para remarcar un golpe."
         MOVER -> "Lleva la imagen de un sitio a otro con la curva elegida."
-        ZOOM -> "Acerca o aleja la imagen de un tamano a otro."
-        GIRAR -> "Gira la imagen de un angulo a otro."
+        ZOOM -> "Acerca o aleja la imagen de un tamano a otro, hacia el centro elegido."
+        GIRAR -> "Gira la imagen de un angulo a otro alrededor del centro elegido."
         LATIGAZO -> "Sale disparada hacia un lado y vuelve por el contrario."
         DESENFOQUE_DIRECCIONAL -> "Rastro de movimiento en cualquier direccion."
         CIRCULO -> "Circulo o anillo que se abre o se cierra, con su centro."
         BARRIDO -> "Descubre u oculta la imagen con un borde que avanza en cualquier direccion."
         MITADES -> "Las dos mitades de la imagen llegan desde lados opuestos y se juntan."
-        ANIMACION -> "Una animacion convertida en efecto: muevela y recortala como cualquier otro."
+        ANIMACION -> "Una animacion convertida en efecto: muevela y recortala como cualquier otro. " +
+            "Sus piezas ya no se ajustan una a una; para cambiarlas, deshaz la conversion."
     }
 
     /** Lo que dura recien puesto (si cabe en el bloque). */

@@ -195,7 +195,8 @@ class HerramientasEfectoTest {
             centroX = -0.1f))), 250_000)
         val c = cos(Math.PI / 4).toFloat()
         val suave = 0.02f * H
-        val l = (c * W + c * H) / 2f + suave
+        // Con el centro movido el recorrido se alarga lo que se aparta en la direccion
+        val l = (c * W + c * H) / 2f + abs(c * (-0.1f * W)) + suave
         val m = diagonal.mascara!!
         assertEquals(c, m.dirX, 1e-6f)
         assertEquals(c, m.dirY, 1e-6f)
@@ -217,8 +218,79 @@ class HerramientasEfectoTest {
         assertEquals(lejos * 0.5f, movido.borde, 1e-3f)
         val revelar = EfectoVideo(TipoEfectoVideo.REVELAR_HORIZONTAL, 0, 1_000_000)
         val r = efecto(clip(revelar.copy(ajustes = AjustesEfecto(centroX = 0.1f, centroY = 0.2f))), 250_000)
-        assertEquals(efecto(clip(revelar), 250_000).borde, r.borde, 0f)
+        // El borde recorre tambien lo que se aparta el centro (0,1 de ancho a
+        // cada lado): a un cuarto del tramo, un cuarto de ese recorrido
+        assertEquals((W + 2f * 0.1f * W) * (0.25f - 0.5f), r.borde, 1e-3f)
         assertEquals(Mascara(1f, 0f, 2f, centroX = 0.1f * W, centroY = 0.2f * H), r.mascara)
+        // Centrado, el de siempre
+        assertEquals(W * (0.25f - 0.5f), efecto(clip(revelar), 250_000).borde, 0f)
+    }
+
+    /** Los centros de pixel de una rejilla que llega a los cuatro bordes del lienzo (para [seVe]). */
+    private fun rejilla(): List<Pair<Float, Float>> = (0..24).flatMap { i ->
+        (0..24).map { j -> (-W / 2f + 0.5f + (W - 1f) * i / 24f) to (-H / 2f + 0.5f + (H - 1f) * j / 24f) }
+    }
+
+    @Test
+    fun conElCentroMovidoElBarridoYElRevelarTapanYDescubrenTodo() {
+        val centros = listOf(0f to 0f, -0.25f to 0f, 0.25f to -0.3f, 0.45f to 0.45f, -0.5f to 0.2f)
+        for ((cx, cy) in centros) {
+            for (angulo in listOf(0f, 45f, 90f, 180f, 300f)) {
+                val a = AjustesEfecto(curva = Curva.LINEAL, angulo = angulo, centroX = cx, centroY = cy)
+                val b = EfectoVideo(TipoEfectoVideo.BARRIDO, 0, 1_000_000, ajustes = a)
+                val que = "barrido $angulo centro $cx,$cy"
+                // Descubierto 0: nada; 1: todo, tambien en las esquinas del lado contrario al centro
+                val nada = efecto(clip(b.copy(ajustes = a.copy(desde = 0f, hasta = 0f))), 500_000)
+                val todo = efecto(clip(b.copy(ajustes = a.copy(desde = 1f, hasta = 1f))), 500_000)
+                for ((x, y) in rejilla()) {
+                    assertEquals("$que nada ($x, $y)", 0f, seVe(nada, x, y), 0f)
+                    assertEquals("$que todo ($x, $y)", 1f, seVe(todo, x, y), 0f)
+                }
+                // Al final del tramo ya esta todo descubierto: cuando se quita la mascara no salta nada
+                val fin = efecto(clip(b), 999_999)
+                assertTrue(que, rejilla().all { (x, y) -> seVe(fin, x, y) == 1f })
+                assertTrue(que, rejilla().all { (x, y) -> seVe(efecto(clip(b), 0), x, y) == 0f })
+                // A medio camino el borde pasa por el centro
+                val medio = efecto(clip(b), 500_000)
+                assertEquals(que, 0.5f, seVe(medio, cx * W, cy * H), 1e-3f)
+            }
+            val r = EfectoVideo(TipoEfectoVideo.REVELAR_HORIZONTAL, 0, 1_000_000, ajustes = AjustesEfecto(centroX = cx, centroY = cy))
+            val que = "revelar centro $cx,$cy"
+            assertTrue(que, rejilla().all { (x, y) -> seVe(efecto(clip(r), 0), x, y) == 0f })
+            assertTrue(que, rejilla().all { (x, y) -> seVe(efecto(clip(r), 999_999), x, y) > 0.5f })
+            assertNull(efecto(clip(r), 1_000_000).mascara)
+        }
+    }
+
+    @Test
+    fun elZoomYElGiroSeQuedanQuietosEnSuCentro() {
+        // Donde cae en la textura el pixel (x, y) del lienzo (desde su esquina)
+        fun uv(c: Clip, t: Long, x: Float, y: Float): Pair<Float, Float> {
+            val m = escena(c).cuadroEn(t).clips.single().matrices.single()
+            return (m[0] * x + m[3] * y + m[6]) to (m[1] * x + m[4] * y + m[7])
+        }
+        val quieto = clip()
+        for ((tipo, a) in listOf(
+            TipoEfectoVideo.ZOOM to CatalogoEfectos.ajustesDe(TipoEfectoVideo.ZOOM).copy(desde = 2f, centroX = 0.25f, centroY = -0.3f),
+            TipoEfectoVideo.GIRAR to CatalogoEfectos.ajustesDe(TipoEfectoVideo.GIRAR).copy(desde = -60f, centroX = -0.4f, centroY = 0.2f)
+        )) {
+            val c = clip(EfectoVideo(tipo, 0, 1_000_000, ajustes = a))
+            val px = W / 2f + a.centroX * W
+            val py = H / 2f + a.centroY * H
+            // El centro elegido ve lo mismo que sin efecto; otro punto, no
+            for (t in listOf(0L, 300_000L, 700_000L)) {
+                val (u0, v0) = uv(quieto, t, px, py)
+                val (u1, v1) = uv(c, t, px, py)
+                assertEquals("$tipo $t", u0, u1, 1e-5f)
+                assertEquals("$tipo $t", v0, v1, 1e-5f)
+            }
+            assertNotEquals(uv(quieto, 0, W / 2f, H / 2f), uv(c, 0, W / 2f, H / 2f))
+            // Sin centro, el de siempre: ni un desplazamiento
+            val centrado = efecto(clip(EfectoVideo(tipo, 0, 1_000_000, ajustes = a.copy(centroX = 0f, centroY = 0f))), 300_000)
+            assertEquals(0f, centrado.dx, 0f)
+            assertEquals(0f, centrado.dy, 0f)
+            assertTrue(Parametro.CENTRO in CatalogoEfectos.parametros(tipo))
+        }
     }
 
     @Test

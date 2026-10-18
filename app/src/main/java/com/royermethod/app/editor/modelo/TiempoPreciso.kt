@@ -11,11 +11,36 @@ import kotlin.math.roundToLong
  */
 object TiempoPreciso {
 
-    /** "0.005 s", "1.250 s"; si quedan microsegundos sueltos, con seis decimales. */
+    /**
+     * Para ensenar: "0.005 s", "1.250 s". Un fotograma de 30 fps que no cae en
+     * un milisegundo exacto (1,0666... s) sale con tres decimales y "≈"
+     * delante ("≈1.067 s"): es el fotograma, no 1,067 s escrito a mano. Lo
+     * demas con microsegundos sueltos, con seis decimales ("0.001500 s").
+     * Para escribirlo y leerlo igual, [textoExacto].
+     */
     fun texto(us: Long): String {
+        val v = us.coerceAtLeast(0)
+        if (v % 1_000L != 0L && esFotograma(v)) return "≈%.3f s".format(java.util.Locale.ROOT, v / 1_000_000.0)
+        return textoExacto(v)
+    }
+
+    /** "0.005 s", "1.250 s"; si quedan microsegundos sueltos, con seis decimales. [leer] lo lee igual. */
+    fun textoExacto(us: Long): String {
         val v = us.coerceAtLeast(0)
         return if (v % 1_000L == 0L) "%.3f s".format(java.util.Locale.ROOT, v / 1_000_000.0)
         else "%.6f s".format(java.util.Locale.ROOT, v / 1_000_000.0)
+    }
+
+    /**
+     * ¿Es [us] el instante de un fotograma de [Linea.FPS] que no cae en un
+     * milisegundo (dos de cada tres)? Con un microsegundo de margen: un tiempo
+     * dentro del bloque es la resta de dos fotogramas de la linea y puede
+     * salir uno por encima (0,100000 - 0,033333 = 0,066667). Los que caen en
+     * un milisegundo no cuentan: 0,000001 s es un tiempo escrito, no el 0.
+     */
+    private fun esFotograma(us: Long): Boolean {
+        val n = (us * Linea.FPS / 1_000_000.0).roundToLong()
+        return n % 3L != 0L && kotlin.math.abs(us - Linea.tiempoDe(n)) <= 1L
     }
 
     /**

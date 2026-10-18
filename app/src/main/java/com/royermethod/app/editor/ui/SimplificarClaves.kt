@@ -50,6 +50,8 @@ import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /*
@@ -64,7 +66,11 @@ import kotlinx.coroutines.withContext
  * principal: con cientos de claves tardan algo.
  */
 
-/** De quien son las claves: el bloque entero o una de sus partes. */
+/**
+ * De quien son las claves: el bloque entero o una de sus partes. Los puntos
+ * de progreso de un efecto no pasan por aqui: son pocos, medidos a mano, y se
+ * cambian uno a uno en Efectos > Avanzado.
+ */
 internal sealed interface DuenoClaves {
     val id: Long
 
@@ -85,7 +91,25 @@ internal object Simplificador {
      * Lo que se ensena antes de aplicar: el proyecto del que se partio, el
      * que quedaria y el informe (cuantas claves, error real).
      */
-    class Prueba(val base: Proyecto, val dueno: DuenoClaves, val tolerancia: Tolerancia, val resultado: Proyecto, val informe: Simplificacion)
+    class Prueba(val base: Proyecto, val dueno: DuenoClaves, val tolerancia: Tolerancia, val resultado: Proyecto, val informe: Simplificacion) {
+        /** Lo que miro la cuenta en [base] ([contexto]). */
+        val contexto: List<Any?> = Simplificador.contexto(base, dueno)
+    }
+
+    /**
+     * Todo lo que mira la simplificacion de [d] en [p]: sus claves, lo que
+     * dura el bloque y donde empieza (los instantes de la exportacion), y el
+     * tamano y las muestras de la salida (la medida del error). Con lo mismo,
+     * simplificar da lo mismo: lo demas del proyecto puede cambiar.
+     */
+    fun contexto(p: Proyecto, d: DuenoClaves): List<Any?> {
+        val k = if (p.salida.desenfoqueMovimiento) p.salida.muestras.coerceIn(1, Escena.MAX_MUESTRAS) else 1
+        return listOf(claves(p, d), Edicion.clip(p, d.id)?.duracionUs, Edicion.inicio(p, d.id), p.formato.medidas(p.salida.ladoCorto), k)
+    }
+
+    /** ¿Sirve todavia [prueba] para [actual] con la tolerancia [tol]? Si no, hay que volver a probar. */
+    fun vigente(prueba: Prueba, actual: Proyecto, tol: Tolerancia): Boolean =
+        prueba.tolerancia == tol && (actual === prueba.base || contexto(actual, prueba.dueno) == prueba.contexto)
 
     fun claves(p: Proyecto, d: DuenoClaves): List<Clave>? {
         val c = Edicion.clip(p, d.id) ?: return null
@@ -113,13 +137,32 @@ internal object Simplificador {
     }
 
     /**
-     * Lo que hace "Aplicar" (dentro de un solo estado.hacer): si el proyecto
-     * sigue siendo el de la prueba, su resultado tal cual; si cambio algo
-     * entretanto, se vuelve a simplificar sobre el de ahora.
+     * Lo que hace "Aplicar" (dentro de un solo estado.hacer, en el hilo
+     * principal: aqui nunca se vuelve a simplificar, que con miles de claves
+     * tarda segundos). Si el proyecto sigue siendo el de la prueba, su
+     * resultado tal cual. Si cambio otra cosa pero la prueba sigue [vigente],
+     * las claves del informe sobre el de ahora, guardando las de antes como
+     * hace Edicion: lo mismo que saldria de simplificarlo otra vez. Si ya no
+     * vale (se recorto el bloque, cambio la salida), no cambia nada: el panel
+     * ya no ofrece aplicarla y pide probar de nuevo.
      */
-    fun aplicar(actual: Proyecto, prueba: Prueba): Proyecto =
-        if (actual === prueba.base) prueba.resultado
-        else probar(actual, prueba.dueno, prueba.tolerancia)?.resultado ?: actual
+    fun aplicar(actual: Proyecto, prueba: Prueba): Proyecto {
+        if (actual === prueba.base) return prueba.resultado
+        if (!vigente(prueba, actual, prueba.tolerancia)) return actual
+        val nuevas = prueba.informe.claves
+        return when (val d = prueba.dueno) {
+            is DuenoClaves.Bloque -> Edicion.cambiar(actual, d.id) { c ->
+                if (c.claves == nuevas) c else c.copy(claves = nuevas, clavesOriginales = c.clavesOriginales ?: c.claves)
+            }
+            is DuenoClaves.Parte -> Edicion.cambiar(actual, d.id) { c ->
+                val pieza = c.piezas.getOrNull(d.indice)
+                if (pieza == null || pieza.claves == nuevas) c
+                else c.copy(piezas = c.piezas.toMutableList().also {
+                    it[d.indice] = pieza.copy(claves = nuevas, clavesOriginales = pieza.clavesOriginales ?: pieza.claves)
+                })
+            }
+        }
+    }
 
     fun restaurar(p: Proyecto, d: DuenoClaves): Proyecto = when (d) {
         is DuenoClaves.Bloque -> Edicion.restaurarClaves(p, d.id)
@@ -170,6 +213,19 @@ internal object Simplificador {
     /** "Frente al original: error max 0.15 px, opacidad 0/255" */
     fun textoContra(px: Float, op: Float): String =
         "Frente al original: error max ${textoPx(px)}, opacidad ${num(op * 255f, 1)}/255"
+}
+
+/**
+ * Las cuentas del simplificador fuera del hilo principal, de una en una.
+ * Trayectoria no mira si se cancelo: una que ya no se quiere (se cerro el
+ * panel, se cambio la tolerancia) sigue hasta acabar. Con el turno, la
+ * siguiente espera a que acabe en vez de correr a la vez, y la que se cancela
+ * mientras espera ni empieza: como mucho hay una en marcha y otra esperando.
+ */
+internal object CuentasClaves {
+    private val turno = Mutex()
+
+    suspend fun <T> enTurno(f: () -> T): T = turno.withLock { withContext(Dispatchers.Default) { f() } }
 }
 
 /**
@@ -237,22 +293,22 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
     var peticion by remember(dueno) { mutableIntStateOf(0) }
     var calculando by remember(dueno) { mutableStateOf(false) }
     var prueba by remember(dueno) { mutableStateOf<Simplificador.Prueba?>(null) }
-    // La prueba vale mientras las claves sigan siendo las de cuando se hizo
-    val vigente = prueba?.takeIf { Simplificador.claves(it.base, dueno) == claves && it.tolerancia == Simplificador.tolerancia(tolPx) }
+    // La prueba vale mientras lo que mira (las claves, el bloque, la salida) siga igual
+    val vigente = prueba?.takeIf { Simplificador.vigente(it, p, Simplificador.tolerancia(tolPx)) }
 
     LaunchedEffect(peticion) {
         if (peticion == 0) return@LaunchedEffect
         calculando = true
         val base = estado.proyecto
         val tol = Simplificador.tolerancia(tolPx)
-        prueba = withContext(Dispatchers.Default) { Simplificador.probar(base, dueno, tol) }
+        prueba = CuentasClaves.enTurno { Simplificador.probar(base, dueno, tol) }
         calculando = false
     }
     // Lo de ahora frente al original guardado, tambien aparte
     var contra by remember(dueno) { mutableStateOf<Pair<Float, Float>?>(null) }
     LaunchedEffect(claves, originales) {
         contra = null
-        if (originales != null) contra = withContext(Dispatchers.Default) { Simplificador.contraOriginal(p, dueno) }
+        if (originales != null) contra = CuentasClaves.enTurno { Simplificador.contraOriginal(p, dueno) }
     }
 
     Etiqueta("Simplificar claves")

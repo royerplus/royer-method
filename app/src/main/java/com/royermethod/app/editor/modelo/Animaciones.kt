@@ -156,6 +156,12 @@ fun limitacionesConversion(a: AnimacionAplicada): List<String> {
         "La animacion seguia los bordes del bloque y el efecto sigue al contenido: si luego recortas, " +
             "cambias la velocidad o divides el bloque, ya no se recoloca sola."
     )
+    // El efecto guarda las piezas tal cual, pero el panel de efectos solo ajusta
+    // intensidad, fundidos, rapidez, progreso y el tramo
+    r.add(
+        if (a.momento == MomentoAnimacion.SIEMPRE) "Como efecto ya no se ajusta pieza a pieza (cuanto y rapidez de cada una): dejalo a tu gusto antes o deshaz la conversion."
+        else "Como efecto ya no se ajusta pieza a pieza (cuanto, curva, empieza y termina): dejalo a tu gusto antes o deshaz la conversion."
+    )
     if (a.momento == MomentoAnimacion.SIEMPRE) {
         val porBloque = setOf(AnimacionContinua.ACERCAMIENTO, AnimacionContinua.ALEJAMIENTO, AnimacionContinua.PANEO)
         if (a.continuas.any { it.tipo in porBloque }) {
