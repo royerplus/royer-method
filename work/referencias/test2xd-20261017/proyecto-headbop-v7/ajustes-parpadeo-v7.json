@@ -1,0 +1,109 @@
+{
+  "version": "V7",
+  "fuente": "proyecto-headbop-v6\\headbop-test2xd.royer",
+  "sha256Fuente": "a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1",
+  "archivoAssets": "assets-v7",
+  "regionesUv": {
+    "Ojo izquierdo": [
+      0.41,
+      0.63,
+      0.595,
+      0.775
+    ],
+    "Ojo derecho": [
+      0.675,
+      0.505,
+      0.8,
+      0.69
+    ]
+  },
+  "parpadeos": [
+    {
+      "inicioUs": 8150000,
+      "finUs": 8810000,
+      "duracionUs": 660000,
+      "ojosCerradosDesdeUs": 8390000,
+      "ojosCerradosHastaUs": 8490000
+    },
+    {
+      "inicioUs": 12050000,
+      "finUs": 12710000,
+      "duracionUs": 660000,
+      "ojosCerradosDesdeUs": 12290000,
+      "ojosCerradosHastaUs": 12390000
+    }
+  ],
+  "estados": [
+    {
+      "file": "ojos-65.png",
+      "name": "Parpadeo · 65% abierto",
+      "offsets": [
+        {
+          "t": 0,
+          "opacidad": 0.0
+        },
+        {
+          "t": 60000,
+          "opacidad": 1.0
+        },
+        {
+          "t": 600000,
+          "opacidad": 1.0
+        },
+        {
+          "t": 660000,
+          "opacidad": 0.0
+        }
+      ]
+    },
+    {
+      "file": "ojos-30.png",
+      "name": "Parpadeo · 30% abierto",
+      "offsets": [
+        {
+          "t": 90000,
+          "opacidad": 0.0
+        },
+        {
+          "t": 130000,
+          "opacidad": 1.0
+        },
+        {
+          "t": 500000,
+          "opacidad": 1.0
+        },
+        {
+          "t": 540000,
+          "opacidad": 0.0
+        }
+      ]
+    },
+    {
+      "file": "ojos-cerrados.png",
+      "name": "Parpadeo · ojos cerrados",
+      "offsets": [
+        {
+          "t": 200000,
+          "opacidad": 0.0
+        },
+        {
+          "t": 240000,
+          "opacidad": 1.0
+        },
+        {
+          "t": 340000,
+          "opacidad": 1.0
+        },
+        {
+          "t": 400000,
+          "opacidad": 0.0
+        }
+      ]
+    }
+  ],
+  "movimiento": "Copiar sin cambios Cabeza id6: encuadre, claves, HeadBop y tiempos",
+  "composicion": "Tres capas sobre Cabeza y debajo de Flequillo; dos piezas UV por capa",
+  "soloOpacidadPiezas": true,
+  "deformacionEscala": false,
+  "notas": "El PNG abierto original permanece de base; la transición usa dos intermedios y un párpado cerrado, sin aplastar ni estirar la cabeza."
+}

@@ -1,0 +1,255 @@
+{
+  "version": "V7",
+  "fuente": "proyecto-headbop-v6\\headbop-test2xd.royer",
+  "sha256Fuente": "a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1",
+  "archivo": "headbop-test2xd.royer",
+  "sha256": "1ff755a3ffbf5852cebddbf18c78ea6d1e1a7c7af19f8132307fe144585c4528",
+  "bytes": 11309200,
+  "configuracion": {
+    "version": "V7",
+    "fuente": "proyecto-headbop-v6\\headbop-test2xd.royer",
+    "sha256Fuente": "a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1",
+    "archivoAssets": "assets-v7",
+    "regionesUv": {
+      "Ojo izquierdo": [
+        0.41,
+        0.63,
+        0.595,
+        0.775
+      ],
+      "Ojo derecho": [
+        0.675,
+        0.505,
+        0.8,
+        0.69
+      ]
+    },
+    "parpadeos": [
+      {
+        "inicioUs": 8150000,
+        "finUs": 8810000,
+        "duracionUs": 660000,
+        "ojosCerradosDesdeUs": 8390000,
+        "ojosCerradosHastaUs": 8490000
+      },
+      {
+        "inicioUs": 12050000,
+        "finUs": 12710000,
+        "duracionUs": 660000,
+        "ojosCerradosDesdeUs": 12290000,
+        "ojosCerradosHastaUs": 12390000
+      }
+    ],
+    "estados": [
+      {
+        "file": "ojos-65.png",
+        "name": "Parpadeo · 65% abierto",
+        "offsets": [
+          {
+            "t": 0,
+            "opacidad": 0.0
+          },
+          {
+            "t": 60000,
+            "opacidad": 1.0
+          },
+          {
+            "t": 600000,
+            "opacidad": 1.0
+          },
+          {
+            "t": 660000,
+            "opacidad": 0.0
+          }
+        ]
+      },
+      {
+        "file": "ojos-30.png",
+        "name": "Parpadeo · 30% abierto",
+        "offsets": [
+          {
+            "t": 90000,
+            "opacidad": 0.0
+          },
+          {
+            "t": 130000,
+            "opacidad": 1.0
+          },
+          {
+            "t": 500000,
+            "opacidad": 1.0
+          },
+          {
+            "t": 540000,
+            "opacidad": 0.0
+          }
+        ]
+      },
+      {
+        "file": "ojos-cerrados.png",
+        "name": "Parpadeo · ojos cerrados",
+        "offsets": [
+          {
+            "t": 200000,
+            "opacidad": 0.0
+          },
+          {
+            "t": 240000,
+            "opacidad": 1.0
+          },
+          {
+            "t": 340000,
+            "opacidad": 1.0
+          },
+          {
+            "t": 400000,
+            "opacidad": 0.0
+          }
+        ]
+      }
+    ],
+    "movimiento": "Copiar sin cambios Cabeza id6: encuadre, claves, HeadBop y tiempos",
+    "composicion": "Tres capas sobre Cabeza y debajo de Flequillo; dos piezas UV por capa",
+    "soloOpacidadPiezas": true,
+    "deformacionEscala": false,
+    "notas": "El PNG abierto original permanece de base; la transición usa dos intermedios y un párpado cerrado, sin aplastar ni estirar la cabeza."
+  },
+  "capas": 10,
+  "capasV6Conservadas": 7,
+  "nuevasCapas": [
+    {
+      "id": 10,
+      "fila": 4,
+      "nombre": "Parpadeo · 65% abierto.png",
+      "inicio": 700000,
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 11,
+      "fila": 5,
+      "nombre": "Parpadeo · 30% abierto.png",
+      "inicio": 700000,
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 12,
+      "fila": 6,
+      "nombre": "Parpadeo · ojos cerrados.png",
+      "inicio": 700000,
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    }
+  ],
+  "clavesV6Conservadas": 72,
+  "clavesMovimientoHeredadasOverlays": 36,
+  "nuevasClavesSoloOpacidad": 60,
+  "mediosV6Conservados": [
+    {
+      "ruta": "medios/00000.png",
+      "bytes": 185,
+      "sha256": "9fcc3426ffdd9b2d9cc08acfa34f8eab2e66b389b42631b125bdbe606f42c01b",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00001.jpg",
+      "bytes": 496765,
+      "sha256": "a4fe008df9fd10149c3255dc95432e20c34c9f73de6fb2fee27c7ed45276733a",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00002.png",
+      "bytes": 2244841,
+      "sha256": "02e8900bc3b7aeea579fd56e8a87e6e8384d983b4137b97ace3876600d3fc8b3",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00003.png",
+      "bytes": 715310,
+      "sha256": "20748c95f86eb9b0aacd6c54931a3df6aac7cb59dfcbf75e934cba451d289fe2",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00004.png",
+      "bytes": 1132561,
+      "sha256": "a012784a6a63eb624513d51f60ab861814e30d1ec59db855f5cb3fb4fa49c0c5",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00005.png",
+      "bytes": 1316296,
+      "sha256": "72034b289abd281f0704aaa8a992077774619fa82cc129518ed20355d2c8db55",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00006.png",
+      "bytes": 1254092,
+      "sha256": "2b0cca0dda3409e7cc61e74b8de3f796dec0009cfa009b42e55ee4748fb07baa",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00007.png",
+      "bytes": 730167,
+      "sha256": "128d27a7727f286357db4e8e165a8542218d1a333bcb56d9fbb1202c3c8adcc0",
+      "identicoV6": true
+    },
+    {
+      "ruta": "medios/00008.m4a",
+      "bytes": 323435,
+      "sha256": "2564b4bb136534b11a2c62fcf73adcb78f09ea29f02e0dd53575f06927eb2752",
+      "identicoV6": true
+    }
+  ],
+  "nuevosMedios": [
+    {
+      "ruta": "medios/00009.png",
+      "bytes": 1238996,
+      "sha256": "a84cffdd447af53ef311ed7f556980010111a6d29281c1ff2f5ff269cf86c99b",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00010.png",
+      "bytes": 1241084,
+      "sha256": "ae96610867d4a67db74e8b8236e33db635cfc6ca36f160e4f15f5f57d2c54806",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00011.png",
+      "bytes": 1220985,
+      "sha256": "57ee4df18441ed3b9ecd5351f66d6b5cbcff95b3b201a715eb2eadba0790ed25",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    }
+  ],
+  "versionesAnterioresIntactas": {
+    "proyecto-headbop-v6\\headbop-test2xd.royer": "a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1",
+    "validacion-v6\\headbop-v6.mp4": "40fb35923f42fd485e5cf2930444c2a455522aad529560d436aff0d6d80e118f",
+    "proyecto-headbop-v4\\headbop-test2xd.royer": "4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836",
+    "borradores\\V4-aprobada\\headbop-test2xd-v4.royer": "4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836",
+    "borradores\\V4-aprobada\\headbop-v4.mp4": "84045cc34791642403b762e9924b92e030216df408b9ea67579878d56084a912"
+  },
+  "validacion": {
+    "zipCRC": true,
+    "mediosIdenticosV6": true,
+    "capasExistentesIdenticasExceptoFilas": true,
+    "movimientoCabezaSinCambios": true,
+    "sinDeformacionEscala": true,
+    "musicaIntroDuracionSalidaIdenticas": true,
+    "exportadoEnApp": false,
+    "revisionVisualNativa": false,
+    "pruebaFluidez": false
+  },
+  "limitaciones": "La verificación de geometría y hashes no sustituye revisar colores, bordes y expresión de los párpados en una exportación nativa."
+}

@@ -1,0 +1,19 @@
+{
+  "fuente": "proyecto-headbop-v4\\headbop-test2xd.royer",
+  "sha256Fuente": "4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836",
+  "headBopComun": {
+    "naturalidad": 0.9,
+    "giro": 4.8,
+    "rebote": 0.01
+  },
+  "conservar": [
+    "medios",
+    "intro",
+    "claves",
+    "encuadres",
+    "pivotes",
+    "musica",
+    "tiempos",
+    "intensidades"
+  ]
+}

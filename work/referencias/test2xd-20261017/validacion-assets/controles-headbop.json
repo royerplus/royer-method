@@ -1,0 +1,46 @@
+{
+  "cuelloX": 0.55,
+  "cuelloY": 0.62,
+  "giro": 7.0,
+  "rebote": 0.025,
+  "piezas": {
+    "cabello-trasero.png": {
+      "pivoteX": 0.51,
+      "pivoteY": 0.23,
+      "retardo": 95000,
+      "intensidad": 1.0,
+      "arrastre": 1.0
+    },
+    "cuerpo.png": {
+      "pivoteX": 0.5,
+      "pivoteY": 0.88,
+      "retardo": 0,
+      "intensidad": 0.4
+    },
+    "cabeza.png": {
+      "pivoteX": 0.55,
+      "pivoteY": 0.62,
+      "retardo": 0,
+      "intensidad": 1.0
+    },
+    "flequillo.png": {
+      "pivoteX": 0.49,
+      "pivoteY": 0.18,
+      "retardo": 65000,
+      "intensidad": 1.0,
+      "arrastre": 0.7
+    },
+    "brazo-elevado.png": {
+      "pivoteX": 0.78,
+      "pivoteY": 0.58,
+      "retardo": 45000,
+      "intensidad": 0.75
+    },
+    "brazo-frontal.png": {
+      "pivoteX": 0.34,
+      "pivoteY": 0.76,
+      "retardo": 70000,
+      "intensidad": 0.8
+    }
+  }
+}

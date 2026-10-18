@@ -1,0 +1,35 @@
+import json, os
+p=r'C:/Users/PC/Downloads/royer-method-work/referencias/test2xd-20261017/analisis'
+r=json.load(open(p+'/ritmo.json'))
+report={
+ 'source':'../entrada/2a26720d76fd0eb0fd11701ac1b063b1.mp4',
+ 'metadata':json.load(open(p+'/metadatos.json')),
+ 'inspection':{'method':'Contact sheets every0.5s across entire clip; detail crops6.8–9.1 every0.1s,9.1–11.4 every0.1s,13.3–16.1 every0.2s; major visual cuts measured from per-frameMAE at144px. Audio analysed from PCM, not listened to.','limitations':'Not a continuous real-time video playback; beat interpretation is inferred from signal, no song identity or listening claim.'},
+ 'observed_chronology':[
+ {'start_s':0,'end_s':2.6667,'description':'AlightMotion logo initially large, shrinks onto white background and rotates; red HEADBOP TUTORIAL#6 title, cyan author credit. End fade.'},
+ {'start_s':2.6667,'end_s':4.6667,'description':'Red EYE ANIMATE title plus Arabic subtitle on white; fades.'},
+ {'start_s':4.6667,'end_s':6.7667,'description':'Cyan italic thank-you text, then fade towhite.'},
+ {'start_s':6.7667,'end_s':9.0667,'description':'Finished local face example: body/head photo static on white, eyes/eyebrows deform/squint and blink. No demonstrated independent hands/hair movement.'},
+ {'start_s':9.0667,'end_s':10.7667,'description':'Construction reveal: eye cutouts move laterally outward, eyebrow cutouts upward/outward; underlying eye/eyebrow regions appear cleaned/inpainted. Caption CUT THE EYES AND EYEBROWS, APP:IPC PAINT. Pieces return roughly10.4–10.7s.'},
+ {'start_s':10.7667,'end_s':13.5667,'description':'Face example again with subtle eyebrow/eye changes; green settings cue.'},
+ {'start_s':13.5667,'end_s':15.8333,'description':'WaveWarp settings screenshots, isolated eyebrows, magnitude0→1.8→0 keyframe diagram.'},
+ {'start_s':15.8333,'end_s':19.8333,'description':'TikTok branded outro/loading/search card. Not part of animation tutorial.'}
+ ],
+ 'settings_legible_at_14s':{'effect':'WaveWarp','phase':0.33,'angle_degrees':13.0,'spacing':9.9,'magnitude_sequence':[0,1.8,0],'warp_angle_degrees':67.0,'caution':'These are source-app units; not transferable 1:1 to Royer without visual calibration.'},
+ 'audio_analysis':{'duration_s':r['audio_duration_s'],'regular_subdivision_fit':r['regular_section_fit'],'strong_change_s':6.84,'music_tail_s':[14.95,15.6],'outro_sound_s':[15.83,16.7],'silence_after_s':16.7,'confidence':'High on detected onsets/subdivision; medium on beat interpretation; not listened to.'},
+ 'proposed_native_edit':{
+ 'status':'Proposal, not observed reference behavior',
+ 'duration_s':15.7333333,
+ 'music':'Use original AAC from musica-original.m4a, trim before15.7333s, optional short final fade; do not reuse TikTokoutro.',
+ 'construction_intro':[
+ {'range_s':[0,1.1],'action':'Original source still briefly, then clean isolated character settles.'},
+ {'range_s':[1.1,2.8],'action':'Head, two hands/forearms and hair separate outward slightly, revealing clean base.'},
+ {'range_s':[2.8,4.5],'action':'Show pivots/labels briefly; preview one gentle nod and secondary-follow motion.'},
+ {'range_s':[4.5,6.84],'action':'Pieces reunite; subtle anticipation into music accent.'}
+ ],
+ 'final_animation':{'range_s':[6.84,15.7333],'tempo_starting_point_bpm':r['regular_section_fit']['quarter_note_bpm_if_two_subdivisions'],'subdivision_s':r['regular_section_fit']['subdivision_s'],'head_motion':'One soft down/up nod per approximately0.5573s; smooth rest and short downbeat compression; alternate a small tilt across two beats. Start modestly and calibrate to cutout.','secondary_motion':'Hands follow with lower amplitude and slight phase difference. Hair follows head with delayed overshoot, independently adjustable. Eyes blink less often than everybeat.','controls':'Tempo, phase/start, nod amplitude, tilt amplitude, pivot, follow delay, secondary amplitude, active interval. Keep each piece editable and formulas/procedural tools separate from blur or shake.'}
+ },
+ 'artifacts': ['contacto_1.jpg','contacto_2.jpg','ojos_movimiento.jpg','construccion.jpg','settings.jpg','settings-original-14s.png','ritmo-contacto.png','ritmo.json','musica-original.m4a','audio-mono.wav']
+}
+with open(p+'/analisis-video-musica.json','w',encoding='utf8') as f:json.dump(report,f,ensure_ascii=False,indent=2)
+print(p+'/analisis-video-musica.json')

@@ -1,0 +1,49 @@
+{
+  "version": "V8",
+  "iniciosUs": [
+    8150000,
+    12050000
+  ],
+  "duracionUs": 660000,
+  "cierreUs": 240000,
+  "cerradoUs": 100000,
+  "aperturaUs": 320000,
+  "poses": [
+    {
+      "apertura": 90,
+      "archivo": "assets-v8\\ojos-90.png"
+    },
+    {
+      "apertura": 80,
+      "archivo": "assets-v8\\ojos-80.png"
+    },
+    {
+      "apertura": 65,
+      "archivo": "assets-v7\\ojos-65.png"
+    },
+    {
+      "apertura": 55,
+      "archivo": "assets-v8\\ojos-45.png"
+    },
+    {
+      "apertura": 45,
+      "archivo": "assets-v8\\ojos-55.png"
+    },
+    {
+      "apertura": 30,
+      "archivo": "assets-v7\\ojos-30.png"
+    },
+    {
+      "apertura": 20,
+      "archivo": "assets-v8\\ojos-20.png"
+    },
+    {
+      "apertura": 10,
+      "archivo": "assets-v8\\ojos-10.png"
+    },
+    {
+      "apertura": 0,
+      "archivo": "assets-v7\\ojos-cerrados.png"
+    }
+  ]
+}

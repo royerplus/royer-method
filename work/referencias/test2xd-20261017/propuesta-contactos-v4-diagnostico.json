@@ -1,0 +1,31 @@
+{
+  "referencia": "validacion/headbop-final.mp4 (V3 nativa)",
+  "frames_inspeccionados_segundos": [
+    3.8,
+    7.1,
+    8.0,
+    9.2
+  ],
+  "hallazgos": [
+    "Hueco claro entre mentón y cuello, ~20–30 píxeles en salida1080.",
+    "Doble reborde de manga/hombro del brazo elevado por silueta solapada.",
+    "El brazo ya está detrás del torso: la solución principal para la unión es corregir el PNG y esconder su inicio bajo cuerpo."
+  ],
+  "ajuste_cabeza_pelo": {
+    "delta_y_prezoom": 0.028,
+    "desplazamiento_final_pixeles": 35.078399999999995,
+    "cuello_escena_original_conservado": [
+      0.48319999999999996,
+      0.5917149212233549
+    ],
+    "razon": "Baja todo el grupo visual, conserva cuello común de rotación y hace que mentón solape levemente el cuello en vez de dejar fondo."
+  },
+  "ajuste_brazo": {
+    "delta_x_prezoom": -0.004,
+    "delta_y_prezoom": 0.008,
+    "pivote_hombro_escena_conservado": true,
+    "condicion": "Aplicar sobre nuevo PNG de root que conserve framing original, o después del remapeo marcoReferenciaUV. Revisar visualmente si el nuevo arte cambia la silueta."
+  },
+  "modelo_android": "No requiere cambio para los contactos; sólo encuadre y pivotes.",
+  "estado": "PROPUESTA V4, pendiente revisión nativa de la combinación con los PNG nuevos. No es benchmark ni comprobación de fluidez."
+}

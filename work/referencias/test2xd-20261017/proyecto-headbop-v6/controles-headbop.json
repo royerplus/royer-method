@@ -1,0 +1,211 @@
+{
+  "cuelloX": 0.48,
+  "cuelloY": 0.61,
+  "giro": 7.0,
+  "rebote": 0.012,
+  "zoomFinal": 1.16,
+  "desplazamientoFinalX": 0.0,
+  "desplazamientoFinalY": 0.02,
+  "fundidoFinalUs": 200000,
+  "piezas": {
+    "cabello-trasero.png": {
+      "pivoteX": 0.39872408293460926,
+      "pivoteY": 0.02658160552897395,
+      "retardo": 95000,
+      "intensidad": 1.0,
+      "arrastre": 1.0,
+      "encuadre": {
+        "escala": 1.317920296570899,
+        "x": 0.011521779425393936,
+        "y": 0.26228915662650604,
+        "rotacion": 0.0
+      },
+      "cuelloX": 0.46776537302853094,
+      "cuelloY": 0.3705731781755173,
+      "geometriaAplicada": {
+        "tamanoReferencia": [
+          1254,
+          1254
+        ],
+        "tamanoPNG": [
+          1024,
+          1536
+        ],
+        "marcoReferenciaUV": [
+          0,
+          0,
+          1,
+          0.6666666666666666
+        ],
+        "ajuste": "ENCAJAR",
+        "sinDeformacion": true
+      },
+      "naturalidad": 0.8
+    },
+    "cuerpo.png": {
+      "pivoteX": 0.52,
+      "pivoteY": 0.88,
+      "retardo": 0,
+      "intensidad": 0.4,
+      "encuadre": {
+        "escala": 0.6109104845124494,
+        "x": -0.003657053069113885,
+        "y": 0.161867832014955,
+        "rotacion": -7.681670608477889
+      },
+      "cuelloX": 0.49402904012792437,
+      "cuelloY": 0.38332142294454147,
+      "geometriaAplicada": {
+        "tamanoReferencia": [
+          1254,
+          1254
+        ],
+        "tamanoPNG": [
+          1254,
+          1254
+        ],
+        "marcoReferenciaUV": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "ajuste": "ENCAJAR",
+        "sinDeformacion": true
+      }
+    },
+    "cabeza.png": {
+      "pivoteX": 0.6255158956448359,
+      "pivoteY": 0.8649205254842429,
+      "retardo": 0,
+      "intensidad": 1.0,
+      "encuadre": {
+        "escala": 0.6994167711480619,
+        "x": -0.1075536106864385,
+        "y": -0.1624772074361315,
+        "rotacion": -0.6671048521955708
+      },
+      "cuelloX": 0.6255158956448359,
+      "cuelloY": 0.8649205254842429,
+      "geometriaAplicada": {
+        "tamanoReferencia": [
+          1254,
+          1254
+        ],
+        "tamanoPNG": [
+          1254,
+          1254
+        ],
+        "marcoReferenciaUV": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "ajuste": "ENCAJAR",
+        "sinDeformacion": true
+      },
+      "naturalidad": 0.8
+    },
+    "flequillo.png": {
+      "pivoteX": 0.430622009569378,
+      "pivoteY": 0.11562998405103668,
+      "retardo": 65000,
+      "intensidad": 1.0,
+      "arrastre": 0.7,
+      "encuadre": {
+        "escala": 0.5475001242728413,
+        "x": -0.07744729130036435,
+        "y": -0.1488052985508549,
+        "rotacion": -2.848697358860966
+      },
+      "cuelloX": 0.5888014641659677,
+      "cuelloY": 0.944268553560111,
+      "geometriaAplicada": {
+        "tamanoReferencia": [
+          1254,
+          1254
+        ],
+        "tamanoPNG": [
+          1254,
+          1254
+        ],
+        "marcoReferenciaUV": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "ajuste": "ENCAJAR",
+        "sinDeformacion": true
+      },
+      "naturalidad": 0.8
+    },
+    "brazo-elevado.png": {
+      "pivoteX": 0.6034965651005609,
+      "pivoteY": 0.8321786358156992,
+      "retardo": 45000,
+      "intensidad": 0.75,
+      "encuadre": {
+        "escala": 0.6303891270594112,
+        "x": 0.1173078930485578,
+        "y": -0.10893037944049544,
+        "rotacion": 4.149211875235565
+      },
+      "cuelloX": 0.3108487664551213,
+      "cuelloY": 0.8328462709114113,
+      "geometriaAplicada": {
+        "tamanoReferencia": [
+          1254,
+          1254
+        ],
+        "tamanoPNG": [
+          1254,
+          1254
+        ],
+        "marcoReferenciaUV": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "ajuste": "ENCAJAR",
+        "sinDeformacion": true
+      }
+    },
+    "brazo-frontal.png": {
+      "pivoteX": 0.39074960127591707,
+      "pivoteY": 0.9250398724082934,
+      "retardo": 70000,
+      "intensidad": 0.8,
+      "encuadre": {
+        "escala": 0.37097015755329005,
+        "x": 0.01927562557924003,
+        "y": 0.32974087117701567,
+        "rotacion": 0.0
+      },
+      "cuelloX": 0.4027532947200537,
+      "cuelloY": -0.1416309913539831,
+      "geometriaAplicada": {
+        "tamanoReferencia": [
+          1254,
+          1254
+        ],
+        "tamanoPNG": [
+          1254,
+          1254
+        ],
+        "marcoReferenciaUV": [
+          0.0,
+          0.0,
+          1.0,
+          1.0
+        ],
+        "ajuste": "ENCAJAR",
+        "sinDeformacion": true
+      }
+    }
+  },
+  "cuelloEscenaX": 0.48319999999999996,
+  "cuelloEscenaY": 0.5917149212233549
+}

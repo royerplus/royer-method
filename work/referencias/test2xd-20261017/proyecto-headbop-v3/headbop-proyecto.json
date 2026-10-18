@@ -1,0 +1,2709 @@
+{
+  "version": 1,
+  "formato": "CUADRADO",
+  "fondo": "BLANCO",
+  "salida": {
+    "ladoCorto": 1080,
+    "calidad": "ALTA",
+    "hevc": false,
+    "desenfoque": true,
+    "muestras": 4
+  },
+  "principal": [
+    {
+      "id": 1,
+      "desde": 0,
+      "hasta": 15733333,
+      "velocidad": 1.0,
+      "volumen": 0.0,
+      "mantenerTono": true,
+      "fundidoEntrada": 0,
+      "fundidoSalida": 0,
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "filtro": "NINGUNO",
+      "intensidadFiltro": 1.0,
+      "encuadre": {
+        "ajuste": "ENCAJAR",
+        "escala": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "rotacion": 0.0,
+        "opacidad": 1.0,
+        "espejo": false,
+        "recorte": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "claves": [],
+      "piezas": [],
+      "entrada": [],
+      "salida": [],
+      "duracionEntrada": 150000,
+      "duracionSalida": 150000,
+      "continua": [],
+      "efectos": [],
+      "transicion": "NINGUNA",
+      "duracionTransicion": 0,
+      "ajusteTransicion": {
+        "curva": "SUAVE",
+        "angulo": 180.0,
+        "color": -1,
+        "intensidad": 1.0
+      },
+      "fluido": false,
+      "calidad": 1.0,
+      "origen": {
+        "uri": "medios/00000.png",
+        "nombre": "Fondo marfil.png",
+        "tipo": "IMAGEN",
+        "ancho": 64,
+        "alto": 64,
+        "duracion": 0,
+        "fps": 0.0,
+        "conAudio": false,
+        "giro": 0,
+        "bytes": 185
+      }
+    }
+  ],
+  "capas": [
+    {
+      "inicio": 0,
+      "fila": 9,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 2,
+        "desde": 0,
+        "hasta": 1100000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 650000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00001.jpg",
+          "nombre": "Foto original de RAGI.jpg",
+          "tipo": "IMAGEN",
+          "ancho": 1079,
+          "alto": 1071,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 496765
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 0,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 3,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.878613531047266,
+          "x": 0.011521779425393936,
+          "y": 0.01463577386468958,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7995383132530122,
+              "x": -0.11847822057460607,
+              "y": -0.055364226135310425,
+              "rotacion": -5.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7995383132530122,
+              "x": -0.11847822057460607,
+              "y": -0.055364226135310425,
+              "rotacion": -5.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5000000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.878613531047266,
+              "x": 0.011521779425393936,
+              "y": 0.01463577386468958,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 6140000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 1.0191916960148286,
+              "x": 0.013365264133456966,
+              "y": 0.036977497683039914,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14833333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 1.0191916960148286,
+              "x": 0.013365264133456966,
+              "y": 0.036977497683039914,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 15033332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 1.0191916960148286,
+              "x": 0.013365264133456966,
+              "y": 0.036977497683039914,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00002.png",
+          "nombre": "Cabello trasero.png",
+          "tipo": "IMAGEN",
+          "ancho": 1254,
+          "alto": 1254,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 1490257
+        },
+        "headBop": {
+          "rol": "CABELLO",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 1.0,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 95000,
+          "cuelloX": 0.46776537302853094,
+          "cuelloY": 0.5877281587807903,
+          "pivoteX": 0.39872408293460926,
+          "pivoteY": 0.03987240829346093,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.012,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333,
+          "arrastre": 1.0
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 1,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 4,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.6303891270594112,
+          "x": 0.1213078930485578,
+          "y": -0.11693037944049545,
+          "rotacion": 4.149211875235565,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6303891270594112,
+              "x": 0.1213078930485578,
+              "y": -0.11693037944049545,
+              "rotacion": 4.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6303891270594112,
+              "x": 0.1213078930485578,
+              "y": -0.11693037944049545,
+              "rotacion": 4.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5736541056240642,
+              "x": 0.2413078930485578,
+              "y": -0.13693037944049544,
+              "rotacion": 12.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5736541056240642,
+              "x": 0.2413078930485578,
+              "y": -0.13693037944049544,
+              "rotacion": 12.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6303891270594112,
+              "x": 0.1213078930485578,
+              "y": -0.11693037944049545,
+              "rotacion": 4.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6303891270594112,
+              "x": 0.1213078930485578,
+              "y": -0.11693037944049545,
+              "rotacion": 4.149211875235565,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6303891270594112,
+              "x": 0.1213078930485578,
+              "y": -0.11693037944049545,
+              "rotacion": 4.149211875235565,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6303891270594112,
+              "x": 0.1213078930485578,
+              "y": -0.11693037944049545,
+              "rotacion": 4.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 6140000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7312513873889169,
+              "x": 0.14071715593632703,
+              "y": -0.1156392401509747,
+              "rotacion": 4.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14833333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7312513873889169,
+              "x": 0.14071715593632703,
+              "y": -0.1156392401509747,
+              "rotacion": 4.149211875235565,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 15033332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7312513873889169,
+              "x": 0.14071715593632703,
+              "y": -0.1156392401509747,
+              "rotacion": 4.149211875235565,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00003.png",
+          "nombre": "Mano elevada.png",
+          "tipo": "IMAGEN",
+          "ancho": 1254,
+          "alto": 1254,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 778674
+        },
+        "headBop": {
+          "rol": "MANO_DERECHA",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 0.75,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 45000,
+          "cuelloX": 0.30543832575647417,
+          "cuelloY": 0.8459626909170838,
+          "pivoteX": 0.5980861244019139,
+          "pivoteY": 0.8452950558213717,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.012,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 2,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 5,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.6109104845124494,
+          "x": -0.003657053069113885,
+          "y": 0.161867832014955,
+          "rotacion": -7.681670608477889,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6109104845124494,
+              "x": -0.003657053069113885,
+              "y": 0.161867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6109104845124494,
+              "x": -0.003657053069113885,
+              "y": 0.161867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.555928540906329,
+              "x": -0.003657053069113885,
+              "y": 0.231867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.555928540906329,
+              "x": -0.003657053069113885,
+              "y": 0.231867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6109104845124494,
+              "x": -0.003657053069113885,
+              "y": 0.161867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6109104845124494,
+              "x": -0.003657053069113885,
+              "y": 0.161867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6109104845124494,
+              "x": -0.003657053069113885,
+              "y": 0.161867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6109104845124494,
+              "x": -0.003657053069113885,
+              "y": 0.161867832014955,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 6140000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7086561620344413,
+              "x": -0.004242181560172107,
+              "y": 0.20776668513734778,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14833333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7086561620344413,
+              "x": -0.004242181560172107,
+              "y": 0.20776668513734778,
+              "rotacion": -7.681670608477889,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 15033332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7086561620344413,
+              "x": -0.004242181560172107,
+              "y": 0.20776668513734778,
+              "rotacion": -7.681670608477889,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00004.png",
+          "nombre": "Cuerpo.png",
+          "tipo": "IMAGEN",
+          "ancho": 1254,
+          "alto": 1254,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 1132561
+        },
+        "headBop": {
+          "rol": "CUERPO",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 0.4,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 0,
+          "cuelloX": 0.49402904012792437,
+          "cuelloY": 0.38332142294454147,
+          "pivoteX": 0.52,
+          "pivoteY": 0.88,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.012,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 3,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 6,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.6994167711480619,
+          "x": -0.1075536106864385,
+          "y": -0.1904772074361315,
+          "rotacion": -0.6671048521955708,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6364692617447364,
+              "x": -0.1075536106864385,
+              "y": -0.3204772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6364692617447364,
+              "x": -0.1075536106864385,
+              "y": -0.3204772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4550000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.6994167711480619,
+              "x": -0.1075536106864385,
+              "y": -0.1904772074361315,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 6140000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.8113234545317517,
+              "x": -0.12476218839626865,
+              "y": -0.20095356062591255,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14833333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.8113234545317517,
+              "x": -0.12476218839626865,
+              "y": -0.20095356062591255,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 15033332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.8113234545317517,
+              "x": -0.12476218839626865,
+              "y": -0.20095356062591255,
+              "rotacion": -0.6671048521955708,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00005.png",
+          "nombre": "Cabeza.png",
+          "tipo": "IMAGEN",
+          "ancho": 1254,
+          "alto": 1254,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 1316296
+        },
+        "headBop": {
+          "rol": "CABEZA",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 1.0,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 0,
+          "cuelloX": 0.6250497907711351,
+          "cuelloY": 0.9049511671369704,
+          "pivoteX": 0.6250497907711351,
+          "pivoteY": 0.9049511671369704,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.012,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 4,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 7,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.5475001242728413,
+          "x": -0.07744729130036435,
+          "y": -0.1768052985508549,
+          "rotacion": -2.848697358860966,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.49822511308828565,
+              "x": 0.02255270869963566,
+              "y": -0.2968052985508549,
+              "rotacion": 2.151302641139034,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.49822511308828565,
+              "x": 0.02255270869963566,
+              "y": -0.2968052985508549,
+              "rotacion": 2.151302641139034,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5000000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.5475001242728413,
+              "x": -0.07744729130036435,
+              "y": -0.1768052985508549,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 6140000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.635100144156496,
+              "x": -0.08983885790842264,
+              "y": -0.18509414631899165,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14833333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.635100144156496,
+              "x": -0.08983885790842264,
+              "y": -0.18509414631899165,
+              "rotacion": -2.848697358860966,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 15033332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.635100144156496,
+              "x": -0.08983885790842264,
+              "y": -0.18509414631899165,
+              "rotacion": -2.848697358860966,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00006.png",
+          "nombre": "Flequillo.png",
+          "tipo": "IMAGEN",
+          "ancho": 1254,
+          "alto": 1254,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 1254092
+        },
+        "headBop": {
+          "rol": "CABELLO",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 1.0,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 65000,
+          "cuelloX": 0.5862597977752241,
+          "cuelloY": 0.9953468966999448,
+          "pivoteX": 0.430622009569378,
+          "pivoteY": 0.11562998405103668,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.012,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333,
+          "arrastre": 0.7
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 5,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 8,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.37097015755329005,
+          "x": 0.01927562557924003,
+          "y": 0.32974087117701567,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.37097015755329005,
+              "x": 0.01927562557924003,
+              "y": 0.32974087117701567,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.37097015755329005,
+              "x": 0.01927562557924003,
+              "y": 0.32974087117701567,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.337582843373494,
+              "x": -0.08072437442075997,
+              "y": 0.4097408711770157,
+              "rotacion": -7.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.337582843373494,
+              "x": -0.08072437442075997,
+              "y": 0.4097408711770157,
+              "rotacion": -7.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.37097015755329005,
+              "x": 0.01927562557924003,
+              "y": 0.32974087117701567,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.37097015755329005,
+              "x": 0.01927562557924003,
+              "y": 0.32974087117701567,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.37097015755329005,
+              "x": 0.01927562557924003,
+              "y": 0.32974087117701567,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.37097015755329005,
+              "x": 0.01927562557924003,
+              "y": 0.32974087117701567,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 6140000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.4303253827618164,
+              "x": 0.02235972567191843,
+              "y": 0.40249941056533817,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14833333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.4303253827618164,
+              "x": 0.02235972567191843,
+              "y": 0.40249941056533817,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 15033332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.4303253827618164,
+              "x": 0.02235972567191843,
+              "y": 0.40249941056533817,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00007.png",
+          "nombre": "Mano frontal.png",
+          "tipo": "IMAGEN",
+          "ancho": 1254,
+          "alto": 1254,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 730167
+        },
+        "headBop": {
+          "rol": "MANO_IZQUIERDA",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 0.8,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 70000,
+          "cuelloX": 0.4027532947200537,
+          "cuelloY": -0.1416309913539831,
+          "pivoteX": 0.39074960127591707,
+          "pivoteY": 0.9250398724082934,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.012,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 150000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 9,
+        "desde": 0,
+        "hasta": 1250000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": -0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "DE UNA FOTO A UN RIG",
+          "tamano": 0.026,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 1600000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 10,
+        "desde": 0,
+        "hasta": 1650000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": -0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "6 PIEZAS · 1 RITMO",
+          "tamano": 0.026,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 3850000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 11,
+        "desde": 0,
+        "hasta": 1100000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": 0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "PIVOTE EN EL CUELLO",
+          "tamano": 0.023,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 3950000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 12,
+        "desde": 0,
+        "hasta": 950000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": -0.016800000000000037,
+          "y": 0.0917149212233549,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "+",
+          "tamano": 0.04,
+          "color": -10642989,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 5100000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 13,
+        "desde": 0,
+        "hasta": 1500000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": 0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "CABEZA → CABELLO → MANOS",
+          "tamano": 0.022,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 1100000,
+      "fila": 13,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 14,
+        "desde": 0,
+        "hasta": 14633333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": 0.475,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 14433333,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 1.0,
+              "x": 0.0,
+              "y": 0.475,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 14633332,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 1.0,
+              "x": 0.0,
+              "y": 0.475,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "RAGI",
+          "tamano": 0.02,
+          "color": -9342607,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    }
+  ],
+  "audios": [
+    {
+      "id": 15,
+      "origen": {
+        "uri": "medios/00008.m4a",
+        "nombre": "Música original · sin outro.m4a",
+        "tipo": "AUDIO",
+        "ancho": 0,
+        "alto": 0,
+        "duracion": 19899501,
+        "fps": 0.0,
+        "conAudio": true,
+        "giro": 0,
+        "bytes": 323435
+      },
+      "inicio": 0,
+      "desde": 0,
+      "hasta": 15733333,
+      "volumen": 1.0,
+      "fundidoEntrada": 15000,
+      "fundidoSalida": 180000
+    }
+  ],
+  "siguienteId": 16
+}

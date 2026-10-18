@@ -1,0 +1,14 @@
+{
+  "estado": "EXPORTADO_NATIVO",
+  "fps": 30,
+  "videoSha256": "89a18eb6a066ff9c0e8a9f6848fc0dfe46963d455475a422cf6a0f1a2bef91f7",
+  "revisionVisual": "Poses 7.05-8.80s; capturas8s y13.2s; falta valoración del usuario",
+  "primerIntento": "467/472,2irregulares; log y video conservados, causa no confirmada",
+  "fotogramas": 472,
+  "videoGaleria": "Movies/RoyerMethod/headbop-test2xd-v5-natural.mp4",
+  "fluidez": "Sin nuevo benchmark, pendiente por petición del usuario",
+  "borradorV4": "Download/RoyerMethod/Borradores/headbop-v4-aprobado.royer",
+  "irregulares": 0,
+  "pruebasJVM": 161,
+  "version": 5
+}

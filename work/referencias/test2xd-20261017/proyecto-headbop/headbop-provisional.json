@@ -1,0 +1,2271 @@
+{
+  "version": 1,
+  "formato": "CUADRADO",
+  "fondo": "BLANCO",
+  "salida": {
+    "ladoCorto": 1080,
+    "calidad": "ALTA",
+    "hevc": false,
+    "desenfoque": true,
+    "muestras": 4
+  },
+  "principal": [
+    {
+      "id": 1,
+      "desde": 0,
+      "hasta": 15733333,
+      "velocidad": 1.0,
+      "volumen": 0.0,
+      "mantenerTono": true,
+      "fundidoEntrada": 0,
+      "fundidoSalida": 0,
+      "color": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "filtro": "NINGUNO",
+      "intensidadFiltro": 1.0,
+      "encuadre": {
+        "ajuste": "ENCAJAR",
+        "escala": 1.0,
+        "x": 0.0,
+        "y": 0.0,
+        "rotacion": 0.0,
+        "opacidad": 1.0,
+        "espejo": false,
+        "recorte": [
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      },
+      "claves": [],
+      "piezas": [],
+      "entrada": [],
+      "salida": [],
+      "duracionEntrada": 150000,
+      "duracionSalida": 150000,
+      "continua": [],
+      "efectos": [],
+      "transicion": "NINGUNA",
+      "duracionTransicion": 0,
+      "ajusteTransicion": {
+        "curva": "SUAVE",
+        "angulo": 180.0,
+        "color": -1,
+        "intensidad": 1.0
+      },
+      "fluido": false,
+      "calidad": 1.0,
+      "origen": {
+        "uri": "medios/00000.png",
+        "nombre": "Fondo marfil.png",
+        "tipo": "IMAGEN",
+        "ancho": 64,
+        "alto": 64,
+        "duracion": 0,
+        "fps": 0.0,
+        "conAudio": false,
+        "giro": 0,
+        "bytes": 185
+      }
+    }
+  ],
+  "capas": [
+    {
+      "inicio": 0,
+      "fila": 9,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 2,
+        "desde": 0,
+        "hasta": 1100000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 650000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00001.jpg",
+          "nombre": "Foto original de RAGI.jpg",
+          "tipo": "IMAGEN",
+          "ancho": 1079,
+          "alto": 1071,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 496765
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 0,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 3,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": -0.13,
+              "y": -0.07,
+              "rotacion": -5.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": -0.13,
+              "y": -0.07,
+              "rotacion": -5.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5000000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00002.png",
+          "nombre": "Cabello trasero.png",
+          "tipo": "IMAGEN",
+          "ancho": 1080,
+          "alto": 1080,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 0
+        },
+        "headBop": {
+          "rol": "CABELLO",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 1.0,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 95000,
+          "cuelloX": 0.55,
+          "cuelloY": 0.62,
+          "pivoteX": 0.51,
+          "pivoteY": 0.23,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.025,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333,
+          "arrastre": 1.0
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 1,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 4,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.0,
+              "y": 0.07,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.0,
+              "y": 0.07,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00003.png",
+          "nombre": "Cuerpo.png",
+          "tipo": "IMAGEN",
+          "ancho": 1080,
+          "alto": 1080,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 0
+        },
+        "headBop": {
+          "rol": "CUERPO",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 0.4,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 0,
+          "cuelloX": 0.55,
+          "cuelloY": 0.62,
+          "pivoteX": 0.5,
+          "pivoteY": 0.88,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.025,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 2,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 5,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.0,
+              "y": -0.13,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.0,
+              "y": -0.13,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4550000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00004.png",
+          "nombre": "Cabeza.png",
+          "tipo": "IMAGEN",
+          "ancho": 1080,
+          "alto": 1080,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 0
+        },
+        "headBop": {
+          "rol": "CABEZA",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 1.0,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 0,
+          "cuelloX": 0.55,
+          "cuelloY": 0.62,
+          "pivoteX": 0.55,
+          "pivoteY": 0.62,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.025,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 3,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 6,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.1,
+              "y": -0.12,
+              "rotacion": 5.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.1,
+              "y": -0.12,
+              "rotacion": 5.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5000000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00005.png",
+          "nombre": "Flequillo.png",
+          "tipo": "IMAGEN",
+          "ancho": 1080,
+          "alto": 1080,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 0
+        },
+        "headBop": {
+          "rol": "CABELLO",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 1.0,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 65000,
+          "cuelloX": 0.55,
+          "cuelloY": 0.62,
+          "pivoteX": 0.49,
+          "pivoteY": 0.18,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.025,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333,
+          "arrastre": 0.7
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 4,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 7,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.12,
+              "y": -0.02,
+              "rotacion": 8.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": 0.12,
+              "y": -0.02,
+              "rotacion": 8.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00006.png",
+          "nombre": "Mano elevada.png",
+          "tipo": "IMAGEN",
+          "ancho": 1080,
+          "alto": 1080,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 0
+        },
+        "headBop": {
+          "rol": "MANO_DERECHA",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 0.75,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 45000,
+          "cuelloX": 0.55,
+          "cuelloY": 0.62,
+          "pivoteX": 0.78,
+          "pivoteY": 0.58,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.025,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 700000,
+      "fila": 5,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 8,
+        "desde": 0,
+        "hasta": 15033333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 0.84,
+          "x": 0.0,
+          "y": 0.0,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [
+          {
+            "t": 0,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 600000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 1450000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": -0.1,
+              "y": 0.08,
+              "rotacion": -7.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 2300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.7644,
+              "x": -0.1,
+              "y": 0.08,
+              "rotacion": -7.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3100000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 3800000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 4300000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 0.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          },
+          {
+            "t": 5700000,
+            "encuadre": {
+              "ajuste": "ENCAJAR",
+              "escala": 0.84,
+              "x": 0.0,
+              "y": 0.0,
+              "rotacion": 0.0,
+              "opacidad": 1.0,
+              "espejo": false,
+              "recorte": [
+                0.0,
+                0.0,
+                0.0,
+                0.0
+              ]
+            },
+            "curva": "SUAVE"
+          }
+        ],
+        "piezas": [],
+        "entrada": [],
+        "salida": [],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "origen": {
+          "uri": "medios/00007.png",
+          "nombre": "Mano frontal.png",
+          "tipo": "IMAGEN",
+          "ancho": 1080,
+          "alto": 1080,
+          "duracion": 0,
+          "fps": 0.0,
+          "conAudio": false,
+          "giro": 0,
+          "bytes": 0
+        },
+        "headBop": {
+          "rol": "MANO_IZQUIERDA",
+          "inicio": 6140000,
+          "fin": 15033333,
+          "bpm": 107.6646164379024,
+          "intensidad": 0.8,
+          "desfase": 0,
+          "rapidez": 1.0,
+          "retardo": 70000,
+          "cuelloX": 0.55,
+          "cuelloY": 0.62,
+          "pivoteX": 0.34,
+          "pivoteY": 0.76,
+          "fundido": 120000,
+          "giro": 7.0,
+          "rebote": 0.025,
+          "activo": true,
+          "recorte": 0,
+          "duracionBase": 8893333
+        }
+      }
+    },
+    {
+      "inicio": 150000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 9,
+        "desde": 0,
+        "hasta": 1250000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": -0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "DE UNA FOTO A UN RIG",
+          "tamano": 0.026,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 1600000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 10,
+        "desde": 0,
+        "hasta": 1650000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": -0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "6 PIEZAS · 1 RITMO",
+          "tamano": 0.026,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 3850000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 11,
+        "desde": 0,
+        "hasta": 1100000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": 0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "PIVOTE EN EL CUELLO",
+          "tamano": 0.023,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 3950000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 12,
+        "desde": 0,
+        "hasta": 950000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.04200000000000004,
+          "y": 0.10079999999999999,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "+",
+          "tamano": 0.04,
+          "color": -10642989,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 5100000,
+      "fila": 12,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 13,
+        "desde": 0,
+        "hasta": 1500000,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": 0.445,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "CABEZA → CABELLO → MANOS",
+          "tamano": 0.022,
+          "color": -13750738,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    },
+    {
+      "inicio": 1100000,
+      "fila": 13,
+      "mezcla": "NORMAL",
+      "clip": {
+        "id": 14,
+        "desde": 0,
+        "hasta": 14633333,
+        "velocidad": 1.0,
+        "volumen": 0.0,
+        "mantenerTono": true,
+        "fundidoEntrada": 0,
+        "fundidoSalida": 0,
+        "color": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "filtro": "NINGUNO",
+        "intensidadFiltro": 1.0,
+        "encuadre": {
+          "ajuste": "ENCAJAR",
+          "escala": 1.0,
+          "x": 0.0,
+          "y": 0.475,
+          "rotacion": 0.0,
+          "opacidad": 1.0,
+          "espejo": false,
+          "recorte": [
+            0.0,
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "claves": [],
+        "piezas": [],
+        "entrada": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "salida": [
+          {
+            "tipo": "APARECER",
+            "intensidad": 1.0,
+            "curva": "SUAVE",
+            "desde": 0.0,
+            "hasta": 1.0
+          }
+        ],
+        "duracionEntrada": 150000,
+        "duracionSalida": 150000,
+        "continua": [],
+        "efectos": [],
+        "transicion": "NINGUNA",
+        "duracionTransicion": 0,
+        "ajusteTransicion": {
+          "curva": "SUAVE",
+          "angulo": 180.0,
+          "color": -1,
+          "intensidad": 1.0
+        },
+        "fluido": false,
+        "calidad": 1.0,
+        "texto": {
+          "contenido": "RAGI",
+          "tamano": 0.02,
+          "color": -9342607,
+          "fuente": "SANS",
+          "negrita": true,
+          "contorno": 0.0,
+          "colorContorno": -16777216,
+          "sombra": false,
+          "fondo": 0,
+          "alineacion": "CENTRO",
+          "espaciado": 0.02
+        }
+      }
+    }
+  ],
+  "audios": [
+    {
+      "id": 15,
+      "origen": {
+        "uri": "medios/00008.m4a",
+        "nombre": "Música original · sin outro.m4a",
+        "tipo": "AUDIO",
+        "ancho": 0,
+        "alto": 0,
+        "duracion": 19899501,
+        "fps": 0.0,
+        "conAudio": true,
+        "giro": 0,
+        "bytes": 323435
+      },
+      "inicio": 0,
+      "desde": 0,
+      "hasta": 15733333,
+      "volumen": 1.0,
+      "fundidoEntrada": 15000,
+      "fundidoSalida": 180000
+    }
+  ],
+  "siguienteId": 16
+}

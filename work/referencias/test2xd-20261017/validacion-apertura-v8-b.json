@@ -1,0 +1,139 @@
+{
+  "measurement": "orange-colored pixels in fixed small eye-interior boxes; proxy for ordered visibility, not exact aperture percentage",
+  "boxes_px": [
+    [
+      590,
+      825,
+      700,
+      931
+    ],
+    [
+      875,
+      715,
+      950,
+      817
+    ]
+  ],
+  "strictly_decreasing_both_eyes": true,
+  "poses": [
+    {
+      "name": "cabeza.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v4\\cabeza.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        3485,
+        2435
+      ]
+    },
+    {
+      "name": "ojos-65.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v7\\ojos-65.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        2998,
+        2168
+      ]
+    },
+    {
+      "name": "ojos-45.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v8\\ojos-45.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        2480,
+        1700
+      ]
+    },
+    {
+      "name": "ojos-30.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v7\\ojos-30.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        1737,
+        1343
+      ]
+    },
+    {
+      "name": "ojos-20.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v8\\ojos-20.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        1147,
+        789
+      ]
+    },
+    {
+      "name": "ojos-10.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v8\\ojos-10.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        513,
+        494
+      ]
+    },
+    {
+      "name": "ojos-cerrados.png",
+      "path": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets-v7\\ojos-cerrados.png",
+      "size": [
+        1254,
+        1254
+      ],
+      "mode": "RGBA",
+      "alpha_range": [
+        0,
+        255
+      ],
+      "orange_iris_area_proxy": [
+        29,
+        136
+      ]
+    }
+  ]
+}

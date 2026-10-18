@@ -1,0 +1,2273 @@
+{
+  "version": "V8",
+  "fuente": "proyecto-headbop-v6\\headbop-test2xd.royer",
+  "sha256Fuente": "a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1",
+  "archivo": "headbop-test2xd.royer",
+  "sha256": "3356ecf7112343bf8dd2a9990811044dd3339197fb766c78322914b9d5cb3a5b",
+  "bytes": 18300903,
+  "configuracion": {
+    "version": "V8",
+    "iniciosUs": [
+      8150000,
+      12050000
+    ],
+    "duracionUs": 660000,
+    "cierreUs": 240000,
+    "cerradoUs": 100000,
+    "aperturaUs": 320000,
+    "poses": [
+      {
+        "apertura": 90,
+        "archivo": "assets-v8\\ojos-90.png"
+      },
+      {
+        "apertura": 80,
+        "archivo": "assets-v8\\ojos-80.png"
+      },
+      {
+        "apertura": 65,
+        "archivo": "assets-v7\\ojos-65.png"
+      },
+      {
+        "apertura": 55,
+        "archivo": "assets-v8\\ojos-45.png"
+      },
+      {
+        "apertura": 45,
+        "archivo": "assets-v8\\ojos-55.png"
+      },
+      {
+        "apertura": 30,
+        "archivo": "assets-v7\\ojos-30.png"
+      },
+      {
+        "apertura": 20,
+        "archivo": "assets-v8\\ojos-20.png"
+      },
+      {
+        "apertura": 10,
+        "archivo": "assets-v8\\ojos-10.png"
+      },
+      {
+        "apertura": 0,
+        "archivo": "assets-v7\\ojos-cerrados.png"
+      }
+    ]
+  },
+  "capas": 16,
+  "capasV6Conservadas": 7,
+  "nuevasCapas": [
+    {
+      "id": 10,
+      "fila": 4,
+      "nombre": "Parpadeo · 90% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 11,
+      "fila": 5,
+      "nombre": "Parpadeo · 80% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 12,
+      "fila": 6,
+      "nombre": "Parpadeo · 65% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 13,
+      "fila": 7,
+      "nombre": "Parpadeo · 55% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 14,
+      "fila": 8,
+      "nombre": "Parpadeo · 45% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 15,
+      "fila": 9,
+      "nombre": "Parpadeo · 30% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 16,
+      "fila": 10,
+      "nombre": "Parpadeo · 20% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 17,
+      "fila": 11,
+      "nombre": "Parpadeo · 10% abierto.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    },
+    {
+      "id": 18,
+      "fila": 12,
+      "nombre": "Parpadeo · ojos cerrados.png",
+      "headBopIdenticoCabeza": true,
+      "clavesMovimientoIdenticasCabeza": true,
+      "numeroPiezasUv": 2
+    }
+  ],
+  "clavesV6Conservadas": 72,
+  "clavesMovimientoHeredadasOverlays": 108,
+  "nuevasClavesSoloOpacidad": 308,
+  "mediosV6Conservados": [
+    {
+      "ruta": "medios/00000.png",
+      "bytes": 185,
+      "sha256": "9fcc3426ffdd9b2d9cc08acfa34f8eab2e66b389b42631b125bdbe606f42c01b"
+    },
+    {
+      "ruta": "medios/00001.jpg",
+      "bytes": 496765,
+      "sha256": "a4fe008df9fd10149c3255dc95432e20c34c9f73de6fb2fee27c7ed45276733a"
+    },
+    {
+      "ruta": "medios/00002.png",
+      "bytes": 2244841,
+      "sha256": "02e8900bc3b7aeea579fd56e8a87e6e8384d983b4137b97ace3876600d3fc8b3"
+    },
+    {
+      "ruta": "medios/00003.png",
+      "bytes": 715310,
+      "sha256": "20748c95f86eb9b0aacd6c54931a3df6aac7cb59dfcbf75e934cba451d289fe2"
+    },
+    {
+      "ruta": "medios/00004.png",
+      "bytes": 1132561,
+      "sha256": "a012784a6a63eb624513d51f60ab861814e30d1ec59db855f5cb3fb4fa49c0c5"
+    },
+    {
+      "ruta": "medios/00005.png",
+      "bytes": 1316296,
+      "sha256": "72034b289abd281f0704aaa8a992077774619fa82cc129518ed20355d2c8db55"
+    },
+    {
+      "ruta": "medios/00006.png",
+      "bytes": 1254092,
+      "sha256": "2b0cca0dda3409e7cc61e74b8de3f796dec0009cfa009b42e55ee4748fb07baa"
+    },
+    {
+      "ruta": "medios/00007.png",
+      "bytes": 730167,
+      "sha256": "128d27a7727f286357db4e8e165a8542218d1a333bcb56d9fbb1202c3c8adcc0"
+    },
+    {
+      "ruta": "medios/00008.m4a",
+      "bytes": 323435,
+      "sha256": "2564b4bb136534b11a2c62fcf73adcb78f09ea29f02e0dd53575f06927eb2752"
+    }
+  ],
+  "nuevosMedios": [
+    {
+      "ruta": "medios/00009.png",
+      "bytes": 1260501,
+      "sha256": "1722110a251db3b63a5d95d0e85674612d2f6368aecc7804a365a544226227a5",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00010.png",
+      "bytes": 1256475,
+      "sha256": "d21b1aa1bbca543b1182f77d27e640d7c90e14f942ea578ecd282f7d76c421ed",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00011.png",
+      "bytes": 1238996,
+      "sha256": "a84cffdd447af53ef311ed7f556980010111a6d29281c1ff2f5ff269cf86c99b",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00012.png",
+      "bytes": 1241129,
+      "sha256": "b0363dd3f826ba44dedbc63a423a9faafe36ec4d6555ad2a5810006296d2ddee",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00013.png",
+      "bytes": 1228600,
+      "sha256": "f591f11f49a2009d9d127c531e31675ccf537f0e68c224976e7df6689ec029eb",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00014.png",
+      "bytes": 1241084,
+      "sha256": "ae96610867d4a67db74e8b8236e33db635cfc6ca36f160e4f15f5f57d2c54806",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00015.png",
+      "bytes": 1236964,
+      "sha256": "d4fa9dbfb897cc2ef28a72ca720b6698f5849c5c043da5d4c9af35e35d62f429",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00016.png",
+      "bytes": 1217389,
+      "sha256": "4a5e99912f15227beee43de36320211633a71229c18b5ddb3c7c89ee882bf8c0",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    },
+    {
+      "ruta": "medios/00017.png",
+      "bytes": 1220985,
+      "sha256": "57ee4df18441ed3b9ecd5351f66d6b5cbcff95b3b201a715eb2eadba0790ed25",
+      "dimensiones": [
+        1254,
+        1254
+      ]
+    }
+  ],
+  "versionesAnterioresIntactas": {
+    "proyecto-headbop-v6\\headbop-test2xd.royer": "a48b38588220bbd57cb0ceb089609f9611f3bfa484ed3efbf7816d498aff43f1",
+    "validacion-v6\\headbop-v6.mp4": "40fb35923f42fd485e5cf2930444c2a455522aad529560d436aff0d6d80e118f",
+    "proyecto-headbop-v7\\headbop-test2xd.royer": "1ff755a3ffbf5852cebddbf18c78ea6d1e1a7c7af19f8132307fe144585c4528",
+    "validacion-v7\\headbop-v7.mp4": "0f3c0b10f527be13339c4dca99c55225e02d210e9c77e3cb715e82e601982cbc",
+    "borradores\\V4-aprobada\\headbop-test2xd-v4.royer": "4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836",
+    "borradores\\V4-aprobada\\headbop-v4.mp4": "84045cc34791642403b762e9924b92e030216df408b9ea67579878d56084a912"
+  },
+  "validacionOpacidad": {
+    "interpolacion": "LINEAL entre poses; nodos temporales inverseSmoothstep global",
+    "nodos": [
+      {
+        "apertura": 100,
+        "cierreUs": 0,
+        "aperturaUs": 660000
+      },
+      {
+        "apertura": 90,
+        "cierreUs": 46992,
+        "aperturaUs": 597344
+      },
+      {
+        "apertura": 80,
+        "cierreUs": 68914,
+        "aperturaUs": 568115
+      },
+      {
+        "apertura": 65,
+        "cierreUs": 95666,
+        "aperturaUs": 532445
+      },
+      {
+        "apertura": 55,
+        "cierreUs": 111988,
+        "aperturaUs": 510683
+      },
+      {
+        "apertura": 45,
+        "cierreUs": 128012,
+        "aperturaUs": 489317
+      },
+      {
+        "apertura": 30,
+        "cierreUs": 152818,
+        "aperturaUs": 456242
+      },
+      {
+        "apertura": 20,
+        "cierreUs": 171086,
+        "aperturaUs": 431885
+      },
+      {
+        "apertura": 10,
+        "cierreUs": 193008,
+        "aperturaUs": 402656
+      },
+      {
+        "apertura": 0,
+        "cierreUs": 240000,
+        "aperturaUs": 340000
+      }
+    ],
+    "posesRealesAdicionales": 6,
+    "estadosConOriginal": 10,
+    "maximoOverlaysActivadosEnMicrosegundosEnteros": 2,
+    "maximoOverlaysActivadosIncluyendoCruceOcultoDe1us": 3,
+    "maximoPosesContribuyentesIncluidoOriginal": 2,
+    "sinMesetasDuranteCierreOApertura": true,
+    "sumaPesosSiempreUno": true,
+    "muestras30fps": [
+      {
+        "tUs": 0.0,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 1.0,
+        "aperturaCompuesta": 100.0,
+        "posesActivadas": 0,
+        "posesContribuyentes": 1,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 33333.333333333336,
+        "alpha": [
+          0.7093405969810465,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.7093405969810465,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.29065940301895354,
+        "aperturaCompuesta": 92.90659403018952,
+        "posesActivadas": 1,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 66666.66666666667,
+        "alpha": [
+          1.0,
+          0.8974850226560839,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.10251497734391612,
+          0.8974850226560839,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 81.02514977343917,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 100000.0,
+        "alpha": [
+          0.0,
+          0.0,
+          1.0,
+          0.26553118490381084,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.7344688150961891,
+          0.26553118490381084,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 62.344688150961886,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 133333.33333333334,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.21451799295869317,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.7854820070413069,
+          0.21451799295869317,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 41.782230105619604,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 166666.66666666666,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.7580833515801761,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.24191664841982385,
+          0.7580833515801761,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 22.41916648419824,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 200000.0,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.1487912836227443
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.8512087163772557,
+          0.1487912836227443
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 8.512087163772557,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 233333.33333333334,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.858131880603791
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.14186811939620902,
+          0.858131880603791
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 1.4186811939620902,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 266666.6666666667,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 0.0,
+        "posesActivadas": 1,
+        "posesContribuyentes": 1,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 300000.0,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 0.0,
+        "posesActivadas": 1,
+        "posesContribuyentes": 1,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 333333.3333333333,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 0.0,
+        "posesActivadas": 1,
+        "posesContribuyentes": 1,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 366666.6666666667,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5743956418113718
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.4256043581886282,
+          0.5743956418113718
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 4.256043581886281,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 400000.0,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.042390194075587306
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.9576098059244127,
+          0.042390194075587306
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 9.576098059244128,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 433333.3333333333,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.9405372856536801,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.05946271434631989,
+          0.9405372856536801,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 20.594627143463196,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 466666.6666666667,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.6848173343411432,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.3151826656588568,
+          0.6848173343411432,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 34.72773998488285,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 500000.0,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          1.0,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.5,
+          0.5,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 50.0,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 533333.3333333334,
+        "alpha": [
+          0.0,
+          1.0,
+          0.9750957854406119,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.02490421455938807,
+          0.9750957854406119,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 65.37356321839083,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 566666.6666666666,
+        "alpha": [
+          0.0,
+          1.0,
+          0.04060368189888908,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.9593963181011109,
+          0.04060368189888908,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.0,
+        "aperturaCompuesta": 79.39094477151666,
+        "posesActivadas": 2,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 600000.0,
+        "alpha": [
+          0.9576098059244127,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.9576098059244127,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.042390194075587306,
+        "aperturaCompuesta": 90.42390194075587,
+        "posesActivadas": 1,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 633333.3333333334,
+        "alpha": [
+          0.4256043581886272,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.4256043581886272,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 0.5743956418113728,
+        "aperturaCompuesta": 95.74395641811373,
+        "posesActivadas": 1,
+        "posesContribuyentes": 2,
+        "sumaPesos": 1.0
+      },
+      {
+        "tUs": 666666.6666666666,
+        "alpha": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesosVisibles": [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        "pesoOjoOriginal": 1.0,
+        "aperturaCompuesta": 100.0,
+        "posesActivadas": 0,
+        "posesContribuyentes": 1,
+        "sumaPesos": 1.0
+      }
+    ],
+    "muestras30fpsEnCuadrosReales": [
+      {
+        "inicioUs": 8150000,
+        "cuadros": [
+          {
+            "cuadro": 245,
+            "tiempoGlobalUs": 8166666.666666667,
+            "tUs": 16666.666666666977,
+            "alpha": [
+              0.35467029849052983,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.35467029849052983,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.6453297015094701,
+            "aperturaCompuesta": 96.45329701509469,
+            "posesActivadas": 1,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 246,
+            "tiempoGlobalUs": 8200000.0,
+            "tUs": 50000.0,
+            "alpha": [
+              1.0,
+              0.1372137578688076,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.8627862421311924,
+              0.1372137578688076,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 88.62786242131192,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 247,
+            "tiempoGlobalUs": 8233333.333333333,
+            "tUs": 83333.33333333302,
+            "alpha": [
+              0.0,
+              1.0,
+              0.5390001993620298,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.4609998006379702,
+              0.5390001993620298,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 71.91499700956956,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 248,
+            "tiempoGlobalUs": 8266666.666666667,
+            "tUs": 116666.66666666698,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.2919786986187579,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.7080213013812421,
+              0.2919786986187579,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 52.08021301381242,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 249,
+            "tiempoGlobalUs": 8300000.0,
+            "tUs": 150000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.8863984519874224,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.1136015480125776,
+              0.8863984519874224,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 31.704023220188667,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 250,
+            "tiempoGlobalUs": 8333333.333333333,
+            "tUs": 183333.33333333302,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.5586777362162678,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.4413222637837322,
+              0.5586777362162678,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 14.413222637837322,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 251,
+            "tiempoGlobalUs": 8366666.666666667,
+            "tUs": 216666.66666666698,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.5034615821132741
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.4965384178867259,
+              0.5034615821132741
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 4.965384178867259,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 252,
+            "tiempoGlobalUs": 8400000.0,
+            "tUs": 250000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 0.0,
+            "posesActivadas": 1,
+            "posesContribuyentes": 1,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 253,
+            "tiempoGlobalUs": 8433333.333333334,
+            "tUs": 283333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 0.0,
+            "posesActivadas": 1,
+            "posesContribuyentes": 1,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 254,
+            "tiempoGlobalUs": 8466666.666666666,
+            "tUs": 316666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 0.0,
+            "posesActivadas": 1,
+            "posesContribuyentes": 1,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 255,
+            "tiempoGlobalUs": 8500000.0,
+            "tUs": 350000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.8403983656792645
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.15960163432073549,
+              0.8403983656792645
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 1.5960163432073549,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 256,
+            "tiempoGlobalUs": 8533333.333333334,
+            "tUs": 383333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.3083929179434698
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.6916070820565302,
+              0.3083929179434698
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 6.916070820565302,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 257,
+            "tiempoGlobalUs": 8566666.666666666,
+            "tUs": 416666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.5206587065357677,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.47934129346423227,
+              0.5206587065357677,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 14.793412934642323,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 258,
+            "tiempoGlobalUs": 8600000.0,
+            "tUs": 450000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.2562712977788726,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.7437287022211274,
+              0.2562712977788726,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 27.437287022211276,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 259,
+            "tiempoGlobalUs": 8633333.333333334,
+            "tUs": 483333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.18091206853109743,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.8190879314689026,
+              0.18091206853109743,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 42.28631897203354,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 260,
+            "tiempoGlobalUs": 8666666.666666666,
+            "tUs": 516666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              1.0,
+              0.725040590632017,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.274959409367983,
+              0.725040590632017,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 57.74959409367983,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 261,
+            "tiempoGlobalUs": 8700000.0,
+            "tUs": 550000.0,
+            "alpha": [
+              0.0,
+              1.0,
+              0.5078497336697505,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.4921502663302495,
+              0.5078497336697505,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 72.38225399495374,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 262,
+            "tiempoGlobalUs": 8733333.333333334,
+            "tUs": 583333.333333334,
+            "alpha": [
+              1.0,
+              0.47934129346423227,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.5206587065357677,
+              0.47934129346423227,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 85.20658706535768,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 263,
+            "tiempoGlobalUs": 8766666.666666666,
+            "tUs": 616666.666666666,
+            "alpha": [
+              0.6916070820565301,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.6916070820565301,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.3083929179434699,
+            "aperturaCompuesta": 93.0839291794347,
+            "posesActivadas": 1,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 264,
+            "tiempoGlobalUs": 8800000.0,
+            "tUs": 650000.0,
+            "alpha": [
+              0.15960163432073549,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.15960163432073549,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.8403983656792645,
+            "aperturaCompuesta": 98.40398365679265,
+            "posesActivadas": 1,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          }
+        ]
+      },
+      {
+        "inicioUs": 12050000,
+        "cuadros": [
+          {
+            "cuadro": 362,
+            "tiempoGlobalUs": 12066666.666666666,
+            "tUs": 16666.666666666046,
+            "alpha": [
+              0.35467029849051,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.35467029849051,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.64532970150949,
+            "aperturaCompuesta": 96.4532970150949,
+            "posesActivadas": 1,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 363,
+            "tiempoGlobalUs": 12100000.0,
+            "tUs": 50000.0,
+            "alpha": [
+              1.0,
+              0.1372137578688076,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.8627862421311924,
+              0.1372137578688076,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 88.62786242131192,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 364,
+            "tiempoGlobalUs": 12133333.333333334,
+            "tUs": 83333.33333333395,
+            "alpha": [
+              0.0,
+              1.0,
+              0.5390001993620647,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.46099980063793533,
+              0.5390001993620647,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 71.91499700956902,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 365,
+            "tiempoGlobalUs": 12166666.666666666,
+            "tUs": 116666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.2919786986186998,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.7080213013813001,
+              0.2919786986186998,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 52.080213013813,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 366,
+            "tiempoGlobalUs": 12200000.0,
+            "tUs": 150000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.8863984519874224,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.1136015480125776,
+              0.8863984519874224,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 31.704023220188667,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 367,
+            "tiempoGlobalUs": 12233333.333333334,
+            "tUs": 183333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.5586777362163103,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.44132226378368966,
+              0.5586777362163103,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 14.413222637836896,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 368,
+            "tiempoGlobalUs": 12266666.666666666,
+            "tUs": 216666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.5034615821132543
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.4965384178867457,
+              0.5034615821132543
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 4.965384178867457,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 369,
+            "tiempoGlobalUs": 12300000.0,
+            "tUs": 250000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 0.0,
+            "posesActivadas": 1,
+            "posesContribuyentes": 1,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 370,
+            "tiempoGlobalUs": 12333333.333333334,
+            "tUs": 283333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 0.0,
+            "posesActivadas": 1,
+            "posesContribuyentes": 1,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 371,
+            "tiempoGlobalUs": 12366666.666666666,
+            "tUs": 316666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 0.0,
+            "posesActivadas": 1,
+            "posesContribuyentes": 1,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 372,
+            "tiempoGlobalUs": 12400000.0,
+            "tUs": 350000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.8403983656792645
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.15960163432073549,
+              0.8403983656792645
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 1.5960163432073549,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 373,
+            "tiempoGlobalUs": 12433333.333333334,
+            "tUs": 383333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.3083929179434698
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.6916070820565302,
+              0.3083929179434698
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 6.916070820565302,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 374,
+            "tiempoGlobalUs": 12466666.666666666,
+            "tUs": 416666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.5206587065357677,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.47934129346423227,
+              0.5206587065357677,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 14.793412934642323,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 375,
+            "tiempoGlobalUs": 12500000.0,
+            "tUs": 450000.0,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.2562712977788726,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.7437287022211274,
+              0.2562712977788726,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 27.437287022211276,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 376,
+            "tiempoGlobalUs": 12533333.333333334,
+            "tUs": 483333.33333333395,
+            "alpha": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0,
+              0.18091206853109743,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.8190879314689026,
+              0.18091206853109743,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 42.28631897203354,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 377,
+            "tiempoGlobalUs": 12566666.666666666,
+            "tUs": 516666.66666666605,
+            "alpha": [
+              0.0,
+              0.0,
+              1.0,
+              0.725040590632017,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.0,
+              0.274959409367983,
+              0.725040590632017,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 57.74959409367983,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 378,
+            "tiempoGlobalUs": 12600000.0,
+            "tUs": 550000.0,
+            "alpha": [
+              0.0,
+              1.0,
+              0.5078497336697505,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.0,
+              0.4921502663302495,
+              0.5078497336697505,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 72.38225399495374,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 379,
+            "tiempoGlobalUs": 12633333.333333334,
+            "tUs": 583333.333333334,
+            "alpha": [
+              1.0,
+              0.47934129346423227,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.5206587065357677,
+              0.47934129346423227,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.0,
+            "aperturaCompuesta": 85.20658706535768,
+            "posesActivadas": 2,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 380,
+            "tiempoGlobalUs": 12666666.666666666,
+            "tUs": 616666.666666666,
+            "alpha": [
+              0.6916070820565301,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.6916070820565301,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.3083929179434699,
+            "aperturaCompuesta": 93.0839291794347,
+            "posesActivadas": 1,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          },
+          {
+            "cuadro": 381,
+            "tiempoGlobalUs": 12700000.0,
+            "tUs": 650000.0,
+            "alpha": [
+              0.15960163432073549,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesosVisibles": [
+              0.15960163432073549,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0
+            ],
+            "pesoOjoOriginal": 0.8403983656792645,
+            "aperturaCompuesta": 98.40398365679265,
+            "posesActivadas": 1,
+            "posesContribuyentes": 2,
+            "sumaPesos": 1.0
+          }
+        ]
+      }
+    ],
+    "nota": "Validación matemática de mezcla/opacidad; no sustituye la revisión de PNG ni la exportación nativa."
+  },
+  "validacion": {
+    "zipCRC": true,
+    "mediosIdenticosV6": true,
+    "capasExistentesIdenticasExceptoFilas": true,
+    "movimientoCabezaSinCambios": true,
+    "sinDeformacionEscala": true,
+    "musicaIntroDuracionSalidaIdenticas": true,
+    "exportadoEnApp": false,
+    "revisionVisualNativa": false,
+    "pruebaFluidez": false
+  },
+  "limitaciones": "La validación de opacidad y estructura no sustituye revisar los PNG y la exportación nativa."
+}

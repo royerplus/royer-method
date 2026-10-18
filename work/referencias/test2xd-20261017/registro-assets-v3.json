@@ -1,0 +1,464 @@
+{
+  "version": 3,
+  "original": {
+    "file": "entrada/Screenshot_20260623-190945.jpg",
+    "width": 1079,
+    "height": 1071,
+    "encuadre": {
+      "escala": 0.84,
+      "x": 0.0,
+      "y": 0.0,
+      "rotacion": 0.0
+    },
+    "neck_uv": [
+      0.48,
+      0.61
+    ]
+  },
+  "canvas_output": [
+    1080,
+    1080
+  ],
+  "neck_scene_uv": [
+    0.48319999999999996,
+    0.5917149212233549
+  ],
+  "status": "PROVISIONAL V3 tras inspección de exportación nativa v2; pendiente render v3",
+  "assets": {
+    "brazo-elevado.png": {
+      "file": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets\\brazo-elevado.png",
+      "sha256": "1cd68d9fc676e9141fc6f8bafd37a89492abb65e0d06b4390478625b84605ebb",
+      "size": [
+        1254,
+        1254
+      ],
+      "alpha_bbox_xyxy": [
+        568,
+        0,
+        1246,
+        1252
+      ],
+      "encuadre": {
+        "escala": 0.6303891270594112,
+        "x": 0.1213078930485578,
+        "y": -0.11693037944049545,
+        "rotacion": 4.149211875235565
+      },
+      "cuelloUV": {
+        "pivoteX": 0.30543832575647417,
+        "pivoteY": 0.8459626909170838
+      },
+      "confidence": "BAJA",
+      "method": "ANCLA MANUAL UNIÓN HOMBRO",
+      "reason": "Sólo5inliers SIFT, insuficientes. Se fija unión de ropa/hombro y se conserva escala/orientación como aproximación visual. AjusteV2 posterior a inspección nativa: traslación de contacto anatómico. V3 rota12grados horario alrededor de unión de hombro conservada para sacar la mano de detrás de la oreja.",
+      "sift_diagnostic": {
+        "matches_ratio_076": 62,
+        "inliers": 5,
+        "inlier_fraction": 0.08064516129032258,
+        "residual_median_px": 2.4376718220415383,
+        "asset_inlier_bbox_xywh": [
+          663,
+          125,
+          218,
+          416
+        ]
+      },
+      "native_composite_verified": false,
+      "manoUV": {
+        "pivoteX": 0.5980861244019139,
+        "pivoteY": 0.8452950558213717
+      },
+      "union_original_uv": [
+        0.7228915662650602,
+        0.5415499533146592
+      ],
+      "neck_projection_verified_math": true,
+      "neck_alignment_error_px_1080": 5.995204332975845e-14,
+      "matrix_asset_px_to_original_px_v1": [
+        [
+          0.6396811637664169,
+          0.08820315602331996,
+          206.74378179046812
+        ],
+        [
+          -0.08820315602331996,
+          0.6396811637664169,
+          -31.909666574911967
+        ]
+      ],
+      "manual_qa_v1_adjustment": {
+        "deltaX": -0.02,
+        "deltaY": 0.07
+      }
+    },
+    "brazo-frontal.png": {
+      "file": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets\\brazo-frontal.png",
+      "sha256": "128d27a7727f286357db4e8e165a8542218d1a333bcb56d9fbb1202c3c8adcc0",
+      "size": [
+        1254,
+        1254
+      ],
+      "alpha_bbox_xyxy": [
+        338,
+        99,
+        1101,
+        1241
+      ],
+      "encuadre": {
+        "escala": 0.37097015755329005,
+        "x": 0.01927562557924003,
+        "y": 0.32974087117701567,
+        "rotacion": 0.0
+      },
+      "cuelloUV": {
+        "pivoteX": 0.4027532947200537,
+        "pivoteY": -0.1416309913539831
+      },
+      "matrix_asset_px_to_original_px": [
+        [
+          0.38,
+          -0.0,
+          326.0
+        ],
+        [
+          0.0,
+          0.38,
+          720.8
+        ]
+      ],
+      "confidence": "BAJA",
+      "method": "ANCLA MANUAL MANO Y MANGA",
+      "reason": "SIFT produjo88grados falsos, rechazado. Fist coincide aproximadamente; extremo de manga se prolonga fuera del cuadro inferior.",
+      "sift_diagnostic": {
+        "matches_ratio_076": 26,
+        "inliers": 4,
+        "inlier_fraction": 0.15384615384615385,
+        "residual_median_px": 1.2678346241423726,
+        "asset_inlier_bbox_xywh": [
+          558,
+          541,
+          159,
+          497
+        ]
+      },
+      "native_composite_verified": false,
+      "manoUV": {
+        "pivoteX": 0.39074960127591707,
+        "pivoteY": 0.9250398724082934
+      },
+      "union_original_uv": [
+        0.47469879518072294,
+        1.084593837535014
+      ],
+      "neck_projection_verified_math": true,
+      "neck_alignment_error_px_1080": 0.0
+    },
+    "cabello-trasero.png": {
+      "file": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets\\cabello-trasero.png",
+      "sha256": "5fbc9b9b821e23623a579bffe6ce9bce026ea9abc4bf4e72a138cbbbe0a0862b",
+      "size": [
+        1254,
+        1254
+      ],
+      "alpha_bbox_xyxy": [
+        0,
+        0,
+        1252,
+        1254
+      ],
+      "encuadre": {
+        "escala": 0.878613531047266,
+        "x": 0.011521779425393936,
+        "y": 0.01463577386468958,
+        "rotacion": 0.0
+      },
+      "cuelloUV": {
+        "pivoteX": 0.46776537302853094,
+        "pivoteY": 0.5877281587807903
+      },
+      "matrix_asset_px_to_original_px": [
+        [
+          0.9,
+          -0.0,
+          -10.0
+        ],
+        [
+          0.0,
+          0.9,
+          -10.0
+        ]
+      ],
+      "confidence": "BAJA",
+      "method": "CORONA Y MASA MANUAL",
+      "reason": "SIFT degenerado rechazado. Masa posterior por detrás de cabeza/cuerpo, puntas largas pueden exceder cuadro como en la fuente.",
+      "sift_diagnostic": {
+        "matches_ratio_076": 52,
+        "inliers": 5,
+        "inlier_fraction": 0.09615384615384616,
+        "residual_median_px": 0.0,
+        "asset_inlier_bbox_xywh": [
+          400,
+          129,
+          572,
+          1068
+        ]
+      },
+      "native_composite_verified": false,
+      "raizUV": {
+        "pivoteX": 0.39872408293460926,
+        "pivoteY": 0.03987240829346093
+      },
+      "neck_projection_verified_math": true,
+      "neck_alignment_error_px_1080": 1.3405684427535274e-13
+    },
+    "cabeza.png": {
+      "file": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets\\cabeza.png",
+      "sha256": "72034b289abd281f0704aaa8a992077774619fa82cc129518ed20355d2c8db55",
+      "size": [
+        1254,
+        1254
+      ],
+      "alpha_bbox_xyxy": [
+        37,
+        104,
+        1187,
+        1087
+      ],
+      "encuadre": {
+        "escala": 0.6994167711480619,
+        "x": -0.1075536106864385,
+        "y": -0.1904772074361315,
+        "rotacion": -0.6671048521955708
+      },
+      "cuelloUV": {
+        "pivoteX": 0.6250497907711351,
+        "pivoteY": 0.9049511671369704
+      },
+      "matrix_asset_px_to_original_px": [
+        [
+          0.7163928227075148,
+          0.008341464747054949,
+          -53.063571960999944
+        ],
+        [
+          -0.008341464747054949,
+          0.7163928227075148,
+          -153.12070956452493
+        ]
+      ],
+      "confidence": "MEDIA-ALTA",
+      "method": "SIFT/RANSAC",
+      "reason": "Ajuste local con inliers, sujeto a redibujo no uniforme.",
+      "sift_diagnostic": {
+        "matches_ratio_076": 144,
+        "inliers": 39,
+        "inlier_fraction": 0.2708333333333333,
+        "residual_median_px": 1.9026946010532606,
+        "asset_inlier_bbox_xywh": [
+          433,
+          538,
+          567,
+          410
+        ]
+      },
+      "native_composite_verified": false,
+      "neck_projection_verified_math": true,
+      "neck_alignment_error_px_1080": 1.199040866595169e-13
+    },
+    "cuerpo.png": {
+      "file": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets\\cuerpo.png",
+      "sha256": "a012784a6a63eb624513d51f60ab861814e30d1ec59db855f5cb3fb4fa49c0c5",
+      "size": [
+        1254,
+        1254
+      ],
+      "alpha_bbox_xyxy": [
+        185,
+        407,
+        1149,
+        1203
+      ],
+      "encuadre": {
+        "escala": 0.6109104845124494,
+        "x": -0.003657053069113885,
+        "y": 0.161867832014955,
+        "rotacion": -7.681670608477889
+      },
+      "cuelloUV": {
+        "pivoteX": 0.49402904012792437,
+        "pivoteY": 0.38332142294454147
+      },
+      "confidence": "BAJA",
+      "method": "ANCLA MANUAL CUELLO, escala orientativa",
+      "reason": "SIFT sólo cubría129x269px en collar; se descarta como prueba de registro de todo el cuerpo. Ancla manual evita cuello separado del mentón. AjusteV2 posterior a inspección nativa: traslación de contacto anatómico.",
+      "sift_diagnostic": {
+        "matches_ratio_076": 87,
+        "inliers": 14,
+        "inlier_fraction": 0.16091954022988506,
+        "residual_median_px": 1.7483209794818646,
+        "asset_inlier_bbox_xywh": [
+          611,
+          493,
+          129,
+          269
+        ]
+      },
+      "native_composite_verified": false,
+      "raizUV": {
+        "pivoteX": 0.52,
+        "pivoteY": 0.88
+      },
+      "neck_projection_verified_math": true,
+      "neck_alignment_error_px_1080": 0.0,
+      "matrix_asset_px_to_original_px_v1": [
+        [
+          0.6201650030918537,
+          0.08364758424517303,
+          93.51193599971526
+        ],
+        [
+          -0.08364758424517303,
+          0.6201650030918537,
+          432.7171387928174
+        ]
+      ],
+      "manual_qa_v1_adjustment": {
+        "deltaY": -0.02
+      }
+    },
+    "flequillo.png": {
+      "file": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\assets\\flequillo.png",
+      "sha256": "2b0cca0dda3409e7cc61e74b8de3f796dec0009cfa009b42e55ee4748fb07baa",
+      "size": [
+        1254,
+        1254
+      ],
+      "alpha_bbox_xyxy": [
+        16,
+        12,
+        1240,
+        1246
+      ],
+      "encuadre": {
+        "escala": 0.5475001242728413,
+        "x": -0.07744729130036435,
+        "y": -0.1768052985508549,
+        "rotacion": -2.848697358860966
+      },
+      "cuelloUV": {
+        "pivoteX": 0.5862597977752241,
+        "pivoteY": 0.9953468966999448
+      },
+      "matrix_asset_px_to_original_px": [
+        [
+          0.5601338726504045,
+          0.027872349628395143,
+          71.33720897274844
+        ],
+        [
+          -0.027872349628395143,
+          0.5601338726504045,
+          -25.338590573338447
+        ]
+      ],
+      "confidence": "MEDIA",
+      "method": "SIFT/RANSAC",
+      "reason": "Ajuste local con inliers, sujeto a redibujo no uniforme.",
+      "sift_diagnostic": {
+        "matches_ratio_076": 72,
+        "inliers": 19,
+        "inlier_fraction": 0.2638888888888889,
+        "residual_median_px": 1.8587228721530429,
+        "asset_inlier_bbox_xywh": [
+          437,
+          206,
+          349,
+          238
+        ]
+      },
+      "native_composite_verified": false,
+      "raizUV": {
+        "pivoteX": 0.430622009569378,
+        "pivoteY": 0.11562998405103668
+      },
+      "neck_projection_verified_math": true,
+      "neck_alignment_error_px_1080": 0.0
+    }
+  },
+  "notes": [
+    "PNG generados redibujan/recentran/escalan piezas: la similitud no garantiza coincidencia exacta de toda silueta.",
+    "Sólo cabeza/flequillo conservan suficientes correspondencias distribuidas para registro automático útil.",
+    "Cuerpo y manos se anclaron manualmente por uniones anatómicas; cabello trasero por corona/masa global.",
+    "CuelloUV fuera de0..1 es válido para un recorte cuyo cuello queda fuera del lienzo PNG. No clamp.",
+    "Todos los cuellos proyectan matemáticamente al mismo punto de escena, también con escalas/centros diferentes.",
+    "Rotación positiva horaria conYhaciaabajo, igual que Encuadre de Royer Method.",
+    "No se ha modificado ningún PNG en este análisis."
+  ],
+  "qa_v1": {
+    "source": "validacion/final-v1-8s.png y contacto-v1.jpg",
+    "findings": [
+      "Brazo elevado tiene unión visible separada del hombro del torso.",
+      "Al rebotar la cabeza aparece hueco bajo mentón.",
+      "Recorte plano inferior de pelo/vestido visible.",
+      "Rostro y flequillo se ven ensamblados sin duplicación facial evidente en muestra8s."
+    ],
+    "changes": {
+      "brazo-elevado.png": {
+        "deltaX": -0.02,
+        "deltaY": 0.07
+      },
+      "cuerpo.png": {
+        "deltaY": -0.02
+      }
+    },
+    "recommended_layer_order_back_to_front": [
+      "cabello-trasero.png",
+      "brazo-elevado.png",
+      "cuerpo.png",
+      "cabeza.png",
+      "flequillo.png",
+      "brazo-frontal.png"
+    ],
+    "recommended_final": {
+      "zoomFactor": 1.16,
+      "translationY": 0.02,
+      "rebote": 0.012,
+      "note": "Aplicar común a todo el rig al final; conservar escala original.84 en intro. Pivotes también deben transformarse."
+    }
+  },
+  "qa_v2": {
+    "source": "validacion/final-v2-8s.png y contacto-v2.jpg",
+    "findings": [
+      "Cuello y hombro ya conectan sin hueco amplio deV1.",
+      "Mano elevada demasiado oculta por oreja/cabeza en la mayoría de muestras.",
+      "Se conserva pequeño borde plano inferior del cabello/vestido."
+    ],
+    "changes": {
+      "brazo-elevado.png": {
+        "rotate_clockwise_deg_about_shoulder": 12.0,
+        "encuadre_before": {
+          "escala": 0.6303891270594112,
+          "x": 0.0762436424938386,
+          "y": -0.10254094791917676,
+          "rotacion": -7.850788124764435
+        },
+        "encuadre_after": {
+          "escala": 0.6303891270594112,
+          "x": 0.1213078930485578,
+          "y": -0.11693037944049545,
+          "rotacion": 4.149211875235565
+        },
+        "shoulder_scene_uv_preserved": [
+          0.6672289156626506,
+          0.6046431881371641
+        ]
+      }
+    },
+    "recommended_final": {
+      "zoomFactor": 1.16,
+      "translationY": 0.02,
+      "rebote": 0.012
+    },
+    "head_hair_unchanged": true
+  }
+}

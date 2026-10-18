@@ -1,0 +1,62 @@
+[
+ {
+  "frame": 172,
+  "eje": "x",
+  "desde": -1112,
+  "hasta": -896,
+  "largo": 216,
+  "centro": -1004.0,
+  "errorRms": 30.120971916901187,
+  "errorSinDesenfoqueRms": 57.81173141380995
+ },
+ {
+  "frame": 282,
+  "eje": "x",
+  "desde": -1304,
+  "hasta": -804,
+  "largo": 500,
+  "centro": -1054.0,
+  "errorRms": 54.64140244657091,
+  "errorSinDesenfoqueRms": 64.91426136162222
+ },
+ {
+  "frame": 200,
+  "eje": "y",
+  "desde": -1084,
+  "hasta": -876,
+  "largo": 208,
+  "centro": -980.0,
+  "errorRms": 14.949882195560365,
+  "errorSinDesenfoqueRms": 25.773428027430814
+ },
+ {
+  "frame": 310,
+  "eje": "y",
+  "desde": -1084,
+  "hasta": -876,
+  "largo": 208,
+  "centro": -980.0,
+  "errorRms": 14.78991883746324,
+  "errorSinDesenfoqueRms": 25.61712555268509
+ },
+ {
+  "frame": 228,
+  "eje": "x",
+  "desde": -560,
+  "hasta": 4,
+  "largo": 564,
+  "centro": -278.0,
+  "errorRms": 26.100849286873668,
+  "errorSinDesenfoqueRms": 53.755086968583726
+ },
+ {
+  "frame": 338,
+  "eje": "x",
+  "desde": -560,
+  "hasta": 8,
+  "largo": 568,
+  "centro": -276.0,
+  "errorRms": 25.44367654780911,
+  "errorSinDesenfoqueRms": 52.68850088017309
+ }
+]

@@ -1,0 +1,348 @@
+{
+  "provisional": false,
+  "faltantes": [],
+  "registro_assets": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\registro-assets-v2.json",
+  "revision_render_nativo": "pendiente",
+  "formato": "CUADRADO",
+  "salida": [
+    1080,
+    1080
+  ],
+  "fps_motor": 30,
+  "duracion_us": 15733333,
+  "inicio_final_us": 6840000,
+  "bpm": 107.6646164379024,
+  "zoomFinal": 1.14,
+  "desplazamientoFinal": [
+    0.0,
+    0.02
+  ],
+  "rebote_comun": 0.012,
+  "fundidoFinalUs": 200000,
+  "claves_total": 74,
+  "claves_intro": 60,
+  "claves_fundido_final": 14,
+  "claves_del_baile": 0,
+  "herramientas_head_bop": 6,
+  "instancias_efectos": 0,
+  "capas": 13,
+  "medios": 9,
+  "piezas_validadas": {
+    "cabello-trasero.png": {
+      "ancho": 1254,
+      "alto": 1254,
+      "modo": "RGBA",
+      "fraccion_no_opaca": 0.9989106629121739,
+      "fraccion_visible": 0.4476126157062949,
+      "caja_alpha": [
+        0,
+        0,
+        1254,
+        1254
+      ]
+    },
+    "brazo-elevado.png": {
+      "ancho": 1254,
+      "alto": 1254,
+      "modo": "RGBA",
+      "fraccion_no_opaca": 0.9996947566829208,
+      "fraccion_visible": 0.2588921193806613,
+      "caja_alpha": [
+        21,
+        0,
+        1254,
+        1254
+      ]
+    },
+    "cuerpo.png": {
+      "ancho": 1254,
+      "alto": 1254,
+      "modo": "RGBA",
+      "fraccion_no_opaca": 0.9996623245804812,
+      "fraccion_visible": 0.3990121563151027,
+      "caja_alpha": [
+        29,
+        29,
+        1226,
+        1254
+      ]
+    },
+    "cabeza.png": {
+      "ancho": 1254,
+      "alto": 1254,
+      "modo": "RGBA",
+      "fraccion_no_opaca": 0.9997507179577187,
+      "fraccion_visible": 0.4288229817693429,
+      "caja_alpha": [
+        0,
+        23,
+        1190,
+        1182
+      ]
+    },
+    "flequillo.png": {
+      "ancho": 1254,
+      "alto": 1254,
+      "modo": "RGBA",
+      "fraccion_no_opaca": 0.9992546975674651,
+      "fraccion_visible": 0.40073805290375425,
+      "caja_alpha": [
+        14,
+        10,
+        1241,
+        1254
+      ]
+    },
+    "brazo-frontal.png": {
+      "ancho": 1254,
+      "alto": 1254,
+      "modo": "RGBA",
+      "fraccion_no_opaca": 0.9998511938829239,
+      "fraccion_visible": 0.2425927621722132,
+      "caja_alpha": [
+        27,
+        95,
+        1234,
+        1254
+      ]
+    }
+  },
+  "capas_detalle": [
+    {
+      "id": 2,
+      "nombre": "Foto original → rig",
+      "inicio_us": 0,
+      "fin_us": 1100000,
+      "fila": 9,
+      "claves": 3,
+      "headBop": null
+    },
+    {
+      "id": 3,
+      "nombre": "Cabello trasero",
+      "inicio_us": 700000,
+      "fin_us": 15733333,
+      "fila": 0,
+      "claves": 12,
+      "headBop": {
+        "rol": "CABELLO",
+        "inicio": 6140000,
+        "fin": 15033333,
+        "bpm": 107.6646164379024,
+        "intensidad": 1.0,
+        "desfase": 0,
+        "rapidez": 1.0,
+        "retardo": 95000,
+        "cuelloX": 0.46776537302853094,
+        "cuelloY": 0.5877281587807903,
+        "pivoteX": 0.39872408293460926,
+        "pivoteY": 0.03987240829346093,
+        "fundido": 120000,
+        "giro": 7.0,
+        "rebote": 0.012,
+        "activo": true,
+        "recorte": 0,
+        "duracionBase": 8893333,
+        "arrastre": 1.0
+      }
+    },
+    {
+      "id": 4,
+      "nombre": "Mano elevada",
+      "inicio_us": 700000,
+      "fin_us": 15733333,
+      "fila": 1,
+      "claves": 11,
+      "headBop": {
+        "rol": "MANO_DERECHA",
+        "inicio": 6140000,
+        "fin": 15033333,
+        "bpm": 107.6646164379024,
+        "intensidad": 0.75,
+        "desfase": 0,
+        "rapidez": 1.0,
+        "retardo": 45000,
+        "cuelloX": 0.3116945731552484,
+        "cuelloY": 0.7851032028579397,
+        "pivoteX": 0.5980861244019139,
+        "pivoteY": 0.8452950558213717,
+        "fundido": 120000,
+        "giro": 7.0,
+        "rebote": 0.012,
+        "activo": true,
+        "recorte": 0,
+        "duracionBase": 8893333
+      }
+    },
+    {
+      "id": 5,
+      "nombre": "Cuerpo",
+      "inicio_us": 700000,
+      "fin_us": 15733333,
+      "fila": 2,
+      "claves": 11,
+      "headBop": {
+        "rol": "CUERPO",
+        "inicio": 6140000,
+        "fin": 15033333,
+        "bpm": 107.6646164379024,
+        "intensidad": 0.4,
+        "desfase": 0,
+        "rapidez": 1.0,
+        "retardo": 0,
+        "cuelloX": 0.49402904012792437,
+        "cuelloY": 0.38332142294454147,
+        "pivoteX": 0.52,
+        "pivoteY": 0.88,
+        "fundido": 120000,
+        "giro": 7.0,
+        "rebote": 0.012,
+        "activo": true,
+        "recorte": 0,
+        "duracionBase": 8893333
+      }
+    },
+    {
+      "id": 6,
+      "nombre": "Cabeza",
+      "inicio_us": 700000,
+      "fin_us": 15733333,
+      "fila": 3,
+      "claves": 12,
+      "headBop": {
+        "rol": "CABEZA",
+        "inicio": 6140000,
+        "fin": 15033333,
+        "bpm": 107.6646164379024,
+        "intensidad": 1.0,
+        "desfase": 0,
+        "rapidez": 1.0,
+        "retardo": 0,
+        "cuelloX": 0.6250497907711351,
+        "cuelloY": 0.9049511671369704,
+        "pivoteX": 0.6250497907711351,
+        "pivoteY": 0.9049511671369704,
+        "fundido": 120000,
+        "giro": 7.0,
+        "rebote": 0.012,
+        "activo": true,
+        "recorte": 0,
+        "duracionBase": 8893333
+      }
+    },
+    {
+      "id": 7,
+      "nombre": "Flequillo",
+      "inicio_us": 700000,
+      "fin_us": 15733333,
+      "fila": 4,
+      "claves": 12,
+      "headBop": {
+        "rol": "CABELLO",
+        "inicio": 6140000,
+        "fin": 15033333,
+        "bpm": 107.6646164379024,
+        "intensidad": 1.0,
+        "desfase": 0,
+        "rapidez": 1.0,
+        "retardo": 65000,
+        "cuelloX": 0.5862597977752241,
+        "cuelloY": 0.9953468966999448,
+        "pivoteX": 0.430622009569378,
+        "pivoteY": 0.11562998405103668,
+        "fundido": 120000,
+        "giro": 7.0,
+        "rebote": 0.012,
+        "activo": true,
+        "recorte": 0,
+        "duracionBase": 8893333,
+        "arrastre": 0.7
+      }
+    },
+    {
+      "id": 8,
+      "nombre": "Mano frontal",
+      "inicio_us": 700000,
+      "fin_us": 15733333,
+      "fila": 5,
+      "claves": 11,
+      "headBop": {
+        "rol": "MANO_IZQUIERDA",
+        "inicio": 6140000,
+        "fin": 15033333,
+        "bpm": 107.6646164379024,
+        "intensidad": 0.8,
+        "desfase": 0,
+        "rapidez": 1.0,
+        "retardo": 70000,
+        "cuelloX": 0.4027532947200537,
+        "cuelloY": -0.1416309913539831,
+        "pivoteX": 0.39074960127591707,
+        "pivoteY": 0.9250398724082934,
+        "fundido": 120000,
+        "giro": 7.0,
+        "rebote": 0.012,
+        "activo": true,
+        "recorte": 0,
+        "duracionBase": 8893333
+      }
+    },
+    {
+      "id": 9,
+      "nombre": "DE UNA FOTO A UN RIG",
+      "inicio_us": 150000,
+      "fin_us": 1400000,
+      "fila": 12,
+      "claves": 0,
+      "headBop": null
+    },
+    {
+      "id": 10,
+      "nombre": "6 PIEZAS · 1 RITMO",
+      "inicio_us": 1600000,
+      "fin_us": 3250000,
+      "fila": 12,
+      "claves": 0,
+      "headBop": null
+    },
+    {
+      "id": 11,
+      "nombre": "PIVOTE EN EL CUELLO",
+      "inicio_us": 3850000,
+      "fin_us": 4950000,
+      "fila": 12,
+      "claves": 0,
+      "headBop": null
+    },
+    {
+      "id": 12,
+      "nombre": "+",
+      "inicio_us": 3950000,
+      "fin_us": 4900000,
+      "fila": 12,
+      "claves": 0,
+      "headBop": null
+    },
+    {
+      "id": 13,
+      "nombre": "CABEZA → CABELLO → MANOS",
+      "inicio_us": 5100000,
+      "fin_us": 6600000,
+      "fila": 12,
+      "claves": 0,
+      "headBop": null
+    },
+    {
+      "id": 14,
+      "nombre": "RAGI",
+      "inicio_us": 1100000,
+      "fin_us": 15733333,
+      "fila": 13,
+      "claves": 0,
+      "headBop": null
+    }
+  ],
+  "paquete": "C:\\Users\\PC\\Downloads\\royer-method-work\\referencias\\test2xd-20261017\\proyecto-headbop-v2\\headbop-test2xd.royer",
+  "sha256": "544c8633efc1f76e67a332b20f6c7984daa0e93aecd0d72e9b99494036eff007",
+  "nota": "No es una réplica medida del tutorial. Intro propia y headbop propio basados en técnicas de despiece y follow-through. Pendiente inspección del render nativo."
+}

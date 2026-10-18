@@ -1,0 +1,43 @@
+{
+  "version": "V4",
+  "estado": "Borrador guardado por petición del usuario",
+  "creadoUTC": "2026-10-17T21:16:02.366877+00:00",
+  "archivos": [
+    {
+      "origen": "proyecto-headbop-v4\\headbop-test2xd.royer",
+      "copia": "headbop-test2xd-v4.royer",
+      "bytes": 7833798,
+      "sha256": "4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836"
+    },
+    {
+      "origen": "validacion-v4\\headbop-v4.mp4",
+      "copia": "headbop-v4.mp4",
+      "bytes": 25087782,
+      "sha256": "84045cc34791642403b762e9924b92e030216df408b9ea67579878d56084a912"
+    },
+    {
+      "origen": "proyecto-headbop-v4\\controles-headbop.json",
+      "copia": "controles-headbop-v4.json",
+      "bytes": 4912,
+      "sha256": "f4cfbfe7e28abd87a2982ae6f4e1ba7e70614d4106715d9dd1df1eac3b5001dc"
+    },
+    {
+      "origen": "proyecto-headbop-v4\\ajustes-headbop-v4.json",
+      "copia": "ajustes-headbop-v4.json",
+      "bytes": 1419,
+      "sha256": "cd5a3e1882a70d60b613cdb16063996a03b6a0bd5e0b20b24cb6a0d815b75e76"
+    },
+    {
+      "origen": "proyecto-headbop-v4\\README.md",
+      "copia": "README-origen-V4.md",
+      "bytes": 3936,
+      "sha256": "643ff14dd175efad6a159a0bd20a6f3f262327fab92437813aec8c544372af10"
+    },
+    {
+      "origen": "proyecto-headbop-v4\\headbop-proyecto.json",
+      "copia": "headbop-proyecto-v4.json",
+      "bytes": 56108,
+      "sha256": "4185474d6a72d661fded7fe74e1d57fe014dea8a0ec5a34ac150b45109ffc69f"
+    }
+  ]
+}

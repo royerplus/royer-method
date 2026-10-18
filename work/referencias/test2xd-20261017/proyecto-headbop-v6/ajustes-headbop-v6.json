@@ -1,0 +1,12 @@
+{
+  "fuente": "proyecto-headbop-v4\\headbop-test2xd.royer",
+  "sha256Fuente": "4a62aaf97290cc4133e5e3c3dc61e035577fe939eb3ebc4eb482289941900836",
+  "naturalidadPorRol": {
+    "CABEZA": 0.8,
+    "CABELLO": 0.8
+  },
+  "otrosRoles": "Conservar campo ausente y naturalidad efectiva 0 como V4",
+  "giroConservado": 7.0,
+  "reboteConservado": 0.012,
+  "motorRequerido": "V6, naturalidad con rotación/traslación y sin deformación de escala"
+}

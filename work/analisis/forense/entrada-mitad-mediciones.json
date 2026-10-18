@@ -1,0 +1,110 @@
+[
+  {
+    "frame": 149,
+    "t": 4.966666666666667,
+    "top": 6,
+    "bottom": 764,
+    "gap": 758,
+    "upperOffset": -0.4921875,
+    "lowerOffset": 0.4947916666666667
+  },
+  {
+    "frame": 150,
+    "t": 5.0,
+    "top": 15,
+    "bottom": 756,
+    "gap": 741,
+    "upperOffset": -0.48046875,
+    "lowerOffset": 0.484375
+  },
+  {
+    "frame": 151,
+    "t": 5.033333333333333,
+    "top": 27,
+    "bottom": 743,
+    "gap": 716,
+    "upperOffset": -0.46484375,
+    "lowerOffset": 0.4674479166666667
+  },
+  {
+    "frame": 152,
+    "t": 5.066666666666666,
+    "top": 44,
+    "bottom": 728,
+    "gap": 684,
+    "upperOffset": -0.4427083333333333,
+    "lowerOffset": 0.4479166666666667
+  },
+  {
+    "frame": 153,
+    "t": 5.1,
+    "top": 64,
+    "bottom": 706,
+    "gap": 642,
+    "upperOffset": -0.4166666666666667,
+    "lowerOffset": 0.4192708333333333
+  },
+  {
+    "frame": 154,
+    "t": 5.133333333333334,
+    "top": 96,
+    "bottom": 676,
+    "gap": 580,
+    "upperOffset": -0.375,
+    "lowerOffset": 0.3802083333333333
+  },
+  {
+    "frame": 155,
+    "t": 5.166666666666667,
+    "top": 138,
+    "bottom": 636,
+    "gap": 498,
+    "upperOffset": -0.3203125,
+    "lowerOffset": 0.328125
+  },
+  {
+    "frame": 156,
+    "t": 5.2,
+    "top": 196,
+    "bottom": 576,
+    "gap": 380,
+    "upperOffset": -0.24479166666666666,
+    "lowerOffset": 0.25
+  },
+  {
+    "frame": 157,
+    "t": 5.233333333333333,
+    "top": 290,
+    "bottom": 480,
+    "gap": 190,
+    "upperOffset": -0.12239583333333333,
+    "lowerOffset": 0.125
+  },
+  {
+    "frame": 158,
+    "t": 5.266666666666667,
+    "top": 368,
+    "bottom": 402,
+    "gap": 34,
+    "upperOffset": -0.020833333333333332,
+    "lowerOffset": 0.0234375
+  },
+  {
+    "frame": 159,
+    "t": 5.3,
+    "top": 384,
+    "bottom": 384,
+    "gap": 0,
+    "upperOffset": 0.0,
+    "lowerOffset": 0.0
+  },
+  {
+    "frame": 160,
+    "t": 5.333333333333333,
+    "top": 384,
+    "bottom": 384,
+    "gap": 0,
+    "upperOffset": 0.0,
+    "lowerOffset": 0.0
+  }
+]
