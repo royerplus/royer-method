@@ -780,14 +780,6 @@ private fun DrawScope.bloque(
                 Offset(xa, y0), Size(xz - xa, alto)
             )
         }
-        val ancho = x1 - x0
-        if (c.esTexto) {
-            texto(medidor, "T  " + c.nombre(), Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
-        } else if (ancho > 44.dp.toPx()) {
-            var etiqueta = segundos(c.duracionUs)
-            if (c.esVideo && c.velocidad != 1f) etiqueta += "  ·  ${"%.2g".format(c.velocidad)}x"
-            texto(medidor, etiqueta, Offset(x0 + 7.dp.toPx(), y1 - 9.dp.toPx()), Color.White.copy(alpha = 0.92f), 9.5f, maxAncho = min(ancho, size.width) - 10.dp.toPx())
-        }
         // Donde empieza el contenido del bloque (antes de [x0] si hay transicion)
         val xb = x0 - (pz.desde - pz.inicio) * pxUs
         // Las heredadas y las aplicadas (Clip.animaciones) se marcan igual
@@ -803,7 +795,8 @@ private fun DrawScope.bloque(
             if (siempre) franja(xa, xz, y0, 1.5.dp.toPx(), Ink.White30)
             if (elegido) {
                 // En el elegido, ademas, el tramo entero un poco aclarado y su
-                // borde: se ve hasta donde llega la entrada y desde donde la salida
+                // borde: se ve hasta donde llega la entrada y desde donde la salida.
+                // Va antes de las etiquetas para que el borde no tape el texto
                 if (ini > 0) {
                     franja(xb, xb + ini, y0, alto, Ink.White04)
                     franja(xb + ini - 1.dp.toPx(), xb + ini, y0, alto, Ink.White30)
@@ -814,6 +807,18 @@ private fun DrawScope.bloque(
                 }
             }
         }
+        val ancho = x1 - x0
+        // En las filas bajas (capas) "FX n" no cabe en su propia linea: va detras de la etiqueta
+        val fxAparte = alto >= 48.dp.toPx()
+        val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  FX ${c.efectos.size}" else ""
+        if (c.esTexto) {
+            texto(medidor, "T  " + c.nombre() + fxDetras, Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
+        } else if (ancho > 44.dp.toPx()) {
+            var etiqueta = segundos(c.duracionUs)
+            if (c.esVideo && c.velocidad != 1f) etiqueta += "  ·  ${"%.2g".format(c.velocidad)}x"
+            etiqueta += fxDetras
+            texto(medidor, etiqueta, Offset(x0 + 7.dp.toPx(), y1 - 9.dp.toPx()), Color.White.copy(alpha = 0.92f), 9.5f, maxAncho = min(ancho, size.width) - 10.dp.toPx())
+        }
         if (c.efectos.isNotEmpty()) {
             // Cada raya conserva el intervalo real del efecto, incluso con transiciones.
             c.efectos.take(3).forEachIndexed { i, efecto ->
@@ -821,7 +826,7 @@ private fun DrawScope.bloque(
                 val xf = xb + min(efecto.finUs, c.duracionUs) * pxUs
                 if (xf > xi) franja(xi, xf, y0 + (6 + i * 4).dp.toPx(), 2.dp.toPx(), if (efecto.activo) Ink.White90 else Ink.White30)
             }
-            if (ancho > 55.dp.toPx()) texto(
+            if (fxAparte && ancho > 55.dp.toPx()) texto(
                 medidor, "FX ${c.efectos.size}", Offset(x0 + 7.dp.toPx(), y0 + 23.dp.toPx()),
                 Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - 10.dp.toPx()
             )

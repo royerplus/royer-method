@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -212,16 +211,21 @@ fun CampoTiempo(
 
     // Titulo y -/valor/+ en una fila; debajo el deslizador y el paso de los
     // botones. Asi el titulo tiene sitio en 360 dp sin partirse letra a letra
+    val conDeslizador = deslizador && maximo > minimo
+    // Sin deslizador, el paso de 1/10 ms va bajo el titulo y no ocupa otra fila
+    val pasoBajoTitulo = !conDeslizador && !fotogramas
     Column(modifier.fillMaxWidth().padding(vertical = 2.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(
-                titulo,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Ink.White70,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            Column(Modifier.weight(1f)) {
+                Text(
+                    titulo,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Ink.White70,
+                    maxLines = if (pasoBajoTitulo) 1 else 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (pasoBajoTitulo) Chip(if (grueso) "Paso 10 ms" else "Paso 1 ms", grueso, { grueso = !grueso })
+            }
             BotonPaso("−", valor > minimo) { mover(-1) }
             if (editando) {
                 EntradaTiempo(valor, error != null, onListo = { texto, explicito ->
@@ -256,25 +260,20 @@ fun CampoTiempo(
             }
             BotonPaso("+", valor < maximo) { mover(1) }
         }
-        val conDeslizador = deslizador && maximo > minimo
-        // Sin deslizador y con fotogramas no hay nada que elegir: no hace falta la fila
-        if (conDeslizador || !fotogramas) {
+        // Sin deslizador no hace falta la fila (el paso fino ya esta bajo el titulo)
+        if (conDeslizador) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (conDeslizador) {
-                    Deslizador(
-                        titulo, valor / 1e6f, minimo / 1e6f, maximo / 1e6f,
-                        { v ->
-                            nota = null
-                            onCambio(TiempoCampo.deDeslizador(v, minimo, maximo, fotogramas, origenUs), true)
-                        },
-                        modifier = Modifier.weight(1f),
-                        texto = { TiempoPreciso.texto(TiempoCampo.usDeSegundos(it)) },
-                        iman = false,
-                        cabecera = false
-                    )
-                } else {
-                    Spacer(Modifier.weight(1f))
-                }
+                Deslizador(
+                    titulo, valor / 1e6f, minimo / 1e6f, maximo / 1e6f,
+                    { v ->
+                        nota = null
+                        onCambio(TiempoCampo.deDeslizador(v, minimo, maximo, fotogramas, origenUs), true)
+                    },
+                    modifier = Modifier.weight(1f),
+                    texto = { TiempoPreciso.texto(TiempoCampo.usDeSegundos(it)) },
+                    iman = false,
+                    cabecera = false
+                )
                 // Lo que mueven -/+
                 if (fotogramas) Nota("Paso 1 f", Modifier.padding(horizontal = 6.dp))
                 else Chip(if (grueso) "Paso 10 ms" else "Paso 1 ms", grueso, { grueso = !grueso })

@@ -280,9 +280,9 @@ Se comprobó también el APK instalado de `com.royermethod.app.prueba`: SHA256 `
 
 Esta tanda corrige las herramientas existentes y su renderizado; no incorpora tipos nuevos de animaciones, transiciones ni efectos al catálogo.
 
-## Herramientas de movimiento (pedido del 2026-10-16 07:25, fase A integrada el 2026-10-17)
+## Herramientas de movimiento (pedido del 2026-10-16 07:25; fases A y B integradas el 2026-10-18)
 
-Rama local `wt/integra-a`: une `wt/efectos`, `wt/animaciones`, `wt/claves` y `wt/comun` sobre 20d9e35. Faltan los paneles nuevos y la línea de tiempo (fase B).
+Rama local `wt/integra-b`: la fase A (`wt/integra-a`: efectos, animaciones, claves y común sobre 20d9e35) más la fase B (`wt/vista`, `wt/panel-efectos`, `wt/panel-animacion`, `wt/linea`, `wt/ejemplos`). Primero el modelo; después, dónde está cada cosa en la app.
 
 - **Efectos nuevos** (`modelo/EfectoVideo.kt`, `Escena.efectosVideo`, `modelo/CatalogoEfectos.kt`): MOVER, ZOOM, GIRAR, LATIGAZO, DESENFOQUE_DIRECCIONAL, CIRCULO (círculo o anillo con centro y grosor), BARRIDO y MITADES, que parte el bloque en dos piezas sintéticas. Se ajustan con `AjustesEfecto`: desde/hasta, ángulo, curva o Bézier, centro, grosor, suavidad, invertir y corte vertical. Con sus valores por defecto, los efectos viejos (la SACUDIDA incluida) dan exactamente lo mismo que antes.
 - **Combinaciones rápidas** (también son los ejemplos editables): Mitades que se juntan, Círculo que se abre, Anillo que se abre, Latigazo con desenfoque y Sacudida con desenfoque. El anillo va invertido: su banda deja ver lo de debajo y, al salir por las esquinas, la imagen queda entera. Cada efecto queda independiente, con su id, y comparte grupo con los demás de la combinación (`moverGrupo`).
@@ -294,6 +294,95 @@ Rama local `wt/integra-a`: une `wt/efectos`, `wt/animaciones`, `wt/claves` y `wt
   - Métrica: `hypot(Δx·W, Δy·H) + R·|Δescala| + R·|Δgiro|·π/180`, con W×H las medidas de exportación y R la media diagonal. Se mide en los centros de fotograma a 30 fps, en las muestras del obturador (como `Escena`) y en los tiempos de clave.
   - Es exacta para desplazamientos; para escala y giro es una aproximación.
   - Limitación: una sola curva por tramo para los cinco canales, así que las curvas en el plano conservan muchas claves.
-- **Pendiente de esta línea**:
-  - Fase B: paneles nuevos de Efectos y Animación, y en la línea de tiempo los botones de zoom, la pulsación de 2 s, las claves arrastrables y la regla a 1 ms. También el simplificador en la interfaz y el banco de vista previa.
-  - En el teléfono: el teclado decimal del campo de tiempo, la pausa exacta con sonido real, y los uniformes nuevos y la precisión mediump del anillo y del centro.
+
+### Dónde está cada herramienta en la app (fase B)
+
+Rutas: `U = app/src/main/java/com/royermethod/app/editor/ui`.
+
+- **Efectos** (bloque elegido > Efectos; hoja «Efectos de video»; `U/PanelEfectos.kt`, `U/FranjaEfectos.kt`, lógica pura en `U/TramosEfecto.kt`):
+  - Arriba, fija, la franja: una mini línea de tiempo del bloque con un carril por solape, la barra elegida en blanco y el cabezal. Tocar una barra la elige. Arrastrar el centro mueve el tramo entero (conserva duración, reloj, puntos de progreso y fundidos); los bordes recortan sin mover el reloj. Con el imán se pega a fotogramas. Cada arrastre es un paso de deshacer. Tocar la regla o arrastrar en vacío mueve el cabezal.
+  - «+ Agregar» (pasa a «< Volver») abre el catálogo por grupos y la pestaña «Combinaciones rápidas». Lo nuevo se pone en el cabezal y queda elegido.
+  - Del elegido se ven siempre Inicio (mueve el efecto entero), Duración e Intensidad. Debajo, plegables: Tiempo (Fin, Recortar inicio, Al cabezal, Fin al cabezal, Todo el bloque y, si es de una combinación, Mover el grupo), Forma (lo que da `CatalogoEfectos.parametros`), Entrada y salida (fundidos) y Avanzado (rapidez y puntos de progreso). La cabecera tiene encender, probar, duplicar, papelera y «Separar del grupo».
+- **Animar** (bloque elegido > Animar; `U/PanelAnimacion.kt`, `U/LogicaAnimacion.kt`):
+  - Fila del título: «Animar · Animaciones (n) ▾ · + · ✓». El desplegable lista las aplicadas: tocar elige, ✕ quita, y la elegida trae «Ajustar» y «Convertir en efecto».
+  - «+» suma la siguiente que se toque y se apaga solo. Sin «+», tocar otra sustituye a la elegida y conserva su duración.
+  - Fijas arriba: las pestañas Entrada/Salida/Siempre y la duración de la elegida (CampoTiempo). Debajo se desliza el catálogo, con un filtro de categorías («Todas» es lo de siempre). Las puestas llevan PUESTA y la elegida ELEGIDA.
+  - Al aplicar: pausa, cabezal al comienzo del bloque y duración sugerida (`duracionSugeridaUs`). Los ajustes posteriores no mueven el cabezal ni pisan la duración. En Personalizar ya no hay «Animación nueva».
+- **Convertir en efecto**: en el desplegable o al final de «Ajustar». Un diálogo enseña `limitacionesConversion`. Es un paso de deshacer y abre Efectos con el efecto nuevo elegido (`estado.efectoAElegir`).
+- **Línea de tiempo** (`U/ZoomLinea.kt`, `U/ClavesLinea.kt`, `U/LineaTiempo.kt`):
+  - Zoom: «−» y «+» abajo a la derecha. Mantener «+» 2 s, con un anillo que se llena y la pista «Manten para zoom fino», desbloquea hasta 1 ms = 60 dp. La pastilla «Zoom normal» vuelve. El pellizco respeta el límite que toque.
+  - Regla de 1/2/5 ms hasta 5 min, con milésimas por debajo de 0,1 s y rayas de fotograma.
+  - Rombos del elegido: tocar lleva el cabezal a la clave; arrastrar la mueve (`Edicion.moverClave`, un paso, sin saltar a las vecinas y con el imán si está puesto).
+- **Claves** («Claves» = panel «Fotogramas clave», y «Partes»): `NavegadorClaves` («<», «>» y una pastilla por clave) y «Momento de esta clave» con CampoTiempo. El simplificador (`U/SimplificarClaves.kt`) está al final de Claves y en la pestaña Curva de Partes: chips de 0,5/1/2 px, la prueba en segundo plano con antes → después y el error medido, Aplicar/Cancelar y, con el original guardado, Restaurar u Olvidar.
+- **Ajustar a fotogramas**: el chip está en Efectos > Tiempo, Claves y Partes, y el interruptor en Personalizar. Apagado, −/+ va de 1 ms (o de 10 ms con el chip «Paso») y las claves pueden estar a 0,2 ms.
+- **Ejemplos** (Herramientas sin nada elegido, entre «Formato» y «Abrir proyecto»; `modelo/EjemplosMovimiento.kt`, `cargarEjemplos` en `ui/screens/EditorScreen.kt`):
+  - Pone al final 4 bloques de foto sintética y deja el cabezal parado en el primero. Las fotos A y B son PNG en `filesDir/editor/ejemplos`.
+  - Bloque 1: «Mitades que se juntan» y «Mitades que se separan».
+  - Bloque 2: una capa A sobre B con «Círculo que se abre», un anillo descentrado y «Círculo que se cierra».
+  - Bloque 3: «Latigazo con desenfoque» y «Sacudida con desenfoque» (la sacudida de siempre).
+  - Bloque 4: un barrido de entrada y un golpe de zoom con claves a 1,000 / 1,005 / 1,400 s.
+  - Todo se edita con los paneles de arriba. Un deshacer quita los cuatro bloques.
+
+### Banco de la vista previa (JVM de la nube, NO tiempos del teléfono)
+
+`./gradlew :app:testDebugUnitTest -Dbench=1 --tests '*EscenaRendimientoTest'`. Sin `-Dbench=1` sus 2 pruebas se saltan. Escribe líneas `BANCO` y `build/banco-escena.json`. Lo hice en 4 CPU compartidas con otros trabajos: sirve para comparar proyectos o commits, no dice nada de la fluidez del teléfono.
+
+| Proyecto | CPU de `Escena.cuadro`, µs/cuadro, media (máx), k=4 · k=8 | Asignado por cuadro, k=4 · k=8 |
+|---|---|---|
+| a, un vídeo | 0,6 (0,8) · 0,8 (0,9) | 2,2 KB · 3,4 KB |
+| c, complejo, parecido a la réplica | 7,3 (15,8) · 12,0 (26,6) | 14 KB · 23 KB |
+| d, como c con 300 claves por bloque | 75 (190) · 147 (336) | 263 KB · 506 KB |
+| e, herramientas nuevas | 9,4 (29) · 15 (51) | 14 KB · 23 KB |
+| f, como e con 300 claves | 36 (122) · 68 (238) | 118 KB · 229 KB |
+
+- El peor cuadro medido fue de 0,5 ms, frente a los 33 ms de un fotograma.
+- Al pulsar play, el modelo (plan de audio, escena y primer cuadro) cuesta menos de 0,3 ms.
+- Mezclar los primeros 150 ms de sonido cuesta 9–20 ms con fuentes de 44,1 kHz y 4–7 ms con fuentes de 48 kHz. Es lo que retrasa el primer movimiento, junto con abrir el decodificador. Los ~200 ms son por diseño: la imagen espera al audio.
+- GPU, contada y no medida: con «Mitades que se juntan» hay hasta 21 dibujos de lienzo completo por cuadro (33 con k=8). Con dos desenfoques direccionales, hasta 272 lecturas por píxel a 576×1024 (457 a 1080×1920).
+- No se optimizó nada, porque no hay una causa demostrada. Hipótesis por confirmar en el teléfono:
+  - H1: la vista previa se dibuja al tamaño de la pantalla.
+  - H2: paneles que leen `estado.tiempo` al componer; quedan Transporte, PanelPiezas, PanelEncuadre y los puntos de progreso de Efectos.
+  - H3: en pausa, los dibujos no se agrupan.
+  - H4: el decodificador de vídeo se abre en el primer cuadro del bloque.
+  - H5: copias `sortedBy`/`distinctBy` en cada llamada con muchas claves (`Clip.kt`, `PiezaVideo.kt`, `EfectoVideo.kt`).
+  - H6: cada búsqueda sonando vuelve a arrancar el AudioTrack.
+- Arreglos listos, que solo hay que aplicar si el teléfono lo confirma:
+  - H3: un contador de cambios `@Volatile` en `Previsualizador.proyecto()`; en pausa, solo dibuja el último.
+  - H5: listas ordenadas `by lazy`, con la guardia de `Escena.cuadro` idéntico en `ProyectosBanco` y las fotos bit a bit.
+  - H1: dibujar a la resolución de exportación y dejar que la TextureView escale.
+
+**Diagnóstico RoyerVista** (`editor/vista/DiagnosticoVista.kt`, apagado por defecto y sin coste):
+- Encender, ANTES de pulsar play: `adb shell setprop log.tag.RoyerVista DEBUG`. Con `VERBOSE` mide además la GPU con glFinish, lo que frena un poco.
+- Leer: `adb logcat -s RoyerVista`. Apagar: `setprop log.tag.RoyerVista INFO`.
+- Cada parada de play escribe estas líneas: tamaño y fps, arranque (sonido, primer cuadro, primer movimiento y primera presentación), cuadro ms (escena, cpu, gpu, swap), peores cuadros (con «al empezar un bloque»), publicación y presentación fuera de 25–42 ms, y gc.
+- Al pulsar play escribe lo de la pausa anterior: cambios, dibujos y repetidos, y la espera en cola.
+- La presentación real sale de `onSurfaceTextureUpdated` (EditorScreen).
+
+### Pruebas pendientes en el teléfono (`com.royermethod.app.prueba`)
+
+1. Vista previa con RoyerVista, en un proyecto sencillo y en la réplica:
+   - Play unos 10 s y pausa. Anotar WxH, arranque, cuadro ms, peores cuadros, publicación y presentación, y gc.
+   - Lo mismo con VERBOSE, y con altavoz y con Bluetooth.
+2. H2: reproducir con Efectos, Animar, Claves y Partes abiertos (gfxinfo framestats o Perfetto) y comparar publicación con presentación.
+3. H3: en pausa, sobre MITADES o un desenfoque direccional, arrastrar un deslizador 3 s y pulsar play enseguida. Si hay muchos «repetidos» y más de ~100 ms de espera, aplicar el arreglo H3.
+4. H4/H5: reproducir la réplica entera. Si los peores cuadros caen «al empezar un bloque», son los decodificadores; si gc da bloqueantes o decenas de ms, es la basura de las claves.
+5. Los 4 ejemplos reproduciendo y en pausa con VERBOSE, sobre todo «Mitades que se juntan» y los dos desenfoques direccionales. Mirar también el tiempo de crear los dos PNG, las uri `file:` en vista previa, miniaturas y exportación, guardar el .royer con esas fotos y volver a abrirlo, deshacer y rehacer, y dos toques seguidos en «Ejemplos».
+6. Interfaz con el dedo:
+   - CampoTiempo: teclado decimal, coma y punto.
+   - pausarEn con sonido real.
+   - Mantener «+» 2 s, y el pellizco más allá de ZOOM_MAX ya desbloqueado.
+   - Coger y arrastrar rombos a zoom fino (radio de 12 dp).
+   - Franja de efectos con 3 carriles de 13 dp y asas de 14 dp.
+   - El desplegable de Animar y el diálogo de Convertir. El Atrás del sistema con el desplegable abierto cierra el panel entero (falta un BackHandler).
+   - La fila de categorías, que se desliza de lado dentro del desplazamiento vertical.
+   - Que el retroceso no corte un arrastre a medias.
+7. GPU: los uniformes `uMascCentro`/`uMascGrosor`, la precisión mediump del anillo y del centro, y una revisión visual del anillo invertido (en la nube solo se ha visto con SwiftShader).
+8. Control: reexportar la réplica y compararla con la export 6. Debe dar 411 cuadros y una diferencia media menor que 1/255. No se cambió Escena, ni Compositor, ni Exportador, ni la SACUDIDA.
+
+### Pendiente de código
+
+- Las rayas FX de la línea de tiempo no responden al toque: para ir a un efecto concreto hay que abrir Efectos. El panel ya atiende `efectoAElegir` si alguien lo pone.
+- Los tiempos que caen en un fotograma salen con 6 decimales («1.066666 s»), porque `TiempoPreciso.texto` enseña los µs sueltos.
+- Recortar y mover bloques en la línea arrancan con el retraso del touch slop; las claves ya no. Para igualarlos, empezar `acumulado` con `pasado.x`, como en las claves.
+- El simplificador prueba en `Dispatchers.Default` y, si se cierra el panel a medias, termina igual antes de descartarse. Medir con miles de claves.
+- MITADES no trata bien un giro del bloque de más de 90°. Un APK viejo pierde `animaciones` y los efectos ANIMACION. `Edicion.agregarTexto` sigue creando la entrada heredada APARECER, que se unifica al primer cambio.

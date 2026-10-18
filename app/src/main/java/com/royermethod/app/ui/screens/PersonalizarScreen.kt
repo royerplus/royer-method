@@ -158,9 +158,9 @@ private fun ColumnScope.Editor() {
     Deslizador("Transicion nueva", AjustesEditor.duracionTransicionUs / 1e6f, 0.1f, 2f,
         { v -> guardar { AjustesEditor.duracionTransicionUs = (v * 1e6f).toLong() } }, neutro = 0.4f, paso = 0.1f,
         texto = { "%.1f s".format(it) })
-    Deslizador("Animacion nueva", AjustesEditor.duracionAnimacionUs / 1e6f, 0.1f, 2f,
-        { v -> guardar { AjustesEditor.duracionAnimacionUs = (v * 1e6f).toLong() } }, neutro = 0.4f, paso = 0.1f,
-        texto = { "%.1f s".format(it) })
+    // La duracion de una animacion nueva la pone Animar segun su tipo y el largo del bloque
+    // (Animaciones.duracionSugeridaUs); AjustesEditor.duracionAnimacionUs ya no se usa
+    Nota("Cada animacion nueva empieza con una duracion segun su tipo y el largo del bloque. Se cambia en Animar, arriba del catalogo.")
     Interruptor("Imanes", AjustesEditor.imanes, { v -> guardar { AjustesEditor.imanes = v } },
         "Al mover o recortar, los bloques se pegan al cabezal y a los cortes")
     Interruptor("Ajustar a fotogramas", AjustesEditor.ajustarFotogramas, { v -> guardar { AjustesEditor.ajustarFotogramas = v } },

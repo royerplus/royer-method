@@ -31,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -271,16 +272,18 @@ private fun Transporte(estado: EstadoEditor) {
 @Composable
 private fun BotonClave(estado: EstadoEditor) {
     val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
-    val local = estado.localElegido
-    val activo = c != null && local != null
     // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s: claves a una milesima son distintas
     val tolerancia = toleranciaClaves()
-    val hay = activo && Edicion.claveCercana(c!!.claves, local!!, tolerancia) != null
+    // El cabezal se lee en derivedStateOf: al reproducir solo se recompone si cambia lo que se ve
+    val activo by remember(c) { derivedStateOf { c != null && estado.localElegido != null } }
+    val hay by remember(c, tolerancia) {
+        derivedStateOf { val l = estado.localElegido; c != null && l != null && Edicion.claveCercana(c.claves, l, tolerancia) != null }
+    }
     BotonIcono(
         if (hay) Glifos.romboLleno else Glifos.rombo,
         {
             val clip = c ?: return@BotonIcono
-            val l = local ?: return@BotonIcono
+            val l = estado.localElegido ?: return@BotonIcono
             if (hay) {
                 estado.hacer { Edicion.quitarClave(it, clip.id, estado.tiempo, tolerancia) }
             } else {

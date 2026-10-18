@@ -299,7 +299,8 @@ private class Superficie(private val prev: Previsualizador) : TextureView.Surfac
         return true
     }
 
-    override fun onSurfaceTextureUpdated(st: SurfaceTexture) {}
+    // Solo mide (diagnostico RoyerVista encendido con adb); apagado no hace nada
+    override fun onSurfaceTextureUpdated(st: SurfaceTexture) = prev.presentado()
 }
 
 private fun archivo(context: Context) = File(context.filesDir, "editor/proyecto.json")
