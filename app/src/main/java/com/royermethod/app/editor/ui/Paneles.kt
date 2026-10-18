@@ -485,7 +485,7 @@ private fun InstanteCurva(estado: EstadoEditor, ini: Long, duracionUs: Long) {
         InterruptorFotogramas()
     }
     val local = (estado.tiempo - ini).coerceIn(0L, duracionUs.coerceAtLeast(0L))
-    CampoTiempo("Cabezal en el bloque", local, 0L, duracionUs, { us, _ -> estado.pausarEn(ini + us) }, deslizador = false, origenUs = ini)
+    CampoTiempo("Cabezal", local, 0L, duracionUs, { us, _ -> estado.pausarEn(ini + us) }, deslizador = false, origenUs = ini)
 }
 
 /** Lo de la clave que hay bajo el cabezal: su momento, la curva y quitarla. */
