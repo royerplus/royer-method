@@ -4,6 +4,11 @@ name: APK
 # deja en la release "prueba", con un enlace que no cambia para bajarlo
 # desde el telefono:
 # https://github.com/royerplus/royer-method/releases/download/prueba/RoyerMethod.apk
+#
+# Junto a el va la variante github (com.royermethod.app.github, "Royer Method
+# · GitHub"), que es la que se instala en el telefono: tiene su propio id y
+# no reemplaza ni la app normal ni la .prueba del PC.
+# https://github.com/royerplus/royer-method/releases/download/prueba/RoyerMethodGitHub.apk
 
 on:
   push:
@@ -55,14 +60,15 @@ jobs:
         run: bash tools/traer_dependencias.sh
 
       - name: Compilar
-        run: bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease
+        run: bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease assembleGithub
 
       - name: Publicar
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           cp app/build/outputs/apk/release/app-release.apk RoyerMethod.apk
+          cp app/build/outputs/apk/github/app-github.apk RoyerMethodGitHub.apk
           gh release delete prueba --yes --cleanup-tag || true
-          gh release create prueba RoyerMethod.apk --prerelease --target "$GITHUB_SHA" \
+          gh release create prueba RoyerMethodGitHub.apk RoyerMethod.apk --prerelease --target "$GITHUB_SHA" \
             --title "Prueba del editor" \
             --notes "Compilado de $GITHUB_REF_NAME en ${GITHUB_SHA::7}."

@@ -70,6 +70,15 @@ android {
             matchingFallbacks += listOf("release")
             proguardFiles("proguard-prueba.pro")
         }
+        // Lo que publica GitHub Actions para instalar desde el telefono con un
+        // enlace. Va firmado con la clave de la CI, distinta de la del PC, asi
+        // que lleva su propio id: se instala al lado de la app y de .prueba
+        // sin reemplazar ni chocar con ninguna.
+        create("github") {
+            initWith(getByName("prueba"))
+            applicationIdSuffix = ".github"
+            versionNameSuffix = "-github"
+        }
     }
 
     compileOptions {
