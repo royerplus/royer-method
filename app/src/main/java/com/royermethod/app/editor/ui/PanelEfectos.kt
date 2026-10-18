@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -106,6 +108,13 @@ fun HojaEfectos(estado: EstadoEditor, onCerrar: () -> Unit) {
         return
     }
     val p = recordarPanel(estado, c)
+    // Atras con el catalogo abierto vuelve a los efectos (como "Volver"), no cierra la hoja
+    val eleccion = p.eleccion
+    val hayEfectos by rememberUpdatedState(p.vista.efectos.isNotEmpty())
+    DisposableEffect(estado, eleccion) {
+        val quitar = estado.alAtras { eleccion.alAtras(hayEfectos) }
+        onDispose { quitar() }
+    }
     HojaPanel(
         Panel.EFECTOS.titulo, onCerrar,
         acciones = { BotonAgregar(p) },
@@ -148,6 +157,17 @@ internal class EleccionEfectos(id: Long?, catalogo: Boolean) {
     fun atender(pedido: Long?, vista: Clip): Boolean {
         if (pedido == null || vista.efectos.none { it.id == pedido }) return false
         id = pedido
+        catalogo = false
+        return true
+    }
+
+    /**
+     * El boton atras: con el catalogo abierto y efectos puestos lo cierra,
+     * como "Volver" (true). Sin efectos el catalogo es todo lo que hay: false,
+     * y se cierra la hoja.
+     */
+    fun alAtras(hayEfectos: Boolean): Boolean {
+        if (!catalogo || !hayEfectos) return false
         catalogo = false
         return true
     }

@@ -491,4 +491,71 @@ class TramosEfectoTest {
         CatalogoEfectos.grupos.flatMap { it.second }.forEach { assertTrue(TramosEfecto.nombreCorto(ef(it, 0, 1)).isNotBlank()) }
         assertArrayEquals(intArrayOf(), TramosEfecto.carriles(emptyList()))
     }
+
+    /**
+     * Cinco efectos sobre todo el bloque: el quinto comparte carril con el
+     * primero (solo se dibujan cuatro). Antes, tocando, el que no estaba
+     * elegido de esos dos no se podia elegir nunca. Ahora tocar otra vez la
+     * elegida pasa a la siguiente de ese punto: desde cualquier eleccion, unos
+     * toques en el mismo sitio recorren los cinco.
+     */
+    @Test
+    fun tocandoOtraVezSeLlegaATodasLasQueHayBajoElDedo() {
+        val efectos = (1L..5L).map { ef(TipoEfectoVideo.values()[it.toInt()], 0, dur, it) }
+        val carriles = TramosEfecto.carriles(efectos)
+        val ancho = 1000f
+        val margen = 22f
+        val alto = 110f / TramosEfecto.visibles(carriles)
+        val barras = efectos.mapIndexed { i, e ->
+            Barra(e.id, TramosEfecto.x(e.inicioUs, dur, ancho, margen), TramosEfecto.x(e.finUs, dur, ancho, margen), TramosEfecto.carrilVisible(carriles[i]))
+        }
+        assertEquals(listOf(0, 1, 2, 3, 0), barras.map { it.carril })
+        for (inicio in listOf<Long?>(null, 1, 2, 3, 4, 5)) for (y in listOf(5f, 40f, 100f)) {
+            var elegida = inicio
+            val vistas = HashSet<Long>()
+            repeat(6) { n ->
+                elegida = TramosEfecto.alTocar(barras, 500f, y, alto, 38.5f, elegida, otraVez = n > 0)
+                vistas.add(elegida!!)
+            }
+            assertEquals("desde $inicio en y=$y", setOf(1L, 2L, 3L, 4L, 5L), vistas)
+        }
+        // Un toque nuevo (no repetido) elige la de debajo del dedo, como antes, y en vacio ninguna
+        assertEquals(2L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, null, otraVez = false))
+        assertEquals(2L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, 4, otraVez = false))
+        assertEquals(2L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, 2, otraVez = false))
+        // Repetido sobre la elegida: la siguiente de ese punto
+        assertEquals(3L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, 2, otraVez = true))
+        val corta = listOf(Barra(1, 100f, 200f, 0))
+        assertNull(TramosEfecto.alTocar(corta, 600f, 5f, alto, 14f, 1, otraVez = true))
+        // Sola bajo el dedo: tocarla otra vez la deja elegida
+        assertEquals(1L, TramosEfecto.alTocar(corta, 150f, 5f, alto, 14f, 1, otraVez = true))
+    }
+
+    /**
+     * Con tres o cuatro carriles bajos, el pulgar que va a la asa de la
+     * elegida cae a menudo en el carril de al lado, sobre otra barra: con la
+     * zona amplia se agarra la elegida (y sus asas llegan mas lejos). Sin la
+     * zona, como antes.
+     */
+    @Test
+    fun laElegidaSeAgarraConHolguraAunqueElDedoCaigaEnElCarrilDeAlLado() {
+        val alto = 10f * 2.75f
+        val zona = 28f * 2.75f
+        val asa = 14f * 2.75f
+        val asaElegida = 24f * 2.75f
+        // La sacudida larga en el carril 0 y el desenfoque corto (25 dp) en el 1
+        val barras = listOf(Barra(1, 100f, 900f, 0), Barra(2, 400f, 469f, 1), Barra(3, 0f, 1000f, 2), Barra(4, 0f, 1000f, 3))
+        // El dedo en el carril 0, sobre la sacudida, junto al final del desenfoque elegido
+        val enCarril0 = alto * 0.8f
+        assertEquals(1L to Agarre.MOVER, TramosEfecto.agarrada(barras, 465f, enCarril0, alto, asa, 2)?.let { it.first.id to it.second })
+        assertEquals(2L to Agarre.FIN, TramosEfecto.agarrada(barras, 465f, enCarril0, alto, asa, 2, zona, asaElegida)?.let { it.first.id to it.second })
+        // Y por fuera de su final, hasta 24 dp
+        assertEquals(2L to Agarre.FIN, TramosEfecto.agarrada(barras, 469f + 22f * 2.75f, alto * 1.5f, alto, asa, 2, zona, asaElegida)?.let { it.first.id to it.second })
+        // Lejos de su carril (dos mas abajo) manda lo de debajo
+        assertEquals(4L, TramosEfecto.agarrada(barras, 465f, alto * 3.5f, alto, asa, 2, zona, asaElegida)?.first?.id)
+        // Lejos de sus bordes, tambien
+        assertEquals(1L, TramosEfecto.agarrada(barras, 700f, enCarril0, alto, asa, 2, zona, asaElegida)?.first?.id)
+        // Sin nada elegido, igual que siempre
+        assertEquals(1L, TramosEfecto.agarrada(barras, 465f, enCarril0, alto, asa, null, zona, asaElegida)?.first?.id)
+    }
 }

@@ -59,6 +59,12 @@ internal object ClavesLinea {
      * aparte) ni salir de 0..[duracionUs]. No pasa por encima de una vecina:
      * el orden de las claves no cambia. Las que comparten su tiempo (un salto)
      * se mueven con ella y no cuentan. Null si no le queda sitio.
+     *
+     * Tambien null si la clave ya esta mas cerca de una vecina que
+     * [tolerancia] (puesta sin el iman, como las de 1,000 y 1,005 s de los
+     * ejemplos): su propio tiempo queda fuera del hueco y [destino] la meteria
+     * a la fuerza en el, asi que saltaria un fotograma o mas nada mas cogerla,
+     * incluso contra el dedo. Asi el rango, si lo hay, siempre contiene [tUs].
      */
     fun limites(claves: List<Clave>, tUs: Long, duracionUs: Long, tolerancia: Long): LongRange? {
         val tol = tolerancia.coerceAtLeast(0)
@@ -72,7 +78,24 @@ internal object ClavesLinea {
         }
         val lo = maxOf(0L, antes?.let { it + tol + 1 } ?: 0L)
         val hi = minOf(dur, despues?.let { it - tol - 1 } ?: dur)
-        return if (lo <= hi) lo..hi else null
+        return if (lo <= hi && tUs in lo..hi) lo..hi else null
+    }
+
+    /**
+     * Si el rombo [i] de [xs] (px; NaN los que no se ven) tiene sitio para
+     * cogerlo con el dedo: ningun otro rombo visible a menos de [separacion].
+     * Los que comparten su tiempo ([tiempos]) son un salto, se mueven con el y
+     * no cuentan. Con una clave por fotograma a zoom normal quedan a 2 dp:
+     * entonces el bloque entero seria "clave" y arrastrar ya no moveria el
+     * cabezal, asi que no se coge ninguno hasta acercar el zoom.
+     */
+    fun aislada(xs: FloatArray, tiempos: LongArray, i: Int, separacion: Float): Boolean {
+        if (i !in xs.indices || xs[i].isNaN()) return false
+        for (j in xs.indices) {
+            if (j == i || xs[j].isNaN() || tiempos[j] == tiempos[i]) continue
+            if (abs(xs[j] - xs[i]) < separacion) return false
+        }
+        return true
     }
 
     /**
@@ -98,22 +121,26 @@ internal object ClavesLinea {
      * cuadros que se exportan, aunque el bloque empiece a mitad de uno); sin
      * el, al [pasoArrastre] del zoom. Siempre dentro de [limites]; si con el
      * iman no cabe ningun fotograma, se queda en [tUs]. Sin moverse no
-     * cambia nada: cogerla y soltarla no la redondea.
+     * cambia nada: cogerla y soltarla no la redondea. Nunca va contra el
+     * dedo: si el fotograma (o el paso) mas cercano queda al otro lado de
+     * [tUs], p. ej. una clave entre dos fotogramas sin sitio hacia donde se
+     * arrastra, se queda donde estaba.
      */
     fun destino(tUs: Long, dxPx: Double, pxPorUs: Double, inicioUs: Long, limites: LongRange, fotogramas: Boolean): Long {
         if (dxPx == 0.0 || pxPorUs <= 0.0 || pxPorUs.isNaN()) return tUs
         val bruto = tUs + dxPx / pxPorUs
-        if (!fotogramas) {
+        val v = if (!fotogramas) {
             val paso = pasoArrastre(1.0 / pxPorUs)
-            val v = (bruto / paso).roundToLong() * paso
-            return v.coerceIn(limites.first, limites.last)
+            ((bruto / paso).roundToLong() * paso).coerceIn(limites.first, limites.last)
+        } else {
+            val ini = inicioUs.coerceAtLeast(0)
+            // Fotogramas de la linea que caen dentro de los limites
+            val primero = Linea.fotogramaDe(ini + limites.first)
+            val ultimo = Linea.fotogramaEn(ini + limites.last)
+            if (ultimo < primero) return tUs
+            val cerca = ((ini + bruto) * Linea.FPS / 1_000_000.0).roundToLong()
+            Linea.tiempoDe(cerca.coerceIn(primero, ultimo)) - ini
         }
-        val ini = inicioUs.coerceAtLeast(0)
-        // Fotogramas de la linea que caen dentro de los limites
-        val primero = Linea.fotogramaDe(ini + limites.first)
-        val ultimo = Linea.fotogramaEn(ini + limites.last)
-        if (ultimo < primero) return tUs
-        val cerca = ((ini + bruto) * Linea.FPS / 1_000_000.0).roundToLong()
-        return Linea.tiempoDe(cerca.coerceIn(primero, ultimo)) - ini
+        return if ((dxPx > 0 && v < tUs) || (dxPx < 0 && v > tUs)) tUs else v
     }
 }

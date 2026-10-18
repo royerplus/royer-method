@@ -4,6 +4,7 @@ import com.royermethod.app.editor.modelo.Clave
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Edicion
+import com.royermethod.app.editor.modelo.EjemplosMovimiento
 import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Origen
@@ -13,6 +14,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.random.Random
 
 /** Tocar y arrastrar claves en la linea de tiempo, y su "Momento" en los paneles. */
 class ClavesLineaTest {
@@ -82,8 +84,9 @@ class ClavesLineaTest {
         val d2 = ClavesLinea.destino(5_000, 1_000.0 * normal * 100, normal, ini, lim, fotogramas = true)
         assertEquals(Linea.tiempoDe(Linea.fotogramaEn(ini + d2)), ini + d2)
         assertTrue(d2 in lim)
-        // El primer fotograma del bloque, nunca antes de su comienzo
-        assertEquals(Linea.tiempoDe(31) - ini, ClavesLinea.destino(5_000, -1e9, fino, ini, lim, fotogramas = true))
+        // Hacia atras no hay ningun fotograma del bloque antes de 0,005 s: se
+        // queda (nunca antes de su comienzo, y tampoco salta adelante contra el dedo)
+        assertEquals(5_000L, ClavesLinea.destino(5_000, -1e9, fino, ini, lim, fotogramas = true))
         // Si entre las vecinas no cae ningun fotograma, no se mueve
         assertEquals(1_000L, ClavesLinea.destino(1_000, 500.0, fino, ini, 900L..2_000L, fotogramas = true))
         // Cogerla sin mover el dedo no la lleva al fotograma ni la redondea
@@ -133,5 +136,75 @@ class ClavesLineaTest {
         assertEquals(p, e.proyecto)
         e.rehacer()
         assertEquals(movidas, e.proyecto.principal[0].claves)
+    }
+
+    /**
+     * Las claves de 1,000 y 1,005 s del ejemplo de barrido y zoom estan a 5 ms.
+     * Con el iman (tolerancia de medio fotograma) su propio tiempo no cabe en
+     * el hueco que les dejan sus vecinas: antes limites daba ese hueco igual y
+     * destino las metia en el primer fotograma que cabia, asi que 1,000 se iba
+     * a 0,967 y 1,005 a 1,033 nada mas cogerlas, fuera cual fuera el sentido
+     * del dedo. Ahora no hay hueco: la linea avisa y no las mueve.
+     */
+    @Test fun unaClavePegadaASuVecinaNoSaltaAlCogerlaConElIman() {
+        val c = EjemplosMovimiento.barridoYZoom(1, foto)
+        for (t in listOf(EjemplosMovimiento.GOLPE_US, EjemplosMovimiento.GOLPE_ARRIBA_US)) {
+            assertNull(ClavesLinea.limites(c.claves, t, c.duracionUs, Edicion.TOLERANCIA_CLAVE))
+            // Sin el iman si se mueven, con el dedo y lo que se mueve el dedo
+            val lim = ClavesLinea.limites(c.claves, t, c.duracionUs, Edicion.TOLERANCIA_FINA)!!
+            assertTrue(t in lim)
+            // 1 ms en el zoom fino maximo son 165 px
+            assertEquals(t + 1_000, ClavesLinea.destino(t, 165.0, fino, 6_400_000, lim, fotogramas = false))
+            assertEquals(t - 1_000, ClavesLinea.destino(t, -165.0, fino, 6_400_000, lim, fotogramas = false))
+        }
+        // La de la vuelta (1,4 s) esta lejos: con el iman se mueve a fotogramas
+        val vuelta = ClavesLinea.limites(c.claves, EjemplosMovimiento.GOLPE_VUELTA_US, c.duracionUs, Edicion.TOLERANCIA_CLAVE)!!
+        assertTrue(EjemplosMovimiento.GOLPE_VUELTA_US in vuelta)
+    }
+
+    /**
+     * Con cualquier reparto de claves: si hay hueco contiene la clave, y
+     * arrastrarla (con o sin iman) nunca la lleva al otro lado de donde va el
+     * dedo ni fuera de su hueco.
+     */
+    @Test fun arrastrarNuncaVaContraElDedo() {
+        val r = Random(7)
+        repeat(400) {
+            val tiempos = List(2 + r.nextInt(5)) { r.nextLong(0, 300_000) }.distinct().sorted()
+            val claves = tiempos.map { k(it) }
+            val ini = r.nextLong(0, 2_000_000)
+            for (tol in listOf(Edicion.TOLERANCIA_FINA, Edicion.TOLERANCIA_CLAVE)) for (t in tiempos) {
+                val lim = ClavesLinea.limites(claves, t, 300_000, tol) ?: continue
+                assertTrue(t in lim)
+                for (dx in listOf(-500.0, -40.0, -3.0, -0.4, 0.4, 3.0, 40.0, 500.0)) for (fotogramas in listOf(false, true)) {
+                    val d = ClavesLinea.destino(t, dx, normal * 20, ini, lim, fotogramas)
+                    assertTrue(d in lim)
+                    if (dx > 0) assertTrue("dx=$dx t=$t d=$d", d >= t) else assertTrue("dx=$dx t=$t d=$d", d <= t)
+                }
+            }
+        }
+    }
+
+    @Test fun soloSeCogeUnRomboConSitioAlrededor() {
+        val sep = 16 * densidad
+        // Una clave por fotograma a 64 dp/s: 2,1 dp entre rombos
+        val paso = 64f * densidad / 30f
+        val xs = FloatArray(30) { 100f + it * paso }
+        val t = LongArray(30) { Linea.tiempoDe(it.toLong()) }
+        assertTrue((0 until 30).none { ClavesLinea.aislada(xs, t, it, sep) })
+        // Acercando el zoom (unos 600 dp/s) ya caben
+        val lejos = FloatArray(30) { 100f + it * 20 * densidad }
+        assertTrue((0 until 30).all { ClavesLinea.aislada(lejos, t, it, sep) })
+        // Las que no se ven no cuentan, y un salto (dos claves al mismo tiempo) tampoco
+        assertTrue(ClavesLinea.aislada(floatArrayOf(100f, 105f, Float.NaN), longArrayOf(0, 0, 1), 0, sep))
+        assertTrue(ClavesLinea.aislada(floatArrayOf(100f, Float.NaN), longArrayOf(0, 1), 0, sep))
+        assertTrue(!ClavesLinea.aislada(floatArrayOf(100f, 120f), longArrayOf(0, 1), 1, sep))
+        assertTrue(!ClavesLinea.aislada(floatArrayOf(Float.NaN), longArrayOf(0), 0, sep))
+        // Las del ejemplo, a 5 ms: juntas a zoom normal, separadas en el fino
+        val ejemplo = longArrayOf(EjemplosMovimiento.GOLPE_US, EjemplosMovimiento.GOLPE_ARRIBA_US)
+        val enNormal = FloatArray(2) { (ejemplo[it] * normal).toFloat() }
+        val enFino = FloatArray(2) { (ejemplo[it] * fino).toFloat() }
+        assertTrue(!ClavesLinea.aislada(enNormal, ejemplo, 0, sep))
+        assertTrue(ClavesLinea.aislada(enFino, ejemplo, 0, sep))
     }
 }

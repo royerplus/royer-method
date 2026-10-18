@@ -164,8 +164,44 @@ internal object TramosEfecto {
         return tocada(barras, x, y, altoCarrilPx, asaPx, elegida)
     }
 
-    /** Lo que se arrastra si el dedo empieza en (x, y): la barra de [objetivo] y que parte. Null en vacio. */
-    fun agarrada(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?): Pair<Barra, Agarre>? {
+    /**
+     * Lo que elige un toque en (x, y): la barra de [objetivo]. Si es [otraVez]
+     * (otro toque en el mismo sitio, con la elegida puesta por el anterior),
+     * la siguiente de las que cubren esa x despues de la elegida (por carriles
+     * de arriba abajo y, tras la ultima, otra vez la primera). Tocando de
+     * nuevo en el mismo sitio se llega asi a todas las que hay bajo el dedo,
+     * aunque los carriles sean bajos o, con mas de [MAX_CARRILES] solapes,
+     * compartan carril. Null en vacio.
+     */
+    fun alTocar(barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?, otraVez: Boolean): Long? {
+        val o = objetivo(barras, x, y, altoCarrilPx, asaPx, elegida) ?: return null
+        if (!otraVez || elegida == null) return o.id
+        val bajo = barras.filter { x >= it.x0 - asaPx && x <= it.x1 + asaPx }
+            .sortedWith(compareBy<Barra>({ it.carril }, { it.x0 }, { it.id }))
+        val i = bajo.indexOfFirst { it.id == elegida }
+        return if (i < 0 || bajo.size < 2) o.id else bajo[(i + 1) % bajo.size].id
+    }
+
+    /**
+     * Lo que se arrastra si el dedo empieza en (x, y): la barra de [objetivo] y que parte. Null en vacio.
+     *
+     * Con [zonaPx] > 0, antes que nada la elegida si el dedo cae en su zona
+     * amplia: [zonaPx] de alto alrededor del centro de su carril (al menos el
+     * carril) y sus asas [asaElegidaPx] hacia fuera. Con tres o cuatro
+     * carriles cada uno mide 10-13 dp y el pulgar cae a menudo en el de al
+     * lado; lo que se quiere mover o recortar es lo que se acaba de elegir.
+     * Las demas se arrastran fuera de esa zona o eligiendolas antes.
+     */
+    fun agarrada(
+        barras: List<Barra>, x: Float, y: Float, altoCarrilPx: Float, asaPx: Float, elegida: Long?,
+        zonaPx: Float = 0f, asaElegidaPx: Float = asaPx
+    ): Pair<Barra, Agarre>? {
+        if (zonaPx > 0f && altoCarrilPx > 0f) barras.firstOrNull { it.id == elegida }?.let { b ->
+            val centro = (b.carril + 0.5f) * altoCarrilPx
+            if (abs(y - centro) <= maxOf(altoCarrilPx, zonaPx) / 2f) {
+                agarre(x, b.x0, b.x1, asaElegidaPx)?.let { return b to it }
+            }
+        }
         val b = objetivo(barras, x, y, altoCarrilPx, asaPx, elegida) ?: return null
         val a = agarre(x, b.x0, b.x1, asaPx) ?: return null
         return b to a

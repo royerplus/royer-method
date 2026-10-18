@@ -201,13 +201,7 @@ fun EditorScreen(onVolver: () -> Unit) {
         }
     }
 
-    BackHandler {
-        when {
-            estado.panel != null -> estado.panel = null
-            estado.seleccion != null -> estado.elegir(null)
-            else -> onVolver()
-        }
-    }
+    BackHandler { atrasEditor(estado, onVolver) }
 
     PantallaEditor(
         estado = estado,
@@ -304,6 +298,21 @@ private class Superficie(private val prev: Previsualizador) : TextureView.Surfac
 }
 
 private fun archivo(context: Context) = File(context.filesDir, "editor/proyecto.json")
+
+/**
+ * El boton atras del sistema en el editor, de dentro afuera: primero lo que
+ * el panel tenga abierto dentro (el desplegable de Animar, el catalogo de
+ * Efectos; ver EstadoEditor.alAtras), despues el panel, despues lo elegido
+ * y por ultimo salir del editor.
+ */
+internal fun atrasEditor(estado: EstadoEditor, onVolver: () -> Unit) {
+    when {
+        estado.panel != null && estado.atras() -> Unit
+        estado.panel != null -> estado.panel = null
+        estado.seleccion != null -> estado.elegir(null)
+        else -> onVolver()
+    }
+}
 
 /**
  * Mete los ejemplos de movimiento al final de la linea principal (si el

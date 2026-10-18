@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -127,6 +128,19 @@ internal class VistaAnimacion(
     /** La categoria del catalogo que se ensena; null, todas. */
     var categoria by mutableStateOf<String?>(null)
 
+    /**
+     * El boton atras del sistema: cierra primero el desplegable y despues sale
+     * de "+" o de los ajustes de la elegida ([hayElegida]: si no, no se ven), de
+     * vuelta al catalogo. True si cerro algo; si no, se cierra la hoja. El
+     * dialogo de convertir es una ventana y atiende su propio atras.
+     */
+    fun alAtras(hayElegida: Boolean): Boolean = when {
+        menu -> { menu = false; true }
+        agregando -> { agregando = false; true }
+        ajustes && hayElegida -> { ajustes = false; true }
+        else -> false
+    }
+
     companion object {
         val Guardar: Saver<VistaAnimacion, Any> = listSaver(
             save = { listOf(it.pestana.ordinal, it.elegidaId ?: -1L, it.agregando, it.ajustes, it.categoria ?: "") },
@@ -164,6 +178,12 @@ fun HojaAnimacion(estado: EstadoEditor, onCerrar: () -> Unit) {
     val aplicadas = LogicaAnimacion.aplicadas(c)
     val elegida = LogicaAnimacion.elegida(aplicadas, vista.elegidaId, vista.pestana)
     val verAjustes = vista.ajustes && !vista.agregando && elegida != null
+    // Atras cierra antes el desplegable o el modo de dentro que la hoja
+    val hayElegida by rememberUpdatedState(elegida != null)
+    DisposableEffect(estado, vista) {
+        val quitar = estado.alAtras { vista.alAtras(hayElegida) }
+        onDispose { quitar() }
+    }
     Box(Modifier.fillMaxSize()) {
         // Otra pestana, o pasar del catalogo a los ajustes, empieza arriba del todo
         key(vista.pestana, verAjustes) {
