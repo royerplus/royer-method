@@ -1,0 +1,247 @@
+Activity Resolver Table:
+  Non-Data Actions:
+      android.intent.action.MAIN:
+        f8b3419 com.royermethod.app/.MainActivity filter c7afcde
+          Action: "android.intent.action.MAIN"
+          Category: "android.intent.category.LAUNCHER"
+
+Receiver Resolver Table:
+  Non-Data Actions:
+      androidx.profileinstaller.action.SAVE_PROFILE:
+        b1d7ebf com.royermethod.app/androidx.profileinstaller.ProfileInstallReceiver filter f3608ea
+          Action: "androidx.profileinstaller.action.SAVE_PROFILE"
+      androidx.profileinstaller.action.INSTALL_PROFILE:
+        b1d7ebf com.royermethod.app/androidx.profileinstaller.ProfileInstallReceiver filter ee7598c
+          Action: "androidx.profileinstaller.action.INSTALL_PROFILE"
+      androidx.profileinstaller.action.SKIP_FILE:
+        b1d7ebf com.royermethod.app/androidx.profileinstaller.ProfileInstallReceiver filter 411f8d5
+          Action: "androidx.profileinstaller.action.SKIP_FILE"
+      androidx.profileinstaller.action.BENCHMARK_OPERATION:
+        b1d7ebf com.royermethod.app/androidx.profileinstaller.ProfileInstallReceiver filter fb547db
+          Action: "androidx.profileinstaller.action.BENCHMARK_OPERATION"
+
+Domain verification status:
+
+Permissions:
+  Permission [com.royermethod.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION] (17335cf):
+    sourcePackage=com.royermethod.app
+    uid=10365 gids=[] type=0 prot=signature
+    perm=PermissionInfo{303f848 com.royermethod.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION}
+    flags=0x0
+
+Registered ContentProviders:
+  com.royermethod.app/androidx.startup.InitializationProvider:
+    Provider{e06d6e1 com.royermethod.app/androidx.startup.InitializationProvider}
+
+ContentProvider Authorities:
+  [com.royermethod.app.androidx-startup]:
+    Provider{e06d6e1 com.royermethod.app/androidx.startup.InitializationProvider}
+      applicationInfo=ApplicationInfo{58d2b5c com.royermethod.app}
+
+Key Set Manager:
+  [com.royermethod.app]
+      Signing KeySets: 527
+
+Packages:
+  Package [com.royermethod.app] (27b9d97):
+    appId=10365
+    pkg=Package{f1f8377 com.royermethod.app}
+    codePath=/data/app/~~7jOEXvbKiAl0_nAGKboc2w==/com.royermethod.app-HlP1gFDSSmrYStj-Hknhgg==
+    resourcePath=/data/app/~~7jOEXvbKiAl0_nAGKboc2w==/com.royermethod.app-HlP1gFDSSmrYStj-Hknhgg==
+    legacyNativeLibraryDir=/data/app/~~7jOEXvbKiAl0_nAGKboc2w==/com.royermethod.app-HlP1gFDSSmrYStj-Hknhgg==/lib
+    extractNativeLibs=false
+    primaryCpuAbi=arm64-v8a
+    secondaryCpuAbi=null
+    cpuAbiOverride=null
+    versionCode=1 minSdk=26 targetSdk=35
+    minExtensionVersions=[]
+    versionName=1.0
+    hiddenApiEnforcementPolicy=2
+    usesNonSdkApi=false
+    splits=[base]
+    apkSigningVersion=2
+    flags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+    privateFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    forceQueryable=false
+    scannedAsStoppedSystemApp=false
+    supportsScreens=[small, medium, large, xlarge, resizeable, anyDensity]
+    timeStamp=2026-10-15 13:56:31
+    lastUpdateTime=2026-10-15 13:56:31
+    installerPackageName=com.google.android.packageinstaller
+    installerPackageUid=10144
+    initiatingPackageName=com.google.android.packageinstaller
+    originatingPackageName=com.android.chrome
+    packageSource=4
+    appMetadataFilePath=null
+    appMetadataSource=0
+    signatures=PackageSignatures{38450f4 version:2, signatures:[d896b6c6], past signatures:[]}
+    installPermissionsFixed=false
+    pkgFlags=[ HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]
+    privatePkgFlags=[ PRIVATE_FLAG_ACTIVITIES_RESIZE_MODE_RESIZEABLE_VIA_SDK_VERSION ALLOW_AUDIO_PLAYBACK_CAPTURE PRIVATE_FLAG_ALLOW_NATIVE_HEAP_POINTER_TAGGING ]
+    apexModuleName=null
+    declared permissions:
+      com.royermethod.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: prot=signature
+    requested permissions:
+      android.permission.POST_NOTIFICATIONS
+      android.permission.FOREGROUND_SERVICE
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC
+      com.royermethod.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION
+    install permissions:
+      android.permission.FOREGROUND_SERVICE: granted=true
+      android.permission.FOREGROUND_SERVICE_DATA_SYNC: granted=true
+      com.royermethod.app.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION: granted=true
+    User 0: ceDataInode=2310759 deDataInode=2310675 installed=true hidden=false suspended=false distractionFlags=0 stopped=false notLaunched=false enabled=0 instant=false virtual=false quarantined=false
+      installReason=4
+      dataDir=/data/user/0/com.royermethod.app
+      firstInstallTime=2026-10-15 13:56:31
+      uninstallReason=0
+      overlay paths:
+        /product/overlay/NavigationBarMode3Button/NavigationBarMode3ButtonOverlay.apk
+        /data/resource-cache/com.android.systemui-neutral-FAHv.frro
+        /product/overlay/IconDefaultShape_S30.apk
+        /data/resource-cache/com.android.systemui-accent-UMf8.frro
+        /data/resource-cache/com.android.systemui-dynamic-NB2O.frro
+      legacy overlay paths:
+        /product/overlay/NavigationBarMode3Button/NavigationBarMode3ButtonOverlay.apk
+        /product/overlay/IconDefaultShape_S30.apk
+      lastDisabledCaller: com.google.android.packageinstaller
+      runtime permissions:
+        android.permission.POST_NOTIFICATIONS: granted=false, flags=[ USER_SENSITIVE_WHEN_GRANTED|USER_SENSITIVE_WHEN_DENIED]
+
+Queries:
+  system apps queryable: false
+  queries via forceQueryable:
+  queries via package name:
+  queries via component:
+    [com.android.providers.settings,com.transsion,com.android.DeviceAsWebcam,com.transsion.settings.bluetooth,com.transsion.screencapture,com.transsion.livecaption,com.xui.xhide,android,com.mediatek.simprocessor,com.transsion.deskclock,com.transsion.settings.nfc,com.transsion.batterylab,com.android.server.telecom,com.transsion.sru,com.transsion.spacesaversdk,com.transsion.microintelligence,com.android.settings,com.android.location.fused,com.transsion.settings.wifi,com.transsion.inearmonitor,com.transsion.livewallpaper.magictouch,com.mediatek.location.lppe.main,com.transsion.zahooc,com.transsion.ossettingsext,com.transsion.thub.res,com.transsion.connectx.mirror.source,com.transsion.tranradionet,com.mediatek.omacp,com.transsion.overlaysuw,com.transsion.uxdetector,com.mediatek,com.transsion.aivoiceassistant,com.android.keychain,com.transsion.spl,com.android.inputdevices,com.transsion.spld,com.mediatek.batterywarning,com.transsion.letswitch,com.transsion.faceid,com.transsion.multiwindow,com.transsion.childmode,com.transsion.audiosmartconnect,com.android.dynsystem,com.transsion.nephilim,com.transsion.systemupdate,com.mediatek.schpwronoff,com.transsion.repaircard,com.transsion.iotservice,com.transsion.aicore.ocr,com.transsion.tabe,com.transsion.tele.settings,com.android.localtransport,com.transsion.mol,com.transsion.tranfacmode,com.transsion.net.wifi,com.geniex.vsimhelper,com.transsion.aicore.speech,com.transsion.kolun.aiservice,com.transsion.succ,com.transsion.aod,com.goodix.fingerprint.setting,com.transsion.statisticalsales,com.transsion.tranengine,com.transsion.smartpanel]:
+      com.royermethod.app
+    com.simplemobilephotoresizer:
+      com.royermethod.app
+    com.google.android.as.oss:
+      com.royermethod.app
+    com.transsion.cloudserver:
+      com.royermethod.app
+    tech.palm.find:
+      com.royermethod.app
+    com.transsion.irremote:
+      com.royermethod.app
+    com.transsion.magazineservice.xos:
+      com.royermethod.app
+    com.zijun.zrun:
+      com.royermethod.app
+    com.transsion.scanningrecharger:
+      com.royermethod.app
+    com.transsion.dynamicbar:
+      com.royermethod.app
+    com.transsion.screenrecorder:
+      com.royermethod.app
+    com.transsion.fmradio:
+      com.royermethod.app
+    com.transsion.carlcare:
+      com.royermethod.app
+    com.facemoji.lite.transsion:
+      com.royermethod.app
+    com.transsion.sk:
+      com.royermethod.app
+    ru.zdevs.zarchiver:
+      com.royermethod.app
+    com.transsion.gamespace.app:
+      com.royermethod.app
+    com.transsion.calculator:
+      com.royermethod.app
+    com.transsion.notebook:
+      com.royermethod.app
+    com.transsion.soundrecorder:
+      com.royermethod.app
+    com.rlk.weathers:
+      com.royermethod.app
+    com.transsion.magicshow:
+      com.royermethod.app
+    com.gm_shaber.dayrpremium:
+      com.royermethod.app
+    com.pagopopmobile:
+      com.royermethod.app
+    com.crunchyroll.crunchyroid:
+      com.royermethod.app
+    com.instagram.android:
+      com.royermethod.app
+    com.naver.linewebtoon:
+      com.royermethod.app
+    com.speedymovil.wire:
+      com.royermethod.app
+    com.whatsapp:
+      com.royermethod.app
+    com.google.android.play.games:
+      com.royermethod.app
+    com.zhiliaoapp.musically:
+      com.royermethod.app
+    com.tafayor.rammonitor:
+      com.royermethod.app
+    com.hecorat.screenrecorder.free:
+      com.royermethod.app
+    com.amazon.mShop.android.shopping:
+      com.royermethod.app
+    com.wuliang.xapkinstaller:
+      com.royermethod.app
+    com.transsion.aicore.main:
+      com.royermethod.app
+    com.transsion.aiwallpaper:
+      com.royermethod.app
+    com.tafayor.killall:
+      com.royermethod.app
+    com.transsion.airtransfer:
+      com.royermethod.app
+    com.mi.earphone:
+      com.royermethod.app
+    com.transsion.pcconnect:
+      com.royermethod.app
+    com.transsion.personalizedService.xos:
+      com.royermethod.app
+    com.transsion.tips:
+      com.royermethod.app
+    photoeditor.photoretouch.removeobjects.retouch:
+      com.royermethod.app
+    com.transsion.livewallpaper.colorart:
+      com.royermethod.app
+    com.transsion.livewallpaper.mondrian:
+      com.royermethod.app
+    com.intsig.camscanner:
+      com.royermethod.app
+    com.transsion.livewallpaper.theme:
+      com.royermethod.app
+    com.dubox.drive:
+      com.royermethod.app
+    com.transsion.aiwriting:
+      com.royermethod.app
+    com.transsion.mobilecloner:
+      com.royermethod.app
+    com.facebook.katana:
+      com.royermethod.app
+    de.vsmedia.imagesize:
+      com.royermethod.app
+    kallossoft.videotophoto:
+      com.royermethod.app
+  queryable via interaction:
+    User 0:
+      [com.android.providers.settings,com.transsion,com.android.DeviceAsWebcam,com.transsion.settings.bluetooth,com.transsion.screencapture,com.transsion.livecaption,com.xui.xhide,android,com.mediatek.simprocessor,com.transsion.deskclock,com.transsion.settings.nfc,com.transsion.batterylab,com.android.server.telecom,com.transsion.sru,com.transsion.spacesaversdk,com.transsion.microintelligence,com.android.settings,com.android.location.fused,com.transsion.settings.wifi,com.transsion.inearmonitor,com.transsion.livewallpaper.magictouch,com.mediatek.location.lppe.main,com.transsion.zahooc,com.transsion.ossettingsext,com.transsion.thub.res,com.transsion.connectx.mirror.source,com.transsion.tranradionet,com.mediatek.omacp,com.transsion.overlaysuw,com.transsion.uxdetector,com.mediatek,com.transsion.aivoiceassistant,com.android.keychain,com.transsion.spl,com.android.inputdevices,com.transsion.spld,com.mediatek.batterywarning,com.transsion.letswitch,com.transsion.faceid,com.transsion.multiwindow,com.transsion.childmode,com.transsion.audiosmartconnect,com.android.dynsystem,com.transsion.nephilim,com.transsion.systemupdate,com.mediatek.schpwronoff,com.transsion.repaircard,com.transsion.iotservice,com.transsion.aicore.ocr,com.transsion.tabe,com.transsion.tele.settings,com.android.localtransport,com.transsion.mol,com.transsion.tranfacmode,com.transsion.net.wifi,com.geniex.vsimhelper,com.transsion.aicore.speech,com.transsion.kolun.aiservice,com.transsion.succ,com.transsion.aod,com.goodix.fingerprint.setting,com.transsion.statisticalsales,com.transsion.tranengine,com.transsion.smartpanel]:
+        com.royermethod.app
+      [com.google.android.gms,com.google.android.gsf]:
+        com.royermethod.app
+      com.facemoji.lite.transsion:
+        com.royermethod.app
+      com.google.android.providers.media.module:
+        com.royermethod.app
+      com.royermethod.app:
+        com.google.android.providers.media.module
+  queryable via uses-library:
+
+Dexopt state:
+  [com.royermethod.app]
+    path: /data/app/~~7jOEXvbKiAl0_nAGKboc2w==/com.royermethod.app-HlP1gFDSSmrYStj-Hknhgg==/base.apk
+      arm64: [status=speed-profile] [reason=bg-dexopt] [primary-abi]
+        [location is /data/app/~~7jOEXvbKiAl0_nAGKboc2w==/com.royermethod.app-HlP1gFDSSmrYStj-Hknhgg==/oat/arm64/base.odex]
+        [image location is /data/app/~~7jOEXvbKiAl0_nAGKboc2w==/com.royermethod.app-HlP1gFDSSmrYStj-Hknhgg==/oat/arm64/base.art (required)]
+
+Compiler stats:
+  [com.royermethod.app]
+    (No recorded stats)

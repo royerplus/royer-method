@@ -1,0 +1,3087 @@
+{
+  "estado": "COMPLETADO",
+  "tipoPrueba": "Motor real de vista previa en TextureView; no gestos UI",
+  "app": "com.royermethod.app.prueba",
+  "dispositivo": "INFINIX Infinix X6871",
+  "api": 35,
+  "anchoSuperficie": 576,
+  "altoSuperficie": 768,
+  "duracionProyectoUs": 13700000,
+  "fotogramasEsperados": 411,
+  "reproduccionTerminada": true,
+  "duracionRealMs": 13785.254386,
+  "ultimoTiempoUs": 13699999,
+  "callbacks": {
+    "cantidad": 323,
+    "indicesUnicos": 322,
+    "fpsMedios": 23.38623210234989,
+    "maxGapMs": 117.782769,
+    "latenciaPrimerCuadroMs": 16.683308,
+    "saltosDeIndice": 89,
+    "fotogramasSinIndiceObservado": 89,
+    "muestras": [
+      {
+        "ms": 16.683308,
+        "tiempoUs": 0,
+        "fotograma": 0
+      },
+      {
+        "ms": 125.548308,
+        "tiempoUs": 42666,
+        "fotograma": 1
+      },
+      {
+        "ms": 159.191385,
+        "tiempoUs": 85333,
+        "fotograma": 2
+      },
+      {
+        "ms": 160.11877,
+        "tiempoUs": 128000,
+        "fotograma": 3
+      },
+      {
+        "ms": 184.343693,
+        "tiempoUs": 170666,
+        "fotograma": 5
+      },
+      {
+        "ms": 217.766462,
+        "tiempoUs": 213333,
+        "fotograma": 6
+      },
+      {
+        "ms": 259.523308,
+        "tiempoUs": 256000,
+        "fotograma": 7
+      },
+      {
+        "ms": 293.023077,
+        "tiempoUs": 298666,
+        "fotograma": 8
+      },
+      {
+        "ms": 335.180847,
+        "tiempoUs": 341333,
+        "fotograma": 10
+      },
+      {
+        "ms": 394.260847,
+        "tiempoUs": 384000,
+        "fotograma": 11
+      },
+      {
+        "ms": 427.330462,
+        "tiempoUs": 426666,
+        "fotograma": 12
+      },
+      {
+        "ms": 460.882154,
+        "tiempoUs": 469333,
+        "fotograma": 14
+      },
+      {
+        "ms": 523.769154,
+        "tiempoUs": 512000,
+        "fotograma": 15
+      },
+      {
+        "ms": 553.243077,
+        "tiempoUs": 554666,
+        "fotograma": 16
+      },
+      {
+        "ms": 595.080616,
+        "tiempoUs": 597333,
+        "fotograma": 17
+      },
+      {
+        "ms": 628.563308,
+        "tiempoUs": 640000,
+        "fotograma": 19
+      },
+      {
+        "ms": 686.235385,
+        "tiempoUs": 682666,
+        "fotograma": 20
+      },
+      {
+        "ms": 724.975923,
+        "tiempoUs": 725333,
+        "fotograma": 21
+      },
+      {
+        "ms": 762.780231,
+        "tiempoUs": 768000,
+        "fotograma": 23
+      },
+      {
+        "ms": 834.40177,
+        "tiempoUs": 810666,
+        "fotograma": 24
+      },
+      {
+        "ms": 859.021154,
+        "tiempoUs": 853333,
+        "fotograma": 25
+      },
+      {
+        "ms": 890.081154,
+        "tiempoUs": 896000,
+        "fotograma": 26
+      },
+      {
+        "ms": 938.757231,
+        "tiempoUs": 938666,
+        "fotograma": 28
+      },
+      {
+        "ms": 997.336616,
+        "tiempoUs": 981333,
+        "fotograma": 29
+      },
+      {
+        "ms": 1014.504539,
+        "tiempoUs": 1024000,
+        "fotograma": 30
+      },
+      {
+        "ms": 1065.448847,
+        "tiempoUs": 1066666,
+        "fotograma": 32
+      },
+      {
+        "ms": 1106.337462,
+        "tiempoUs": 1109333,
+        "fotograma": 33
+      },
+      {
+        "ms": 1156.87377,
+        "tiempoUs": 1152000,
+        "fotograma": 34
+      },
+      {
+        "ms": 1198.865539,
+        "tiempoUs": 1194666,
+        "fotograma": 35
+      },
+      {
+        "ms": 1233.014385,
+        "tiempoUs": 1237333,
+        "fotograma": 37
+      },
+      {
+        "ms": 1294.278154,
+        "tiempoUs": 1280000,
+        "fotograma": 38
+      },
+      {
+        "ms": 1317.356616,
+        "tiempoUs": 1322666,
+        "fotograma": 39
+      },
+      {
+        "ms": 1366.205154,
+        "tiempoUs": 1365333,
+        "fotograma": 40
+      },
+      {
+        "ms": 1398.925462,
+        "tiempoUs": 1408000,
+        "fotograma": 42
+      },
+      {
+        "ms": 1458.650154,
+        "tiempoUs": 1450666,
+        "fotograma": 43
+      },
+      {
+        "ms": 1492.869462,
+        "tiempoUs": 1493333,
+        "fotograma": 44
+      },
+      {
+        "ms": 1533.835616,
+        "tiempoUs": 1536000,
+        "fotograma": 46
+      },
+      {
+        "ms": 1600.907693,
+        "tiempoUs": 1578666,
+        "fotograma": 47
+      },
+      {
+        "ms": 1625.392924,
+        "tiempoUs": 1621333,
+        "fotograma": 48
+      },
+      {
+        "ms": 1668.071924,
+        "tiempoUs": 1664000,
+        "fotograma": 49
+      },
+      {
+        "ms": 1701.218077,
+        "tiempoUs": 1706666,
+        "fotograma": 51
+      },
+      {
+        "ms": 1759.784,
+        "tiempoUs": 1749333,
+        "fotograma": 52
+      },
+      {
+        "ms": 1793.485231,
+        "tiempoUs": 1792000,
+        "fotograma": 53
+      },
+      {
+        "ms": 1836.45877,
+        "tiempoUs": 1834666,
+        "fotograma": 55
+      },
+      {
+        "ms": 1902.320308,
+        "tiempoUs": 1877333,
+        "fotograma": 56
+      },
+      {
+        "ms": 1927.430385,
+        "tiempoUs": 1920000,
+        "fotograma": 57
+      },
+      {
+        "ms": 1969.37777,
+        "tiempoUs": 1962666,
+        "fotograma": 58
+      },
+      {
+        "ms": 2002.919308,
+        "tiempoUs": 2005333,
+        "fotograma": 60
+      },
+      {
+        "ms": 2070.021231,
+        "tiempoUs": 2048000,
+        "fotograma": 61
+      },
+      {
+        "ms": 2095.156308,
+        "tiempoUs": 2090666,
+        "fotograma": 62
+      },
+      {
+        "ms": 2137.033539,
+        "tiempoUs": 2133333,
+        "fotograma": 64
+      },
+      {
+        "ms": 2178.907308,
+        "tiempoUs": 2176000,
+        "fotograma": 65
+      },
+      {
+        "ms": 2229.295693,
+        "tiempoUs": 2218666,
+        "fotograma": 66
+      },
+      {
+        "ms": 2271.376616,
+        "tiempoUs": 2261333,
+        "fotograma": 67
+      },
+      {
+        "ms": 2298.245154,
+        "tiempoUs": 2304000,
+        "fotograma": 69
+      },
+      {
+        "ms": 2363.519693,
+        "tiempoUs": 2346666,
+        "fotograma": 70
+      },
+      {
+        "ms": 2386.277462,
+        "tiempoUs": 2389333,
+        "fotograma": 71
+      },
+      {
+        "ms": 2432.87377,
+        "tiempoUs": 2432000,
+        "fotograma": 72
+      },
+      {
+        "ms": 2464.386385,
+        "tiempoUs": 2474666,
+        "fotograma": 74
+      },
+      {
+        "ms": 2519.819693,
+        "tiempoUs": 2517333,
+        "fotograma": 75
+      },
+      {
+        "ms": 2556.749847,
+        "tiempoUs": 2560000,
+        "fotograma": 76
+      },
+      {
+        "ms": 2600.509154,
+        "tiempoUs": 2602666,
+        "fotograma": 78
+      },
+      {
+        "ms": 2668.844847,
+        "tiempoUs": 2645333,
+        "fotograma": 79
+      },
+      {
+        "ms": 2692.423385,
+        "tiempoUs": 2688000,
+        "fotograma": 80
+      },
+      {
+        "ms": 2723.760539,
+        "tiempoUs": 2730666,
+        "fotograma": 81
+      },
+      {
+        "ms": 2768.675616,
+        "tiempoUs": 2773333,
+        "fotograma": 83
+      },
+      {
+        "ms": 2837.372231,
+        "tiempoUs": 2816000,
+        "fotograma": 84
+      },
+      {
+        "ms": 2859.813539,
+        "tiempoUs": 2858666,
+        "fotograma": 85
+      },
+      {
+        "ms": 2903.160308,
+        "tiempoUs": 2901333,
+        "fotograma": 87
+      },
+      {
+        "ms": 2940.490385,
+        "tiempoUs": 2944000,
+        "fotograma": 88
+      },
+      {
+        "ms": 2987.363001,
+        "tiempoUs": 2986666,
+        "fotograma": 89
+      },
+      {
+        "ms": 3032.610693,
+        "tiempoUs": 3029333,
+        "fotograma": 90
+      },
+      {
+        "ms": 3061.670154,
+        "tiempoUs": 3072000,
+        "fotograma": 92
+      },
+      {
+        "ms": 3126.309539,
+        "tiempoUs": 3114666,
+        "fotograma": 93
+      },
+      {
+        "ms": 3153.173231,
+        "tiempoUs": 3157333,
+        "fotograma": 94
+      },
+      {
+        "ms": 3200.701539,
+        "tiempoUs": 3200000,
+        "fotograma": 96
+      },
+      {
+        "ms": 3243.448847,
+        "tiempoUs": 3242666,
+        "fotograma": 97
+      },
+      {
+        "ms": 3293.684924,
+        "tiempoUs": 3285333,
+        "fotograma": 98
+      },
+      {
+        "ms": 3327.122693,
+        "tiempoUs": 3328000,
+        "fotograma": 99
+      },
+      {
+        "ms": 3368.98277,
+        "tiempoUs": 3370666,
+        "fotograma": 101
+      },
+      {
+        "ms": 3427.633231,
+        "tiempoUs": 3413333,
+        "fotograma": 102
+      },
+      {
+        "ms": 3452.964308,
+        "tiempoUs": 3456000,
+        "fotograma": 103
+      },
+      {
+        "ms": 3494.656847,
+        "tiempoUs": 3498666,
+        "fotograma": 104
+      },
+      {
+        "ms": 3536.809847,
+        "tiempoUs": 3541333,
+        "fotograma": 106
+      },
+      {
+        "ms": 3587.29877,
+        "tiempoUs": 3584000,
+        "fotograma": 107
+      },
+      {
+        "ms": 3623.005539,
+        "tiempoUs": 3626666,
+        "fotograma": 108
+      },
+      {
+        "ms": 3670.910693,
+        "tiempoUs": 3669333,
+        "fotograma": 110
+      },
+      {
+        "ms": 3727.455001,
+        "tiempoUs": 3712000,
+        "fotograma": 111
+      },
+      {
+        "ms": 3752.400847,
+        "tiempoUs": 3754666,
+        "fotograma": 112
+      },
+      {
+        "ms": 3794.124231,
+        "tiempoUs": 3797333,
+        "fotograma": 113
+      },
+      {
+        "ms": 3831.662078,
+        "tiempoUs": 3840000,
+        "fotograma": 115
+      },
+      {
+        "ms": 3897.511693,
+        "tiempoUs": 3882666,
+        "fotograma": 116
+      },
+      {
+        "ms": 3930.428847,
+        "tiempoUs": 3925333,
+        "fotograma": 117
+      },
+      {
+        "ms": 3964.098462,
+        "tiempoUs": 3968000,
+        "fotograma": 119
+      },
+      {
+        "ms": 4029.465539,
+        "tiempoUs": 4010666,
+        "fotograma": 120
+      },
+      {
+        "ms": 4056.671078,
+        "tiempoUs": 4053333,
+        "fotograma": 121
+      },
+      {
+        "ms": 4106.930385,
+        "tiempoUs": 4096000,
+        "fotograma": 122
+      },
+      {
+        "ms": 4132.812924,
+        "tiempoUs": 4138666,
+        "fotograma": 124
+      },
+      {
+        "ms": 4192.305462,
+        "tiempoUs": 4181333,
+        "fotograma": 125
+      },
+      {
+        "ms": 4215.543616,
+        "tiempoUs": 4224000,
+        "fotograma": 126
+      },
+      {
+        "ms": 4266.017154,
+        "tiempoUs": 4266666,
+        "fotograma": 128
+      },
+      {
+        "ms": 4307.982154,
+        "tiempoUs": 4309333,
+        "fotograma": 129
+      },
+      {
+        "ms": 4358.04577,
+        "tiempoUs": 4352000,
+        "fotograma": 130
+      },
+      {
+        "ms": 4391.59777,
+        "tiempoUs": 4394666,
+        "fotograma": 131
+      },
+      {
+        "ms": 4429.360231,
+        "tiempoUs": 4437333,
+        "fotograma": 133
+      },
+      {
+        "ms": 4493.948924,
+        "tiempoUs": 4480000,
+        "fotograma": 134
+      },
+      {
+        "ms": 4517.503308,
+        "tiempoUs": 4522666,
+        "fotograma": 135
+      },
+      {
+        "ms": 4568.02277,
+        "tiempoUs": 4565333,
+        "fotograma": 136
+      },
+      {
+        "ms": 4601.480847,
+        "tiempoUs": 4608000,
+        "fotograma": 138
+      },
+      {
+        "ms": 4659.750693,
+        "tiempoUs": 4650666,
+        "fotograma": 139
+      },
+      {
+        "ms": 4693.490078,
+        "tiempoUs": 4693333,
+        "fotograma": 140
+      },
+      {
+        "ms": 4727.179001,
+        "tiempoUs": 4736000,
+        "fotograma": 142
+      },
+      {
+        "ms": 4793.700616,
+        "tiempoUs": 4778666,
+        "fotograma": 143
+      },
+      {
+        "ms": 4819.23877,
+        "tiempoUs": 4821333,
+        "fotograma": 144
+      },
+      {
+        "ms": 4860.828924,
+        "tiempoUs": 4864000,
+        "fotograma": 145
+      },
+      {
+        "ms": 4903.40677,
+        "tiempoUs": 4906666,
+        "fotograma": 147
+      },
+      {
+        "ms": 4953.600308,
+        "tiempoUs": 4949333,
+        "fotograma": 148
+      },
+      {
+        "ms": 5020.933231,
+        "tiempoUs": 4992000,
+        "fotograma": 149
+      },
+      {
+        "ms": 5037.718693,
+        "tiempoUs": 5034666,
+        "fotograma": 151
+      },
+      {
+        "ms": 5072.622462,
+        "tiempoUs": 5077333,
+        "fotograma": 152
+      },
+      {
+        "ms": 5130.02677,
+        "tiempoUs": 5120000,
+        "fotograma": 153
+      },
+      {
+        "ms": 5163.738078,
+        "tiempoUs": 5162666,
+        "fotograma": 154
+      },
+      {
+        "ms": 5196.668924,
+        "tiempoUs": 5205333,
+        "fotograma": 156
+      },
+      {
+        "ms": 5255.772924,
+        "tiempoUs": 5248000,
+        "fotograma": 157
+      },
+      {
+        "ms": 5293.639078,
+        "tiempoUs": 5290666,
+        "fotograma": 158
+      },
+      {
+        "ms": 5322.922078,
+        "tiempoUs": 5333333,
+        "fotograma": 160
+      },
+      {
+        "ms": 5391.385231,
+        "tiempoUs": 5376000,
+        "fotograma": 161
+      },
+      {
+        "ms": 5416.877847,
+        "tiempoUs": 5418666,
+        "fotograma": 162
+      },
+      {
+        "ms": 5461.582078,
+        "tiempoUs": 5461333,
+        "fotograma": 163
+      },
+      {
+        "ms": 5494.548539,
+        "tiempoUs": 5504000,
+        "fotograma": 165
+      },
+      {
+        "ms": 5555.547693,
+        "tiempoUs": 5546666,
+        "fotograma": 166
+      },
+      {
+        "ms": 5576.980001,
+        "tiempoUs": 5589333,
+        "fotograma": 167
+      },
+      {
+        "ms": 5629.583308,
+        "tiempoUs": 5632000,
+        "fotograma": 168
+      },
+      {
+        "ms": 5664.161155,
+        "tiempoUs": 5674666,
+        "fotograma": 170
+      },
+      {
+        "ms": 5714.857847,
+        "tiempoUs": 5717333,
+        "fotograma": 171
+      },
+      {
+        "ms": 5765.630462,
+        "tiempoUs": 5760000,
+        "fotograma": 172
+      },
+      {
+        "ms": 5791.937155,
+        "tiempoUs": 5802666,
+        "fotograma": 174
+      },
+      {
+        "ms": 5857.571078,
+        "tiempoUs": 5845333,
+        "fotograma": 175
+      },
+      {
+        "ms": 5883.355616,
+        "tiempoUs": 5888000,
+        "fotograma": 176
+      },
+      {
+        "ms": 5919.48177,
+        "tiempoUs": 5930666,
+        "fotograma": 177
+      },
+      {
+        "ms": 5968.443308,
+        "tiempoUs": 5973333,
+        "fotograma": 179
+      },
+      {
+        "ms": 6028.636308,
+        "tiempoUs": 6016000,
+        "fotograma": 180
+      },
+      {
+        "ms": 6110.243308,
+        "tiempoUs": 6058666,
+        "fotograma": 181
+      },
+      {
+        "ms": 6124.98677,
+        "tiempoUs": 6101333,
+        "fotograma": 183
+      },
+      {
+        "ms": 6170.634462,
+        "tiempoUs": 6144000,
+        "fotograma": 184
+      },
+      {
+        "ms": 6195.192924,
+        "tiempoUs": 6186666,
+        "fotograma": 185
+      },
+      {
+        "ms": 6229.033462,
+        "tiempoUs": 6229333,
+        "fotograma": 186
+      },
+      {
+        "ms": 6281.419616,
+        "tiempoUs": 6272000,
+        "fotograma": 188
+      },
+      {
+        "ms": 6337.660539,
+        "tiempoUs": 6314666,
+        "fotograma": 189
+      },
+      {
+        "ms": 6363.307385,
+        "tiempoUs": 6357333,
+        "fotograma": 190
+      },
+      {
+        "ms": 6412.629847,
+        "tiempoUs": 6400000,
+        "fotograma": 192
+      },
+      {
+        "ms": 6447.960001,
+        "tiempoUs": 6442666,
+        "fotograma": 193
+      },
+      {
+        "ms": 6518.113462,
+        "tiempoUs": 6485333,
+        "fotograma": 194
+      },
+      {
+        "ms": 6536.176616,
+        "tiempoUs": 6528000,
+        "fotograma": 195
+      },
+      {
+        "ms": 6582.726693,
+        "tiempoUs": 6570666,
+        "fotograma": 197
+      },
+      {
+        "ms": 6604.569539,
+        "tiempoUs": 6613333,
+        "fotograma": 198
+      },
+      {
+        "ms": 6653.870462,
+        "tiempoUs": 6656000,
+        "fotograma": 199
+      },
+      {
+        "ms": 6765.725155,
+        "tiempoUs": 6698666,
+        "fotograma": 200
+      },
+      {
+        "ms": 6770.335308,
+        "tiempoUs": 6741333,
+        "fotograma": 202
+      },
+      {
+        "ms": 6815.754155,
+        "tiempoUs": 6784000,
+        "fotograma": 203
+      },
+      {
+        "ms": 6833.064847,
+        "tiempoUs": 6826666,
+        "fotograma": 204
+      },
+      {
+        "ms": 6867.720539,
+        "tiempoUs": 6869333,
+        "fotograma": 206
+      },
+      {
+        "ms": 6965.928001,
+        "tiempoUs": 6912000,
+        "fotograma": 207
+      },
+      {
+        "ms": 6985.385847,
+        "tiempoUs": 6954666,
+        "fotograma": 208
+      },
+      {
+        "ms": 7000.750693,
+        "tiempoUs": 6997333,
+        "fotograma": 209
+      },
+      {
+        "ms": 7049.780616,
+        "tiempoUs": 7040000,
+        "fotograma": 211
+      },
+      {
+        "ms": 7095.928539,
+        "tiempoUs": 7082666,
+        "fotograma": 212
+      },
+      {
+        "ms": 7122.469847,
+        "tiempoUs": 7125333,
+        "fotograma": 213
+      },
+      {
+        "ms": 7200.803616,
+        "tiempoUs": 7168000,
+        "fotograma": 215
+      },
+      {
+        "ms": 7219.212232,
+        "tiempoUs": 7210666,
+        "fotograma": 216
+      },
+      {
+        "ms": 7243.743924,
+        "tiempoUs": 7253333,
+        "fotograma": 217
+      },
+      {
+        "ms": 7302.588539,
+        "tiempoUs": 7296000,
+        "fotograma": 218
+      },
+      {
+        "ms": 7333.595693,
+        "tiempoUs": 7338666,
+        "fotograma": 220
+      },
+      {
+        "ms": 7401.551924,
+        "tiempoUs": 7381333,
+        "fotograma": 221
+      },
+      {
+        "ms": 7435.732924,
+        "tiempoUs": 7424000,
+        "fotograma": 222
+      },
+      {
+        "ms": 7469.234078,
+        "tiempoUs": 7466666,
+        "fotograma": 224
+      },
+      {
+        "ms": 7507.528308,
+        "tiempoUs": 7509333,
+        "fotograma": 225
+      },
+      {
+        "ms": 7570.145155,
+        "tiempoUs": 7552000,
+        "fotograma": 226
+      },
+      {
+        "ms": 7605.454385,
+        "tiempoUs": 7594666,
+        "fotograma": 227
+      },
+      {
+        "ms": 7659.712232,
+        "tiempoUs": 7637333,
+        "fotograma": 229
+      },
+      {
+        "ms": 7705.255078,
+        "tiempoUs": 7680000,
+        "fotograma": 230
+      },
+      {
+        "ms": 7720.255078,
+        "tiempoUs": 7722666,
+        "fotograma": 231
+      },
+      {
+        "ms": 7803.969539,
+        "tiempoUs": 7765333,
+        "fotograma": 232
+      },
+      {
+        "ms": 7805.339001,
+        "tiempoUs": 7808000,
+        "fotograma": 234
+      },
+      {
+        "ms": 7873.281462,
+        "tiempoUs": 7850666,
+        "fotograma": 235
+      },
+      {
+        "ms": 7906.224539,
+        "tiempoUs": 7893333,
+        "fotograma": 236
+      },
+      {
+        "ms": 7939.912924,
+        "tiempoUs": 7936000,
+        "fotograma": 238
+      },
+      {
+        "ms": 8006.419385,
+        "tiempoUs": 7978666,
+        "fotograma": 239
+      },
+      {
+        "ms": 8040.662462,
+        "tiempoUs": 8021333,
+        "fotograma": 240
+      },
+      {
+        "ms": 8068.92277,
+        "tiempoUs": 8064000,
+        "fotograma": 241
+      },
+      {
+        "ms": 8106.797847,
+        "tiempoUs": 8106666,
+        "fotograma": 243
+      },
+      {
+        "ms": 8174.808001,
+        "tiempoUs": 8149333,
+        "fotograma": 244
+      },
+      {
+        "ms": 8189.080232,
+        "tiempoUs": 8192000,
+        "fotograma": 245
+      },
+      {
+        "ms": 8242.283001,
+        "tiempoUs": 8234666,
+        "fotograma": 247
+      },
+      {
+        "ms": 8292.057539,
+        "tiempoUs": 8277333,
+        "fotograma": 248
+      },
+      {
+        "ms": 8326.582155,
+        "tiempoUs": 8320000,
+        "fotograma": 249
+      },
+      {
+        "ms": 8376.501155,
+        "tiempoUs": 8362666,
+        "fotograma": 250
+      },
+      {
+        "ms": 8409.141847,
+        "tiempoUs": 8405333,
+        "fotograma": 252
+      },
+      {
+        "ms": 8470.641155,
+        "tiempoUs": 8448000,
+        "fotograma": 253
+      },
+      {
+        "ms": 8493.544924,
+        "tiempoUs": 8490666,
+        "fotograma": 254
+      },
+      {
+        "ms": 8577.564924,
+        "tiempoUs": 8533333,
+        "fotograma": 256
+      },
+      {
+        "ms": 8599.651001,
+        "tiempoUs": 8576000,
+        "fotograma": 257
+      },
+      {
+        "ms": 8642.454078,
+        "tiempoUs": 8618666,
+        "fotograma": 258
+      },
+      {
+        "ms": 8662.401155,
+        "tiempoUs": 8661333,
+        "fotograma": 259
+      },
+      {
+        "ms": 8742.597539,
+        "tiempoUs": 8704000,
+        "fotograma": 261
+      },
+      {
+        "ms": 8761.250078,
+        "tiempoUs": 8746666,
+        "fotograma": 262
+      },
+      {
+        "ms": 8793.739078,
+        "tiempoUs": 8789333,
+        "fotograma": 263
+      },
+      {
+        "ms": 8845.50177,
+        "tiempoUs": 8832000,
+        "fotograma": 264
+      },
+      {
+        "ms": 8870.628616,
+        "tiempoUs": 8874666,
+        "fotograma": 266
+      },
+      {
+        "ms": 8947.210462,
+        "tiempoUs": 8917333,
+        "fotograma": 267
+      },
+      {
+        "ms": 8979.960616,
+        "tiempoUs": 8960000,
+        "fotograma": 268
+      },
+      {
+        "ms": 8996.07777,
+        "tiempoUs": 9002666,
+        "fotograma": 270
+      },
+      {
+        "ms": 9079.818693,
+        "tiempoUs": 9045333,
+        "fotograma": 271
+      },
+      {
+        "ms": 9112.961232,
+        "tiempoUs": 9088000,
+        "fotograma": 272
+      },
+      {
+        "ms": 9129.674693,
+        "tiempoUs": 9130666,
+        "fotograma": 273
+      },
+      {
+        "ms": 9171.384847,
+        "tiempoUs": 9173333,
+        "fotograma": 275
+      },
+      {
+        "ms": 9246.965539,
+        "tiempoUs": 9216000,
+        "fotograma": 276
+      },
+      {
+        "ms": 9263.877847,
+        "tiempoUs": 9258666,
+        "fotograma": 277
+      },
+      {
+        "ms": 9315.077462,
+        "tiempoUs": 9301333,
+        "fotograma": 279
+      },
+      {
+        "ms": 9381.268001,
+        "tiempoUs": 9344000,
+        "fotograma": 280
+      },
+      {
+        "ms": 9416.433539,
+        "tiempoUs": 9386666,
+        "fotograma": 281
+      },
+      {
+        "ms": 9483.817847,
+        "tiempoUs": 9429333,
+        "fotograma": 282
+      },
+      {
+        "ms": 9503.221232,
+        "tiempoUs": 9472000,
+        "fotograma": 284
+      },
+      {
+        "ms": 9518.769155,
+        "tiempoUs": 9514666,
+        "fotograma": 285
+      },
+      {
+        "ms": 9565.102693,
+        "tiempoUs": 9557333,
+        "fotograma": 286
+      },
+      {
+        "ms": 9598.068309,
+        "tiempoUs": 9600000,
+        "fotograma": 288
+      },
+      {
+        "ms": 9670.076616,
+        "tiempoUs": 9642666,
+        "fotograma": 289
+      },
+      {
+        "ms": 9697.172539,
+        "tiempoUs": 9685333,
+        "fotograma": 290
+      },
+      {
+        "ms": 9769.088616,
+        "tiempoUs": 9728000,
+        "fotograma": 291
+      },
+      {
+        "ms": 9794.503924,
+        "tiempoUs": 9770666,
+        "fotograma": 293
+      },
+      {
+        "ms": 9832.03777,
+        "tiempoUs": 9813333,
+        "fotograma": 294
+      },
+      {
+        "ms": 9867.247693,
+        "tiempoUs": 9856000,
+        "fotograma": 295
+      },
+      {
+        "ms": 9919.233462,
+        "tiempoUs": 9898666,
+        "fotograma": 296
+      },
+      {
+        "ms": 9952.139924,
+        "tiempoUs": 9941333,
+        "fotograma": 298
+      },
+      {
+        "ms": 9994.502386,
+        "tiempoUs": 9984000,
+        "fotograma": 299
+      },
+      {
+        "ms": 10052.876309,
+        "tiempoUs": 10026666,
+        "fotograma": 300
+      },
+      {
+        "ms": 10085.036232,
+        "tiempoUs": 10069333,
+        "fotograma": 302
+      },
+      {
+        "ms": 10136.923001,
+        "tiempoUs": 10112000,
+        "fotograma": 303
+      },
+      {
+        "ms": 10167.787924,
+        "tiempoUs": 10154666,
+        "fotograma": 304
+      },
+      {
+        "ms": 10196.512232,
+        "tiempoUs": 10197333,
+        "fotograma": 305
+      },
+      {
+        "ms": 10253.101232,
+        "tiempoUs": 10240000,
+        "fotograma": 307
+      },
+      {
+        "ms": 10302.523924,
+        "tiempoUs": 10282666,
+        "fotograma": 308
+      },
+      {
+        "ms": 10355.309155,
+        "tiempoUs": 10325333,
+        "fotograma": 309
+      },
+      {
+        "ms": 10411.303001,
+        "tiempoUs": 10368000,
+        "fotograma": 311
+      },
+      {
+        "ms": 10433.27377,
+        "tiempoUs": 10410666,
+        "fotograma": 312
+      },
+      {
+        "ms": 10458.432309,
+        "tiempoUs": 10453333,
+        "fotograma": 313
+      },
+      {
+        "ms": 10503.490386,
+        "tiempoUs": 10496000,
+        "fotograma": 314
+      },
+      {
+        "ms": 10534.488539,
+        "tiempoUs": 10538666,
+        "fotograma": 316
+      },
+      {
+        "ms": 10596.989463,
+        "tiempoUs": 10581333,
+        "fotograma": 317
+      },
+      {
+        "ms": 10637.661847,
+        "tiempoUs": 10624000,
+        "fotograma": 318
+      },
+      {
+        "ms": 10673.421539,
+        "tiempoUs": 10666666,
+        "fotograma": 320
+      },
+      {
+        "ms": 10738.227693,
+        "tiempoUs": 10709333,
+        "fotograma": 321
+      },
+      {
+        "ms": 10772.728309,
+        "tiempoUs": 10752000,
+        "fotograma": 322
+      },
+      {
+        "ms": 10800.508539,
+        "tiempoUs": 10794666,
+        "fotograma": 323
+      },
+      {
+        "ms": 10906.921463,
+        "tiempoUs": 10837333,
+        "fotograma": 325
+      },
+      {
+        "ms": 10914.097539,
+        "tiempoUs": 10880000,
+        "fotograma": 326
+      },
+      {
+        "ms": 10931.708539,
+        "tiempoUs": 10922666,
+        "fotograma": 327
+      },
+      {
+        "ms": 10973.415078,
+        "tiempoUs": 10965333,
+        "fotograma": 328
+      },
+      {
+        "ms": 11004.541847,
+        "tiempoUs": 11008000,
+        "fotograma": 330
+      },
+      {
+        "ms": 11075.071309,
+        "tiempoUs": 11050666,
+        "fotograma": 331
+      },
+      {
+        "ms": 11104.499001,
+        "tiempoUs": 11093333,
+        "fotograma": 332
+      },
+      {
+        "ms": 11129.768924,
+        "tiempoUs": 11136000,
+        "fotograma": 334
+      },
+      {
+        "ms": 11198.28177,
+        "tiempoUs": 11178666,
+        "fotograma": 335
+      },
+      {
+        "ms": 11242.070155,
+        "tiempoUs": 11221333,
+        "fotograma": 336
+      },
+      {
+        "ms": 11259.692232,
+        "tiempoUs": 11264000,
+        "fotograma": 337
+      },
+      {
+        "ms": 11377.475001,
+        "tiempoUs": 11306666,
+        "fotograma": 339
+      },
+      {
+        "ms": 11379.859616,
+        "tiempoUs": 11349333,
+        "fotograma": 340
+      },
+      {
+        "ms": 11398.237463,
+        "tiempoUs": 11392000,
+        "fotograma": 341
+      },
+      {
+        "ms": 11474.486386,
+        "tiempoUs": 11434666,
+        "fotograma": 343
+      },
+      {
+        "ms": 11493.216616,
+        "tiempoUs": 11477333,
+        "fotograma": 344
+      },
+      {
+        "ms": 11546.072309,
+        "tiempoUs": 11520000,
+        "fotograma": 345
+      },
+      {
+        "ms": 11554.535924,
+        "tiempoUs": 11562666,
+        "fotograma": 346
+      },
+      {
+        "ms": 11609.321232,
+        "tiempoUs": 11605333,
+        "fotograma": 348
+      },
+      {
+        "ms": 11665.912232,
+        "tiempoUs": 11648000,
+        "fotograma": 349
+      },
+      {
+        "ms": 11694.246155,
+        "tiempoUs": 11690666,
+        "fotograma": 350
+      },
+      {
+        "ms": 11745.985847,
+        "tiempoUs": 11733333,
+        "fotograma": 352
+      },
+      {
+        "ms": 11811.487924,
+        "tiempoUs": 11776000,
+        "fotograma": 353
+      },
+      {
+        "ms": 11845.343924,
+        "tiempoUs": 11818666,
+        "fotograma": 354
+      },
+      {
+        "ms": 11861.266386,
+        "tiempoUs": 11861333,
+        "fotograma": 355
+      },
+      {
+        "ms": 11911.831386,
+        "tiempoUs": 11904000,
+        "fotograma": 357
+      },
+      {
+        "ms": 11966.159693,
+        "tiempoUs": 11946666,
+        "fotograma": 358
+      },
+      {
+        "ms": 11994.647001,
+        "tiempoUs": 11989333,
+        "fotograma": 359
+      },
+      {
+        "ms": 12047.30977,
+        "tiempoUs": 12032000,
+        "fotograma": 360
+      },
+      {
+        "ms": 12079.832232,
+        "tiempoUs": 12074666,
+        "fotograma": 362
+      },
+      {
+        "ms": 12146.992616,
+        "tiempoUs": 12117333,
+        "fotograma": 363
+      },
+      {
+        "ms": 12180.747309,
+        "tiempoUs": 12160000,
+        "fotograma": 364
+      },
+      {
+        "ms": 12238.435309,
+        "tiempoUs": 12202666,
+        "fotograma": 366
+      },
+      {
+        "ms": 12261.372232,
+        "tiempoUs": 12245333,
+        "fotograma": 367
+      },
+      {
+        "ms": 12296.723616,
+        "tiempoUs": 12288000,
+        "fotograma": 368
+      },
+      {
+        "ms": 12349.067693,
+        "tiempoUs": 12330666,
+        "fotograma": 369
+      },
+      {
+        "ms": 12381.997463,
+        "tiempoUs": 12373333,
+        "fotograma": 371
+      },
+      {
+        "ms": 12447.812924,
+        "tiempoUs": 12416000,
+        "fotograma": 372
+      },
+      {
+        "ms": 12466.121847,
+        "tiempoUs": 12458666,
+        "fotograma": 373
+      },
+      {
+        "ms": 12517.118463,
+        "tiempoUs": 12501333,
+        "fotograma": 375
+      },
+      {
+        "ms": 12541.145155,
+        "tiempoUs": 12544000,
+        "fotograma": 376
+      },
+      {
+        "ms": 12597.92577,
+        "tiempoUs": 12586666,
+        "fotograma": 377
+      },
+      {
+        "ms": 12632.911001,
+        "tiempoUs": 12629333,
+        "fotograma": 378
+      },
+      {
+        "ms": 12700.577232,
+        "tiempoUs": 12672000,
+        "fotograma": 380
+      },
+      {
+        "ms": 12733.172616,
+        "tiempoUs": 12714666,
+        "fotograma": 381
+      },
+      {
+        "ms": 12767.47254,
+        "tiempoUs": 12757333,
+        "fotograma": 382
+      },
+      {
+        "ms": 12800.927078,
+        "tiempoUs": 12800000,
+        "fotograma": 384
+      },
+      {
+        "ms": 12865.911386,
+        "tiempoUs": 12842666,
+        "fotograma": 385
+      },
+      {
+        "ms": 12892.445155,
+        "tiempoUs": 12885333,
+        "fotograma": 386
+      },
+      {
+        "ms": 12928.211078,
+        "tiempoUs": 12928000,
+        "fotograma": 387
+      },
+      {
+        "ms": 12984.094386,
+        "tiempoUs": 12970666,
+        "fotograma": 389
+      },
+      {
+        "ms": 13053.506463,
+        "tiempoUs": 13013333,
+        "fotograma": 390
+      },
+      {
+        "ms": 13058.92954,
+        "tiempoUs": 13056000,
+        "fotograma": 391
+      },
+      {
+        "ms": 13103.324617,
+        "tiempoUs": 13098666,
+        "fotograma": 392
+      },
+      {
+        "ms": 13153.021155,
+        "tiempoUs": 13141333,
+        "fotograma": 394
+      },
+      {
+        "ms": 13195.348232,
+        "tiempoUs": 13184000,
+        "fotograma": 395
+      },
+      {
+        "ms": 13234.512001,
+        "tiempoUs": 13226666,
+        "fotograma": 396
+      },
+      {
+        "ms": 13268.761232,
+        "tiempoUs": 13269333,
+        "fotograma": 398
+      },
+      {
+        "ms": 13355.323386,
+        "tiempoUs": 13312000,
+        "fotograma": 399
+      },
+      {
+        "ms": 13362.079309,
+        "tiempoUs": 13354666,
+        "fotograma": 400
+      },
+      {
+        "ms": 13404.383617,
+        "tiempoUs": 13397333,
+        "fotograma": 401
+      },
+      {
+        "ms": 13454.610155,
+        "tiempoUs": 13440000,
+        "fotograma": 403
+      },
+      {
+        "ms": 13505.701232,
+        "tiempoUs": 13482666,
+        "fotograma": 404
+      },
+      {
+        "ms": 13521.519693,
+        "tiempoUs": 13525333,
+        "fotograma": 405
+      },
+      {
+        "ms": 13571.654386,
+        "tiempoUs": 13568000,
+        "fotograma": 407
+      },
+      {
+        "ms": 13638.577155,
+        "tiempoUs": 13610666,
+        "fotograma": 408
+      },
+      {
+        "ms": 13672.427693,
+        "tiempoUs": 13653333,
+        "fotograma": 409
+      },
+      {
+        "ms": 13699.316232,
+        "tiempoUs": 13696000,
+        "fotograma": 410
+      },
+      {
+        "ms": 13785.468232,
+        "tiempoUs": 13699999,
+        "fotograma": 410
+      }
+    ]
+  },
+  "presentacionesTexture": {
+    "cantidad": 287,
+    "indicesUnicos": 285,
+    "fpsMedios": 20.894542690691328,
+    "maxGapMs": 968.562384,
+    "latenciaPrimerCuadroMs": 16.22977,
+    "saltosDeIndice": 126,
+    "fotogramasSinIndiceObservado": 126,
+    "muestras": [
+      {
+        "ms": 16.22977,
+        "tiempoUs": 0,
+        "fotograma": 0
+      },
+      {
+        "ms": 125.287308,
+        "tiempoUs": 42666,
+        "fotograma": 1
+      },
+      {
+        "ms": 158.830385,
+        "tiempoUs": 128000,
+        "fotograma": 3
+      },
+      {
+        "ms": 184.009231,
+        "tiempoUs": 170666,
+        "fotograma": 5
+      },
+      {
+        "ms": 217.410154,
+        "tiempoUs": 213333,
+        "fotograma": 6
+      },
+      {
+        "ms": 259.345462,
+        "tiempoUs": 256000,
+        "fotograma": 7
+      },
+      {
+        "ms": 292.857462,
+        "tiempoUs": 298666,
+        "fotograma": 8
+      },
+      {
+        "ms": 334.837539,
+        "tiempoUs": 341333,
+        "fotograma": 10
+      },
+      {
+        "ms": 393.888,
+        "tiempoUs": 384000,
+        "fotograma": 11
+      },
+      {
+        "ms": 427.059693,
+        "tiempoUs": 426666,
+        "fotograma": 12
+      },
+      {
+        "ms": 460.596539,
+        "tiempoUs": 469333,
+        "fotograma": 14
+      },
+      {
+        "ms": 527.835308,
+        "tiempoUs": 512000,
+        "fotograma": 15
+      },
+      {
+        "ms": 552.835,
+        "tiempoUs": 554666,
+        "fotograma": 16
+      },
+      {
+        "ms": 594.696231,
+        "tiempoUs": 597333,
+        "fotograma": 17
+      },
+      {
+        "ms": 628.298077,
+        "tiempoUs": 640000,
+        "fotograma": 19
+      },
+      {
+        "ms": 686.80177,
+        "tiempoUs": 682666,
+        "fotograma": 20
+      },
+      {
+        "ms": 728.708923,
+        "tiempoUs": 725333,
+        "fotograma": 21
+      },
+      {
+        "ms": 762.413231,
+        "tiempoUs": 768000,
+        "fotograma": 23
+      },
+      {
+        "ms": 837.77077,
+        "tiempoUs": 810666,
+        "fotograma": 24
+      },
+      {
+        "ms": 862.740923,
+        "tiempoUs": 853333,
+        "fotograma": 25
+      },
+      {
+        "ms": 896.224308,
+        "tiempoUs": 896000,
+        "fotograma": 26
+      },
+      {
+        "ms": 938.335385,
+        "tiempoUs": 938666,
+        "fotograma": 28
+      },
+      {
+        "ms": 996.980923,
+        "tiempoUs": 981333,
+        "fotograma": 29
+      },
+      {
+        "ms": 1013.788847,
+        "tiempoUs": 1024000,
+        "fotograma": 30
+      },
+      {
+        "ms": 1072.468847,
+        "tiempoUs": 1066666,
+        "fotograma": 32
+      },
+      {
+        "ms": 1106.02977,
+        "tiempoUs": 1109333,
+        "fotograma": 33
+      },
+      {
+        "ms": 1164.893154,
+        "tiempoUs": 1152000,
+        "fotograma": 34
+      },
+      {
+        "ms": 1198.574077,
+        "tiempoUs": 1194666,
+        "fotograma": 35
+      },
+      {
+        "ms": 1232.027385,
+        "tiempoUs": 1237333,
+        "fotograma": 37
+      },
+      {
+        "ms": 1298.893462,
+        "tiempoUs": 1280000,
+        "fotograma": 38
+      },
+      {
+        "ms": 1323.863308,
+        "tiempoUs": 1322666,
+        "fotograma": 39
+      },
+      {
+        "ms": 1365.768539,
+        "tiempoUs": 1365333,
+        "fotograma": 40
+      },
+      {
+        "ms": 1407.74277,
+        "tiempoUs": 1408000,
+        "fotograma": 42
+      },
+      {
+        "ms": 1458.247077,
+        "tiempoUs": 1450666,
+        "fotograma": 43
+      },
+      {
+        "ms": 1500.132231,
+        "tiempoUs": 1493333,
+        "fotograma": 44
+      },
+      {
+        "ms": 1533.363924,
+        "tiempoUs": 1536000,
+        "fotograma": 46
+      },
+      {
+        "ms": 1608.984308,
+        "tiempoUs": 1578666,
+        "fotograma": 47
+      },
+      {
+        "ms": 1634.057539,
+        "tiempoUs": 1621333,
+        "fotograma": 48
+      },
+      {
+        "ms": 1667.639385,
+        "tiempoUs": 1664000,
+        "fotograma": 49
+      },
+      {
+        "ms": 1700.924539,
+        "tiempoUs": 1706666,
+        "fotograma": 51
+      },
+      {
+        "ms": 1759.467616,
+        "tiempoUs": 1749333,
+        "fotograma": 52
+      },
+      {
+        "ms": 1793.17077,
+        "tiempoUs": 1792000,
+        "fotograma": 53
+      },
+      {
+        "ms": 1835.172539,
+        "tiempoUs": 1834666,
+        "fotograma": 55
+      },
+      {
+        "ms": 1902.003693,
+        "tiempoUs": 1877333,
+        "fotograma": 56
+      },
+      {
+        "ms": 1927.133154,
+        "tiempoUs": 1920000,
+        "fotograma": 57
+      },
+      {
+        "ms": 1969.032231,
+        "tiempoUs": 1962666,
+        "fotograma": 58
+      },
+      {
+        "ms": 2002.575077,
+        "tiempoUs": 2005333,
+        "fotograma": 60
+      },
+      {
+        "ms": 2069.671616,
+        "tiempoUs": 2048000,
+        "fotograma": 61
+      },
+      {
+        "ms": 2094.801462,
+        "tiempoUs": 2090666,
+        "fotograma": 62
+      },
+      {
+        "ms": 2136.692847,
+        "tiempoUs": 2133333,
+        "fotograma": 64
+      },
+      {
+        "ms": 2178.561231,
+        "tiempoUs": 2176000,
+        "fotograma": 65
+      },
+      {
+        "ms": 2228.923693,
+        "tiempoUs": 2218666,
+        "fotograma": 66
+      },
+      {
+        "ms": 3197.486077,
+        "tiempoUs": 3200000,
+        "fotograma": 96
+      },
+      {
+        "ms": 3243.004847,
+        "tiempoUs": 3242666,
+        "fotograma": 97
+      },
+      {
+        "ms": 3293.239693,
+        "tiempoUs": 3285333,
+        "fotograma": 98
+      },
+      {
+        "ms": 3326.804539,
+        "tiempoUs": 3328000,
+        "fotograma": 99
+      },
+      {
+        "ms": 3368.639385,
+        "tiempoUs": 3370666,
+        "fotograma": 101
+      },
+      {
+        "ms": 3427.316847,
+        "tiempoUs": 3413333,
+        "fotograma": 102
+      },
+      {
+        "ms": 3452.561847,
+        "tiempoUs": 3456000,
+        "fotograma": 103
+      },
+      {
+        "ms": 3494.378077,
+        "tiempoUs": 3498666,
+        "fotograma": 104
+      },
+      {
+        "ms": 3536.393539,
+        "tiempoUs": 3541333,
+        "fotograma": 106
+      },
+      {
+        "ms": 3594.965154,
+        "tiempoUs": 3584000,
+        "fotograma": 107
+      },
+      {
+        "ms": 3628.528001,
+        "tiempoUs": 3626666,
+        "fotograma": 108
+      },
+      {
+        "ms": 3670.607693,
+        "tiempoUs": 3669333,
+        "fotograma": 110
+      },
+      {
+        "ms": 3729.420616,
+        "tiempoUs": 3712000,
+        "fotograma": 111
+      },
+      {
+        "ms": 3754.252231,
+        "tiempoUs": 3754666,
+        "fotograma": 112
+      },
+      {
+        "ms": 3796.131077,
+        "tiempoUs": 3797333,
+        "fotograma": 113
+      },
+      {
+        "ms": 3838.116001,
+        "tiempoUs": 3840000,
+        "fotograma": 115
+      },
+      {
+        "ms": 3896.849154,
+        "tiempoUs": 3882666,
+        "fotograma": 116
+      },
+      {
+        "ms": 3930.260539,
+        "tiempoUs": 3925333,
+        "fotograma": 117
+      },
+      {
+        "ms": 3963.696001,
+        "tiempoUs": 3968000,
+        "fotograma": 119
+      },
+      {
+        "ms": 4030.804924,
+        "tiempoUs": 4010666,
+        "fotograma": 120
+      },
+      {
+        "ms": 4056.308231,
+        "tiempoUs": 4053333,
+        "fotograma": 121
+      },
+      {
+        "ms": 4106.402693,
+        "tiempoUs": 4096000,
+        "fotograma": 122
+      },
+      {
+        "ms": 4131.303308,
+        "tiempoUs": 4138666,
+        "fotograma": 124
+      },
+      {
+        "ms": 4198.469462,
+        "tiempoUs": 4181333,
+        "fotograma": 125
+      },
+      {
+        "ms": 4215.211924,
+        "tiempoUs": 4224000,
+        "fotograma": 126
+      },
+      {
+        "ms": 4265.715693,
+        "tiempoUs": 4266666,
+        "fotograma": 128
+      },
+      {
+        "ms": 4307.514385,
+        "tiempoUs": 4309333,
+        "fotograma": 129
+      },
+      {
+        "ms": 4357.743693,
+        "tiempoUs": 4352000,
+        "fotograma": 130
+      },
+      {
+        "ms": 4391.239308,
+        "tiempoUs": 4394666,
+        "fotograma": 131
+      },
+      {
+        "ms": 4433.508308,
+        "tiempoUs": 4437333,
+        "fotograma": 133
+      },
+      {
+        "ms": 4500.203385,
+        "tiempoUs": 4480000,
+        "fotograma": 134
+      },
+      {
+        "ms": 4516.914462,
+        "tiempoUs": 4522666,
+        "fotograma": 135
+      },
+      {
+        "ms": 4567.47077,
+        "tiempoUs": 4565333,
+        "fotograma": 136
+      },
+      {
+        "ms": 4601.059001,
+        "tiempoUs": 4608000,
+        "fotograma": 138
+      },
+      {
+        "ms": 4659.430385,
+        "tiempoUs": 4650666,
+        "fotograma": 139
+      },
+      {
+        "ms": 4693.082693,
+        "tiempoUs": 4693333,
+        "fotograma": 140
+      },
+      {
+        "ms": 4734.907385,
+        "tiempoUs": 4736000,
+        "fotograma": 142
+      },
+      {
+        "ms": 4793.413847,
+        "tiempoUs": 4778666,
+        "fotograma": 143
+      },
+      {
+        "ms": 4818.980616,
+        "tiempoUs": 4821333,
+        "fotograma": 144
+      },
+      {
+        "ms": 4860.557847,
+        "tiempoUs": 4864000,
+        "fotograma": 145
+      },
+      {
+        "ms": 4902.814154,
+        "tiempoUs": 4906666,
+        "fotograma": 147
+      },
+      {
+        "ms": 4961.304847,
+        "tiempoUs": 4949333,
+        "fotograma": 148
+      },
+      {
+        "ms": 5020.248924,
+        "tiempoUs": 4992000,
+        "fotograma": 149
+      },
+      {
+        "ms": 5028.576924,
+        "tiempoUs": 5034666,
+        "fotograma": 151
+      },
+      {
+        "ms": 5078.711385,
+        "tiempoUs": 5077333,
+        "fotograma": 152
+      },
+      {
+        "ms": 5129.282155,
+        "tiempoUs": 5120000,
+        "fotograma": 153
+      },
+      {
+        "ms": 5170.89877,
+        "tiempoUs": 5162666,
+        "fotograma": 154
+      },
+      {
+        "ms": 5195.999693,
+        "tiempoUs": 5205333,
+        "fotograma": 156
+      },
+      {
+        "ms": 5263.14677,
+        "tiempoUs": 5248000,
+        "fotograma": 157
+      },
+      {
+        "ms": 5296.673231,
+        "tiempoUs": 5290666,
+        "fotograma": 158
+      },
+      {
+        "ms": 5330.066155,
+        "tiempoUs": 5333333,
+        "fotograma": 160
+      },
+      {
+        "ms": 5397.241847,
+        "tiempoUs": 5376000,
+        "fotograma": 161
+      },
+      {
+        "ms": 5422.505231,
+        "tiempoUs": 5418666,
+        "fotograma": 162
+      },
+      {
+        "ms": 5464.124231,
+        "tiempoUs": 5461333,
+        "fotograma": 163
+      },
+      {
+        "ms": 5497.756539,
+        "tiempoUs": 5504000,
+        "fotograma": 165
+      },
+      {
+        "ms": 5565.135693,
+        "tiempoUs": 5546666,
+        "fotograma": 166
+      },
+      {
+        "ms": 5581.59877,
+        "tiempoUs": 5589333,
+        "fotograma": 167
+      },
+      {
+        "ms": 5631.724616,
+        "tiempoUs": 5632000,
+        "fotograma": 168
+      },
+      {
+        "ms": 5665.185539,
+        "tiempoUs": 5674666,
+        "fotograma": 170
+      },
+      {
+        "ms": 5723.826462,
+        "tiempoUs": 5717333,
+        "fotograma": 171
+      },
+      {
+        "ms": 5774.52677,
+        "tiempoUs": 5760000,
+        "fotograma": 172
+      },
+      {
+        "ms": 5799.28277,
+        "tiempoUs": 5802666,
+        "fotograma": 174
+      },
+      {
+        "ms": 5866.944847,
+        "tiempoUs": 5845333,
+        "fotograma": 175
+      },
+      {
+        "ms": 5882.983308,
+        "tiempoUs": 5888000,
+        "fotograma": 176
+      },
+      {
+        "ms": 5925.385231,
+        "tiempoUs": 5930666,
+        "fotograma": 177
+      },
+      {
+        "ms": 5976.835001,
+        "tiempoUs": 5973333,
+        "fotograma": 179
+      },
+      {
+        "ms": 6035.527924,
+        "tiempoUs": 6016000,
+        "fotograma": 180
+      },
+      {
+        "ms": 6109.905847,
+        "tiempoUs": 6101333,
+        "fotograma": 183
+      },
+      {
+        "ms": 6169.141231,
+        "tiempoUs": 6144000,
+        "fotograma": 184
+      },
+      {
+        "ms": 6194.133539,
+        "tiempoUs": 6186666,
+        "fotograma": 185
+      },
+      {
+        "ms": 6227.707385,
+        "tiempoUs": 6229333,
+        "fotograma": 186
+      },
+      {
+        "ms": 6278.452539,
+        "tiempoUs": 6272000,
+        "fotograma": 188
+      },
+      {
+        "ms": 6336.429462,
+        "tiempoUs": 6314666,
+        "fotograma": 189
+      },
+      {
+        "ms": 6361.637847,
+        "tiempoUs": 6357333,
+        "fotograma": 190
+      },
+      {
+        "ms": 6410.938078,
+        "tiempoUs": 6400000,
+        "fotograma": 192
+      },
+      {
+        "ms": 6445.81477,
+        "tiempoUs": 6442666,
+        "fotograma": 193
+      },
+      {
+        "ms": 6514.624847,
+        "tiempoUs": 6485333,
+        "fotograma": 194
+      },
+      {
+        "ms": 6547.863308,
+        "tiempoUs": 6528000,
+        "fotograma": 195
+      },
+      {
+        "ms": 6580.472308,
+        "tiempoUs": 6570666,
+        "fotograma": 197
+      },
+      {
+        "ms": 6613.707308,
+        "tiempoUs": 6613333,
+        "fotograma": 198
+      },
+      {
+        "ms": 6664.22577,
+        "tiempoUs": 6656000,
+        "fotograma": 199
+      },
+      {
+        "ms": 6764.640232,
+        "tiempoUs": 6741333,
+        "fotograma": 202
+      },
+      {
+        "ms": 6814.283924,
+        "tiempoUs": 6784000,
+        "fotograma": 203
+      },
+      {
+        "ms": 6831.119308,
+        "tiempoUs": 6826666,
+        "fotograma": 204
+      },
+      {
+        "ms": 6882.433155,
+        "tiempoUs": 6869333,
+        "fotograma": 206
+      },
+      {
+        "ms": 6965.164539,
+        "tiempoUs": 6954666,
+        "fotograma": 208
+      },
+      {
+        "ms": 6983.179616,
+        "tiempoUs": 6954666,
+        "fotograma": 208
+      },
+      {
+        "ms": 6999.010462,
+        "tiempoUs": 6997333,
+        "fotograma": 209
+      },
+      {
+        "ms": 7048.542462,
+        "tiempoUs": 7040000,
+        "fotograma": 211
+      },
+      {
+        "ms": 7099.925232,
+        "tiempoUs": 7082666,
+        "fotograma": 212
+      },
+      {
+        "ms": 7133.598078,
+        "tiempoUs": 7125333,
+        "fotograma": 213
+      },
+      {
+        "ms": 7216.554385,
+        "tiempoUs": 7210666,
+        "fotograma": 216
+      },
+      {
+        "ms": 7250.699385,
+        "tiempoUs": 7253333,
+        "fotograma": 217
+      },
+      {
+        "ms": 7300.939308,
+        "tiempoUs": 7296000,
+        "fotograma": 218
+      },
+      {
+        "ms": 7350.63877,
+        "tiempoUs": 7338666,
+        "fotograma": 220
+      },
+      {
+        "ms": 7400.733539,
+        "tiempoUs": 7381333,
+        "fotograma": 221
+      },
+      {
+        "ms": 7434.580616,
+        "tiempoUs": 7424000,
+        "fotograma": 222
+      },
+      {
+        "ms": 7467.909232,
+        "tiempoUs": 7466666,
+        "fotograma": 224
+      },
+      {
+        "ms": 7519.953847,
+        "tiempoUs": 7509333,
+        "fotograma": 225
+      },
+      {
+        "ms": 7568.873155,
+        "tiempoUs": 7552000,
+        "fotograma": 226
+      },
+      {
+        "ms": 7603.071308,
+        "tiempoUs": 7594666,
+        "fotograma": 227
+      },
+      {
+        "ms": 7669.020232,
+        "tiempoUs": 7637333,
+        "fotograma": 229
+      },
+      {
+        "ms": 7702.947001,
+        "tiempoUs": 7680000,
+        "fotograma": 230
+      },
+      {
+        "ms": 7719.175693,
+        "tiempoUs": 7722666,
+        "fotograma": 231
+      },
+      {
+        "ms": 7803.103616,
+        "tiempoUs": 7808000,
+        "fotograma": 234
+      },
+      {
+        "ms": 7870.624924,
+        "tiempoUs": 7850666,
+        "fotograma": 235
+      },
+      {
+        "ms": 7904.325847,
+        "tiempoUs": 7893333,
+        "fotograma": 236
+      },
+      {
+        "ms": 7938.177847,
+        "tiempoUs": 7936000,
+        "fotograma": 238
+      },
+      {
+        "ms": 8005.110155,
+        "tiempoUs": 7978666,
+        "fotograma": 239
+      },
+      {
+        "ms": 8038.576847,
+        "tiempoUs": 8021333,
+        "fotograma": 240
+      },
+      {
+        "ms": 8072.25477,
+        "tiempoUs": 8064000,
+        "fotograma": 241
+      },
+      {
+        "ms": 8105.436847,
+        "tiempoUs": 8106666,
+        "fotograma": 243
+      },
+      {
+        "ms": 8173.123078,
+        "tiempoUs": 8149333,
+        "fotograma": 244
+      },
+      {
+        "ms": 8206.395924,
+        "tiempoUs": 8192000,
+        "fotograma": 245
+      },
+      {
+        "ms": 8240.391001,
+        "tiempoUs": 8234666,
+        "fotograma": 247
+      },
+      {
+        "ms": 8289.940924,
+        "tiempoUs": 8277333,
+        "fotograma": 248
+      },
+      {
+        "ms": 8340.797232,
+        "tiempoUs": 8320000,
+        "fotograma": 249
+      },
+      {
+        "ms": 8373.852001,
+        "tiempoUs": 8362666,
+        "fotograma": 250
+      },
+      {
+        "ms": 8407.305847,
+        "tiempoUs": 8405333,
+        "fotograma": 252
+      },
+      {
+        "ms": 8474.516232,
+        "tiempoUs": 8448000,
+        "fotograma": 253
+      },
+      {
+        "ms": 8507.293155,
+        "tiempoUs": 8490666,
+        "fotograma": 254
+      },
+      {
+        "ms": 8591.275693,
+        "tiempoUs": 8576000,
+        "fotograma": 257
+      },
+      {
+        "ms": 8641.328232,
+        "tiempoUs": 8618666,
+        "fotograma": 258
+      },
+      {
+        "ms": 8674.979616,
+        "tiempoUs": 8661333,
+        "fotograma": 259
+      },
+      {
+        "ms": 8742.07777,
+        "tiempoUs": 8746666,
+        "fotograma": 262
+      },
+      {
+        "ms": 8792.164847,
+        "tiempoUs": 8789333,
+        "fotograma": 263
+      },
+      {
+        "ms": 8842.915385,
+        "tiempoUs": 8832000,
+        "fotograma": 264
+      },
+      {
+        "ms": 8876.816539,
+        "tiempoUs": 8874666,
+        "fotograma": 266
+      },
+      {
+        "ms": 8944.37477,
+        "tiempoUs": 8917333,
+        "fotograma": 267
+      },
+      {
+        "ms": 8977.208539,
+        "tiempoUs": 8960000,
+        "fotograma": 268
+      },
+      {
+        "ms": 9010.301232,
+        "tiempoUs": 9002666,
+        "fotograma": 270
+      },
+      {
+        "ms": 9077.492924,
+        "tiempoUs": 9045333,
+        "fotograma": 271
+      },
+      {
+        "ms": 9111.270462,
+        "tiempoUs": 9088000,
+        "fotograma": 272
+      },
+      {
+        "ms": 9127.988232,
+        "tiempoUs": 9130666,
+        "fotograma": 273
+      },
+      {
+        "ms": 9179.333462,
+        "tiempoUs": 9173333,
+        "fotograma": 275
+      },
+      {
+        "ms": 9245.311924,
+        "tiempoUs": 9216000,
+        "fotograma": 276
+      },
+      {
+        "ms": 9262.017847,
+        "tiempoUs": 9258666,
+        "fotograma": 277
+      },
+      {
+        "ms": 9312.70977,
+        "tiempoUs": 9301333,
+        "fotograma": 279
+      },
+      {
+        "ms": 9379.316232,
+        "tiempoUs": 9344000,
+        "fotograma": 280
+      },
+      {
+        "ms": 9413.852847,
+        "tiempoUs": 9386666,
+        "fotograma": 281
+      },
+      {
+        "ms": 9496.331309,
+        "tiempoUs": 9472000,
+        "fotograma": 284
+      },
+      {
+        "ms": 9513.107001,
+        "tiempoUs": 9514666,
+        "fotograma": 285
+      },
+      {
+        "ms": 9563.082462,
+        "tiempoUs": 9557333,
+        "fotograma": 286
+      },
+      {
+        "ms": 9597.016616,
+        "tiempoUs": 9600000,
+        "fotograma": 288
+      },
+      {
+        "ms": 9682.204924,
+        "tiempoUs": 9642666,
+        "fotograma": 289
+      },
+      {
+        "ms": 9715.033155,
+        "tiempoUs": 9685333,
+        "fotograma": 290
+      },
+      {
+        "ms": 9781.424847,
+        "tiempoUs": 9770666,
+        "fotograma": 293
+      },
+      {
+        "ms": 9830.972001,
+        "tiempoUs": 9813333,
+        "fotograma": 294
+      },
+      {
+        "ms": 9865.321539,
+        "tiempoUs": 9856000,
+        "fotograma": 295
+      },
+      {
+        "ms": 9916.291001,
+        "tiempoUs": 9898666,
+        "fotograma": 296
+      },
+      {
+        "ms": 9949.61777,
+        "tiempoUs": 9941333,
+        "fotograma": 298
+      },
+      {
+        "ms": 10000.246693,
+        "tiempoUs": 9984000,
+        "fotograma": 299
+      },
+      {
+        "ms": 10050.417847,
+        "tiempoUs": 10026666,
+        "fotograma": 300
+      },
+      {
+        "ms": 10083.35477,
+        "tiempoUs": 10069333,
+        "fotograma": 302
+      },
+      {
+        "ms": 10150.915693,
+        "tiempoUs": 10112000,
+        "fotograma": 303
+      },
+      {
+        "ms": 10166.786462,
+        "tiempoUs": 10154666,
+        "fotograma": 304
+      },
+      {
+        "ms": 10200.674386,
+        "tiempoUs": 10197333,
+        "fotograma": 305
+      },
+      {
+        "ms": 10250.963386,
+        "tiempoUs": 10240000,
+        "fotograma": 307
+      },
+      {
+        "ms": 10301.037155,
+        "tiempoUs": 10282666,
+        "fotograma": 308
+      },
+      {
+        "ms": 10352.373847,
+        "tiempoUs": 10325333,
+        "fotograma": 309
+      },
+      {
+        "ms": 10418.73877,
+        "tiempoUs": 10410666,
+        "fotograma": 312
+      },
+      {
+        "ms": 10468.980924,
+        "tiempoUs": 10453333,
+        "fotograma": 313
+      },
+      {
+        "ms": 10502.147309,
+        "tiempoUs": 10496000,
+        "fotograma": 314
+      },
+      {
+        "ms": 10552.555616,
+        "tiempoUs": 10538666,
+        "fotograma": 316
+      },
+      {
+        "ms": 10603.001155,
+        "tiempoUs": 10581333,
+        "fotograma": 317
+      },
+      {
+        "ms": 10636.111616,
+        "tiempoUs": 10624000,
+        "fotograma": 318
+      },
+      {
+        "ms": 10670.734155,
+        "tiempoUs": 10666666,
+        "fotograma": 320
+      },
+      {
+        "ms": 10737.045232,
+        "tiempoUs": 10709333,
+        "fotograma": 321
+      },
+      {
+        "ms": 10770.872847,
+        "tiempoUs": 10752000,
+        "fotograma": 322
+      },
+      {
+        "ms": 10803.758693,
+        "tiempoUs": 10794666,
+        "fotograma": 323
+      },
+      {
+        "ms": 10905.599616,
+        "tiempoUs": 10880000,
+        "fotograma": 326
+      },
+      {
+        "ms": 10920.524001,
+        "tiempoUs": 10922666,
+        "fotograma": 327
+      },
+      {
+        "ms": 10971.233155,
+        "tiempoUs": 10965333,
+        "fotograma": 328
+      },
+      {
+        "ms": 11022.327309,
+        "tiempoUs": 11008000,
+        "fotograma": 330
+      },
+      {
+        "ms": 11072.770693,
+        "tiempoUs": 11050666,
+        "fotograma": 331
+      },
+      {
+        "ms": 11123.179924,
+        "tiempoUs": 11093333,
+        "fotograma": 332
+      },
+      {
+        "ms": 11139.846693,
+        "tiempoUs": 11136000,
+        "fotograma": 334
+      },
+      {
+        "ms": 11206.507078,
+        "tiempoUs": 11178666,
+        "fotograma": 335
+      },
+      {
+        "ms": 11240.156847,
+        "tiempoUs": 11221333,
+        "fotograma": 336
+      },
+      {
+        "ms": 11274.747386,
+        "tiempoUs": 11264000,
+        "fotograma": 337
+      },
+      {
+        "ms": 11375.510155,
+        "tiempoUs": 11349333,
+        "fotograma": 340
+      },
+      {
+        "ms": 11390.666693,
+        "tiempoUs": 11392000,
+        "fotograma": 341
+      },
+      {
+        "ms": 11473.825155,
+        "tiempoUs": 11477333,
+        "fotograma": 344
+      },
+      {
+        "ms": 11491.501539,
+        "tiempoUs": 11477333,
+        "fotograma": 344
+      },
+      {
+        "ms": 11542.605155,
+        "tiempoUs": 11520000,
+        "fotograma": 345
+      },
+      {
+        "ms": 11557.999078,
+        "tiempoUs": 11562666,
+        "fotograma": 346
+      },
+      {
+        "ms": 11608.036924,
+        "tiempoUs": 11605333,
+        "fotograma": 348
+      },
+      {
+        "ms": 11676.610386,
+        "tiempoUs": 11648000,
+        "fotograma": 349
+      },
+      {
+        "ms": 11692.228924,
+        "tiempoUs": 11690666,
+        "fotograma": 350
+      },
+      {
+        "ms": 11743.343001,
+        "tiempoUs": 11733333,
+        "fotograma": 352
+      },
+      {
+        "ms": 11809.748847,
+        "tiempoUs": 11776000,
+        "fotograma": 353
+      },
+      {
+        "ms": 11843.219078,
+        "tiempoUs": 11818666,
+        "fotograma": 354
+      },
+      {
+        "ms": 11859.178693,
+        "tiempoUs": 11861333,
+        "fotograma": 355
+      },
+      {
+        "ms": 11910.039309,
+        "tiempoUs": 11904000,
+        "fotograma": 357
+      },
+      {
+        "ms": 11977.583693,
+        "tiempoUs": 11946666,
+        "fotograma": 358
+      },
+      {
+        "ms": 11993.580616,
+        "tiempoUs": 11989333,
+        "fotograma": 359
+      },
+      {
+        "ms": 12044.716924,
+        "tiempoUs": 12032000,
+        "fotograma": 360
+      },
+      {
+        "ms": 12078.261463,
+        "tiempoUs": 12074666,
+        "fotograma": 362
+      },
+      {
+        "ms": 12145.180616,
+        "tiempoUs": 12117333,
+        "fotograma": 363
+      },
+      {
+        "ms": 12179.00954,
+        "tiempoUs": 12160000,
+        "fotograma": 364
+      },
+      {
+        "ms": 12244.879309,
+        "tiempoUs": 12245333,
+        "fotograma": 367
+      },
+      {
+        "ms": 12295.783924,
+        "tiempoUs": 12288000,
+        "fotograma": 368
+      },
+      {
+        "ms": 12346.391001,
+        "tiempoUs": 12330666,
+        "fotograma": 369
+      },
+      {
+        "ms": 12379.769847,
+        "tiempoUs": 12373333,
+        "fotograma": 371
+      },
+      {
+        "ms": 12446.443309,
+        "tiempoUs": 12416000,
+        "fotograma": 372
+      },
+      {
+        "ms": 12463.732232,
+        "tiempoUs": 12458666,
+        "fotograma": 373
+      },
+      {
+        "ms": 12514.398386,
+        "tiempoUs": 12501333,
+        "fotograma": 375
+      },
+      {
+        "ms": 12547.744616,
+        "tiempoUs": 12544000,
+        "fotograma": 376
+      },
+      {
+        "ms": 12614.607001,
+        "tiempoUs": 12586666,
+        "fotograma": 377
+      },
+      {
+        "ms": 12631.10677,
+        "tiempoUs": 12629333,
+        "fotograma": 378
+      },
+      {
+        "ms": 12698.289463,
+        "tiempoUs": 12672000,
+        "fotograma": 380
+      },
+      {
+        "ms": 12731.728232,
+        "tiempoUs": 12714666,
+        "fotograma": 381
+      },
+      {
+        "ms": 12765.391386,
+        "tiempoUs": 12757333,
+        "fotograma": 382
+      },
+      {
+        "ms": 12798.915924,
+        "tiempoUs": 12800000,
+        "fotograma": 384
+      },
+      {
+        "ms": 12882.707386,
+        "tiempoUs": 12842666,
+        "fotograma": 385
+      },
+      {
+        "ms": 12898.807617,
+        "tiempoUs": 12885333,
+        "fotograma": 386
+      },
+      {
+        "ms": 12932.920617,
+        "tiempoUs": 12928000,
+        "fotograma": 387
+      },
+      {
+        "ms": 12982.554386,
+        "tiempoUs": 12970666,
+        "fotograma": 389
+      },
+      {
+        "ms": 13051.033232,
+        "tiempoUs": 13013333,
+        "fotograma": 390
+      },
+      {
+        "ms": 13067.100617,
+        "tiempoUs": 13056000,
+        "fotograma": 391
+      },
+      {
+        "ms": 13100.836309,
+        "tiempoUs": 13098666,
+        "fotograma": 392
+      },
+      {
+        "ms": 13150.809155,
+        "tiempoUs": 13141333,
+        "fotograma": 394
+      },
+      {
+        "ms": 13200.428847,
+        "tiempoUs": 13184000,
+        "fotograma": 395
+      },
+      {
+        "ms": 13251.916617,
+        "tiempoUs": 13226666,
+        "fotograma": 396
+      },
+      {
+        "ms": 13267.964847,
+        "tiempoUs": 13269333,
+        "fotograma": 398
+      },
+      {
+        "ms": 13352.230693,
+        "tiempoUs": 13312000,
+        "fotograma": 399
+      },
+      {
+        "ms": 13368.510693,
+        "tiempoUs": 13354666,
+        "fotograma": 400
+      },
+      {
+        "ms": 13402.44454,
+        "tiempoUs": 13397333,
+        "fotograma": 401
+      },
+      {
+        "ms": 13452.62054,
+        "tiempoUs": 13440000,
+        "fotograma": 403
+      },
+      {
+        "ms": 13503.062386,
+        "tiempoUs": 13482666,
+        "fotograma": 404
+      },
+      {
+        "ms": 13520.04454,
+        "tiempoUs": 13525333,
+        "fotograma": 405
+      },
+      {
+        "ms": 13569.276001,
+        "tiempoUs": 13568000,
+        "fotograma": 407
+      },
+      {
+        "ms": 13654.704001,
+        "tiempoUs": 13610666,
+        "fotograma": 408
+      },
+      {
+        "ms": 13670.564232,
+        "tiempoUs": 13653333,
+        "fotograma": 409
+      },
+      {
+        "ms": 13704.014386,
+        "tiempoUs": 13696000,
+        "fotograma": 410
+      }
+    ]
+  },
+  "notaPresentaciones": "Cada actualizacion TextureView representa una presentacion; su indice de fotograma se infiere del reloj del motor"
+}

@@ -1,0 +1,8 @@
+
+com.royermethod.app.editor.ProyectoRealIntegrationTest:.
+Test results for InstrumentationTestRunner=.
+Time: 4.885
+
+OK (1 test)
+
+

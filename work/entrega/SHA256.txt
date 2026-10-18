@@ -1,0 +1,4 @@
+3d8d3fec80a0beb2379bf9f79b169d3fe56b6a0da959fb53b34fda95653326c8 *RoyerMethod-prueba-export6.apk
+1d0996aa3be90861abd1328004ea6ee39df19a0532fc4d6718c46ae1d9047231 *replica-medida-6-informe.json
+efeccb65eb67002b7e9dfe86020ba346a3c72af6663f500ccf193ea34702d62d *replica-medida-6.mp4
+d284575fa5422e764a0d8cb48601b29ba60d1422b3c25131816fb8f3325f34f4 *replica-medida-6.royer

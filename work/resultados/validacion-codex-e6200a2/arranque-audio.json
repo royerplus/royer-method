@@ -1,0 +1,2416 @@
+{
+ "lecturas": [
+  {
+   "ms": 17.928385,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 22.283693,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 26.398847,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 30.626462,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 34.898847,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 39.138847,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 43.449847,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 47.591077,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 51.900308,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 56.076385,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 60.466539,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 64.709923,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 68.854539,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 72.973231,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 77.150154,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 81.609308,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 85.872308,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 90.303154,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 94.805308,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 99.037847,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 103.300693,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 107.830154,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 112.238539,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 116.550154,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 120.836616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 125.121539,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 129.420077,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 133.745616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 138.025847,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 142.293616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 146.561616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 150.864385,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 155.084,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 159.425616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 164.182539,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 168.564616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 172.828385,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 177.109923,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 181.305,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 185.476077,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 189.702539,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 194.146231,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 198.433616,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 202.777,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 207.116077,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 211.421,
+   "cabezal": 0,
+   "escritos": 0,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 215.830154,
+   "cabezal": 0,
+   "escritos": 1024,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 232.886154,
+   "cabezal": 0,
+   "escritos": 1024,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 237.189308,
+   "cabezal": 0,
+   "escritos": 2048,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 241.482847,
+   "cabezal": 0,
+   "escritos": 2048,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 245.666154,
+   "cabezal": 0,
+   "escritos": 3072,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 249.822154,
+   "cabezal": 0,
+   "escritos": 4096,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 254.02677,
+   "cabezal": 0,
+   "escritos": 4096,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 258.245847,
+   "cabezal": 0,
+   "escritos": 5120,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 262.510154,
+   "cabezal": 0,
+   "escritos": 6144,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 266.876308,
+   "cabezal": 0,
+   "escritos": 6144,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 271.24777,
+   "cabezal": 0,
+   "escritos": 7168,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 275.563693,
+   "cabezal": 0,
+   "escritos": 7168,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 279.944308,
+   "cabezal": 0,
+   "escritos": 7168,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 284.257923,
+   "cabezal": 0,
+   "escritos": 7168,
+   "marcaFrames": 0,
+   "marcaMs": 284.315462,
+   "posicion": 0,
+   "congelado": true
+  },
+  {
+   "ms": 288.78777,
+   "cabezal": 2048,
+   "escritos": 7168,
+   "marcaFrames": 0,
+   "marcaMs": 288.840693,
+   "posicion": 0,
+   "congelado": false
+  },
+  {
+   "ms": 293.183385,
+   "cabezal": 2048,
+   "escritos": 7168,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 208,
+   "congelado": false
+  },
+  {
+   "ms": 297.417308,
+   "cabezal": 2048,
+   "escritos": 7168,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 411,
+   "congelado": false
+  },
+  {
+   "ms": 301.664693,
+   "cabezal": 2048,
+   "escritos": 7168,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 615,
+   "congelado": false
+  },
+  {
+   "ms": 306.142539,
+   "cabezal": 4096,
+   "escritos": 8192,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 830,
+   "congelado": false
+  },
+  {
+   "ms": 310.896693,
+   "cabezal": 4096,
+   "escritos": 8192,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 1058,
+   "congelado": false
+  },
+  {
+   "ms": 315.251462,
+   "cabezal": 4096,
+   "escritos": 9216,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 1267,
+   "congelado": false
+  },
+  {
+   "ms": 319.572308,
+   "cabezal": 4096,
+   "escritos": 9216,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 1475,
+   "congelado": false
+  },
+  {
+   "ms": 323.899154,
+   "cabezal": 4096,
+   "escritos": 9216,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 1682,
+   "congelado": false
+  },
+  {
+   "ms": 328.399077,
+   "cabezal": 6144,
+   "escritos": 10240,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 1898,
+   "congelado": false
+  },
+  {
+   "ms": 332.704385,
+   "cabezal": 6144,
+   "escritos": 10240,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 2105,
+   "congelado": false
+  },
+  {
+   "ms": 336.957308,
+   "cabezal": 6144,
+   "escritos": 10240,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 2309,
+   "congelado": false
+  },
+  {
+   "ms": 341.247077,
+   "cabezal": 6144,
+   "escritos": 11264,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 2515,
+   "congelado": false
+  },
+  {
+   "ms": 345.729616,
+   "cabezal": 6144,
+   "escritos": 11264,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 2730,
+   "congelado": false
+  },
+  {
+   "ms": 350.060308,
+   "cabezal": 8192,
+   "escritos": 12288,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 2938,
+   "congelado": false
+  },
+  {
+   "ms": 354.401,
+   "cabezal": 8192,
+   "escritos": 12288,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 3146,
+   "congelado": false
+  },
+  {
+   "ms": 358.69177,
+   "cabezal": 8192,
+   "escritos": 13312,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 3352,
+   "congelado": false
+  },
+  {
+   "ms": 363.008,
+   "cabezal": 8192,
+   "escritos": 14336,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 3560,
+   "congelado": false
+  },
+  {
+   "ms": 367.303154,
+   "cabezal": 8192,
+   "escritos": 14336,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 3766,
+   "congelado": false
+  },
+  {
+   "ms": 371.569539,
+   "cabezal": 8192,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 3970,
+   "congelado": false
+  },
+  {
+   "ms": 375.890539,
+   "cabezal": 8192,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4178,
+   "congelado": false
+  },
+  {
+   "ms": 380.207154,
+   "cabezal": 8192,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4385,
+   "congelado": false
+  },
+  {
+   "ms": 384.508693,
+   "cabezal": 8192,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 388.962462,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": 2118,
+   "marcaMs": 386.177231,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 393.484616,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 397.748616,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 402.084,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 406.403385,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 410.697,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 415.190231,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 419.671693,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 424.089847,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 428.58777,
+   "cabezal": 10240,
+   "escritos": 15360,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 433.337,
+   "cabezal": 12288,
+   "escritos": 16384,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 437.721616,
+   "cabezal": 12288,
+   "escritos": 16384,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4592,
+   "congelado": false
+  },
+  {
+   "ms": 442.189924,
+   "cabezal": 12288,
+   "escritos": 17408,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 4806,
+   "congelado": false
+  },
+  {
+   "ms": 446.714847,
+   "cabezal": 12288,
+   "escritos": 17408,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 5023,
+   "congelado": false
+  },
+  {
+   "ms": 451.02777,
+   "cabezal": 12288,
+   "escritos": 17408,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 5230,
+   "congelado": false
+  },
+  {
+   "ms": 455.324,
+   "cabezal": 12288,
+   "escritos": 18432,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 5437,
+   "congelado": false
+  },
+  {
+   "ms": 459.694462,
+   "cabezal": 12288,
+   "escritos": 18432,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 5646,
+   "congelado": false
+  },
+  {
+   "ms": 464.146231,
+   "cabezal": 12288,
+   "escritos": 18432,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 5860,
+   "congelado": false
+  },
+  {
+   "ms": 468.503154,
+   "cabezal": 12288,
+   "escritos": 19456,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 6069,
+   "congelado": false
+  },
+  {
+   "ms": 472.829539,
+   "cabezal": 14336,
+   "escritos": 19456,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 6277,
+   "congelado": false
+  },
+  {
+   "ms": 477.151077,
+   "cabezal": 14336,
+   "escritos": 20480,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 6484,
+   "congelado": false
+  },
+  {
+   "ms": 481.45977,
+   "cabezal": 14336,
+   "escritos": 20480,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 6691,
+   "congelado": false
+  },
+  {
+   "ms": 485.786154,
+   "cabezal": 14336,
+   "escritos": 20480,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 6899,
+   "congelado": false
+  },
+  {
+   "ms": 490.044924,
+   "cabezal": 14336,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 7103,
+   "congelado": false
+  },
+  {
+   "ms": 494.336924,
+   "cabezal": 14336,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 7309,
+   "congelado": false
+  },
+  {
+   "ms": 498.626154,
+   "cabezal": 14336,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 7515,
+   "congelado": false
+  },
+  {
+   "ms": 502.931154,
+   "cabezal": 14336,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 7722,
+   "congelado": false
+  },
+  {
+   "ms": 507.604693,
+   "cabezal": 14336,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 7946,
+   "congelado": false
+  },
+  {
+   "ms": 512.26777,
+   "cabezal": 14336,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 8170,
+   "congelado": false
+  },
+  {
+   "ms": 516.591693,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 8377,
+   "congelado": false
+  },
+  {
+   "ms": 520.894462,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 8584,
+   "congelado": false
+  },
+  {
+   "ms": 525.176924,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 8789,
+   "congelado": false
+  },
+  {
+   "ms": 529.441847,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 8994,
+   "congelado": false
+  },
+  {
+   "ms": 534.122154,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 9219,
+   "congelado": false
+  },
+  {
+   "ms": 538.338154,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 9421,
+   "congelado": false
+  },
+  {
+   "ms": 542.604077,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 9626,
+   "congelado": false
+  },
+  {
+   "ms": 546.799077,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 9827,
+   "congelado": false
+  },
+  {
+   "ms": 550.965308,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 10027,
+   "congelado": false
+  },
+  {
+   "ms": 555.211462,
+   "cabezal": 16384,
+   "escritos": 21504,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 10231,
+   "congelado": false
+  },
+  {
+   "ms": 559.511154,
+   "cabezal": 18432,
+   "escritos": 22528,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 10438,
+   "congelado": false
+  },
+  {
+   "ms": 563.937616,
+   "cabezal": 18432,
+   "escritos": 22528,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 10650,
+   "congelado": false
+  },
+  {
+   "ms": 568.173539,
+   "cabezal": 18432,
+   "escritos": 22528,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 10853,
+   "congelado": false
+  },
+  {
+   "ms": 572.517539,
+   "cabezal": 18432,
+   "escritos": 23552,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 11062,
+   "congelado": false
+  },
+  {
+   "ms": 576.669,
+   "cabezal": 18432,
+   "escritos": 23552,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 11261,
+   "congelado": false
+  },
+  {
+   "ms": 580.809924,
+   "cabezal": 18432,
+   "escritos": 23552,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 11460,
+   "congelado": false
+  },
+  {
+   "ms": 584.955462,
+   "cabezal": 18432,
+   "escritos": 23552,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 11659,
+   "congelado": false
+  },
+  {
+   "ms": 589.22277,
+   "cabezal": 18432,
+   "escritos": 24576,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 11864,
+   "congelado": false
+  },
+  {
+   "ms": 593.515693,
+   "cabezal": 18432,
+   "escritos": 24576,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 12070,
+   "congelado": false
+  },
+  {
+   "ms": 597.876308,
+   "cabezal": 18432,
+   "escritos": 25600,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 12279,
+   "congelado": false
+  },
+  {
+   "ms": 602.471693,
+   "cabezal": 20480,
+   "escritos": 25600,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 12500,
+   "congelado": false
+  },
+  {
+   "ms": 606.936,
+   "cabezal": 20480,
+   "escritos": 26624,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 12714,
+   "congelado": false
+  },
+  {
+   "ms": 611.25477,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 12921,
+   "congelado": false
+  },
+  {
+   "ms": 615.881539,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 13143,
+   "congelado": false
+  },
+  {
+   "ms": 620.264924,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 13354,
+   "congelado": false
+  },
+  {
+   "ms": 625.203693,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 13591,
+   "congelado": false
+  },
+  {
+   "ms": 629.692077,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 13806,
+   "congelado": false
+  },
+  {
+   "ms": 634.001,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 14013,
+   "congelado": false
+  },
+  {
+   "ms": 638.522539,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 14230,
+   "congelado": false
+  },
+  {
+   "ms": 643.049,
+   "cabezal": 20480,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 14447,
+   "congelado": false
+  },
+  {
+   "ms": 647.572,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 14664,
+   "congelado": false
+  },
+  {
+   "ms": 652.112385,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 14882,
+   "congelado": false
+  },
+  {
+   "ms": 656.530154,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 15094,
+   "congelado": false
+  },
+  {
+   "ms": 661.162539,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 15317,
+   "congelado": false
+  },
+  {
+   "ms": 665.728,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 15536,
+   "congelado": false
+  },
+  {
+   "ms": 670.168616,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 15749,
+   "congelado": false
+  },
+  {
+   "ms": 674.635462,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 15963,
+   "congelado": false
+  },
+  {
+   "ms": 679.116385,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 16179,
+   "congelado": false
+  },
+  {
+   "ms": 683.43977,
+   "cabezal": 22528,
+   "escritos": 27648,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 16386,
+   "congelado": false
+  },
+  {
+   "ms": 687.861847,
+   "cabezal": 24576,
+   "escritos": 28672,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 16598,
+   "congelado": false
+  },
+  {
+   "ms": 692.185616,
+   "cabezal": 24576,
+   "escritos": 28672,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 16806,
+   "congelado": false
+  },
+  {
+   "ms": 696.585231,
+   "cabezal": 24576,
+   "escritos": 28672,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 17017,
+   "congelado": false
+  },
+  {
+   "ms": 700.873,
+   "cabezal": 24576,
+   "escritos": 28672,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 17223,
+   "congelado": false
+  },
+  {
+   "ms": 705.37077,
+   "cabezal": 24576,
+   "escritos": 29696,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 17439,
+   "congelado": false
+  },
+  {
+   "ms": 709.769,
+   "cabezal": 24576,
+   "escritos": 29696,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 17650,
+   "congelado": false
+  },
+  {
+   "ms": 713.987154,
+   "cabezal": 24576,
+   "escritos": 29696,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 17852,
+   "congelado": false
+  },
+  {
+   "ms": 718.268308,
+   "cabezal": 24576,
+   "escritos": 30720,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 18058,
+   "congelado": false
+  },
+  {
+   "ms": 722.783154,
+   "cabezal": 24576,
+   "escritos": 30720,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 18275,
+   "congelado": false
+  },
+  {
+   "ms": 727.093616,
+   "cabezal": 24576,
+   "escritos": 30720,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 18481,
+   "congelado": false
+  },
+  {
+   "ms": 731.404077,
+   "cabezal": 26624,
+   "escritos": 31744,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 18688,
+   "congelado": false
+  },
+  {
+   "ms": 735.715385,
+   "cabezal": 26624,
+   "escritos": 31744,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 18895,
+   "congelado": false
+  },
+  {
+   "ms": 740.372385,
+   "cabezal": 26624,
+   "escritos": 31744,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 19119,
+   "congelado": false
+  },
+  {
+   "ms": 744.694154,
+   "cabezal": 26624,
+   "escritos": 32768,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 19326,
+   "congelado": false
+  },
+  {
+   "ms": 749.138154,
+   "cabezal": 26624,
+   "escritos": 32768,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 19540,
+   "congelado": false
+  },
+  {
+   "ms": 753.399693,
+   "cabezal": 26624,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 19744,
+   "congelado": false
+  },
+  {
+   "ms": 757.93577,
+   "cabezal": 26624,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 19962,
+   "congelado": false
+  },
+  {
+   "ms": 762.249847,
+   "cabezal": 26624,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 20169,
+   "congelado": false
+  },
+  {
+   "ms": 766.606539,
+   "cabezal": 26624,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 20378,
+   "congelado": false
+  },
+  {
+   "ms": 770.905231,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 20584,
+   "congelado": false
+  },
+  {
+   "ms": 775.197308,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 20790,
+   "congelado": false
+  },
+  {
+   "ms": 779.473847,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 20996,
+   "congelado": false
+  },
+  {
+   "ms": 783.919693,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 21209,
+   "congelado": false
+  },
+  {
+   "ms": 788.270154,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 21418,
+   "congelado": false
+  },
+  {
+   "ms": 792.749231,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 21633,
+   "congelado": false
+  },
+  {
+   "ms": 797.056308,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 21840,
+   "congelado": false
+  },
+  {
+   "ms": 801.372,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 22047,
+   "congelado": false
+  },
+  {
+   "ms": 805.661231,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 22253,
+   "congelado": false
+  },
+  {
+   "ms": 810.001847,
+   "cabezal": 28672,
+   "escritos": 33792,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 22461,
+   "congelado": false
+  },
+  {
+   "ms": 814.289308,
+   "cabezal": 30720,
+   "escritos": 34816,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 22667,
+   "congelado": false
+  },
+  {
+   "ms": 818.8,
+   "cabezal": 30720,
+   "escritos": 34816,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 22883,
+   "congelado": false
+  },
+  {
+   "ms": 823.05477,
+   "cabezal": 30720,
+   "escritos": 34816,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 23088,
+   "congelado": false
+  },
+  {
+   "ms": 827.381231,
+   "cabezal": 30720,
+   "escritos": 34816,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 23295,
+   "congelado": false
+  },
+  {
+   "ms": 831.891154,
+   "cabezal": 30720,
+   "escritos": 35840,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 23512,
+   "congelado": false
+  },
+  {
+   "ms": 836.17177,
+   "cabezal": 30720,
+   "escritos": 35840,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 23717,
+   "congelado": false
+  },
+  {
+   "ms": 840.633847,
+   "cabezal": 30720,
+   "escritos": 35840,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 23931,
+   "congelado": false
+  },
+  {
+   "ms": 844.942539,
+   "cabezal": 30720,
+   "escritos": 36864,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 24138,
+   "congelado": false
+  },
+  {
+   "ms": 849.255462,
+   "cabezal": 30720,
+   "escritos": 36864,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 24345,
+   "congelado": false
+  },
+  {
+   "ms": 853.733308,
+   "cabezal": 30720,
+   "escritos": 36864,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 24560,
+   "congelado": false
+  },
+  {
+   "ms": 858.192924,
+   "cabezal": 32768,
+   "escritos": 37888,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 24774,
+   "congelado": false
+  },
+  {
+   "ms": 862.566539,
+   "cabezal": 32768,
+   "escritos": 37888,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 24984,
+   "congelado": false
+  },
+  {
+   "ms": 867.052077,
+   "cabezal": 32768,
+   "escritos": 38912,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 25199,
+   "congelado": false
+  },
+  {
+   "ms": 871.928616,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 25434,
+   "congelado": false
+  },
+  {
+   "ms": 876.261924,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 25642,
+   "congelado": false
+  },
+  {
+   "ms": 880.574154,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 25849,
+   "congelado": false
+  },
+  {
+   "ms": 884.879693,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 26055,
+   "congelado": false
+  },
+  {
+   "ms": 889.159385,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 26261,
+   "congelado": false
+  },
+  {
+   "ms": 893.447385,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 26466,
+   "congelado": false
+  },
+  {
+   "ms": 897.948308,
+   "cabezal": 32768,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 26683,
+   "congelado": false
+  },
+  {
+   "ms": 902.244077,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 26889,
+   "congelado": false
+  },
+  {
+   "ms": 906.527385,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 27094,
+   "congelado": false
+  },
+  {
+   "ms": 910.813,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 27300,
+   "congelado": false
+  },
+  {
+   "ms": 915.063154,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 27504,
+   "congelado": false
+  },
+  {
+   "ms": 919.324385,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 27709,
+   "congelado": false
+  },
+  {
+   "ms": 923.628616,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 27915,
+   "congelado": false
+  },
+  {
+   "ms": 927.928693,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 28122,
+   "congelado": false
+  },
+  {
+   "ms": 932.228077,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 28328,
+   "congelado": false
+  },
+  {
+   "ms": 936.498231,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 28533,
+   "congelado": false
+  },
+  {
+   "ms": 940.959693,
+   "cabezal": 34816,
+   "escritos": 39936,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 28747,
+   "congelado": false
+  },
+  {
+   "ms": 945.705616,
+   "cabezal": 36864,
+   "escritos": 40960,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 28975,
+   "congelado": false
+  },
+  {
+   "ms": 949.98377,
+   "cabezal": 36864,
+   "escritos": 40960,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 29180,
+   "congelado": false
+  },
+  {
+   "ms": 954.245539,
+   "cabezal": 36864,
+   "escritos": 40960,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 29385,
+   "congelado": false
+  },
+  {
+   "ms": 958.541616,
+   "cabezal": 36864,
+   "escritos": 41984,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 29591,
+   "congelado": false
+  },
+  {
+   "ms": 962.830154,
+   "cabezal": 36864,
+   "escritos": 41984,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 29797,
+   "congelado": false
+  },
+  {
+   "ms": 967.14777,
+   "cabezal": 36864,
+   "escritos": 43008,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 30004,
+   "congelado": false
+  },
+  {
+   "ms": 971.59877,
+   "cabezal": 36864,
+   "escritos": 43008,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 30218,
+   "congelado": false
+  },
+  {
+   "ms": 975.921539,
+   "cabezal": 36864,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 30425,
+   "congelado": false
+  },
+  {
+   "ms": 980.21977,
+   "cabezal": 36864,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 30632,
+   "congelado": false
+  },
+  {
+   "ms": 984.535693,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 30839,
+   "congelado": false
+  },
+  {
+   "ms": 988.844616,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 31046,
+   "congelado": false
+  },
+  {
+   "ms": 993.215077,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 31255,
+   "congelado": false
+  },
+  {
+   "ms": 997.629924,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 31467,
+   "congelado": false
+  },
+  {
+   "ms": 1001.89577,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 31672,
+   "congelado": false
+  },
+  {
+   "ms": 1007.175462,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 31925,
+   "congelado": false
+  },
+  {
+   "ms": 1011.483385,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 32132,
+   "congelado": false
+  },
+  {
+   "ms": 1015.885539,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 32343,
+   "congelado": false
+  },
+  {
+   "ms": 1020.224924,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 32552,
+   "congelado": false
+  },
+  {
+   "ms": 1024.972,
+   "cabezal": 38912,
+   "escritos": 44032,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 32780,
+   "congelado": false
+  },
+  {
+   "ms": 1029.329847,
+   "cabezal": 40960,
+   "escritos": 45056,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 32989,
+   "congelado": false
+  },
+  {
+   "ms": 1033.630231,
+   "cabezal": 40960,
+   "escritos": 45056,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 33195,
+   "congelado": false
+  },
+  {
+   "ms": 1037.965539,
+   "cabezal": 40960,
+   "escritos": 45056,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 33403,
+   "congelado": false
+  },
+  {
+   "ms": 1042.258462,
+   "cabezal": 40960,
+   "escritos": 46080,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 33609,
+   "congelado": false
+  },
+  {
+   "ms": 1046.592308,
+   "cabezal": 40960,
+   "escritos": 46080,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 33817,
+   "congelado": false
+  },
+  {
+   "ms": 1050.899385,
+   "cabezal": 40960,
+   "escritos": 47104,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 34024,
+   "congelado": false
+  },
+  {
+   "ms": 1055.195154,
+   "cabezal": 40960,
+   "escritos": 47104,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 34230,
+   "congelado": false
+  },
+  {
+   "ms": 1059.486154,
+   "cabezal": 40960,
+   "escritos": 47104,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 34436,
+   "congelado": false
+  },
+  {
+   "ms": 1063.83477,
+   "cabezal": 40960,
+   "escritos": 48128,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 34645,
+   "congelado": false
+  },
+  {
+   "ms": 1068.397847,
+   "cabezal": 40960,
+   "escritos": 48128,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 34864,
+   "congelado": false
+  },
+  {
+   "ms": 1072.729924,
+   "cabezal": 43008,
+   "escritos": 49152,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 35072,
+   "congelado": false
+  },
+  {
+   "ms": 1077.108693,
+   "cabezal": 43008,
+   "escritos": 49152,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 35282,
+   "congelado": false
+  },
+  {
+   "ms": 1081.510847,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 35494,
+   "congelado": false
+  },
+  {
+   "ms": 1085.769308,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 35698,
+   "congelado": false
+  },
+  {
+   "ms": 1090.040308,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 35903,
+   "congelado": false
+  },
+  {
+   "ms": 1094.542539,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 36119,
+   "congelado": false
+  },
+  {
+   "ms": 1098.824693,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 36325,
+   "congelado": false
+  },
+  {
+   "ms": 1103.440616,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 36546,
+   "congelado": false
+  },
+  {
+   "ms": 1107.803385,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 36756,
+   "congelado": false
+  },
+  {
+   "ms": 1112.297616,
+   "cabezal": 43008,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 36971,
+   "congelado": false
+  },
+  {
+   "ms": 1116.901308,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 37192,
+   "congelado": false
+  },
+  {
+   "ms": 1121.20377,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 37399,
+   "congelado": false
+  },
+  {
+   "ms": 1125.466847,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 37603,
+   "congelado": false
+  },
+  {
+   "ms": 1129.800385,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 37811,
+   "congelado": false
+  },
+  {
+   "ms": 1134.252385,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 38025,
+   "congelado": false
+  },
+  {
+   "ms": 1138.834462,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 38245,
+   "congelado": false
+  },
+  {
+   "ms": 1143.476924,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 38468,
+   "congelado": false
+  },
+  {
+   "ms": 1147.80777,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 38676,
+   "congelado": false
+  },
+  {
+   "ms": 1152.106847,
+   "cabezal": 45056,
+   "escritos": 50176,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 38882,
+   "congelado": false
+  },
+  {
+   "ms": 1156.554231,
+   "cabezal": 47104,
+   "escritos": 51200,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 39096,
+   "congelado": false
+  },
+  {
+   "ms": 1160.877616,
+   "cabezal": 47104,
+   "escritos": 52224,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 39303,
+   "congelado": false
+  },
+  {
+   "ms": 1165.596924,
+   "cabezal": 47104,
+   "escritos": 52224,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 39530,
+   "congelado": false
+  },
+  {
+   "ms": 1170.038462,
+   "cabezal": 47104,
+   "escritos": 52224,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 39743,
+   "congelado": false
+  },
+  {
+   "ms": 1174.302539,
+   "cabezal": 47104,
+   "escritos": 53248,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 39948,
+   "congelado": false
+  },
+  {
+   "ms": 1178.51977,
+   "cabezal": 47104,
+   "escritos": 53248,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 40150,
+   "congelado": false
+  },
+  {
+   "ms": 1182.792693,
+   "cabezal": 47104,
+   "escritos": 53248,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 40355,
+   "congelado": false
+  },
+  {
+   "ms": 1187.084077,
+   "cabezal": 47104,
+   "escritos": 54272,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 40561,
+   "congelado": false
+  },
+  {
+   "ms": 1191.359077,
+   "cabezal": 47104,
+   "escritos": 54272,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 40766,
+   "congelado": false
+  },
+  {
+   "ms": 1195.629,
+   "cabezal": 47104,
+   "escritos": 54272,
+   "marcaFrames": null,
+   "marcaMs": null,
+   "posicion": 40971,
+   "congelado": false
+  }
+ ]
+}

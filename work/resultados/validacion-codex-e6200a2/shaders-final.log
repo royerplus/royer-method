@@ -1,0 +1,5 @@
+--------- beginning of main
+10-15 23:21:41.119  8205  8224 I ShaderRegresion: Copia 1080x1920: error medio=0.0/255, precision=23
+10-15 23:21:41.308  8205  8224 I ShaderRegresion: Corte girado: 548 pixeles de cobertura parcial
+10-15 23:21:41.389  8205  8224 I ShaderRegresion: Mitades giradas: diferencia maxima=1/255
+10-15 23:21:41.451  8205  8224 I ShaderRegresion: Junta parcial: minimo=255/255 (44 muestras), expuestos suaves=68

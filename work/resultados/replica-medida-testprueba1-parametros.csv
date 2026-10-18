@@ -1,0 +1,22 @@
+﻿plano,inicioFrame,finFrame,claves,partes,efectos,notas
+Intro original,0,149,0,0,,
+Intro fijo bajo las mitades,149,159,0,0,,Sin aplastamiento
+A1,149,172,24,2,BORDES_ESPEJO,Registro de geometria por fotograma; sin sacudida aleatoria
+B1,172,187,18,0,"BORDES_ESPEJO,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,CIRCULO_CERRAR",Registro de geometria por fotograma; sin sacudida aleatoria
+B1 · interior negro del anillo,186,187,0,0,CIRCULO_CERRAR,
+C1,187,200,14,0,"BORDES_ESPEJO,CIRCULO_ABRIR",Registro de geometria por fotograma; sin sacudida aleatoria
+D1,200,214,17,0,"BORDES_ESPEJO,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL",Registro de geometria por fotograma; sin sacudida aleatoria
+E1,214,228,15,0,BORDES_ESPEJO,Registro de geometria por fotograma; sin sacudida aleatoria
+F1,228,241,16,0,"BORDES_ESPEJO,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL",Registro de geometria por fotograma; sin sacudida aleatoria
+G1,232,255,24,0,"BORDES_ESPEJO,DESENFOQUE_HORIZONTAL,DESENFOQUE_VERTICAL,REVELAR_HORIZONTAL",Registro de geometria por fotograma; sin sacudida aleatoria
+H1,255,269,19,0,"BORDES_ESPEJO,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL",Registro de geometria por fotograma; sin sacudida aleatoria
+A2,259,282,24,2,BORDES_ESPEJO,Registro de geometria por fotograma; sin sacudida aleatoria
+B2,282,297,18,0,"BORDES_ESPEJO,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,CIRCULO_CERRAR",Registro de geometria por fotograma; sin sacudida aleatoria
+B2 · interior negro del anillo,296,297,0,0,CIRCULO_CERRAR,
+C2,297,310,14,0,"BORDES_ESPEJO,CIRCULO_ABRIR",Registro de geometria por fotograma; sin sacudida aleatoria
+D2,310,324,17,0,"BORDES_ESPEJO,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL",Registro de geometria por fotograma; sin sacudida aleatoria
+E2,324,338,15,0,BORDES_ESPEJO,Registro de geometria por fotograma; sin sacudida aleatoria
+F2,338,352,17,0,"BORDES_ESPEJO,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL,DESENFOQUE_HORIZONTAL",Registro de geometria por fotograma; sin sacudida aleatoria
+G2,342,365,24,0,"BORDES_ESPEJO,DESENFOQUE_VERTICAL,REVELAR_HORIZONTAL",Registro de geometria por fotograma; sin sacudida aleatoria
+H2,365,379,19,0,"BORDES_ESPEJO,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL,DESENFOQUE_VERTICAL",Registro de geometria por fotograma; sin sacudida aleatoria
+Final medido,379,411,32,0,,

@@ -1,0 +1,11 @@
+{
+  "estado": "PREPARANDO",
+  "tipoPrueba": "Motor real de vista previa en TextureView; no gestos UI",
+  "app": "com.royermethod.app.prueba",
+  "dispositivo": "INFINIX Infinix X6871",
+  "api": 35,
+  "anchoSuperficie": 576,
+  "altoSuperficie": 768,
+  "duracionProyectoUs": 13700000,
+  "fotogramasEsperados": 411
+}
