@@ -26,6 +26,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -65,6 +67,7 @@ import com.royermethod.app.editor.modelo.Fuente
 import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Recorte
 import com.royermethod.app.editor.modelo.Texto
+import com.royermethod.app.editor.modelo.TiempoPreciso
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonIcono
 import com.royermethod.app.ui.components.BotonLleno
@@ -424,52 +427,118 @@ fun DrawScope.dibujoCurva(f: (Float) -> Float, color: Color) {
     drawPath(path, color, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
 }
 
+/**
+ * Fotogramas clave del bloque elegido: recorrerlos uno a uno, el momento
+ * exacto de cada uno (0,001 s o 0,005 s sin el ajuste a fotogramas), la
+ * curva hasta el siguiente y, con muchas claves, simplificarlas.
+ *
+ * La clave bajo el cabezal sale de un estado derivado: el panel no se
+ * recompone a cada cuadro mientras se reproduce, solo al pasar de una
+ * clave a otra.
+ */
 @Composable
 fun PanelCurva(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
-    val local = estado.localElegido
+    val ini = estado.inicioElegido ?: return
+    // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s
     val tolerancia = toleranciaClaves()
-    val clave = local?.let { l -> Edicion.claveCercana(c.claves, l, tolerancia) }
-    if (clave == null) {
+    val clave by remember(c, tolerancia) {
+        derivedStateOf { estado.localElegido?.let { l -> Edicion.claveCercana(c.claves, l, tolerancia) } }
+    }
+    val dentro by remember(c) { derivedStateOf { estado.localElegido != null } }
+    val tiempos = remember(c.claves) { c.claves.map { it.tiempoUs }.distinct().sorted() }
+    NavegadorClaves(tiempos, tolerancia, { estado.localElegido }) { t -> estado.pausarEn(ini + t) }
+    val k = clave
+    if (k == null) {
+        Hueco(4)
         Text(
             "Pon el cabezal sobre un fotograma clave (los rombos del bloque) para cambiar como se mueve hasta el siguiente.",
             style = MaterialTheme.typography.bodyMedium, color = Ink.White70
         )
         Hueco()
         BotonLleno("Poner uno aqui", {
-            val ini = estado.inicioElegido ?: return@BotonLleno
-            estado.hacer { Edicion.ponerClave(it, c.id, estado.tiempo, c.encuadreEn(estado.tiempo - ini), tolerancia) }
-        }, activo = local != null)
-        return
+            val t = estado.tiempo
+            estado.hacer { Edicion.ponerClave(it, c.id, t, c.encuadreEn(t - ini), tolerancia) }
+        }, activo = dentro)
+    } else {
+        ClaveElegida(estado, c, ini, k, tolerancia)
     }
-    val t = estado.tiempo
+    // Con muchas claves (una replica trae una por fotograma), simplificarlas
+    if (c.claves.size >= 3 || c.clavesOriginales != null) {
+        Hueco(14)
+        SimplificadorClaves(estado, DuenoClaves.Bloque(c.id))
+    }
+}
+
+/** Lo de la clave que hay bajo el cabezal: su momento, la curva y quitarla. */
+@Composable
+private fun ClaveElegida(estado: EstadoEditor, c: com.royermethod.app.editor.modelo.Clip, ini: Long, k: com.royermethod.app.editor.modelo.Clave, tolerancia: Long) {
+    // Todo va a esta clave por su tiempo exacto, no por donde este el cabezal
+    val tk = ini + k.tiempoUs
     fun poner(f: (com.royermethod.app.editor.modelo.Clave) -> com.royermethod.app.editor.modelo.Clave, arrastre: Boolean = false) {
-        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.cambiarClave(it, c.id, t, tolerancia, f) }
+        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.cambiarClave(it, c.id, tk, tolerancia, f) }
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
-    val ultima = c.claves.maxOf { it.tiempoUs } == clave.tiempoUs
+
+    Etiqueta("Momento de esta clave")
+    MomentoClave(estado, c.id, ini, k.tiempoUs, ClavesLinea.limites(c.claves, k.tiempoUs, c.duracionUs, tolerancia), tolerancia)
+    Hueco(4)
+    InterruptorFotogramas()
+
+    val ultima = c.claves.maxOf { it.tiempoUs } == k.tiempoUs
+    Hueco(6)
     Nota(if (ultima) "Es el ultimo fotograma clave: la curva se usa si pones otro despues." else "Como se llega desde aqui al siguiente fotograma clave", color = Ink.White50)
     Hueco(8)
     // null es "A mano"
     Cuadricula(Curva.values().toList() + listOf<Curva?>(null)) { cu, m ->
         if (cu != null) {
-            Mosaico(cu.nombre, clave.bezier == null && clave.curva == cu, { poner({ it.copy(curva = cu, bezier = null) }) }, m) { col ->
+            Mosaico(cu.nombre, k.bezier == null && k.curva == cu, { poner({ it.copy(curva = cu, bezier = null) }) }, m) { col ->
                 dibujoCurva({ Escena.curva(cu, it) }, col)
             }
         } else {
-            Mosaico("A mano", clave.bezier != null, { poner({ it.copy(bezier = it.bezier ?: Bezier.SUAVE) }) }, m) { col ->
+            Mosaico("A mano", k.bezier != null, { poner({ it.copy(bezier = it.bezier ?: Bezier.SUAVE) }) }, m) { col ->
                 dibujoCurva({ Bezier(0.1f, 0.9f, 0.4f, 0.1f).en(it) }, col)
                 drawCircle(col, 2.5.dp.toPx(), Offset(size.width * 0.1f, size.height * (0.85f - 0.7f * 0.9f)))
             }
         }
     }
-    val b = clave.bezier
+    val b = k.bezier
     if (b != null) {
         Hueco(10)
         EditorBezier(b, { nb -> poner({ it.copy(bezier = nb) }, arrastre = true) })
     }
     Hueco(10)
-    BotonBorde("Quitar este fotograma clave", { estado.hacer { Edicion.quitarClave(it, c.id, t, tolerancia) } }, glifo = Glifos.papelera)
+    BotonBorde("Quitar este fotograma clave", { estado.hacer { Edicion.quitarClave(it, c.id, tk, tolerancia) } }, glifo = Glifos.papelera)
+}
+
+/**
+ * "Momento de esta clave" del bloque: su tiempo exacto con [CampoTiempo]
+ * (pegado a los fotogramas de la linea si el ajuste esta puesto), entre sus
+ * vecinas ([limites]). El cabezal la acompana, asi el panel sigue en ella.
+ * Escribir o -/+ es un paso de deshacer; un arrastre del deslizador, otro.
+ */
+@Composable
+private fun MomentoClave(estado: EstadoEditor, id: Long, ini: Long, tUs: Long, limites: LongRange?, tolerancia: Long) {
+    if (limites == null || tUs !in limites) {
+        Text(TiempoPreciso.texto(tUs), style = MaterialTheme.typography.bodyMedium, color = Ink.White, modifier = Modifier.padding(vertical = 6.dp))
+        Nota(
+            if (AjustesEditor.ajustarFotogramas) "Hay otra clave a menos de medio fotograma: sin Ajustar a fotogramas se puede mover"
+            else "No hay sitio para moverla entre las de al lado",
+            color = Ink.White50
+        )
+        return
+    }
+    // Donde esta la clave ahora: un arrastre puede mandar varios cambios
+    // antes de recomponer, y cada uno parte del anterior
+    val donde = remember(id) { longArrayOf(tUs) }
+    SideEffect { donde[0] = tUs }
+    CampoTiempo("Tiempo en el bloque", tUs, limites.first, limites.last, { us, arrastre ->
+        val desde = donde[0]
+        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.moverClave(it, id, ini + desde, ini + us, tolerancia) }
+        if (arrastre) estado.ajustar(g) else estado.hacer(g)
+        if (Edicion.clip(estado.proyecto, id)?.claves?.any { it.tiempoUs == us } == true) donde[0] = us
+        estado.pausarEn(ini + donde[0])
+    }, origenUs = ini)
 }
 
 /**
