@@ -839,10 +839,12 @@ private fun DrawScope.bloque(
                 val xf = xb + min(efecto.finUs, c.duracionUs) * pxUs
                 if (xf > xi) franja(xi, xf, y0 + (6 + i * 4).dp.toPx(), 2.dp.toPx(), if (efecto.activo) Ink.White90 else Ink.White30)
             }
-            // Con fondo: encima de una foto clara no se leia
+            // Con fondo: encima de una foto clara no se leia. Tras una union de la
+            // principal empieza despues de su boton, que tapaba el principio
+            val dx = if (pz.pista == Pista.PRINCIPAL && pz.desde > 0) 16.dp.toPx() else 7.dp.toPx()
             if (fxAparte && ancho > 55.dp.toPx()) texto(
-                medidor, rotuloFx, Offset(x0 + 7.dp.toPx(), y0 + 23.dp.toPx()),
-                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx(), fondo = Color.Black.copy(alpha = 0.55f)
+                medidor, rotuloFx, Offset(x0 + dx, y0 + 23.dp.toPx()),
+                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - dx - 7.dp.toPx(), fondo = Color.Black.copy(alpha = 0.55f)
             )
         }
     }
