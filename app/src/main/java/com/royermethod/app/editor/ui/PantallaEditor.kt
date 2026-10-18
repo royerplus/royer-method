@@ -87,6 +87,8 @@ fun PantallaEditor(
     onCerrarExportar: () -> Unit,
     onAbrirProyecto: () -> Unit = {},
     onGuardarProyecto: () -> Unit = {},
+    /** Agrega los ejemplos de movimiento (mitades, circulo y anillo, latigazo, barrido). */
+    onEjemplos: () -> Unit = {},
     modifier: Modifier = Modifier,
     vista: @Composable (Modifier) -> Unit
 ) {
@@ -149,7 +151,7 @@ fun PantallaEditor(
                                     LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxSize())
                                     ControlesZoom(estado, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp))
                                 }
-                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto)
+                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto, onEjemplos)
                             }
                         }
                     }
@@ -298,7 +300,8 @@ private fun Herramientas(
     onAgregarCapa: () -> Unit,
     onAgregarSonido: () -> Unit,
     onAbrirProyecto: () -> Unit,
-    onGuardarProyecto: () -> Unit
+    onGuardarProyecto: () -> Unit,
+    onEjemplos: () -> Unit
 ) {
     val s = estado.seleccion
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
@@ -344,6 +347,8 @@ private fun Herramientas(
                 })
                 Herramienta(Glifos.audio, "Sonido", onAgregarSonido)
                 Herramienta(Glifos.formato, "Formato", { estado.panel = Panel.FORMATO })
+                // Bloques hechos con las herramientas de movimiento, para verlas y cambiarlas
+                Herramienta(Glifos.animacion, "Ejemplos", onEjemplos)
                 Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
                 Herramienta(Glifos.guardar, "Guardar proyecto", onGuardarProyecto)
             }
