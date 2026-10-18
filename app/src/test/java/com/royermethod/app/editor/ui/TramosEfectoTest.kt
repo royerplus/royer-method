@@ -1,6 +1,7 @@
 package com.royermethod.app.editor.ui
 
 import com.royermethod.app.editor.modelo.AjustesEfecto
+import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.AnimacionEnEfecto
 import com.royermethod.app.editor.modelo.CatalogoEfectos
 import com.royermethod.app.editor.modelo.Clip
@@ -11,16 +12,22 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
 import com.royermethod.app.editor.modelo.MomentoAnimacion
 import com.royermethod.app.editor.modelo.Origen
+import com.royermethod.app.editor.modelo.Paso
+import com.royermethod.app.editor.modelo.PasoClip
+import com.royermethod.app.editor.modelo.PasoGrupo
+import com.royermethod.app.editor.modelo.PasoPartes
 import com.royermethod.app.editor.modelo.ProgresoEfecto
 import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.TipoEfectoVideo
 import com.royermethod.app.editor.modelo.TipoOrigen
+import com.royermethod.app.editor.modelo.Trayectoria
 import com.royermethod.app.editor.modelo.conIdsEfectos
 import com.royermethod.app.editor.ui.TramosEfecto.Agarre
 import com.royermethod.app.editor.ui.TramosEfecto.Barra
 import com.royermethod.app.editor.ui.TramosEfecto.Rotulo
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
@@ -490,5 +497,200 @@ class TramosEfectoTest {
         // Todos los tipos del catalogo tienen nombre corto no vacio
         CatalogoEfectos.grupos.flatMap { it.second }.forEach { assertTrue(TramosEfecto.nombreCorto(ef(it, 0, 1)).isNotBlank()) }
         assertArrayEquals(intArrayOf(), TramosEfecto.carriles(emptyList()))
+    }
+
+    /**
+     * Cinco efectos sobre todo el bloque: el quinto comparte carril con el
+     * primero (solo se dibujan cuatro). Antes, tocando, el que no estaba
+     * elegido de esos dos no se podia elegir nunca. Ahora tocar otra vez la
+     * elegida pasa a la siguiente de ese punto: desde cualquier eleccion, unos
+     * toques en el mismo sitio recorren los cinco.
+     */
+    @Test
+    fun tocandoOtraVezSeLlegaATodasLasQueHayBajoElDedo() {
+        val efectos = (1L..5L).map { ef(TipoEfectoVideo.values()[it.toInt()], 0, dur, it) }
+        val carriles = TramosEfecto.carriles(efectos)
+        val ancho = 1000f
+        val margen = 22f
+        val alto = 110f / TramosEfecto.visibles(carriles)
+        val barras = efectos.mapIndexed { i, e ->
+            Barra(e.id, TramosEfecto.x(e.inicioUs, dur, ancho, margen), TramosEfecto.x(e.finUs, dur, ancho, margen), TramosEfecto.carrilVisible(carriles[i]))
+        }
+        assertEquals(listOf(0, 1, 2, 3, 0), barras.map { it.carril })
+        for (inicio in listOf<Long?>(null, 1, 2, 3, 4, 5)) for (y in listOf(5f, 40f, 100f)) {
+            var elegida = inicio
+            val vistas = HashSet<Long>()
+            repeat(6) { n ->
+                elegida = TramosEfecto.alTocar(barras, 500f, y, alto, 38.5f, elegida, otraVez = n > 0)
+                vistas.add(elegida!!)
+            }
+            assertEquals("desde $inicio en y=$y", setOf(1L, 2L, 3L, 4L, 5L), vistas)
+        }
+        // Un toque nuevo (no repetido) elige la de debajo del dedo, como antes, y en vacio ninguna
+        assertEquals(2L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, null, otraVez = false))
+        assertEquals(2L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, 4, otraVez = false))
+        assertEquals(2L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, 2, otraVez = false))
+        // Repetido sobre la elegida: la siguiente de ese punto
+        assertEquals(3L, TramosEfecto.alTocar(barras, 500f, alto * 1.5f, alto, 38.5f, 2, otraVez = true))
+        val corta = listOf(Barra(1, 100f, 200f, 0))
+        assertNull(TramosEfecto.alTocar(corta, 600f, 5f, alto, 14f, 1, otraVez = true))
+        // Sola bajo el dedo: tocarla otra vez la deja elegida
+        assertEquals(1L, TramosEfecto.alTocar(corta, 150f, 5f, alto, 14f, 1, otraVez = true))
+    }
+
+    /**
+     * Con tres o cuatro carriles bajos, el pulgar que va a la asa de la
+     * elegida cae a menudo en el carril de al lado, sobre otra barra: con la
+     * zona amplia se agarra la elegida (y sus asas llegan mas lejos). Sin la
+     * zona, como antes.
+     */
+    @Test
+    fun laElegidaSeAgarraConHolguraAunqueElDedoCaigaEnElCarrilDeAlLado() {
+        val alto = 10f * 2.75f
+        val zona = 28f * 2.75f
+        val asa = 14f * 2.75f
+        val asaElegida = 24f * 2.75f
+        // La sacudida larga en el carril 0 y el desenfoque corto (25 dp) en el 1
+        val barras = listOf(Barra(1, 100f, 900f, 0), Barra(2, 400f, 469f, 1), Barra(3, 0f, 1000f, 2), Barra(4, 0f, 1000f, 3))
+        // El dedo en el carril 0, sobre la sacudida, junto al final del desenfoque elegido
+        val enCarril0 = alto * 0.8f
+        assertEquals(1L to Agarre.MOVER, TramosEfecto.agarrada(barras, 465f, enCarril0, alto, asa, 2)?.let { it.first.id to it.second })
+        assertEquals(2L to Agarre.FIN, TramosEfecto.agarrada(barras, 465f, enCarril0, alto, asa, 2, zona, asaElegida)?.let { it.first.id to it.second })
+        // Y por fuera de su final, hasta 24 dp
+        assertEquals(2L to Agarre.FIN, TramosEfecto.agarrada(barras, 469f + 22f * 2.75f, alto * 1.5f, alto, asa, 2, zona, asaElegida)?.let { it.first.id to it.second })
+        // Lejos de su carril (dos mas abajo) manda lo de debajo
+        assertEquals(4L, TramosEfecto.agarrada(barras, 465f, alto * 3.5f, alto, asa, 2, zona, asaElegida)?.first?.id)
+        // Lejos de sus bordes, tambien
+        assertEquals(1L, TramosEfecto.agarrada(barras, 700f, enCarril0, alto, asa, 2, zona, asaElegida)?.first?.id)
+        // Sin nada elegido, igual que siempre
+        assertEquals(1L, TramosEfecto.agarrada(barras, 465f, enCarril0, alto, asa, null, zona, asaElegida)?.first?.id)
+    }
+
+    // ---- Avisos ----
+
+    @Test
+    fun unaMascaraTapadaPorOtraPuestaAntesSeAvisaComoLaUsaElMotor() {
+        val c1 = EfectoVideo(TipoEfectoVideo.CIRCULO, 0, 1_000_000, id = 1, ajustes = AjustesEfecto(desde = 0.3f, hasta = 0.3f))
+        val s = EfectoVideo(TipoEfectoVideo.SACUDIDA, 0, 2_000_000, id = 2)
+        val b = EfectoVideo(TipoEfectoVideo.BARRIDO, 500_000, 1_500_000, id = 3, ajustes = AjustesEfecto(desde = 0.5f, hasta = 0.5f))
+        val a = EfectoVideo(TipoEfectoVideo.CIRCULO_ABRIR, 200_000, 800_000, id = 4)
+        val lista = listOf(c1, s, b, a)
+        assertEquals(emptyList<EfectoVideo>(), TramosEfecto.mascarasDelante(lista, 1))
+        // La sacudida no es una mascara
+        assertEquals(emptyList<EfectoVideo>(), TramosEfecto.mascarasDelante(lista, 2))
+        assertEquals(listOf(c1), TramosEfecto.mascarasDelante(lista, 3))
+        assertFalse(TramosEfecto.tapadaEntera(b, listOf(c1)))
+        assertEquals(listOf(c1, b), TramosEfecto.mascarasDelante(lista, 4))
+        assertTrue(TramosEfecto.tapadaEntera(a, listOf(c1, b)))
+        // Apagada o sin intensidad no tapa
+        assertEquals(emptyList<EfectoVideo>(), TramosEfecto.mascarasDelante(listOf(c1.copy(activo = false), b), 3))
+        assertEquals(emptyList<EfectoVideo>(), TramosEfecto.mascarasDelante(listOf(c1.copy(intensidad = 0f), b), 3))
+        // Pegadas sin solaparse tampoco
+        assertEquals(emptyList<EfectoVideo>(), TramosEfecto.mascarasDelante(listOf(c1, b.copy(inicioUs = 1_000_000)), 3))
+        // El motor: mientras coinciden manda la primera de la lista; despues, la otra
+        val clip = Clip(1, origen = video, efectos = lista)
+        val escena = Escena(Proyecto(principal = listOf(clip)), 576, 1024, medidor)
+        fun mascara(c: Clip, t: Long) = escena.efectosVideo(c, t).let { it.mascara to it.borde }
+        for (t in listOf(600_000L, 750_000L, 999_999L)) {
+            assertEquals(mascara(clip.copy(efectos = listOf(c1)), t), mascara(clip, t))
+            assertNotEquals(mascara(clip.copy(efectos = listOf(b)), t), mascara(clip, t))
+        }
+        assertEquals(mascara(clip.copy(efectos = listOf(b)), 1_200_000), mascara(clip, 1_200_000))
+    }
+
+    /** Lo que se dibuja de un cuadro: matrices, opacidades, mascaras, luz y color de cada bloque. */
+    private fun huella(pasos: List<Paso>): List<Any?> = pasos.flatMap { p ->
+        when (p) {
+            is PasoClip -> listOf(p.matrices.map { it.toList() }, p.opacidades.toList(), p.bordes.toList(), p.mascara,
+                p.luz, p.rgb, p.negativo, p.desenfoque)
+            is PasoGrupo -> listOf(p.matrices.map { it.toList() }, p.opacidades.toList(), p.bordes.toList(), p.mascara) + huella(p.pasos)
+            is PasoPartes -> huella(p.partes)
+            else -> listOf(p.javaClass.simpleName)
+        }
+    }
+
+    @Test
+    fun unEfectoQueCaeEntreDosFotogramasNoSaleAlExportarYSeAvisa() {
+        val mover = AjustesEfecto(desde = 0.2f, hasta = 0.2f)
+        // Los de la revision: 17 ms entre los fotogramas 30 y 31, y 1 ms en 1,0011 s
+        assertFalse(TramosEfecto.seVeAlExportar(EfectoVideo(TipoEfectoVideo.MOVER, 1_008_000, 1_025_000, ajustes = mover), 0, dur, 8))
+        assertFalse(TramosEfecto.seVeAlExportar(EfectoVideo(TipoEfectoVideo.MOVER, 1_001_100, 1_002_100, ajustes = mover), 0, dur, 8))
+        // Con desenfoque de movimiento lo cogen las muestras del obturador; con una sola muestra, no
+        val corto = EfectoVideo(TipoEfectoVideo.SACUDIDA, 40_000, 50_000)
+        assertTrue(TramosEfecto.seVeAlExportar(corto, 0, dur, 8))
+        assertFalse(TramosEfecto.seVeAlExportar(corto, 0, dur, 1))
+        // La luz se toma en el instante del fotograma: el mismo tramo de flash no sale
+        assertFalse(TramosEfecto.seVeAlExportar(corto.copy(tipo = TipoEfectoVideo.FLASH), 0, dur, 8))
+        assertTrue(TramosEfecto.seVeAlExportar(corto.copy(tipo = TipoEfectoVideo.FLASH, inicioUs = 30_000), 0, dur, 8))
+        // Con el bloque empezando a mitad de fotograma los cuadros caen en otro sitio
+        assertTrue(TramosEfecto.seVeAlExportar(EfectoVideo(TipoEfectoVideo.MOVER, 1_008_000, 1_025_000), 10_000, dur, 1))
+        // Un fotograma entero (33,334 ms) sale siempre
+        val r = Random(11)
+        repeat(300) {
+            val ini = r.nextLong(0, 2_000_000)
+            val desde = r.nextLong(0, dur - 40_000)
+            val tipo = listOf(TipoEfectoVideo.MOVER, TipoEfectoVideo.FLASH, TipoEfectoVideo.CIRCULO).random(r)
+            val e = EfectoVideo(tipo, desde, desde + 33_334)
+            for (k in listOf(1, 8)) assertTrue("$e en $ini con $k", TramosEfecto.seVeAlExportar(e, ini, dur, k))
+        }
+        // Con una muestra, lo mismo que los instantes de exportacion de Trayectoria
+        repeat(300) {
+            val ini = r.nextLong(0, 2_000_000)
+            val desde = r.nextLong(0, dur - 40_000)
+            val e = EfectoVideo(TipoEfectoVideo.MOVER, desde, desde + r.nextLong(1, 34_000))
+            val esperado = Trayectoria.instantes(dur, 1, emptyList(), ini).any { it >= e.inicioUs && it < e.finUs }
+            assertEquals("$e en $ini", esperado, TramosEfecto.seVeAlExportar(e, ini, dur, 1))
+        }
+    }
+
+    @Test
+    fun loQueDiceElAvisoEsLoQueSaleEnLosCuadrosDeEscena() {
+        // A fuerza bruta: con y sin el efecto, cuadro a cuadro alrededor de el
+        val r = Random(5)
+        val tipos = listOf(TipoEfectoVideo.MOVER, TipoEfectoVideo.FLASH, TipoEfectoVideo.CIRCULO, TipoEfectoVideo.SACUDIDA)
+        var vistos = 0
+        var perdidos = 0
+        repeat(160) {
+            val antes = r.nextLong(1_000_000, 1_100_000)
+            val k = if (r.nextBoolean()) 8 else 1
+            val tipo = tipos.random(r)
+            val desde = r.nextLong(0, 1_000_000)
+            val e = EfectoVideo(tipo, desde, desde + r.nextLong(1_000, 30_000),
+                ajustes = AjustesEfecto(desde = 0.3f, hasta = 0.3f))
+            fun cuadros(efectos: List<EfectoVideo>): List<List<Any?>> {
+                val p = Proyecto(
+                    principal = listOf(Clip(1, origen = video, hastaUs = antes), Clip(2, origen = video, efectos = efectos)),
+                    salida = AjustesSalida(desenfoqueMovimiento = k > 1, muestras = 8)
+                )
+                val escena = Escena(p, 576, 1024, medidor)
+                val desdeN = Linea.fotogramaDe(antes + e.inicioUs) - 2
+                val hastaN = Linea.fotogramaEn(antes + e.finUs) + 2
+                return (desdeN..hastaN).filter { Linea.tiempoDe(it) >= antes }.map { huella(escena.cuadro(it).pasos) }
+            }
+            val sale = cuadros(listOf(e)) != cuadros(emptyList())
+            assertEquals("$e tras $antes con $k", sale, TramosEfecto.seVeAlExportar(e, antes, dur, k))
+            if (sale) vistos++ else perdidos++
+        }
+        // Han salido casos de los dos lados
+        assertTrue(vistos > 10 && perdidos > 10)
+    }
+
+    @Test
+    fun elRotuloDelBloqueDiceCuantosYDeQueCombinacionSon() {
+        assertEquals("", TramosEfecto.rotuloBloque(emptyList()))
+        assertEquals("FX 2", TramosEfecto.rotuloBloque(listOf(ef(TipoEfectoVideo.SACUDIDA, 0, 10), ef(TipoEfectoVideo.FLASH, 0, 10))))
+        val juntan = ef(TipoEfectoVideo.MITADES, 0, 500_000).copy(grupo = "Mitades que se juntan 1")
+        val separan = ef(TipoEfectoVideo.MITADES, 1_000_000, 2_000_000).copy(grupo = "Mitades que se separan")
+        val suelto = ef(TipoEfectoVideo.SACUDIDA, 0, 100)
+        // El grupo que empieza antes, sin su numero; los sueltos solo cuentan
+        assertEquals("FX 3 · Mitades que se juntan", TramosEfecto.rotuloBloque(listOf(separan, suelto, juntan)))
+        assertEquals("FX 1 · Mitades que se separan", TramosEfecto.rotuloBloque(listOf(separan)))
+        // Los cuatro ejemplos se distinguen
+        val a = Origen("a", "a.png", TipoOrigen.IMAGEN, 1080, 1350)
+        val b = Origen("b", "b.png", TipoOrigen.IMAGEN, 1080, 1350)
+        val p = com.royermethod.app.editor.modelo.EjemplosMovimiento.agregar(Proyecto(), a, b).proyecto
+        val rotulos = (p.principal + p.capas.map { it.clip }).filter { it.efectos.isNotEmpty() }.map { TramosEfecto.rotuloBloque(it.efectos) }
+        assertEquals(rotulos.size, rotulos.toSet().size)
+        assertTrue(rotulos.toString(), rotulos.all { " · " in it })
     }
 }

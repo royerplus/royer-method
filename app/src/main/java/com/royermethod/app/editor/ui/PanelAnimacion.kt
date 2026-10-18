@@ -27,6 +27,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -127,6 +128,20 @@ internal class VistaAnimacion(
     /** La categoria del catalogo que se ensena; null, todas. */
     var categoria by mutableStateOf<String?>(null)
 
+    /**
+     * El boton atras del sistema (ver [AtrasAnimacion.de]). True si cerro algo;
+     * si no, se cierra la hoja. El dialogo de convertir es una ventana y
+     * atiende su propio atras.
+     */
+    fun alAtras(hayElegida: Boolean): Boolean {
+        when (AtrasAnimacion.de(menu, agregando, ajustes, hayElegida) ?: return false) {
+            AtrasAnimacion.MENU -> menu = false
+            AtrasAnimacion.AGREGANDO -> agregando = false
+            AtrasAnimacion.AJUSTES -> ajustes = false
+        }
+        return true
+    }
+
     companion object {
         val Guardar: Saver<VistaAnimacion, Any> = listSaver(
             save = { listOf(it.pestana.ordinal, it.elegidaId ?: -1L, it.agregando, it.ajustes, it.categoria ?: "") },
@@ -137,6 +152,26 @@ internal class VistaAnimacion(
                 ).apply { categoria = (it[4] as String).ifEmpty { null } }
             }
         )
+    }
+}
+
+/** Lo que cierra el boton atras dentro de Animar. */
+internal enum class AtrasAnimacion {
+    MENU, AGREGANDO, AJUSTES;
+
+    companion object {
+        /**
+         * Por orden: el desplegable, el "+" y los ajustes de la elegida
+         * ([hayElegida]: si no, no se ven). Null si nada: entonces se cierra
+         * la hoja. Aqui y no en [VistaAnimacion] ni suelta en este fichero,
+         * que necesitan Compose para cargarse: asi se prueba en el ordenador.
+         */
+        fun de(menu: Boolean, agregando: Boolean, ajustes: Boolean, hayElegida: Boolean): AtrasAnimacion? = when {
+            menu -> MENU
+            agregando -> AGREGANDO
+            ajustes && hayElegida -> AJUSTES
+            else -> null
+        }
     }
 }
 
@@ -164,6 +199,12 @@ fun HojaAnimacion(estado: EstadoEditor, onCerrar: () -> Unit) {
     val aplicadas = LogicaAnimacion.aplicadas(c)
     val elegida = LogicaAnimacion.elegida(aplicadas, vista.elegidaId, vista.pestana)
     val verAjustes = vista.ajustes && !vista.agregando && elegida != null
+    // Atras cierra antes el desplegable o el modo de dentro que la hoja
+    val hayElegida by rememberUpdatedState(elegida != null)
+    DisposableEffect(estado, vista) {
+        val quitar = estado.alAtras { vista.alAtras(hayElegida) }
+        onDispose { quitar() }
+    }
     Box(Modifier.fillMaxSize()) {
         // Otra pestana, o pasar del catalogo a los ajustes, empieza arriba del todo
         key(vista.pestana, verAjustes) {

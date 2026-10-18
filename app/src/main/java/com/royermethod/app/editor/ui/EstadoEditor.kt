@@ -127,6 +127,15 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     private var gestoAbierto = false
     private var gestoGuardado = false
 
+    /**
+     * Lo que el boton atras del sistema cierra antes que la hoja: un
+     * desplegable o un catalogo abiertos dentro de un panel. Cada panel apunta
+     * aqui el suyo con [alAtras] mientras esta en pantalla; [atras] los prueba
+     * del ultimo apuntado al primero. No es estado de Compose: solo se lee al
+     * pulsar atras (el BackHandler es de Android, EditorScreen lo consulta).
+     */
+    private val pilaAtras = ArrayList<() -> Boolean>()
+
     val duracion: Long get() = Linea.duracion(proyecto)
 
     // ------------------------------------------------------------------
@@ -279,6 +288,22 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     fun zoomNormal() {
         zoomFino = false
         if (dpPorSegundo > ZOOM_MAX) dpPorSegundo = ZOOM_MAX
+    }
+
+    /**
+     * Apunta [cerrar] para el boton atras: devuelve true si cerro algo (y
+     * entonces la hoja se queda abierta). Da la funcion que lo quita, para el
+     * onDispose de quien lo apunto.
+     */
+    fun alAtras(cerrar: () -> Boolean): () -> Unit {
+        pilaAtras.add(cerrar)
+        return { pilaAtras.remove(cerrar) }
+    }
+
+    /** El boton atras: true si algun panel lo uso para cerrar lo suyo. */
+    fun atras(): Boolean {
+        for (i in pilaAtras.indices.reversed()) if (pilaAtras[i]()) return true
+        return false
     }
 
     fun avisar(texto: String) {

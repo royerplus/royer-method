@@ -55,6 +55,15 @@ private val ALTO_REGLA = 14.dp
 private val MARGEN = 8.dp
 /** Lo que se puede errar el pulgar al agarrar un borde. */
 private val ASA = 14.dp
+/** Un toque a menos de esto del anterior es "otra vez en el mismo sitio". */
+private val MISMO_SITIO = 16.dp
+/**
+ * La elegida se agarra con mas holgura: sus asas llegan esto por fuera y
+ * su carril cuenta al menos [ZONA_ELEGIDA] de alto (con tres o cuatro
+ * carriles cada uno mide 10-13 dp, menos que un pulgar).
+ */
+private val ASA_ELEGIDA = 24.dp
+private val ZONA_ELEGIDA = 28.dp
 
 /**
  * La franja de efectos aplicados: una mini linea de tiempo del bloque
@@ -64,12 +73,16 @@ private val ASA = 14.dp
  *
  * Gestos (todos sobre la franja, pensados para el pulgar):
  *  - tocar una barra la elige ([onTocar] con su id); tocar vacio, null;
+ *    tocar otra vez la elegida pasa a la siguiente de las que hay en ese
+ *    punto, asi se llega a todas aunque se pisen ([TramosEfecto.alTocar]);
  *  - arrastrar una barra la elige ([onAgarrar]) y la mueve desde el centro
  *    (conserva lo que dura y su reloj) o la recorta desde un borde, con el
- *    iman de [AjustesEditor.ajustarFotogramas]; manda la barra que esta
- *    justo debajo del dedo y, si no hay ninguna, la elegida aunque el dedo
- *    caiga en el carril de al lado. Todo el arrastre es un paso de
- *    deshacer, calculado siempre desde el efecto tal como se agarro;
+ *    iman de [AjustesEditor.ajustarFotogramas]. Cerca de la elegida (su
+ *    carril y un poco mas, sus asas con holgura) se agarra la elegida; si
+ *    no, la barra que esta justo debajo del dedo y, si no hay ninguna, la
+ *    elegida aunque el dedo caiga en el carril de al lado. Todo el arrastre
+ *    es un paso de deshacer, calculado siempre desde el efecto tal como se
+ *    agarro;
  *  - arrastrar en vacio, o tocar o arrastrar en la regla de abajo, lleva el
  *    cabezal por el bloque (en pausa).
  *
@@ -135,6 +148,9 @@ internal fun FranjaEfectos(
             modifier = Modifier.align(Alignment.BottomStart).padding(start = 2.dp))
         Text(TiempoPreciso.texto(dur), style = EstiloRegla, color = Ink.White30,
             modifier = Modifier.align(Alignment.BottomEnd).padding(end = 2.dp))
+        // Con solapes, como llegar a las de debajo
+        if (n > 1) Text("Toca otra vez: el de debajo", style = EstiloRegla, color = Ink.White30, maxLines = 1,
+            modifier = Modifier.align(Alignment.BottomCenter))
 
         // Asas del elegido y cabezal, encima. El cabezal se lee aqui, al dibujar
         val sel = barras.firstOrNull { it.id == elegido }
@@ -252,6 +268,9 @@ private fun DrawScope.asas(sel: TramosEfecto.Barra, altoCarril: Float) {
  * (un paso de deshacer).
  */
 private suspend fun PointerInputScope.gestos(estado: EstadoEditor, datos: () -> DatosFranja) {
+    // El toque anterior y lo que eligio: tocar otra vez ahi pasa a la siguiente
+    var ultimo: Offset? = null
+    var ultimoId: Long? = null
     awaitEachGesture {
         val abajo = awaitFirstDown(requireUnconsumed = false)
         val d = datos()
@@ -259,8 +278,9 @@ private suspend fun PointerInputScope.gestos(estado: EstadoEditor, datos: () -> 
         val p0 = abajo.position
         // La regla de abajo es solo para el cabezal
         val enRegla = p0.y >= d.altoCarriles
-        val tocada = if (enRegla) null else TramosEfecto.objetivo(d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido)
-        val agarrada = if (enRegla) null else TramosEfecto.agarrada(d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido)
+        val agarrada = if (enRegla) null else TramosEfecto.agarrada(
+            d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido, ZONA_ELEGIDA.toPx(), ASA_ELEGIDA.toPx()
+        )
         val base = agarrada?.let { (b, _) -> d.efectos.firstOrNull { it.id == b.id } }
         val umbral = viewConfiguration.touchSlop
         var arrastrando = false
@@ -276,13 +296,21 @@ private suspend fun PointerInputScope.gestos(estado: EstadoEditor, datos: () -> 
                 val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
                 if (!c.pressed) {
                     if (!arrastrando) {
-                        if (enRegla) cabezalEn(p0.x) else d.onTocar(tocada?.id)
+                        if (enRegla) cabezalEn(p0.x) else {
+                            val otraVez = d.elegido != null && ultimoId == d.elegido &&
+                                ultimo?.let { (it - p0).getDistance() < MISMO_SITIO.toPx() } == true
+                            val id = TramosEfecto.alTocar(d.barras, p0.x, p0.y, d.altoCarril, asa, d.elegido, otraVez)
+                            d.onTocar(id)
+                            ultimo = p0
+                            ultimoId = id
+                        }
                     }
                     break
                 }
                 val dx = c.position.x - p0.x
                 if (!arrastrando && abs(dx) > umbral) {
                     arrastrando = true
+                    ultimo = null
                     if (base != null && agarrada != null) {
                         d.fijar(d.efectos.indices.associate { d.efectos[it].id to d.carriles[it] })
                         d.onAgarrar(base.id)

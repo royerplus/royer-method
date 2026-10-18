@@ -207,6 +207,33 @@ class PanelEfectosLogicaTest {
     }
 
     @Test
+    fun conElCabezalFueraDelBloqueAgregarLoPoneEnElBordeYLlevaElCabezalAlli() {
+        AjustesEditor.ajustarFotogramas = false
+        val e = estado(proyecto(tres(true)))
+        // En el bloque 1, antes del 2: el efecto va al principio del 2 y el cabezal con el
+        e.irA(1_000_000)
+        e.reproduciendo = true
+        val eleccion = EleccionEfectos(null, true)
+        panel(e, eleccion).agregar(TipoEfectoVideo.SACUDIDA)
+        val nuevo = bloque(e).efectos.last()
+        assertEquals(0L, nuevo.inicioUs)
+        assertEquals(inicio2 + nuevo.inicioUs, e.tiempo)
+        assertFalse(e.reproduciendo)
+        assertEquals(1, pasos(e))
+        // Con el cabezal dentro no se mueve
+        val sacudida = CatalogoEfectos.combinaciones.first { it.nombre == "Sacudida con desenfoque" }
+        e.irA(inicio2 + 2_000_000)
+        panel(e, eleccion).agregar(sacudida)
+        assertEquals(inicio2 + 2_000_000, e.tiempo)
+        // Una combinacion con el cabezal fuera: al principio de su grupo
+        e.irA(500_000)
+        panel(e, eleccion).agregar(sacudida)
+        val grupo = bloque(e).efectos.last().grupo
+        assertEquals(inicio2 + bloque(e).efectos.filter { it.grupo == grupo }.minOf { it.inicioUs }, e.tiempo)
+        assertEquals(3, pasos(e))
+    }
+
+    @Test
     fun quitarYDuplicarSonUnPasoCadaUnoYCambianLaEleccion() {
         val e = estado(proyecto(tres(true)))
         val eleccion = EleccionEfectos(2, false)

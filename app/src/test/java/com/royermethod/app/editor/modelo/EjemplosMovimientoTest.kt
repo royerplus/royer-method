@@ -10,7 +10,10 @@ import com.royermethod.app.editor.modelo.TipoEfectoVideo.DESENFOQUE_DIRECCIONAL
 import com.royermethod.app.editor.modelo.TipoEfectoVideo.LATIGAZO
 import com.royermethod.app.editor.modelo.TipoEfectoVideo.MITADES
 import com.royermethod.app.editor.modelo.TipoEfectoVideo.SACUDIDA
+import com.royermethod.app.editor.ui.AjustesEditor
 import com.royermethod.app.editor.ui.EstadoEditor
+import com.royermethod.app.ui.screens.AVISO_EJEMPLOS
+import com.royermethod.app.ui.screens.AVISO_EJEMPLOS_IMAN
 import com.royermethod.app.ui.screens.cargarEjemplos
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -425,7 +428,8 @@ class EjemplosMovimientoTest {
         assertFalse(e.reproduciendo)
         assertEquals(1, pausas)
         assertNull(e.seleccion)
-        assertEquals("Ejemplos agregados. Deshacer para quitarlos", e.aviso)
+        // Con el iman de fabrica avisa de las claves a 5 ms (que con el no se mueven por separado)
+        assertEquals(if (AjustesEditor.ajustarFotogramas) AVISO_EJEMPLOS_IMAN else AVISO_EJEMPLOS, e.aviso)
         e.deshacer()
         assertEquals(antes, e.proyecto)
         assertFalse(e.puedeDeshacer)
@@ -437,5 +441,24 @@ class EjemplosMovimientoTest {
         cargarEjemplos(vacio, a, null)
         assertEquals(0L, vacio.tiempo)
         assertEquals(4, vacio.proyecto.principal.size)
+    }
+
+    @Test
+    fun conElImanAFotogramasElAvisoDiceComoMoverLasClavesA5ms() {
+        val antes = AjustesEditor.ajustarFotogramas
+        try {
+            AjustesEditor.ajustarFotogramas = true
+            val e = EstadoEditor(Proyecto())
+            cargarEjemplos(e, a, null)
+            assertTrue(e.aviso!!.contains("Ajustar a fotogramas apagado"))
+            // Las dos claves siguen a menos de medio fotograma: el aviso hace falta
+            assertTrue(EjemplosMovimiento.GOLPE_ARRIBA_US - EjemplosMovimiento.GOLPE_US < Linea.tiempoDe(1) / 2)
+            AjustesEditor.ajustarFotogramas = false
+            val sinIman = EstadoEditor(Proyecto())
+            cargarEjemplos(sinIman, a, null)
+            assertEquals(AVISO_EJEMPLOS, sinIman.aviso)
+        } finally {
+            AjustesEditor.ajustarFotogramas = antes
+        }
     }
 }

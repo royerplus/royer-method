@@ -201,13 +201,7 @@ fun EditorScreen(onVolver: () -> Unit) {
         }
     }
 
-    BackHandler {
-        when {
-            estado.panel != null -> estado.panel = null
-            estado.seleccion != null -> estado.elegir(null)
-            else -> onVolver()
-        }
-    }
+    BackHandler { atrasEditor(estado, onVolver) }
 
     PantallaEditor(
         estado = estado,
@@ -306,17 +300,38 @@ private class Superficie(private val prev: Previsualizador) : TextureView.Surfac
 private fun archivo(context: Context) = File(context.filesDir, "editor/proyecto.json")
 
 /**
+ * El boton atras del sistema en el editor, de dentro afuera: primero lo que
+ * el panel tenga abierto dentro (el desplegable de Animar, el catalogo de
+ * Efectos; ver EstadoEditor.alAtras), despues el panel, despues lo elegido
+ * y por ultimo salir del editor.
+ */
+internal fun atrasEditor(estado: EstadoEditor, onVolver: () -> Unit) {
+    when {
+        estado.panel != null && estado.atras() -> Unit
+        estado.panel != null -> estado.panel = null
+        estado.seleccion != null -> estado.elegir(null)
+        else -> onVolver()
+    }
+}
+
+/**
  * Mete los ejemplos de movimiento al final de la linea principal (si el
  * proyecto esta vacio, son el proyecto) en un solo paso de deshacer, y deja el
- * cabezal parado al comienzo del primero.
+ * cabezal parado al comienzo del primero. Con el iman a fotogramas puesto (lo
+ * de fabrica) avisa de que las claves del golpe de zoom, a 5 ms, solo se
+ * mueven por separado sin el.
  */
 internal fun cargarEjemplos(estado: EstadoEditor, a: Origen, b: Origen?) {
     var inicio = 0L
     estado.hacer { p -> EjemplosMovimiento.agregar(p, a, b).also { inicio = it.inicioUs }.proyecto }
     estado.elegir(null)
     estado.pausarEn(inicio)
-    estado.avisar("Ejemplos agregados. Deshacer para quitarlos")
+    estado.avisar(if (AjustesEditor.ajustarFotogramas) AVISO_EJEMPLOS_IMAN else AVISO_EJEMPLOS)
 }
+
+internal const val AVISO_EJEMPLOS = "Ejemplos agregados. Deshacer para quitarlos"
+internal const val AVISO_EJEMPLOS_IMAN =
+    "Ejemplos agregados (Deshacer los quita). Las claves a 5 ms del zoom se mueven con Ajustar a fotogramas apagado"
 
 /**
  * Una foto para los ejemplos, pintada aqui: degradado de [arriba] a [abajo],

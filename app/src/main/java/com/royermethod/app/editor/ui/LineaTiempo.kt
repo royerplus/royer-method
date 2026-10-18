@@ -88,7 +88,9 @@ import kotlinx.coroutines.launch
  *  - mantener y arrastrar: cambiar de sitio un bloque
  *  - arrastrar las asas del elegido: recortarlo
  *  - tocar un rombo del elegido: llevar ahi el cabezal; arrastrarlo: mover
- *    esa clave (con el iman a fotogramas si esta puesto)
+ *    esa clave (con el iman a fotogramas si esta puesto). Solo si el rombo
+ *    tiene sitio alrededor: con las claves apinadas (una por fotograma) el
+ *    bloque se trata como si no tuviera rombos y arrastrar mueve el cabezal
  *
  * Encima van los botones de zoom (ControlesZoom, en PantallaEditor). A zoom
  * fino un bloque mide millones de pixeles: todo lo que se dibuja se acota a
@@ -106,6 +108,8 @@ private const val AUDIO_PASO = 36f
 private const val ASA = 16f
 private const val BOTON_PASO = 22f
 private const val IMAN = 10f
+/** Lo menos que tiene que separar un rombo de los de al lado para cogerlo con el dedo (dp). */
+private const val SEPARACION_ROMBOS = 16f
 
 private enum class Pista { PRINCIPAL, CAPA, AUDIO }
 
@@ -241,7 +245,12 @@ fun LineaTiempo(
                                         if (xk < x0 - 1 || xk > x1 + 1) Float.NaN else xk
                                     }
                                     val i = ClavesLinea.masCercana(xs, pos.x, 12.dp.toPx())
-                                    if (i >= 0) return@run Objetivo.Clave(pz, claves[i].tiempoUs)
+                                    // Solo un rombo con sitio alrededor: con muchas claves juntas
+                                    // el arrastre sigue moviendo el cabezal (para cogerlas, mas zoom)
+                                    val tiempos = LongArray(claves.size) { claves[it].tiempoUs }
+                                    if (i >= 0 && ClavesLinea.aislada(xs, tiempos, i, SEPARACION_ROMBOS.dp.toPx())) {
+                                        return@run Objetivo.Clave(pz, claves[i].tiempoUs)
+                                    }
                                 }
                                 if (pos.x in (x0 - asa - 6.dp.toPx())..(x0 + 4.dp.toPx())) return@run Objetivo.Asa(pz, false)
                                 if (pos.x in (x1 - 4.dp.toPx())..(x1 + asa + 6.dp.toPx())) return@run Objetivo.Asa(pz, true)
@@ -354,10 +363,12 @@ fun LineaTiempo(
                                 val pz = rombo.pieza
                                 val c = pz.clip
                                 val tol = toleranciaClaves()
+                                // Null tambien si ya esta mas cerca de una vecina que la
+                                // tolerancia: no se mueve (antes saltaba, incluso contra el dedo)
                                 val lim = c?.let { ClavesLinea.limites(it.claves, rombo.local, it.duracionUs, tol) }
                                 if (c == null || lim == null) {
                                     estado.avisar(
-                                        if (AjustesEditor.ajustarFotogramas) "No cabe: sin Ajustar a fotogramas las claves pueden ir mas juntas"
+                                        if (AjustesEditor.ajustarFotogramas) "Demasiado juntas para el iman: apaga Ajustar a fotogramas para moverla"
                                         else "No hay sitio entre las claves de al lado"
                                     )
                                     arrastrar(abajo.id) {}
@@ -808,9 +819,11 @@ private fun DrawScope.bloque(
             }
         }
         val ancho = x1 - x0
-        // En las filas bajas (capas) "FX n" no cabe en su propia linea: va detras de la etiqueta
+        // En las filas bajas (capas) "FX n" no cabe en su propia linea: va detras de la etiqueta.
+        // Lleva el nombre de su combinacion: asi se reconocen los ejemplos sin abrirlos
         val fxAparte = alto >= 48.dp.toPx()
-        val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  FX ${c.efectos.size}" else ""
+        val rotuloFx = TramosEfecto.rotuloBloque(c.efectos)
+        val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  $rotuloFx" else ""
         if (c.esTexto) {
             texto(medidor, "T  " + c.nombre() + fxDetras, Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
         } else if (ancho > 44.dp.toPx()) {
@@ -826,9 +839,12 @@ private fun DrawScope.bloque(
                 val xf = xb + min(efecto.finUs, c.duracionUs) * pxUs
                 if (xf > xi) franja(xi, xf, y0 + (6 + i * 4).dp.toPx(), 2.dp.toPx(), if (efecto.activo) Ink.White90 else Ink.White30)
             }
+            // Con fondo: encima de una foto clara no se leia. Tras una union de la
+            // principal empieza despues de su boton, que tapaba el principio
+            val dx = if (pz.pista == Pista.PRINCIPAL && pz.desde > 0) 16.dp.toPx() else 7.dp.toPx()
             if (fxAparte && ancho > 55.dp.toPx()) texto(
-                medidor, "FX ${c.efectos.size}", Offset(x0 + 7.dp.toPx(), y0 + 23.dp.toPx()),
-                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - 10.dp.toPx()
+                medidor, rotuloFx, Offset(x0 + dx, y0 + 23.dp.toPx()),
+                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - dx - 7.dp.toPx(), fondo = Color.Black.copy(alpha = 0.55f)
             )
         }
     }
@@ -928,7 +944,7 @@ private fun DrawScope.sonido(
 
 private fun DrawScope.texto(
     medidor: TextMeasurer, s: String, en: Offset, color: Color, sp: Float,
-    centrado: Boolean = false, negrita: Boolean = false, maxAncho: Float = Float.MAX_VALUE
+    centrado: Boolean = false, negrita: Boolean = false, maxAncho: Float = Float.MAX_VALUE, fondo: Color? = null
 ) {
     if (maxAncho < 8f) return
     val estilo = TextStyle(color = color, fontSize = (sp * Estilo.letra).sp, fontWeight = if (negrita) FontWeight.Medium else FontWeight.Normal, letterSpacing = 0.2.sp)
@@ -937,5 +953,10 @@ private fun DrawScope.texto(
         constraints = Constraints(maxWidth = if (maxAncho == Float.MAX_VALUE) Constraints.Infinity else maxAncho.toInt().coerceAtLeast(1))
     )
     val x = if (centrado) en.x - r.size.width / 2 else en.x
-    drawText(r, topLeft = Offset(x, en.y - r.size.height / 2))
+    val y = en.y - r.size.height / 2
+    if (fondo != null) {
+        val m = 3.dp.toPx()
+        drawRoundRect(fondo, Offset(x - m, y), Size(r.size.width + 2 * m, r.size.height.toFloat()), CornerRadius(m, m))
+    }
+    drawText(r, topLeft = Offset(x, y))
 }

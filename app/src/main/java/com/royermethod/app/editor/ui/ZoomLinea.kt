@@ -39,6 +39,14 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.Linea
@@ -152,10 +160,12 @@ internal object ZoomLinea {
 }
 
 /**
- * Los botones de zoom que flotan sobre la linea de tiempo: "Zoom normal"
- * (solo con el fino puesto), "-" y "+". Mantener "+" dos segundos desbloquea
- * el fino; mientras se mantiene se ve "Manten para zoom fino" y un anillo que
- * se va llenando. Botones de 40 dp.
+ * Los botones de zoom que flotan sobre la linea de tiempo: "-" y "+" y,
+ * solo con el fino puesto, "Zoom normal" encima de ellos (al lado se metia
+ * hasta el cabezal y tapaba lo que hay debajo). Mantener "+" dos segundos
+ * desbloquea el fino; mientras se mantiene se ve "Manten para zoom fino" y
+ * un anillo que se va llenando. Botones de 40 dp. Con TalkBack, "+" es un
+ * boton (el fino, una accion aparte) como "-".
  */
 @Composable
 fun ControlesZoom(estado: EstadoEditor, modifier: Modifier = Modifier) {
@@ -190,25 +200,26 @@ fun ControlesZoom(estado: EstadoEditor, modifier: Modifier = Modifier) {
             )
             Spacer(Modifier.height(6.dp))
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (fino) {
-                Row(
-                    Modifier
-                        .heightIn(min = 40.dp)
-                        .clip(esquinas(20.dp))
-                        .background(Ink.White)
-                        .clickable { estado.zoomNormal() }
-                        .padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icono(Glifos.lupa, color = Ink.Black, tam = 16.dp)
-                    Spacer(Modifier.width(6.dp))
-                    Text("Zoom normal", style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = Ink.Black, maxLines = 1)
-                }
+        if (fino) {
+            Row(
+                Modifier
+                    .heightIn(min = 36.dp)
+                    .clip(esquinas(18.dp))
+                    .background(Ink.White)
+                    .clickable { estado.zoomNormal() }
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icono(Glifos.lupa, color = Ink.Black, tam = 14.dp)
+                Spacer(Modifier.width(5.dp))
+                Text("Zoom normal", style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium), color = Ink.Black, maxLines = 1)
             }
-            BotonZoom(Glifos.menos, puedeReducir, Modifier.clickable(enabled = puedeReducir) {
-                estado.ponerZoom(ZoomLinea.reducido(estado.dpPorSegundo))
-            })
+            Spacer(Modifier.height(6.dp))
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            BotonZoom(Glifos.menos, puedeReducir, Modifier
+                .clickable(enabled = puedeReducir, role = Role.Button) { estado.ponerZoom(ZoomLinea.reducido(estado.dpPorSegundo)) }
+                .semantics { contentDescription = "Reducir zoom" })
             BotonZoom(
                 Glifos.mas, puedeAmpliar,
                 Modifier
@@ -224,6 +235,17 @@ fun ControlesZoom(estado: EstadoEditor, modifier: Modifier = Modifier) {
                                 style = Stroke(g, cap = StrokeCap.Round)
                             )
                         }
+                    }
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Ampliar zoom"
+                        if (!puedeAmpliar) disabled()
+                        onClick("Ampliar") { estado.ponerZoom(ZoomLinea.ampliado(estado.dpPorSegundo, estado.zoomMaximo)); true }
+                        if (!fino) customActions = listOf(CustomAccessibilityAction("Zoom fino") {
+                            estado.zoomFino = true
+                            estado.avisar(AVISO_FINO)
+                            true
+                        })
                     }
                     .pointerInput(Unit) {
                         awaitEachGesture {
@@ -246,7 +268,7 @@ fun ControlesZoom(estado: EstadoEditor, modifier: Modifier = Modifier) {
                                     progreso.animateTo(1f, tween(ZoomLinea.PULSACION_FINO_MS, easing = LinearEasing))
                                     estado.zoomFino = true
                                     pista = false
-                                    estado.avisar("Zoom fino: 1 ms = 60 dp")
+                                    estado.avisar(AVISO_FINO)
                                     progreso.snapTo(0f)
                                 } else {
                                     delay(ZoomLinea.ESPERA_REPETIR_MS)
@@ -273,6 +295,9 @@ fun ControlesZoom(estado: EstadoEditor, modifier: Modifier = Modifier) {
         }
     }
 }
+
+/** Lo que se avisa al desbloquear el zoom fino (sin "dp": eso es cosa de quien programa). */
+internal const val AVISO_FINO = "Zoom fino: ahora se amplia hasta ver cada milisegundo"
 
 /** Boton redondo del zoom: 40 dp, con fondo para leerse encima de la linea. */
 @Composable

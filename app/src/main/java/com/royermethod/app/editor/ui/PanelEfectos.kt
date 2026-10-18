@@ -25,6 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
@@ -32,6 +33,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -106,6 +108,13 @@ fun HojaEfectos(estado: EstadoEditor, onCerrar: () -> Unit) {
         return
     }
     val p = recordarPanel(estado, c)
+    // Atras con el catalogo abierto vuelve a los efectos (como "Volver"), no cierra la hoja
+    val eleccion = p.eleccion
+    val hayEfectos by rememberUpdatedState(p.vista.efectos.isNotEmpty())
+    DisposableEffect(estado, eleccion) {
+        val quitar = estado.alAtras { eleccion.alAtras(hayEfectos) }
+        onDispose { quitar() }
+    }
     HojaPanel(
         Panel.EFECTOS.titulo, onCerrar,
         acciones = { BotonAgregar(p) },
@@ -148,6 +157,17 @@ internal class EleccionEfectos(id: Long?, catalogo: Boolean) {
     fun atender(pedido: Long?, vista: Clip): Boolean {
         if (pedido == null || vista.efectos.none { it.id == pedido }) return false
         id = pedido
+        catalogo = false
+        return true
+    }
+
+    /**
+     * El boton atras: con el catalogo abierto y efectos puestos lo cierra,
+     * como "Volver" (true). Sin efectos el catalogo es todo lo que hay: false,
+     * y se cierra la hoja.
+     */
+    fun alAtras(hayEfectos: Boolean): Boolean {
+        if (!catalogo || !hayEfectos) return false
         catalogo = false
         return true
     }
@@ -210,13 +230,19 @@ internal class PanelFx(
         }
     }
 
-    /** Agrega en el cabezal, en un paso de deshacer, y deja elegido lo nuevo. */
+    /**
+     * Agrega en el cabezal, en un paso de deshacer, y deja elegido lo nuevo.
+     * Con el cabezal fuera del bloque se pone en su borde y el cabezal va al
+     * principio de lo nuevo, como al tocar una barra: si no, la vista previa
+     * seguiria fuera y no se veria lo que se ha puesto.
+     */
     fun agregar(tipo: TipoEfectoVideo) {
         val desde = cabezal()
         var nuevo: Long? = null
         estado.cambiarClip { actual -> actual.conEfectoNuevo(tipo, desde).also { nuevo = it.second }.first }
         nuevo?.let { eleccion.id = it }
         eleccion.catalogo = false
+        verSiFuera(nuevo)
     }
 
     fun agregar(combinacion: CombinacionEfectos) {
@@ -225,6 +251,13 @@ internal class PanelFx(
         estado.cambiarClip { actual -> actual.conCombinacion(combinacion, desde).also { nuevo = it.second }.first }
         nuevo?.let { eleccion.id = it }
         eleccion.catalogo = false
+        verSiFuera(nuevo)
+    }
+
+    private fun verSiFuera(id: Long?) {
+        val l = estado.tiempo - inicioBloque
+        if (id == null || (l >= 0 && l < dur)) return
+        estado.clipElegido?.inicioDelGrupo(id)?.let { ver(it) }
     }
 
     fun duplicar(id: Long) {
@@ -334,7 +367,7 @@ private fun descripcionGrupo(nombre: String): String? = when (nombre) {
 private fun Catalogo(p: PanelFx) {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
     Pestanas(listOf("Efectos", "Combinaciones rapidas"), pestana, { pestana = it })
-    Nota("Se pone donde esta el cabezal.", Modifier.padding(bottom = 2.dp))
+    Nota("Se pone donde esta el cabezal (si esta fuera del bloque, en su borde).", Modifier.padding(bottom = 2.dp))
     if (pestana == 0) {
         val cuantos = remember(p.vista.efectos) { TramosEfecto.cuantosPorTipo(p.vista.efectos) }
         CatalogoEfectos.grupos.forEach { (nombre, tipos) ->
@@ -451,6 +484,7 @@ private fun Elegido(p: PanelFx, e: EfectoVideo) {
     val forma = parametros.filter { it in FORMA }
 
     Cabecera(p, e)
+    AvisosEfecto(p, e)
     // Lo de siempre, a la vista sin desplazar: donde empieza (mueve el efecto
     // entero, con lo que dura), cuanto dura y su fuerza
     CampoTiempo(
@@ -500,13 +534,40 @@ private fun Elegido(p: PanelFx, e: EfectoVideo) {
     Seccion("Avanzado", null, abiertaAvanzado, { abiertaAvanzado = it }) { SeccionAvanzado(p, e, parametros) }
 }
 
+/**
+ * Lo que el motor no va a ensenar del elegido (sin cambiar como se dibuja):
+ * una mascara tapada por otra puesta antes, porque solo cuenta una a la vez,
+ * o un efecto tan corto que no cae en ningun cuadro del video.
+ */
+@Composable
+private fun AvisosEfecto(p: PanelFx, e: EfectoVideo) {
+    val delante = remember(p.vista.efectos, e.id) { TramosEfecto.mascarasDelante(p.vista.efectos, e.id) }
+    if (delante.isNotEmpty()) {
+        val otra = TramosEfecto.nombre(delante.first())
+        val texto = if (TramosEfecto.tapadaEntera(e, delante)) {
+            "Solo se ve una mascara a la vez y manda la puesta antes ($otra): esta no se vera. Apaga o aparta la otra."
+        } else {
+            "Solo se ve una mascara a la vez: mientras coincide con $otra, puesta antes, esta no se ve."
+        }
+        Nota(texto, Modifier.padding(vertical = 4.dp), color = Ink.Peligro)
+    }
+    val salida = p.estado.proyecto.salida
+    val muestras = if (salida.desenfoqueMovimiento) salida.muestras else 1
+    val seVe = remember(e, p.inicioBloque, p.dur, muestras) { TramosEfecto.seVeAlExportar(e, p.inicioBloque, p.dur, muestras) }
+    if (e.activo && !seVe) {
+        Nota("Tan corto que no cae en ningun fotograma: en el video no saldra. Alargalo o muevelo (un fotograma son 33 ms).",
+            Modifier.padding(vertical = 4.dp), color = Ink.Peligro)
+    }
+}
+
 /** Lo que va en "Forma", en el orden de [CatalogoEfectos.parametros]. */
 private val FORMA = setOf(Parametro.DESDE, Parametro.HASTA, Parametro.ANGULO, Parametro.CURVA, Parametro.CENTRO,
     Parametro.GROSOR, Parametro.SUAVIDAD, Parametro.INVERTIR, Parametro.CORTE_VERTICAL)
 
 /**
  * Nombre, encendido, probar, duplicar (si va suelto) y quitar. Si es de una
- * combinacion, debajo su grupo y "Separar del grupo".
+ * combinacion, debajo su grupo (en dos lineas si hace falta: "Grupo Latigazo
+ * con desenfoque 1" no cabia junto al chip) y "Separar".
  */
 @Composable
 private fun Cabecera(p: PanelFx, e: EfectoVideo) {
@@ -531,10 +592,10 @@ private fun Cabecera(p: PanelFx, e: EfectoVideo) {
             Text(
                 "Grupo ${e.grupo}",
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp * Estilo.letra, letterSpacing = 0.2.sp),
-                color = Ink.White50, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
+                color = Ink.White50, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f)
             )
             Spacer(Modifier.width(8.dp))
-            ChipPequeno("Separar del grupo") { p.cambiarBloque { it.separadoDelGrupo(e.id) } }
+            ChipPequeno("Separar") { p.cambiarBloque { it.separadoDelGrupo(e.id) } }
         }
     }
 }
