@@ -1,9 +1,12 @@
 package com.royermethod.app.editor.vista
 
 import android.content.Context
+import android.opengl.GLES20
+import android.os.Debug
 import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
+import android.util.Log
 import android.view.Choreographer
 import android.view.Surface
 import com.royermethod.app.editor.audio.Pcm
@@ -28,6 +31,18 @@ import java.util.concurrent.atomic.AtomicInteger
  *
  * Todo el dibujo ocurre en un hilo propio, que es el duenio del contexto de
  * OpenGL. La interfaz solo manda ordenes y recibe el instante actual.
+ *
+ * Diagnostico para el telefono, apagado salvo que se pida con adb:
+ *
+ *   adb shell setprop log.tag.RoyerVista DEBUG     (VERBOSE: ademas mide la GPU)
+ *   adb logcat -s RoyerVista
+ *   adb shell setprop log.tag.RoyerVista INFO      (apagarlo)
+ *
+ * Se mira al pulsar play, al pausar y al abrir la superficie. Al parar deja un
+ * resumen: arranque (sonido, primer cuadro, primer movimiento), lo que tarda
+ * cada cuadro y el ritmo de publicacion y de presentacion (ver SesionVista);
+ * al pulsar play, lo dibujado en pausa (PausaVista). Apagado, no hay objetos y
+ * cada cuadro solo comprueba dos referencias nulas.
  */
 class Previsualizador(context: Context) {
 
@@ -84,6 +99,19 @@ class Previsualizador(context: Context) {
     @Volatile
     private var cerrado = false
 
+    // ---- Diagnostico (apagado salvo con adb, ver arriba) ----
+    /** La reproduccion que se esta midiendo, o null. */
+    @Volatile
+    private var sesion: SesionVista? = null
+    /** Los dibujos en pausa, o null. El hilo principal tambien la mira. */
+    @Volatile
+    private var pausaDiag: PausaVista? = null
+    // Solo en el hilo de dibujo
+    private var gcAntes: LongArray? = null
+    private var pausaProyecto: Proyecto? = null
+    private var pausaTiempo = -1L
+    private var pausaMuestras = 0
+
     @Volatile
     private var proyecto = Proyecto()
     @Volatile
@@ -108,6 +136,7 @@ class Previsualizador(context: Context) {
                 compositor = Compositor(app, w, hgt)
                 escena = null
                 ultimoDibujado = -1
+                vigilarPausa()
                 dibujarAhora()
                 programarBucle()
             }
@@ -153,11 +182,17 @@ class Previsualizador(context: Context) {
     /** El proyecto cambio: se redibuja, y si esta sonando, se rehace el sonido. */
     fun proyecto(p: Proyecto) {
         proyecto = p
+        val pedidoNs = if (pausaDiag != null || sesion != null) System.nanoTime() else 0L
         h.post {
             if (reproduciendo) {
                 val segs = PlanAudio.de(p)
-                if (segs != segmentosSonando || PlanAudio.total(p) != totalSonando) reiniciarSonido(reloj())
+                if (segs != segmentosSonando || PlanAudio.total(p) != totalSonando) {
+                    reempezarSesion("sonido", pedidoNs)
+                    reiniciarSonido(reloj())
+                }
             } else {
+                val pausa = pausaDiag
+                if (pausa != null && pedidoNs != 0L) pausa.cambio(System.nanoTime() - pedidoNs)
                 ultimoDibujado = -1
                 dibujarAhora()
             }
@@ -186,10 +221,12 @@ class Previsualizador(context: Context) {
         val d = Linea.duracion(proyecto)
         val destino = t.coerceIn(0, maxOf(0, d - 1))
         val busqueda = synchronized(controlTiempo) { tiempo = destino; ++busquedas }
+        val pedidoNs = if (sesion != null) System.nanoTime() else 0L
         h.post {
             if (cerrado || busqueda != busquedas) return@post
             detenerBucle()
             if (reproduciendo) {
+                reempezarSesion("busqueda", pedidoNs)
                 reiniciarSonido(destino, ordenes.get(), busqueda)
             }
             if (busqueda != busquedas) return@post
@@ -203,6 +240,7 @@ class Previsualizador(context: Context) {
         if (cerrado || reproduciendo) return
         val d = Linea.duracion(proyecto)
         if (d <= 0) return
+        val pedidoNs = System.nanoTime()
         // Desde el final, vuelve a empezar
         val orden = ordenes.incrementAndGet()
         synchronized(controlTiempo) {
@@ -213,6 +251,7 @@ class Previsualizador(context: Context) {
         h.post {
             if (cerrado || ordenes.get() != orden) return@post
             detenerBucle()
+            empezarSesion("play", pedidoNs)
             reiniciarSonido(tiempo, orden, busquedas)
             ultimoDibujado = -1
             programarBucle()
@@ -243,6 +282,8 @@ class Previsualizador(context: Context) {
             sonido = null
             invalidarReloj()
             segmentosSonando = null
+            terminarSesion("pausa")
+            vigilarPausa()
             if (cerrado || ordenes.get() != orden) return@post
             // El fotograma de pausa, con todas sus muestras
             ultimoDibujado = -1
@@ -261,6 +302,9 @@ class Previsualizador(context: Context) {
             sonido?.parar()
             sonido = null
             invalidarReloj()
+            terminarSesion("cerrar")
+            pausaDiag?.let { if (!it.vacia) escribir(it.resumen(System.nanoTime())) }
+            pausaDiag = null
             soltarGl()
             hilo.quitSafely()
         }
@@ -271,6 +315,8 @@ class Previsualizador(context: Context) {
     // ------------------------------------------------------------------
 
     private fun reiniciarSonido(desdeUs: Long, orden: Int = ordenes.get(), busqueda: Int = busquedas) {
+        val medida = sesion
+        val desdeNs = if (medida != null) System.nanoTime() else 0L
         sonido?.parar()
         sonido = null
         val p = proyecto
@@ -281,10 +327,12 @@ class Previsualizador(context: Context) {
         inicioUs = desdeUs
         if (segs.isNotEmpty()) {
             sonido = runCatching { SalidaAudio(app, segs, PlanAudio.total(p), Pcm.frames(desdeUs)) }.getOrNull()
+            if (medida != null) sonido?.alLeer = { l -> medida.audio(l.nanoTime, l.cabezal, l.escritos, l.marcaFrames, l.posicion) }
         }
         inicioNanos = System.nanoTime()
         ordenDelReloj = orden
         busquedaDelReloj = busqueda
+        medida?.sonido(System.nanoTime() - desdeNs, segs.size)
     }
 
     private fun invalidarReloj() {
@@ -362,6 +410,8 @@ class Previsualizador(context: Context) {
                 // Al final: se queda en el ultimo fotograma
                 sonido?.parar(); sonido = null
                 invalidarReloj()
+                terminarSesion("final")
+                vigilarPausa()
                 val fin = tiempo
                 avisarReproduccion(false, orden)
                 avisarTiempo(fin, b, orden)
@@ -390,7 +440,10 @@ class Previsualizador(context: Context) {
         val e = egl ?: return false
         val c = compositor ?: return false
         val observador = alCuadroPublicado
-        val inicioCpuNs = if (observador != null) System.nanoTime() else 0L
+        // Diagnostico: sonando, la sesion; en pausa, la cuenta de dibujos
+        val medida = if (rapido) sesion else null
+        val pausa = if (rapido) null else pausaDiag
+        val inicioCpuNs = if (observador != null || medida != null || pausa != null) System.nanoTime() else 0L
         val p = proyecto
         // Reproduciendo, la mitad de muestras: sigue viendose fluido y va
         // sobrado en cualquier telefono. En pausa, como saldra exportado.
@@ -402,10 +455,20 @@ class Previsualizador(context: Context) {
         }
         return runCatching {
             e.activar()
-            c.dibujar(escena!!.cuadroEn(t, n))
+            val cuadro = escena!!.cuadroEn(t, n)
+            val escenaNs = if (medida != null) System.nanoTime() else 0L
+            c.dibujar(cuadro)
+            // Solo midiendo la GPU (VERBOSE): esperarla frena el ritmo, no es para siempre
+            var gpuNs = -1L
+            if (medida != null && medida.conGpu) {
+                val g0 = System.nanoTime()
+                GLES20.glFinish()
+                gpuNs = System.nanoTime() - g0
+            }
             val marcaNs = System.nanoTime()
             e.marcarTiempo(marcaNs)
             val publicada = e.publicar()
+            val publicadaNs = if (medida != null) System.nanoTime() else 0L
             // Despues de publicar, para no retrasar este fotograma
             c.anticipar(Linea.origenesEntre(p, t, t + ANTICIPO_US))
             if (publicada) {
@@ -416,13 +479,87 @@ class Previsualizador(context: Context) {
                     runCatching { observador(CuadroPublicado(t, n, marcaNs,
                         (marcaNs - inicioCpuNs) / 1e6, (finNs - marcaNs) / 1e6, rapido)) }
                 }
+                medida?.publicado(marcaNs, n, escenaNs - inicioCpuNs, marcaNs - inicioCpuNs - maxOf(gpuNs, 0L), gpuNs,
+                    publicadaNs - marcaNs, System.nanoTime() - publicadaNs)
+            }
+            if (pausa != null) {
+                pausa.dibujado(System.nanoTime() - inicioCpuNs,
+                    pausaProyecto === p && pausaTiempo == t && pausaMuestras == muestras, ancho, alto, muestras)
+                pausaProyecto = p; pausaTiempo = t; pausaMuestras = muestras
             }
             publicada
         }.getOrDefault(false)
     }
 
-    private companion object {
+    // ------------------------------------------------------------------
+    // Diagnostico para el telefono
+    // ------------------------------------------------------------------
+
+    /**
+     * La TextureView ya tiene un cuadro nuevo: llamarlo desde
+     * onSurfaceTextureUpdated para medir la presentacion real. Sin medir no
+     * hace nada.
+     */
+    fun presentado() {
+        sesion?.presentado(System.nanoTime())
+    }
+
+    private fun registrar(nivel: Int): Boolean = runCatching { Log.isLoggable(ETIQUETA, nivel) }.getOrDefault(false)
+
+    private fun escribir(lineas: List<String>) {
+        for (l in lineas) runCatching { Log.i(ETIQUETA, l) }
+    }
+
+    /** Recogidas de basura de todo el proceso: cuantas, ms, bloqueantes y sus ms. */
+    private fun gc(): LongArray? = runCatching {
+        longArrayOf(estadistica("art.gc.gc-count"), estadistica("art.gc.gc-time"),
+            estadistica("art.gc.blocking-gc-count"), estadistica("art.gc.blocking-gc-time"))
+    }.getOrNull()
+
+    private fun estadistica(nombre: String): Long = Debug.getRuntimeStat(nombre)?.toLongOrNull() ?: 0L
+
+    /** En pausa, contar lo que se dibuja si se pidio; si no, nada. Hilo de dibujo. */
+    private fun vigilarPausa() {
+        if (!registrar(Log.DEBUG)) { pausaDiag = null; return }
+        if (pausaDiag == null) {
+            pausaDiag = PausaVista(System.nanoTime())
+            pausaProyecto = null
+        }
+    }
+
+    /** Al pulsar play: lo de la pausa al registro y, si se pidio, una sesion nueva. Hilo de dibujo. */
+    private fun empezarSesion(motivo: String, pedidoNs: Long) {
+        pausaDiag?.let { if (!it.vacia) escribir(it.resumen(System.nanoTime())) }
+        pausaDiag = null
+        if (!registrar(Log.DEBUG)) { sesion = null; return }
+        gcAntes = gc()
+        val p = proyecto
+        val comienzos = (Linea.inicios(p.principal).map { Linea.fotogramaEn(it) } +
+            p.capas.map { Linea.fotogramaEn(it.inicioUs) }).distinct().sorted().toLongArray()
+        sesion = SesionVista(motivo, pedidoNs, ancho, alto, minOf(4, p.salida.muestras), registrar(Log.VERBOSE), comienzos)
+    }
+
+    /** Sonando, el sonido vuelve a empezar: se cierra lo medido y se mide el arranque nuevo. */
+    private fun reempezarSesion(motivo: String, pedidoNs: Long) {
+        if (sesion == null || pedidoNs == 0L) return
+        terminarSesion(motivo)
+        empezarSesion(motivo, pedidoNs)
+    }
+
+    private fun terminarSesion(porque: String) {
+        val s = sesion ?: return
+        sesion = null
+        val a = gcAntes
+        val b = gc()
+        val texto = if (a == null || b == null) null else
+            "${b[0] - a[0]} recogidas (${b[1] - a[1]} ms), ${b[2] - a[2]} bloqueantes (${b[3] - a[3]} ms), en todo el proceso"
+        escribir(s.resumen(System.nanoTime(), porque, texto))
+    }
+
+    companion object {
+        /** Etiqueta del registro del diagnostico (adb logcat -s RoyerVista). */
+        const val ETIQUETA = "RoyerVista"
         /** Cuanto antes de aparecer se empieza a leer una foto. */
-        const val ANTICIPO_US = 1_000_000L
+        private const val ANTICIPO_US = 1_000_000L
     }
 }
