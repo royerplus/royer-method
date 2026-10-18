@@ -1,14 +1,18 @@
 package com.royermethod.app.editor.ui
 
-import com.royermethod.app.editor.modelo.AnimacionAplicada
+import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Animacion
+import com.royermethod.app.editor.modelo.AnimacionAplicada
 import com.royermethod.app.editor.modelo.AnimacionContinua
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Combinaciones
 import com.royermethod.app.editor.modelo.Continuo
 import com.royermethod.app.editor.modelo.Cuadros
+import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.EfectoVideo
+import com.royermethod.app.editor.modelo.Escena
+import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.MomentoAnimacion
 import com.royermethod.app.editor.modelo.Movimiento
@@ -17,6 +21,7 @@ import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.TipoEfectoVideo
 import com.royermethod.app.editor.modelo.TipoOrigen
 import com.royermethod.app.editor.modelo.duracionSugeridaUs
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -139,6 +144,61 @@ class PanelAnimacionLogicaTest {
         assertEquals(listOf("Shake de camara", "Pulso"), l.filter { it.id != acercar.id }.map { it.nombre })
         e.deshacer()
         assertEquals(conSuDuracion, e.proyecto)
+    }
+
+    @Test
+    fun sinMasYSinTocarLaDuracionLaNuevaTraeLaSuyaYSiLaTocoSeQueda() {
+        val (e, _) = sinNada()
+        val flash = LogicaAnimacion.aplicar(e, opcion("Flash"), null, agregando = false, fotogramas = true)!!
+        assertEquals(LogicaAnimacion.Accion.SUMADA, flash.accion)
+        assertEquals(300_000L, e.puestas().single().duracionUs)
+        val conFlash = e.proyecto
+        // El usuario no la toco: el rebote no se queda con la del flash (0,3 s), trae la suya
+        val r = LogicaAnimacion.aplicar(e, opcion("Rebote"), flash.elegidaId, agregando = false, fotogramas = true)!!
+        assertEquals(LogicaAnimacion.Accion.SUSTITUIDA, r.accion)
+        val rebote = e.puestas().single()
+        assertEquals("Rebote", rebote.nombre)
+        assertEquals(duracionSugeridaUs(comb("Rebote").piezas, MomentoAnimacion.ENTRADA, 4_000_000), rebote.duracionUs)
+        assertEquals(700_000L, rebote.duracionUs)
+        // Un solo paso de deshacer
+        e.deshacer()
+        assertEquals(conFlash, e.proyecto)
+        // Si la habia cambiado, se queda la suya al sustituir (y al volver a sustituir)
+        LogicaAnimacion.cambiarDuracion(e, flash.elegidaId, 450_000, arrastre = false)
+        LogicaAnimacion.aplicar(e, opcion("Rebote"), flash.elegidaId, agregando = false, fotogramas = true)
+        assertEquals(450_000L, e.puestas().single().duracionUs)
+        LogicaAnimacion.aplicar(e, opcion("Flash"), flash.elegidaId, agregando = false, fotogramas = true)
+        assertEquals(450_000L, e.puestas().single().duracionUs)
+        // En un bloque corto la sugerida es la mitad del bloque: tambien cuenta como no tocada
+        val corto = Clip(1, origen = video, hastaUs = 800_000)
+        val a = LogicaAnimacion.aplicar(corto, opcion("Rebote"), null, agregando = false, fotogramas = false)
+        assertEquals(400_000L, a.clip.animaciones.single().duracionUs)
+        val b = LogicaAnimacion.aplicar(a.clip, opcion("Flash"), a.elegidaId, agregando = false, fotogramas = false)
+        assertEquals(LogicaAnimacion.Accion.SUSTITUIDA, b.accion)
+        assertEquals(300_000L, b.clip.animaciones.single().duracionUs)
+    }
+
+    @Test
+    fun losTramosDeLasPiezasCuentanSobreLaDuracionQueUsaLaEscena() {
+        // Una entrada de 0,5 s en un bloque que despues se recorto a 0,3 s
+        val pieza = Movimiento(Animacion.IZQUIERDA, curva = Curva.LINEAL, desde = 0f, hasta = 0.5f)
+        val a = AnimacionAplicada(1, "x", MomentoAnimacion.ENTRADA, piezas = listOf(pieza), duracionUs = 500_000)
+        val c = Clip(1, origen = video, hastaUs = 300_000, animaciones = listOf(a))
+        val (base, visible) = LogicaAnimacion.baseTramos(a, c.duracionUs)
+        assertEquals(500_000L, base)
+        assertEquals(300_000L, visible)
+        // El panel dice que termina en hasta x base = 0,25 s, y es lo que hace la escena
+        val termina = (pieza.hasta.toDouble() * base).toLong()
+        assertEquals(250_000L, termina)
+        fun m(cl: Clip, t: Long) = Escena(Proyecto(principal = listOf(cl), fondo = Fondo.NEGRO,
+            salida = AjustesSalida(desenfoqueMovimiento = false)), 576, 1024) { _, _ -> 1920f to 1080f }
+            .cuadroEn(t).clips.single().matrices.single()
+        val quieto = c.copy(animaciones = emptyList())
+        assertFalse(m(c, 200_000).contentEquals(m(quieto, 200_000)))
+        assertArrayEquals(m(quieto, termina), m(c, termina), 1e-6f)
+        // Sin recortar no cambia nada: la base es lo que dura y se ve entera
+        assertEquals(300_000L to 300_000L, LogicaAnimacion.baseTramos(a.copy(duracionUs = 300_000), 300_000))
+        assertEquals(0L to 0L, LogicaAnimacion.baseTramos(a.copy(duracionUs = -5), 300_000))
     }
 
     @Test

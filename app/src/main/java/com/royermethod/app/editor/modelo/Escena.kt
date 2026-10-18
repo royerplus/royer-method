@@ -1037,13 +1037,18 @@ class Escena(
 
     /**
      * Un borde recto que avanza hacia el angulo desde fuera del lienzo hasta
-     * fuera del otro lado. El valor es cuanto se ha descubierto, de 0 a 1.
+     * fuera del otro lado. El valor es cuanto se ha descubierto, de 0 a 1; en
+     * 0,5 el borde pasa por el centro. Con el centro movido el recorrido se
+     * alarga lo que se aparta en esa direccion: asi 0 sigue tapandolo todo y
+     * 1 descubriendolo todo (centrado sale lo mismo de siempre).
      */
     private fun barrido(ef: EfectoVideo, local: Long): Efecto {
         val a = ef.ajustes
         val (ux, uy) = direccion(a.angulo)
+        val cx = a.centroX * ancho + 0f
+        val cy = a.centroY * alto + 0f
         val suave = if (a.suavidad > 0f) a.suavidad * alto else 2f
-        val largo = (abs(ux) * ancho + abs(uy) * alto) / 2f + suave
+        val largo = (abs(ux) * ancho + abs(uy) * alto) / 2f + abs(ux * cx + uy * cy) + suave
         val v = ef.valorEn(local)
         val borde = when {
             v <= 0f -> -largo - 1f
@@ -1051,9 +1056,26 @@ class Escena(
             else -> -largo + v * 2f * largo
         }
         return Efecto(
-            mascara = Mascara(ux, uy, suave, invertida = a.invertir, centroX = a.centroX * ancho + 0f, centroY = a.centroY * alto + 0f),
+            mascara = Mascara(ux, uy, suave, invertida = a.invertir, centroX = cx, centroY = cy),
             borde = borde
         )
+    }
+
+    /**
+     * El zoom o el giro de [e] alrededor del centro de los ajustes (en
+     * fraccion del lienzo, desde el centro del bloque) y no del centro del
+     * bloque: el bloque se desplaza lo justo para que ese punto no se mueva.
+     * Sin centro devuelve [e] tal cual.
+     */
+    private fun sobreCentro(a: AjustesEfecto, e: Efecto): Efecto {
+        if (a.centroX == 0f && a.centroY == 0f) return e
+        val cx = a.centroX * ancho
+        val cy = a.centroY * alto
+        // Lo que gira y escala el bloque, en pixeles con la y hacia abajo (como matriz())
+        val r = Math.toRadians(e.rotacion.toDouble())
+        val c = cos(r).toFloat() * e.escala
+        val s = sin(r).toFloat() * e.escala
+        return e.copy(dx = e.dx + (cx - (c * cx - s * cy)) / ancho, dy = e.dy + (cy - (s * cx + c * cy)) / alto)
     }
 
     /** Efectos libres del bloque, compartidos por vista previa y exportacion. */
@@ -1130,12 +1152,16 @@ class Escena(
                 TipoEfectoVideo.CERRAR_HORIZONTAL -> Efecto(escalaX = (1f - ef.progresoEn(local) * i.coerceAtMost(1f)).coerceAtLeast(0.001f))
                 TipoEfectoVideo.REVELAR_HORIZONTAL -> {
                     val p = (ef.progresoEn(local) * i.coerceAtMost(1f)).coerceIn(0f, 1f)
+                    val cx = ef.ajustes.centroX * ancho + 0f
+                    // Con el centro movido el borde recorre tambien lo que se
+                    // aparta: de tapado entero a descubierto entero. Centrado, lo de siempre
+                    val largo = ancho + 2f * abs(cx)
                     val borde = when {
-                        p <= 0f -> -ancho / 2f - 1f
-                        p >= 1f -> ancho / 2f + 1f
-                        else -> ancho * (p - 0.5f)
+                        p <= 0f -> -largo / 2f - 1f
+                        p >= 1f -> largo / 2f + 1f
+                        else -> largo * (p - 0.5f)
                     }
-                    Efecto(mascara = Mascara(1f, 0f, suave = 2f, centroX = ef.ajustes.centroX * ancho + 0f,
+                    Efecto(mascara = Mascara(1f, 0f, suave = 2f, centroX = cx,
                         centroY = ef.ajustes.centroY * alto + 0f), borde = borde)
                 }
                 TipoEfectoVideo.MOVER -> {
@@ -1143,8 +1169,8 @@ class Escena(
                     val v = ef.valorEn(local) * i
                     Efecto(dx = v * ux, dy = v * uy)
                 }
-                TipoEfectoVideo.ZOOM -> Efecto(escala = 1f + (ef.valorEn(local) - 1f) * i)
-                TipoEfectoVideo.GIRAR -> Efecto(rotacion = ef.valorEn(local) * i)
+                TipoEfectoVideo.ZOOM -> sobreCentro(ef.ajustes, Efecto(escala = 1f + (ef.valorEn(local) - 1f) * i))
+                TipoEfectoVideo.GIRAR -> sobreCentro(ef.ajustes, Efecto(rotacion = ef.valorEn(local) * i))
                 TipoEfectoVideo.LATIGAZO -> {
                     val (ux, uy) = direccion(ef.ajustes.angulo)
                     val v = latigazo(ef, local) * i

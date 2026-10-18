@@ -166,8 +166,12 @@ internal object TiempoCampo {
         return Lectura(us, nota = nota)
     }
 
-    /** Lo que se ofrece para editar: "0.005", sin la unidad. */
-    fun textoEditable(us: Long): String = TiempoPreciso.texto(us).removeSuffix(" s")
+    /**
+     * Lo que se ofrece para editar: "0.005", sin la unidad. Exacto, aunque en
+     * pantalla un fotograma salga como "≈1.067 s": aceptarlo sin tocarlo no
+     * cambia el tiempo.
+     */
+    fun textoEditable(us: Long): String = TiempoPreciso.textoExacto(us).removeSuffix(" s")
 }
 
 /**

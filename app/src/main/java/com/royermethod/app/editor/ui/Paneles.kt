@@ -455,7 +455,9 @@ fun PanelCurva(estado: EstadoEditor) {
             "Pon el cabezal sobre un fotograma clave (los rombos del bloque) para cambiar como se mueve hasta el siguiente.",
             style = MaterialTheme.typography.bodyMedium, color = Ink.White70
         )
-        Hueco()
+        Hueco(8)
+        InstanteCurva(estado, ini, c.duracionUs)
+        Hueco(4)
         BotonLleno("Poner uno aqui", {
             val t = estado.tiempo
             estado.hacer { Edicion.ponerClave(it, c.id, t, c.encuadreEn(t - ini), tolerancia) }
@@ -468,6 +470,22 @@ fun PanelCurva(estado: EstadoEditor) {
         Hueco(14)
         SimplificadorClaves(estado, DuenoClaves.Bloque(c.id))
     }
+}
+
+/**
+ * Donde poner la clave nueva, escrito o con -/+: mueve el cabezal (en pausa)
+ * a ese instante del bloque, pegado al fotograma de la linea si el ajuste esta
+ * puesto (el interruptor, a la vista: asi se sabe antes de poner la primera).
+ * Lee el cabezal, por eso va aparte: al reproducir solo se recompone esto.
+ */
+@Composable
+private fun InstanteCurva(estado: EstadoEditor, ini: Long, duracionUs: Long) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Etiqueta("Instante", Modifier.weight(1f))
+        InterruptorFotogramas()
+    }
+    val local = (estado.tiempo - ini).coerceIn(0L, duracionUs.coerceAtLeast(0L))
+    CampoTiempo("Cabezal", local, 0L, duracionUs, { us, _ -> estado.pausarEn(ini + us) }, deslizador = false, origenUs = ini)
 }
 
 /** Lo de la clave que hay bajo el cabezal: su momento, la curva y quitarla. */

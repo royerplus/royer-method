@@ -19,6 +19,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
+import kotlinx.coroutines.launch
 import org.junit.Test
 
 /** El simplificador tal y como lo usan los paneles: probar, aplicar, deshacer, restaurar. */
@@ -115,16 +116,72 @@ class SimplificarClavesTest {
         assertNull(Simplificador.claves(p, DuenoClaves.Parte(9, 0)))
     }
 
-    @Test fun siElProyectoCambioDesdeLaPruebaSeVuelveASimplificarSobreElDeAhora() {
+    @Test fun siCambioOtraCosaSeAplicaLaPruebaSinVolverASimplificar() {
         val p = proyecto()
-        val prueba = Simplificador.probar(p, DuenoClaves.Bloque(1))!!
-        // Entretanto cambio otra cosa (el formato, que cambia los pixeles de exportacion)
-        val otro = p.copy(formato = com.royermethod.app.editor.modelo.Formato.CUADRADO)
-        val r = Simplificador.aplicar(otro, prueba)
-        assertEquals(Simplificador.probar(otro, DuenoClaves.Bloque(1))!!.resultado, r)
-        assertEquals(com.royermethod.app.editor.modelo.Formato.CUADRADO, r.formato)
-        // Y si no cambio, el resultado de la prueba tal cual
+        val d = DuenoClaves.Bloque(1)
+        val prueba = Simplificador.probar(p, d)!!
+        // Si no cambio nada, el resultado de la prueba tal cual
         assertSame(prueba.resultado, Simplificador.aplicar(p, prueba))
+        // Entretanto cambio algo que la simplificacion no mira (el espejo del
+        // encuadre, el fondo): se ponen las claves del informe, lo mismo que
+        // saldria de simplificar otra vez, sin hacerlo en el hilo principal
+        val otro = Edicion.cambiar(p, 1) { it.copy(encuadre = it.encuadre.copy(espejo = true)) }
+            .copy(fondo = com.royermethod.app.editor.modelo.Fondo.DESENFOCADO)
+        assertTrue(Simplificador.vigente(prueba, otro, prueba.tolerancia))
+        val r = Simplificador.aplicar(otro, prueba)
+        assertEquals(Simplificador.probar(otro, d)!!.resultado, r)
+        assertTrue(Edicion.clip(r, 1)!!.encuadre.espejo)
+        // Una parte igual
+        val conParte = proyecto(claves = emptyList(), pieza = porFotograma(40))
+        val dp = DuenoClaves.Parte(1, 0)
+        val pp = Simplificador.probar(conParte, dp)!!
+        val otraParte = conParte.copy(fondo = com.royermethod.app.editor.modelo.Fondo.DESENFOCADO)
+        assertEquals(Simplificador.probar(otraParte, dp)!!.resultado, Simplificador.aplicar(otraParte, pp))
+    }
+
+    @Test fun siCambioLoQueMiraLaPruebaYaNoValeYAplicarNoRecalcula() {
+        val p = proyecto()
+        val d = DuenoClaves.Bloque(1)
+        val prueba = Simplificador.probar(p, d)!!
+        // El formato cambia los pixeles de exportacion; recortar el bloque, sus
+        // instantes; las muestras, tambien; y otra tolerancia es otra prueba
+        val cambios = listOf(
+            p.copy(formato = com.royermethod.app.editor.modelo.Formato.CUADRADO),
+            Edicion.cambiar(p, 1) { it.copy(hastaUs = 2_000_000) },
+            p.copy(salida = p.salida.copy(desenfoqueMovimiento = !p.salida.desenfoqueMovimiento)),
+            Edicion.cambiar(p, 1) { it.copy(claves = it.claves.dropLast(1)) }
+        )
+        for (q in cambios) {
+            assertTrue(!Simplificador.vigente(prueba, q, prueba.tolerancia))
+            // No se simplifica en el hilo principal: no cambia nada y el panel pide probar otra vez
+            assertSame(q, Simplificador.aplicar(q, prueba))
+        }
+        assertTrue(!Simplificador.vigente(prueba, p, Simplificador.tolerancia(2f)))
+    }
+
+    @Test fun lasCuentasVanDeUnaEnUna() = kotlinx.coroutines.runBlocking {
+        val enMarcha = java.util.concurrent.atomic.AtomicInteger()
+        val maximo = java.util.concurrent.atomic.AtomicInteger()
+        fun cuenta(): Int {
+            val n = enMarcha.incrementAndGet()
+            maximo.accumulateAndGet(n) { a, b -> maxOf(a, b) }
+            // CPU sin puntos de suspension, como Trayectoria.simplificar
+            val fin = System.nanoTime() + 60_000_000L
+            var x = 0
+            while (System.nanoTime() < fin) x++
+            enMarcha.decrementAndGet()
+            return x
+        }
+        val hechas = java.util.concurrent.atomic.AtomicInteger()
+        // Lanzadas a la vez, como al cambiar de tolerancia varias veces seguidas
+        val trabajos = List(4) { launch { CuentasClaves.enTurno { cuenta().also { hechas.incrementAndGet() } } } }
+        // La primera ya corre y las demas esperan turno: la ultima se cancela esperando y ni empieza
+        kotlinx.coroutines.delay(20)
+        trabajos.last().cancel()
+        trabajos.forEach { it.join() }
+        assertEquals(1, maximo.get())
+        assertEquals(3, hechas.get())
+        assertEquals(0, enMarcha.get())
     }
 
     @Test fun laComparacionConElOriginalEsLaDelInforme() {

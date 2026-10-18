@@ -48,7 +48,10 @@ internal object LogicaAnimacion {
     enum class Accion {
         /** Se sumo una nueva, conservando las demas. */
         SUMADA,
-        /** La elegida paso a ser otra, con su misma duracion. */
+        /**
+         * La elegida paso a ser otra: con la duracion que le hubiera dado el
+         * usuario, o con la sugerida para la nueva si no la habia tocado.
+         */
         SUSTITUIDA,
         /** Ya estaba puesta: solo pasa a ser la elegida. */
         ELEGIDA,
@@ -132,9 +135,22 @@ internal object LogicaAnimacion {
     }
 
     /**
-     * Duracion de una recien sumada: la sugerida para lo que hace y lo que dura
+     * Sobre que cuentan Empieza y Termina de las piezas de [a] (la primera) y
+     * hasta donde se ve (la segunda). La base es la duracion de la animacion,
+     * la misma que usa la escena, aunque el bloque se haya quedado mas corto
+     * al recortarlo, cambiar su velocidad o dividirlo; se ve hasta el final
+     * del bloque.
+     */
+    fun baseTramos(a: AnimacionAplicada, duracionBloqueUs: Long): Pair<Long, Long> {
+        val base = a.duracionUs.coerceAtLeast(0)
+        return base to minOf(base, duracionBloqueUs.coerceAtLeast(0))
+    }
+
+    /**
+     * Duracion de una recien puesta: la sugerida para lo que hace y lo que dura
      * el bloque ([duracionSugeridaUs]), pegada al fotograma si el usuario usa
-     * el ajuste a fotogramas. Solo al sumar: nunca al cambiar o retocar.
+     * el ajuste a fotogramas. Al sumar, y al sustituir una cuya duracion el
+     * usuario no habia cambiado ([duracionAlSustituir]); nunca al retocar.
      */
     fun duracionInicialUs(o: Opcion, duracionBloqueUs: Long, fotogramas: Boolean): Long {
         val s = duracionSugeridaUs(o.piezas, o.momento, duracionBloqueUs)
@@ -148,9 +164,10 @@ internal object LogicaAnimacion {
      *
      * Con [agregando] (el boton "+") se suma siempre una nueva y las demas se
      * quedan. Sin el: si es la elegida no cambia nada; si ya esta puesta, pasa
-     * a ser la elegida; si no, sustituye a la elegida conservando su duracion,
-     * su id y si esta activa; y si no hay ninguna elegida en esa pestana, se
-     * suma. Solo una sumada recibe la duracion sugerida.
+     * a ser la elegida; si no, sustituye a la elegida conservando su id, si
+     * esta activa y la duracion que le hubiera dado el usuario
+     * ([duracionAlSustituir]); y si no hay ninguna elegida en esa pestana, se
+     * suma con la duracion sugerida.
      */
     fun aplicar(c: Clip, o: Opcion, elegidaId: Long?, agregando: Boolean, fotogramas: Boolean): Aplicacion {
         val lista = aplicadas(c)
@@ -160,7 +177,10 @@ internal object LogicaAnimacion {
             val puesta = lista.lastOrNull { corresponde(it, o) }
             if (puesta != null) return Aplicacion(c, puesta.id, Accion.ELEGIDA)
             if (elegida != null) {
-                val nuevo = c.cambiarAnimacion(elegida.id) { it.copy(nombre = o.nombre, piezas = o.piezas, continuas = o.continuas) }
+                val dur = duracionAlSustituir(elegida, o, c.duracionUs, fotogramas)
+                val nuevo = c.cambiarAnimacion(elegida.id) {
+                    it.copy(nombre = o.nombre, piezas = o.piezas, continuas = o.continuas, duracionUs = dur)
+                }
                 return Aplicacion(nuevo, elegida.id, Accion.SUSTITUIDA)
             }
         }
@@ -170,6 +190,19 @@ internal object LogicaAnimacion {
             duracionUs = duracionInicialUs(o, c.duracionUs, fotogramas)
         )
         return Aplicacion(c.conAnimacion(a), id, Accion.SUMADA)
+    }
+
+    /**
+     * La duracion de [a] al cambiarla por [o] sin "+". Si sigue siendo la que
+     * se le sugirio a [a] (con lo que lleva, lo que dura el bloque y el mismo
+     * ajuste a fotogramas), el usuario no la eligio: pasa a la sugerida de
+     * [o], asi un rebote no se queda con la de un flash. Si es otra, la eligio
+     * el usuario y se queda. Una que el usuario puso justo en la sugerida
+     * cuenta como no tocada; con el bloque recortado despues, como tocada.
+     */
+    fun duracionAlSustituir(a: AnimacionAplicada, o: Opcion, duracionBloqueUs: Long, fotogramas: Boolean): Long {
+        val sugerida = duracionInicialUs(Opcion(a.nombre, a.momento, a.piezas, a.continuas), duracionBloqueUs, fotogramas)
+        return if (a.duracionUs == sugerida) duracionInicialUs(o, duracionBloqueUs, fotogramas) else a.duracionUs
     }
 
     /** Las piezas nuevas de la animacion [id]; sin ninguna, la animacion se quita (como "Ninguna" antes). */

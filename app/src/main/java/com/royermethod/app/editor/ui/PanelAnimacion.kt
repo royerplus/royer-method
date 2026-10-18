@@ -300,7 +300,10 @@ private fun ZonaFija(estado: EstadoEditor, c: Clip, vista: VistaAnimacion, elegi
         elegida.momento == MomentoAnimacion.SIEMPRE ->
             FilaFija("Duracion", "Todo el bloque (${TiempoPreciso.texto(c.duracionUs.coerceAtLeast(0))})")
         else -> key(elegida.id) {
-            val (minimo, maximo) = LogicaAnimacion.limitesDuracion(c.duracionUs)
+            val (minimo, limite) = LogicaAnimacion.limitesDuracion(c.duracionUs)
+            // Si ya dura mas que el bloque (se recorto despues), se ensena la de
+            // verdad, la que usa la escena, y se puede bajar desde ahi
+            val maximo = maxOf(limite, elegida.duracionUs)
             val fotogramas = AjustesEditor.ajustarFotogramas
             // Una duracion: el ajuste a fotogramas se cuenta desde 0. No mueve el
             // cabezal. Con el ajuste, sin deslizador: en 330 dp el catalogo
@@ -709,10 +712,15 @@ private fun AjustesElegida(estado: EstadoEditor, c: Clip, a: AnimacionAplicada, 
         PiezasContinuas(estado, a)
     } else {
         if (a.momento == MomentoAnimacion.SALIDA) Nota("En la salida, Empieza y Termina se cuentan hacia atras desde el final del bloque.")
+        // Los tramos cuentan sobre lo que dura la animacion, como en la escena,
+        // aunque el bloque se haya quedado mas corto; solo se ve lo que cabe
+        val (base, visible) = LogicaAnimacion.baseTramos(a, c.duracionUs)
+        if (base > visible) Nota("Dura ${TiempoPreciso.texto(base)}, mas que el bloque: lo que pasa de ${TiempoPreciso.texto(visible)} no se ve.")
         Piezas(
             a.id,
             a.piezas,
-            duracionUs = a.duracionUs.coerceIn(0, c.duracionUs.coerceAtLeast(0)),
+            duracionUs = base,
+            visibleUs = visible,
             // En la entrada los tramos son instantes desde el comienzo del bloque: el
             // ajuste a fotogramas se cuenta desde donde empieza en la linea
             origenUs = if (a.momento == MomentoAnimacion.ENTRADA) estado.inicioElegido ?: 0L else 0L,
@@ -743,6 +751,7 @@ private fun Piezas(
     idAnimacion: Long,
     piezas: List<Movimiento>,
     duracionUs: Long,
+    visibleUs: Long,
     origenUs: Long,
     onCambio: (List<Movimiento>, Boolean) -> Unit,
     guardada: Boolean,
@@ -786,17 +795,18 @@ private fun Piezas(
                 Column(Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
                     Deslizador("Cuanto", m.intensidad, 0f, 3f, { v -> cambiar(m.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
                     Opciones(Curva.values().toList(), m.curva, { it.nombre }, { cu -> cambiar(m.copy(curva = cu), false) })
-                    if (duracionUs > 0) {
+                    if (duracionUs > 0 && visibleUs > 0) {
                         val inicio = tramo(m.desde, duracionUs)
                         val fin = tramo(m.hasta, duracionUs).coerceAtLeast(inicio)
                         // El motor admite tramos desde 0.001 de la animacion; con
                         // el ajuste a fotogramas el limite practico es un fotograma
                         val minimo = if (AjustesEditor.ajustarFotogramas) Linea.tiempoDe(1) else 1L
-                        val paso = min(duracionUs, maxOf(minimo, (duracionUs + 999) / 1000))
-                        CampoTiempo("Empieza", inicio, 0, (fin - paso).coerceAtLeast(0), { us, arrastre ->
+                        val paso = min(visibleUs, maxOf(minimo, (duracionUs + 999) / 1000))
+                        // Se escribe sobre lo que dura la animacion, pero solo dentro de lo que se ve
+                        CampoTiempo("Empieza", inicio, 0, (min(fin, visibleUs) - paso).coerceAtLeast(0), { us, arrastre ->
                             cambiar(m.copy(desde = us.toFloat() / duracionUs), arrastre)
                         }, origenUs = origenUs)
-                        CampoTiempo("Termina", fin, (inicio + paso).coerceAtMost(duracionUs), duracionUs, { us, arrastre ->
+                        CampoTiempo("Termina", fin, (inicio + paso).coerceAtMost(visibleUs), visibleUs, { us, arrastre ->
                             cambiar(m.copy(hasta = us.toFloat() / duracionUs), arrastre)
                         }, origenUs = origenUs)
                     }

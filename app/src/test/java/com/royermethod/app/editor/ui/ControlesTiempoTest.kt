@@ -106,8 +106,11 @@ class ControlesTiempoTest {
     @Test fun elTextoParaEditarNoLlevaUnidad() {
         assertEquals("0.005", TiempoCampo.textoEditable(5_000))
         assertEquals("0.033333", TiempoCampo.textoEditable(33_333))
+        // En pantalla el fotograma sale redondeado, pero lo que se ofrece para editar es exacto
+        assertEquals("≈1.067 s", TiempoPreciso.texto(1_066_666))
+        assertEquals("1.066666", TiempoCampo.textoEditable(1_066_666))
         // Lo que se ofrece se lee igual
-        for (us in longArrayOf(0, 1_000, 5_000, 33_333, 2_500_000)) {
+        for (us in longArrayOf(0, 1_000, 5_000, 33_333, 1_066_666, 2_500_000)) {
             assertEquals(us, TiempoCampo.leer(TiempoCampo.textoEditable(us), 0, 10_000_000, fotogramas = false).us)
         }
     }
