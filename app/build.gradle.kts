@@ -107,3 +107,11 @@ dependencies {
         "${android.sdkDirectory}/platforms/android-${android.compileSdk}/optional/android.test.runner.jar"
     ))
 }
+
+// El banco de la vista previa (EscenaRendimientoTest) va apagado. Se enciende
+// pasando -Dbench=1 a gradle; las opciones bench.* tambien llegan a las pruebas.
+tasks.withType<Test>().configureEach {
+    System.getProperties().stringPropertyNames()
+        .filter { it == "bench" || it.startsWith("bench.") }
+        .forEach { systemProperty(it, System.getProperty(it)) }
+}
