@@ -317,15 +317,21 @@ internal fun atrasEditor(estado: EstadoEditor, onVolver: () -> Unit) {
 /**
  * Mete los ejemplos de movimiento al final de la linea principal (si el
  * proyecto esta vacio, son el proyecto) en un solo paso de deshacer, y deja el
- * cabezal parado al comienzo del primero.
+ * cabezal parado al comienzo del primero. Con el iman a fotogramas puesto (lo
+ * de fabrica) avisa de que las claves del golpe de zoom, a 5 ms, solo se
+ * mueven por separado sin el.
  */
 internal fun cargarEjemplos(estado: EstadoEditor, a: Origen, b: Origen?) {
     var inicio = 0L
     estado.hacer { p -> EjemplosMovimiento.agregar(p, a, b).also { inicio = it.inicioUs }.proyecto }
     estado.elegir(null)
     estado.pausarEn(inicio)
-    estado.avisar("Ejemplos agregados. Deshacer para quitarlos")
+    estado.avisar(if (AjustesEditor.ajustarFotogramas) AVISO_EJEMPLOS_IMAN else AVISO_EJEMPLOS)
 }
+
+internal const val AVISO_EJEMPLOS = "Ejemplos agregados. Deshacer para quitarlos"
+internal const val AVISO_EJEMPLOS_IMAN =
+    "Ejemplos agregados (Deshacer los quita). Las claves a 5 ms del zoom se mueven con Ajustar a fotogramas apagado"
 
 /**
  * Una foto para los ejemplos, pintada aqui: degradado de [arriba] a [abajo],

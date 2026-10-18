@@ -129,16 +129,17 @@ internal class VistaAnimacion(
     var categoria by mutableStateOf<String?>(null)
 
     /**
-     * El boton atras del sistema: cierra primero el desplegable y despues sale
-     * de "+" o de los ajustes de la elegida ([hayElegida]: si no, no se ven), de
-     * vuelta al catalogo. True si cerro algo; si no, se cierra la hoja. El
-     * dialogo de convertir es una ventana y atiende su propio atras.
+     * El boton atras del sistema (ver [AtrasAnimacion.de]). True si cerro algo;
+     * si no, se cierra la hoja. El dialogo de convertir es una ventana y
+     * atiende su propio atras.
      */
-    fun alAtras(hayElegida: Boolean): Boolean = when {
-        menu -> { menu = false; true }
-        agregando -> { agregando = false; true }
-        ajustes && hayElegida -> { ajustes = false; true }
-        else -> false
+    fun alAtras(hayElegida: Boolean): Boolean {
+        when (AtrasAnimacion.de(menu, agregando, ajustes, hayElegida) ?: return false) {
+            AtrasAnimacion.MENU -> menu = false
+            AtrasAnimacion.AGREGANDO -> agregando = false
+            AtrasAnimacion.AJUSTES -> ajustes = false
+        }
+        return true
     }
 
     companion object {
@@ -151,6 +152,26 @@ internal class VistaAnimacion(
                 ).apply { categoria = (it[4] as String).ifEmpty { null } }
             }
         )
+    }
+}
+
+/** Lo que cierra el boton atras dentro de Animar. */
+internal enum class AtrasAnimacion {
+    MENU, AGREGANDO, AJUSTES;
+
+    companion object {
+        /**
+         * Por orden: el desplegable, el "+" y los ajustes de la elegida
+         * ([hayElegida]: si no, no se ven). Null si nada: entonces se cierra
+         * la hoja. Aqui y no en [VistaAnimacion] ni suelta en este fichero,
+         * que necesitan Compose para cargarse: asi se prueba en el ordenador.
+         */
+        fun de(menu: Boolean, agregando: Boolean, ajustes: Boolean, hayElegida: Boolean): AtrasAnimacion? = when {
+            menu -> MENU
+            agregando -> AGREGANDO
+            ajustes && hayElegida -> AJUSTES
+            else -> null
+        }
     }
 }
 

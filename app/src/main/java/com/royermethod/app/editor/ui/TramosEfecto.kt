@@ -4,6 +4,7 @@ import com.royermethod.app.editor.modelo.CatalogoEfectos
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.CombinacionEfectos
 import com.royermethod.app.editor.modelo.EfectoVideo
+import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.TipoEfectoVideo
 import com.royermethod.app.editor.modelo.conIdsEfectos
@@ -266,6 +267,84 @@ internal object TramosEfecto {
     fun conRango(e: EfectoVideo, inicioUs: Long, finUs: Long): EfectoVideo =
         if (inicioUs < 0 || finUs <= inicioUs || (inicioUs == e.inicioUs && finUs == e.finUs)) e else e.conRango(inicioUs, finUs)
 
+    // ---- Avisos: lo que el motor no va a ensenar ----
+
+    /** Los tipos que recortan la imagen con una mascara. */
+    val MASCARAS = setOf(
+        TipoEfectoVideo.CIRCULO, TipoEfectoVideo.BARRIDO, TipoEfectoVideo.CIRCULO_CERRAR,
+        TipoEfectoVideo.CIRCULO_ABRIR, TipoEfectoVideo.REVELAR_HORIZONTAL
+    )
+
+    private fun enciende(e: EfectoVideo) = e.activo && e.intensidad.isFinite() && e.intensidad > 0f && e.finUs > e.inicioUs
+
+    /**
+     * Las mascaras no se suman: en cada instante el motor (Escena.efectosVideo)
+     * usa la primera de la lista que actua. Las encendidas que van antes que
+     * [id] en la lista y coinciden con el en el tiempo, que lo tapan mientras
+     * coinciden. Vacio si [id] no es una mascara, esta apagado o no lo tapa nada.
+     */
+    fun mascarasDelante(efectos: List<EfectoVideo>, id: Long): List<EfectoVideo> {
+        val i = efectos.indexOfFirst { it.id == id }
+        val e = efectos.getOrNull(i) ?: return emptyList()
+        if (e.tipo !in MASCARAS || !enciende(e)) return emptyList()
+        return efectos.subList(0, i).filter {
+            it.tipo in MASCARAS && enciende(it) && maxOf(it.inicioUs, e.inicioUs) < minOf(it.finUs, e.finUs)
+        }
+    }
+
+    /** Si las de [delante] cubren todo el tramo de [e]: entonces no se ve nunca. */
+    fun tapadaEntera(e: EfectoVideo, delante: List<EfectoVideo>): Boolean {
+        var hasta = e.inicioUs
+        for (o in delante.sortedBy { it.inicioUs }) {
+            if (o.inicioUs > hasta) break
+            hasta = maxOf(hasta, o.finUs)
+            if (hasta >= e.finUs) return true
+        }
+        return hasta >= e.finUs
+    }
+
+    /** Solo luz: Escena la toma en el instante del fotograma, no en las muestras del obturador. */
+    private val SOLO_LUZ = setOf(
+        TipoEfectoVideo.FLASH, TipoEfectoVideo.FLASH_NEGRO, TipoEfectoVideo.ESTROBO,
+        TipoEfectoVideo.RGB, TipoEfectoVideo.NEGATIVO
+    )
+
+    /** Mueven la imagen y ademas llevan luz o color. */
+    private val CON_LUZ = setOf(TipoEfectoVideo.GLITCH, TipoEfectoVideo.TWITCH, TipoEfectoVideo.ANIMACION)
+
+    /**
+     * Si algun cuadro exportado llega a ver [e]: algun fotograma de la linea
+     * dentro del bloque (que empieza en [inicioBloqueUs] y dura
+     * [duracionBloqueUs]) cuyo instante o alguna de sus [muestras] del
+     * obturador caen en el efecto. Las cuentas de Escena: la luz se toma en el
+     * instante del fotograma y lo demas en las muestras (con una, el mismo
+     * instante). Sin el iman, un efecto de menos de un fotograma (33 ms) puede
+     * caer entre dos: en la vista previa se ve con el cabezal encima, pero en
+     * el video no sale. No cambia lo que se dibuja; es para avisar.
+     */
+    fun seVeAlExportar(e: EfectoVideo, inicioBloqueUs: Long, duracionBloqueUs: Long, muestras: Int): Boolean {
+        if (duracionBloqueUs <= 0 || e.finUs <= e.inicioUs) return false
+        val ini = inicioBloqueUs.coerceAtLeast(0)
+        val ultimo = duracionBloqueUs - 1
+        val k = muestras.coerceIn(1, Escena.MAX_MUESTRAS)
+        val exp = 1_000_000.0 / Linea.FPS * 0.5
+        val centro = k <= 1 || e.tipo in SOLO_LUZ || e.tipo in CON_LUZ
+        val enMuestras = k > 1 && e.tipo !in SOLO_LUZ
+        // Basta mirar los fotogramas cuya exposicion puede tocar el efecto
+        var f = maxOf(Linea.fotogramaDe(ini), Linea.fotogramaDe(ini + (e.inicioUs - exp.toLong() - 1).coerceAtLeast(0)))
+        while (true) {
+            val t = Linea.tiempoDe(f)
+            val local = t - ini
+            if (local > ultimo || local - exp > e.finUs + 1) return false
+            if (centro && local >= e.inicioUs && local < e.finUs) return true
+            if (enMuestras) for (i in 0 until k) {
+                val s = ((t + ((i + 0.5) / k - 0.5) * exp).toLong() - ini).coerceIn(0, ultimo)
+                if (s >= e.inicioUs && s < e.finUs) return true
+            }
+            f++
+        }
+    }
+
     // ---- Los campos de tiempo del panel ----
 
     /** "Inicio": lleva el tramo entero a [us], con lo que dura y su reloj, sin salir del bloque. */
@@ -334,6 +413,22 @@ internal object TramosEfecto {
         TipoEfectoVideo.DESENFOQUE_DIRECCIONAL -> "Rastro"
         TipoEfectoVideo.CIRCULO -> "Circulo"
         else -> nombre(e)
+    }
+
+    /**
+     * Lo que dice la linea de tiempo de los efectos de un bloque: "FX n" y,
+     * si alguno es de una combinacion, el nombre del grupo que empieza antes
+     * sin su numero ("FX 3 · Mitades que se juntan"). Asi los ejemplos y las
+     * combinaciones se reconocen sin abrir cada bloque. Vacio sin efectos.
+     */
+    fun rotuloBloque(efectos: List<EfectoVideo>): String {
+        if (efectos.isEmpty()) return ""
+        val grupo = efectos.filter { it.grupo.isNotBlank() }
+            .minWithOrNull(compareBy<EfectoVideo>({ it.inicioUs }, { it.finUs }))?.grupo?.trim()
+            ?: return "FX ${efectos.size}"
+        val numero = grupo.substringAfterLast(' ', "").toIntOrNull()
+        val nombre = if (numero != null) grupo.substringBeforeLast(' ').trimEnd() else grupo
+        return "FX ${efectos.size} · $nombre"
     }
 
     /** Cuantos efectos de cada tipo hay ya en el bloque (para marcarlos en el catalogo). */

@@ -819,9 +819,11 @@ private fun DrawScope.bloque(
             }
         }
         val ancho = x1 - x0
-        // En las filas bajas (capas) "FX n" no cabe en su propia linea: va detras de la etiqueta
+        // En las filas bajas (capas) "FX n" no cabe en su propia linea: va detras de la etiqueta.
+        // Lleva el nombre de su combinacion: asi se reconocen los ejemplos sin abrirlos
         val fxAparte = alto >= 48.dp.toPx()
-        val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  FX ${c.efectos.size}" else ""
+        val rotuloFx = TramosEfecto.rotuloBloque(c.efectos)
+        val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  $rotuloFx" else ""
         if (c.esTexto) {
             texto(medidor, "T  " + c.nombre() + fxDetras, Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
         } else if (ancho > 44.dp.toPx()) {
@@ -837,9 +839,10 @@ private fun DrawScope.bloque(
                 val xf = xb + min(efecto.finUs, c.duracionUs) * pxUs
                 if (xf > xi) franja(xi, xf, y0 + (6 + i * 4).dp.toPx(), 2.dp.toPx(), if (efecto.activo) Ink.White90 else Ink.White30)
             }
+            // Con fondo: encima de una foto clara no se leia
             if (fxAparte && ancho > 55.dp.toPx()) texto(
-                medidor, "FX ${c.efectos.size}", Offset(x0 + 7.dp.toPx(), y0 + 23.dp.toPx()),
-                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - 10.dp.toPx()
+                medidor, rotuloFx, Offset(x0 + 7.dp.toPx(), y0 + 23.dp.toPx()),
+                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx(), fondo = Color.Black.copy(alpha = 0.55f)
             )
         }
     }
@@ -939,7 +942,7 @@ private fun DrawScope.sonido(
 
 private fun DrawScope.texto(
     medidor: TextMeasurer, s: String, en: Offset, color: Color, sp: Float,
-    centrado: Boolean = false, negrita: Boolean = false, maxAncho: Float = Float.MAX_VALUE
+    centrado: Boolean = false, negrita: Boolean = false, maxAncho: Float = Float.MAX_VALUE, fondo: Color? = null
 ) {
     if (maxAncho < 8f) return
     val estilo = TextStyle(color = color, fontSize = (sp * Estilo.letra).sp, fontWeight = if (negrita) FontWeight.Medium else FontWeight.Normal, letterSpacing = 0.2.sp)
@@ -948,5 +951,10 @@ private fun DrawScope.texto(
         constraints = Constraints(maxWidth = if (maxAncho == Float.MAX_VALUE) Constraints.Infinity else maxAncho.toInt().coerceAtLeast(1))
     )
     val x = if (centrado) en.x - r.size.width / 2 else en.x
-    drawText(r, topLeft = Offset(x, en.y - r.size.height / 2))
+    val y = en.y - r.size.height / 2
+    if (fondo != null) {
+        val m = 3.dp.toPx()
+        drawRoundRect(fondo, Offset(x - m, y), Size(r.size.width + 2 * m, r.size.height.toFloat()), CornerRadius(m, m))
+    }
+    drawText(r, topLeft = Offset(x, y))
 }

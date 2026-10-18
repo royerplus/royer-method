@@ -11,12 +11,14 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -35,10 +37,13 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -54,6 +59,7 @@ import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.components.reloj
 import com.royermethod.app.ui.theme.Ink
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * El editor.
@@ -307,92 +313,118 @@ private fun Herramientas(
     onEjemplos: () -> Unit
 ) {
     val s = estado.seleccion
+    val desliza = rememberScrollState()
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .height(76.dp)
-            .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Box(Modifier.fillMaxWidth().height(76.dp)) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .horizontalScroll(desliza)
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (s != null) {
+                Herramienta(Glifos.atras, "Volver", { estado.elegir(null) })
+                Box(Modifier.width(1.dp).height(36.dp).background(Ink.White15))
+            }
+            when (s) {
+                null -> {
+                    Herramienta(Glifos.editar, "Editar", {
+                        // Elige lo que hay en la pista principal bajo el cabezal
+                        val p = estado.proyecto
+                        val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
+                        val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
+                            ?: en?.segundo ?: en?.primero
+                        if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
+                    })
+                    Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
+                    Herramienta(Glifos.ajustes, "Efectos", {
+                        val p = estado.proyecto
+                        val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
+                        val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
+                            ?: en?.segundo ?: en?.primero
+                        if (c != null) {
+                            estado.elegir(Seleccion.Bloque(c.id))
+                            estado.panel = Panel.EFECTOS
+                        } else estado.avisar("Selecciona una foto, un video o una capa para agregar efectos")
+                    })
+                    Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
+                    Herramienta(Glifos.texto, "Texto", {
+                        var nuevo = 0L
+                        estado.hacer { p -> Edicion.agregarTexto(p, TEXTO_NUEVO, estado.tiempo).also { nuevo = it.second }.first }
+                        estado.elegir(Seleccion.Bloque(nuevo))
+                        estado.panel = Panel.TEXTO
+                    })
+                    Herramienta(Glifos.audio, "Sonido", onAgregarSonido)
+                    Herramienta(Glifos.formato, "Formato", { estado.panel = Panel.FORMATO })
+                    // Bloques hechos con las herramientas de movimiento, para verlas y cambiarlas
+                    Herramienta(Glifos.animacion, "Ejemplos", onEjemplos)
+                    Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
+                    Herramienta(Glifos.guardar, "Guardar proyecto", onGuardarProyecto)
+                }
+                is Seleccion.Sonido -> {
+                    val id = s.id
+                    Herramienta(Glifos.dividir, "Dividir", {
+                        val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
+                        if (r == null) estado.avisar("Pon el cabezal dentro del sonido para dividirlo") else estado.hacer { r.first }
+                    })
+                    Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
+                    Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                    Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                }
+                else -> {
+                    val c = estado.clipElegido ?: return@Row
+                    val id = c.id
+                    val principal = estado.proyecto.principal
+                    val i = principal.indexOfFirst { it.id == id }
+                    Herramienta(Glifos.dividir, "Dividir", {
+                        val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
+                        if (r == null) estado.avisar("Pon el cabezal dentro del bloque, lejos de sus bordes") else estado.hacer { r.first }
+                    })
+                    if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
+                    if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
+                    Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
+                    Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
+                    Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
+                    if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
+                    Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                    Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                    Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
+                    if (!c.esTexto) Herramienta(Glifos.color, "Color", { estado.panel = Panel.COLOR })
+                    Herramienta(Glifos.curva, "Claves", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())
+                    if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
+                    if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
+                    else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
+                    // Lo de la pantalla de Mejorar, al final: fotogramas y peso de este bloque
+                    if (c.esVideo) Herramienta(Glifos.fluidez, "Fluidez", { estado.panel = Panel.FLUIDEZ }, resaltada = c.fluido)
+                    Herramienta(Glifos.compresion, "Compresion", { estado.panel = Panel.COMPRESION }, resaltada = c.calidad != 1f)
+                }
+            }
+        }
+        MasALaDerecha(desliza, Modifier.align(Alignment.CenterEnd))
+    }
+}
+
+/**
+ * Pista de que la fila de herramientas sigue a la derecha: en 360-393 dp
+ * "Ejemplos", "Abrir proyecto" y "Guardar proyecto" quedaban fuera sin que
+ * nada lo dijera. Un fundido con una flecha; tocarla lleva al final. Se va
+ * al llegar.
+ */
+@Composable
+private fun MasALaDerecha(desliza: ScrollState, modifier: Modifier) {
+    val alcance = rememberCoroutineScope()
+    val hayMas by remember(desliza) { derivedStateOf { desliza.value < desliza.maxValue } }
+    if (!hayMas) return
+    Box(
+        modifier
+            .width(36.dp)
+            .fillMaxHeight()
+            .background(Brush.horizontalGradient(listOf(Color.Transparent, Ink.Black.copy(alpha = 0.92f))))
+            .clickable { alcance.launch { desliza.animateScrollTo(desliza.maxValue) } },
+        contentAlignment = Alignment.CenterEnd
     ) {
-        if (s != null) {
-            Herramienta(Glifos.atras, "Volver", { estado.elegir(null) })
-            Box(Modifier.width(1.dp).height(36.dp).background(Ink.White15))
-        }
-        when (s) {
-            null -> {
-                Herramienta(Glifos.editar, "Editar", {
-                    // Elige lo que hay en la pista principal bajo el cabezal
-                    val p = estado.proyecto
-                    val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
-                    val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
-                        ?: en?.segundo ?: en?.primero
-                    if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
-                })
-                Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
-                Herramienta(Glifos.ajustes, "Efectos", {
-                    val p = estado.proyecto
-                    val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
-                    val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
-                        ?: en?.segundo ?: en?.primero
-                    if (c != null) {
-                        estado.elegir(Seleccion.Bloque(c.id))
-                        estado.panel = Panel.EFECTOS
-                    } else estado.avisar("Selecciona una foto, un video o una capa para agregar efectos")
-                })
-                Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
-                Herramienta(Glifos.texto, "Texto", {
-                    var nuevo = 0L
-                    estado.hacer { p -> Edicion.agregarTexto(p, TEXTO_NUEVO, estado.tiempo).also { nuevo = it.second }.first }
-                    estado.elegir(Seleccion.Bloque(nuevo))
-                    estado.panel = Panel.TEXTO
-                })
-                Herramienta(Glifos.audio, "Sonido", onAgregarSonido)
-                Herramienta(Glifos.formato, "Formato", { estado.panel = Panel.FORMATO })
-                // Bloques hechos con las herramientas de movimiento, para verlas y cambiarlas
-                Herramienta(Glifos.animacion, "Ejemplos", onEjemplos)
-                Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
-                Herramienta(Glifos.guardar, "Guardar proyecto", onGuardarProyecto)
-            }
-            is Seleccion.Sonido -> {
-                val id = s.id
-                Herramienta(Glifos.dividir, "Dividir", {
-                    val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
-                    if (r == null) estado.avisar("Pon el cabezal dentro del sonido para dividirlo") else estado.hacer { r.first }
-                })
-                Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
-                Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
-                Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
-            }
-            else -> {
-                val c = estado.clipElegido ?: return@Row
-                val id = c.id
-                val principal = estado.proyecto.principal
-                val i = principal.indexOfFirst { it.id == id }
-                Herramienta(Glifos.dividir, "Dividir", {
-                    val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
-                    if (r == null) estado.avisar("Pon el cabezal dentro del bloque, lejos de sus bordes") else estado.hacer { r.first }
-                })
-                if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
-                if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
-                Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
-                Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
-                Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
-                if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
-                Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
-                Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
-                Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
-                if (!c.esTexto) Herramienta(Glifos.color, "Color", { estado.panel = Panel.COLOR })
-                Herramienta(Glifos.curva, "Claves", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())
-                if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
-                if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
-                else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
-                // Lo de la pantalla de Mejorar, al final: fotogramas y peso de este bloque
-                if (c.esVideo) Herramienta(Glifos.fluidez, "Fluidez", { estado.panel = Panel.FLUIDEZ }, resaltada = c.fluido)
-                Herramienta(Glifos.compresion, "Compresion", { estado.panel = Panel.COMPRESION }, resaltada = c.calidad != 1f)
-            }
-        }
+        Icono(Glifos.siguiente, Modifier.padding(end = 4.dp), color = Ink.White70, tam = 18.dp)
     }
 }
 
@@ -403,7 +435,8 @@ private fun Aviso(estado: EstadoEditor, modifier: Modifier) {
     LaunchedEffect(estado.avisoN) {
         if (estado.avisoN == 0) return@LaunchedEffect
         visible = true
-        delay(2600)
+        // Los largos (varias lineas) se quedan mas para poder leerlos
+        delay(if ((estado.aviso?.length ?: 0) > 60) 4500L else 2600L)
         visible = false
     }
     AnimatedVisibility(visible, modifier, enter = fadeIn(tween(160)) + slideInVertically { -it / 2 }, exit = fadeOut(tween(300)) + slideOutVertically { -it / 3 }) {

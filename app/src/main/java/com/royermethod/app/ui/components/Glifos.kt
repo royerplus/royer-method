@@ -48,6 +48,8 @@ private fun DrawScope.circulo(c: Color, x: Float, y: Float, r: Float, relleno: B
 
 object Glifos {
     val atras: Glifo = { c -> camino(c, false, false, 15f, 5f, 8f, 12f, 15f, 19f) }
+    /** El contrario de atras: hay mas a la derecha. */
+    val siguiente: Glifo = { c -> camino(c, false, false, 9f, 5f, 16f, 12f, 9f, 19f) }
     val cerrar: Glifo = { c -> linea(c, 6f, 6f, 18f, 18f); linea(c, 18f, 6f, 6f, 18f) }
     val listo: Glifo = { c -> camino(c, false, false, 5f, 12.5f, 10f, 17.5f, 19f, 7f) }
     val mas: Glifo = { c -> linea(c, 12f, 5f, 12f, 19f); linea(c, 5f, 12f, 19f, 12f) }
