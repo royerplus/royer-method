@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
+import com.royermethod.app.ui.theme.radio
 
 /**
  * Ventana de error.
@@ -49,16 +50,16 @@ fun ErrorDialog(mensaje: String, onCerrar: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(radio(24.dp)))
                 .drawBehind {
-                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(24.dp.toPx()))
+                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(radio(24.dp).toPx()))
                     drawRoundRect(
                         color = Ink.White, alpha = 0.06f,
-                        cornerRadius = CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(radio(24.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White, alpha = 0.20f,
-                        cornerRadius = CornerRadius(24.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(24.dp).toPx()),
                         style = Stroke(width = 1.dp.toPx())
                     )
                 }
@@ -94,16 +95,16 @@ fun SubirDialog(onSeguir: () -> Unit, onCancelar: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(radio(24.dp)))
                 .drawBehind {
-                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(24.dp.toPx()))
+                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(radio(24.dp).toPx()))
                     drawRoundRect(
                         color = Ink.White, alpha = 0.06f,
-                        cornerRadius = CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(radio(24.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White, alpha = 0.20f,
-                        cornerRadius = CornerRadius(24.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(24.dp).toPx()),
                         style = Stroke(width = 1.dp.toPx())
                     )
                 }
@@ -158,21 +159,21 @@ fun AvisoDialog(
                     scaleX = s
                     scaleY = s
                 }
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(radio(24.dp)))
                 .drawBehind {
                     drawRoundRect(
                         color = Ink.Black,
-                        cornerRadius = CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(radio(24.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White,
                         alpha = 0.06f,
-                        cornerRadius = CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(radio(24.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White,
                         alpha = 0.20f,
-                        cornerRadius = CornerRadius(24.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(24.dp).toPx()),
                         style = Stroke(width = 1.dp.toPx())
                     )
                 }
@@ -214,7 +215,7 @@ fun AvisoDialog(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(RoundedCornerShape(radio(10.dp)))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null
@@ -225,17 +226,17 @@ fun AvisoDialog(
                 Box(
                     Modifier
                         .size(18.dp)
-                        .clip(RoundedCornerShape(5.dp))
+                        .clip(RoundedCornerShape(radio(5.dp)))
                         .drawBehind {
                             drawRoundRect(
                                 color = Ink.White,
                                 alpha = if (noRepetir) 0.9f else 0.06f,
-                                cornerRadius = CornerRadius(5.dp.toPx())
+                                cornerRadius = CornerRadius(radio(5.dp).toPx())
                             )
                             drawRoundRect(
                                 color = Ink.White,
                                 alpha = 0.3f,
-                                cornerRadius = CornerRadius(5.dp.toPx()),
+                                cornerRadius = CornerRadius(radio(5.dp).toPx()),
                                 style = Stroke(width = 1.dp.toPx())
                             )
                         }

@@ -1,0 +1,992 @@
+package com.royermethod.app.editor.ui
+
+import androidx.compose.animation.core.AnimationState
+import androidx.compose.animation.core.animateDecay
+import androidx.compose.animation.core.exponentialDecay
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateZoom
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.ui.text.TextMeasurer
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.royermethod.app.editor.modelo.Clip
+import com.royermethod.app.editor.modelo.Edicion
+import com.royermethod.app.editor.modelo.Linea
+import com.royermethod.app.editor.modelo.PistaAudio
+import com.royermethod.app.editor.modelo.Proyecto
+import com.royermethod.app.editor.modelo.TiempoPreciso
+import com.royermethod.app.editor.modelo.Transicion
+import com.royermethod.app.editor.modelo.mueveSiempre
+import com.royermethod.app.editor.modelo.tramosAnimacion
+import com.royermethod.app.ui.components.Gestos
+import com.royermethod.app.ui.components.segundos
+import com.royermethod.app.ui.theme.Estilo
+import com.royermethod.app.ui.theme.Ink
+import kotlin.math.abs
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+
+/*
+ * La linea de tiempo.
+ *
+ * Se dibuja entera en un solo lienzo, en vez de con un componente por
+ * bloque. Asi el desplazamiento y el zoom solo repintan (no recomponen) y
+ * no hay limite de ancho: un proyecto de diez minutos a zoom maximo mediria
+ * cientos de miles de pixeles, mas de lo que admite un componente.
+ *
+ * El cabezal esta fijo en el centro y lo que se mueve es el tiempo, como en
+ * todos los editores de movil. Arriba la pista principal (siempre a la
+ * vista), debajo una fila por cada nivel de capas y luego el sonido.
+ *
+ * Gestos:
+ *  - arrastrar de lado: mover el cabezal (con inercia)
+ *  - pellizcar: zoom
+ *  - tocar un bloque: elegirlo; tocar el vacio: soltarlo
+ *  - mantener y arrastrar: cambiar de sitio un bloque
+ *  - arrastrar las asas del elegido: recortarlo
+ *  - tocar un rombo del elegido: llevar ahi el cabezal; arrastrarlo: mover
+ *    esa clave (con el iman a fotogramas si esta puesto). Solo si el rombo
+ *    tiene sitio alrededor: con las claves apinadas (una por fotograma) el
+ *    bloque se trata como si no tuviera rombos y arrastrar mueve el cabezal
+ *
+ * Encima van los botones de zoom (ControlesZoom, en PantallaEditor). A zoom
+ * fino un bloque mide millones de pixeles: todo lo que se dibuja se acota a
+ * lo que se ve antes de crear rectangulos o recortes.
+ */
+
+private const val REGLA = 24f
+private const val PRINCIPAL_Y = 30f
+private const val PRINCIPAL_H = 56f
+private const val FILAS_Y = PRINCIPAL_Y + PRINCIPAL_H + 10f
+private const val CAPA_H = 34f
+private const val CAPA_PASO = 40f
+private const val AUDIO_H = 30f
+private const val AUDIO_PASO = 36f
+private const val ASA = 16f
+private const val BOTON_PASO = 22f
+private const val IMAN = 10f
+/** Lo menos que tiene que separar un rombo de los de al lado para cogerlo con el dedo (dp). */
+private const val SEPARACION_ROMBOS = 16f
+
+private enum class Pista { PRINCIPAL, CAPA, AUDIO }
+
+/** Un rectangulo de la linea de tiempo: un bloque o un sonido. */
+private class Pieza(
+    val id: Long,
+    val pista: Pista,
+    /** Lo que se ve de el en la linea (en la principal, hasta la mitad de cada transicion). */
+    val desde: Long,
+    val hasta: Long,
+    /** Donde empieza su contenido (en la principal puede ser antes de [desde]). */
+    val inicio: Long,
+    /** Fila dentro de su zona: capa o sonido. */
+    val fila: Int,
+    val clip: Clip? = null,
+    val audio: PistaAudio? = null
+)
+
+private class Geometria(
+    val piezas: List<Pieza>,
+    /** Uniones de la pista principal: (id del bloque que sale, instante). */
+    val pasos: List<Pair<Clip, Long>>,
+    val finPrincipal: Long,
+    val filasCapa: Int,
+    val filasAudio: Int
+)
+
+private fun geometria(p: Proyecto): Geometria {
+    val piezas = ArrayList<Pieza>()
+    val ini = Linea.inicios(p.principal)
+    val pasos = ArrayList<Pair<Clip, Long>>()
+    for (i in p.principal.indices) {
+        val c = p.principal[i]
+        val antes = if (i > 0) Linea.solape(p.principal[i - 1], c) / 2 else 0L
+        val despues = if (i + 1 < p.principal.size) Linea.solape(c, p.principal[i + 1]) / 2 else 0L
+        piezas.add(Pieza(c.id, Pista.PRINCIPAL, ini[i] + antes, ini[i] + c.duracionUs - despues, ini[i], 0, clip = c))
+        if (i + 1 < p.principal.size) pasos.add(c to ini[i] + c.duracionUs - despues)
+    }
+    var filasCapa = 0
+    for (k in p.capas) {
+        piezas.add(Pieza(k.id, Pista.CAPA, k.inicioUs, k.finUs, k.inicioUs, k.fila, clip = k.clip))
+        filasCapa = max(filasCapa, k.fila + 1)
+    }
+    // Los sonidos van en la primera fila donde no pisan a otro
+    val finDeFila = ArrayList<Long>()
+    for (a in p.audios.sortedBy { it.inicioUs }) {
+        var f = finDeFila.indexOfFirst { it <= a.inicioUs }
+        if (f < 0) { finDeFila.add(a.finUs); f = finDeFila.lastIndex } else finDeFila[f] = a.finUs
+        piezas.add(Pieza(a.id, Pista.AUDIO, a.inicioUs, a.finUs, a.inicioUs, f, audio = a))
+    }
+    return Geometria(piezas, pasos, Linea.duracionPrincipal(p.principal), filasCapa, finDeFila.size)
+}
+
+/** Lo que hay bajo el dedo. */
+private sealed interface Objetivo {
+    data class Bloque(val pieza: Pieza) : Objetivo
+    data class Asa(val pieza: Pieza, val derecha: Boolean) : Objetivo
+    data class Paso(val clip: Clip) : Objetivo
+    /** Un rombo del bloque elegido: [local] es el tiempo de la clave en el bloque. */
+    data class Clave(val pieza: Pieza, val local: Long) : Objetivo {
+        val t: Long get() = pieza.inicio + local
+    }
+    data object Agregar : Objetivo
+    data object AgregarSonido : Objetivo
+    data object Nada : Objetivo
+}
+
+private enum class Modo { TOQUE, ARRASTRE, VERTICAL, ZOOM, LARGO, NADA }
+
+/** Un bloque cogido para llevarlo a otro sitio de la pista principal. */
+private class Cogido(val pieza: Pieza, val x: Float, val y: Float, val destino: Int)
+
+/** Una clave que se esta arrastrando: el bloque y donde va a quedar (tiempo del bloque). */
+private class ClaveCogida(val id: Long, val local: Long)
+
+@Composable
+fun LineaTiempo(
+    estado: EstadoEditor,
+    recursos: Recursos,
+    onAgregar: () -> Unit,
+    onAgregarSonido: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    // Cada repintado mide 10-11 textos distintos (regla, bloques, efectos,
+    // sonido): con la cache de 8 de fabrica casi todos se volvian a maquetar
+    val medidor = rememberTextMeasurer(cacheSize = 32)
+    val alcance = rememberCoroutineScope()
+    val proyecto = estado.proyecto
+    val geo = remember(proyecto) { geometria(proyecto) }
+    val geoActual by rememberUpdatedState(geo)
+    val agregar by rememberUpdatedState(onAgregar)
+    val agregarSonido by rememberUpdatedState(onAgregarSonido)
+    var desplazamientoY by remember { mutableFloatStateOf(0f) }
+    var cogido by remember { mutableStateOf<Cogido?>(null) }
+    // Se lee solo al dibujar: arrastrar una clave repinta, no recompone
+    var claveCogida by remember { mutableStateOf<ClaveCogida?>(null) }
+    var inercia by remember { mutableStateOf<Job?>(null) }
+
+    // Sonando, el cabezal avanza en cada refresco de pantalla con el reloj de
+    // la vista previa, no a saltos de 33 ms cuando publica un fotograma. Solo
+    // mientras la linea esta a la vista; con un panel abierto vuelven a mandar
+    // los avisos de 30 por segundo.
+    LaunchedEffect(estado.reproduciendo) {
+        val instante = estado.instanteSonando ?: return@LaunchedEffect
+        if (!estado.reproduciendo) return@LaunchedEffect
+        estado.siguiendoReloj = true
+        try {
+            while (true) withFrameNanos { ns -> if (estado.reproduciendo) instante(ns)?.let { estado.tiempo = it } }
+        } finally {
+            estado.siguiendoReloj = false
+        }
+    }
+
+    Canvas(
+        modifier
+            .clipToBounds()
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val abajo = awaitFirstDown(requireUnconsumed = false)
+                    inercia?.cancel()
+                    estado.reproduciendo = false
+                    val g = geoActual
+                    val pxUs = estado.dpPorSegundo.dp.toPx() / 1_000_000f
+                    // En Double para los tiempos: a zoom fino un pixel son unos pocos us
+                    val pxPorUs = ZoomLinea.pxPorUs(estado.dpPorSegundo, density)
+                    val centro = size.width / 2f
+                    fun tiempoEnX(x: Float) = ZoomLinea.tiempoEnX(x, estado.tiempo, centro, pxPorUs)
+                    fun xDe(t: Long) = ZoomLinea.xDe(t, estado.tiempo, centro, pxPorUs)
+
+                    // ---- Que hay debajo ----
+                    val pos = abajo.position
+                    val objetivo: Objetivo = run {
+                        val elegido = estado.seleccion
+                        val idElegido = (elegido as? Seleccion.Bloque)?.id ?: (elegido as? Seleccion.Sonido)?.id
+                        // Primero las asas del elegido, que sobresalen del bloque
+                        g.piezas.firstOrNull { it.id == idElegido }?.let { pz ->
+                            val (y0, y1) = filaY(pz, desplazamientoY, g)
+                            val yy0 = y0.dp.toPx(); val yy1 = y1.dp.toPx()
+                            if (pos.y in yy0..yy1) {
+                                val x0 = xDe(pz.desde); val x1 = xDe(pz.hasta)
+                                val asa = ASA.dp.toPx()
+                                // Los rombos de los fotogramas clave, a media altura: el mas
+                                // cercano al dedo (con claves a una milesima se tocan). Dentro
+                                // del bloque mandan sobre las asas, que se cogen por fuera.
+                                val claves = pz.clip?.claves.orEmpty()
+                                if (claves.isNotEmpty() && pos.x > x0 && pos.x < x1 && abs(pos.y - (yy0 + yy1) / 2) < 14.dp.toPx()) {
+                                    // Las que no se ven (antes o despues de lo visible del bloque) no cuentan
+                                    val xs = FloatArray(claves.size) { i ->
+                                        val xk = xDe(pz.inicio + claves[i].tiempoUs)
+                                        if (xk < x0 - 1 || xk > x1 + 1) Float.NaN else xk
+                                    }
+                                    val i = ClavesLinea.masCercana(xs, pos.x, 12.dp.toPx())
+                                    // Solo un rombo con sitio alrededor: con muchas claves juntas
+                                    // el arrastre sigue moviendo el cabezal (para cogerlas, mas zoom)
+                                    val tiempos = LongArray(claves.size) { claves[it].tiempoUs }
+                                    if (i >= 0 && ClavesLinea.aislada(xs, tiempos, i, SEPARACION_ROMBOS.dp.toPx())) {
+                                        return@run Objetivo.Clave(pz, claves[i].tiempoUs)
+                                    }
+                                }
+                                if (pos.x in (x0 - asa - 6.dp.toPx())..(x0 + 4.dp.toPx())) return@run Objetivo.Asa(pz, false)
+                                if (pos.x in (x1 - 4.dp.toPx())..(x1 + asa + 6.dp.toPx())) return@run Objetivo.Asa(pz, true)
+                            }
+                        }
+                        // Botones de transicion entre bloques
+                        val yBoton = (PRINCIPAL_Y + PRINCIPAL_H / 2).dp.toPx()
+                        g.pasos.forEach { (c, t) ->
+                            if (abs(pos.x - xDe(t)) < 20.dp.toPx() && abs(pos.y - yBoton) < 20.dp.toPx()) return@run Objetivo.Paso(c)
+                        }
+                        // El "+" del final
+                        val xMas = xDe(g.finPrincipal) + 14.dp.toPx()
+                        if (pos.x in (xMas - 4.dp.toPx())..(xMas + 46.dp.toPx()) && pos.y in PRINCIPAL_Y.dp.toPx()..(PRINCIPAL_Y + PRINCIPAL_H).dp.toPx()) {
+                            return@run Objetivo.Agregar
+                        }
+                        if (estado.proyecto.principal.isEmpty() && pos.y in PRINCIPAL_Y.dp.toPx()..(PRINCIPAL_Y + PRINCIPAL_H).dp.toPx() &&
+                            pos.x in xDe(0)..(xDe(0) + 210.dp.toPx())
+                        ) {
+                            return@run Objetivo.Agregar
+                        }
+                        g.piezas.lastOrNull { pz ->
+                            val (y0, y1) = filaY(pz, desplazamientoY, g)
+                            pos.y in y0.dp.toPx()..y1.dp.toPx() && pos.x in xDe(pz.desde)..xDe(pz.hasta)
+                        }?.let { return@run Objetivo.Bloque(it) }
+                        // La fila de "agregar sonido" cuando no hay ninguno
+                        if (g.filasAudio == 0) {
+                            val y0 = (filasY(g) - desplazamientoY).dp.toPx()
+                            if (pos.y in y0..(y0 + AUDIO_H.dp.toPx())) return@run Objetivo.AgregarSonido
+                        }
+                        Objetivo.Nada
+                    }
+
+                    // ---- Que gesto es ----
+                    val umbral = viewConfiguration.touchSlop
+                    // Lo que ya se habia movido el dedo al decidir que es un arrastre
+                    var pasado = Offset.Zero
+                    val modo = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                        var m = Modo.NADA
+                        while (true) {
+                            val ev = awaitPointerEvent()
+                            if (ev.changes.count { it.pressed } >= 2) { m = Modo.ZOOM; break }
+                            val c = ev.changes.firstOrNull { it.id == abajo.id }
+                            if (c == null || !c.pressed) { m = Modo.TOQUE; break }
+                            val d = c.position - abajo.position
+                            if (d.getDistance() > umbral) {
+                                pasado = d
+                                m = if (abs(d.y) > abs(d.x) * 1.2f && objetivo !is Objetivo.Asa) Modo.VERTICAL else Modo.ARRASTRE
+                                break
+                            }
+                        }
+                        m
+                    } ?: Modo.LARGO
+
+                    when (modo) {
+                        Modo.TOQUE -> when (objetivo) {
+                            is Objetivo.Bloque -> estado.elegir(
+                                if (objetivo.pieza.pista == Pista.AUDIO) Seleccion.Sonido(objetivo.pieza.id) else Seleccion.Bloque(objetivo.pieza.id)
+                            )
+                            is Objetivo.Paso -> estado.elegir(Seleccion.Paso(objetivo.clip.id))
+                            // Con pausa exacta: el cabezal queda justo en la clave
+                            is Objetivo.Clave -> estado.pausarEn(objetivo.t)
+                            Objetivo.Agregar -> agregar()
+                            Objetivo.AgregarSonido -> agregarSonido()
+                            is Objetivo.Asa -> {}
+                            Objetivo.Nada -> estado.elegir(null)
+                        }
+
+                        Modo.ZOOM -> {
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                if (ev.changes.none { it.pressed }) break
+                                val z = ev.calculateZoom()
+                                if (z != 1f) {
+                                    // Acota al zoom normal o, si esta desbloqueado, al fino
+                                    estado.ponerZoom(estado.dpPorSegundo * z)
+                                }
+                                ev.changes.forEach { it.consume() }
+                            }
+                        }
+
+                        Modo.VERTICAL -> {
+                            val maximo = max(0f, filasY(g) + (max(g.filasAudio, 1)) * AUDIO_PASO + 16f - size.height.toDp().value)
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
+                                if (!c.pressed) break
+                                desplazamientoY = (desplazamientoY - c.positionChange().y.toDp().value).coerceIn(0f, maximo)
+                                c.consume()
+                            }
+                        }
+
+                        Modo.ARRASTRE, Modo.LARGO -> {
+                            val asa = objetivo as? Objetivo.Asa
+                            val rombo = objetivo as? Objetivo.Clave
+                            val bloque = (objetivo as? Objetivo.Bloque)?.takeIf { modo == Modo.LARGO }
+                            val base = estado.proyecto
+                            val iman = IMAN.dp.toPx() / pxUs
+                            fun imanes(sin: Long): List<Long> = buildList {
+                                add(0L); add(estado.tiempo)
+                                g.piezas.filter { it.id != sin }.forEach { add(it.desde); add(it.hasta) }
+                            }
+                            fun pegar(t: Long, puntos: List<Long>): Long {
+                                if (!AjustesEditor.imanes) return t
+                                val cerca = puntos.minByOrNull { abs(it - t) } ?: return t
+                                return if (abs(cerca - t) < iman) cerca else t
+                            }
+
+                            if (rombo != null) {
+                                // ---- Mover un fotograma clave ----
+                                val pz = rombo.pieza
+                                val c = pz.clip
+                                val tol = toleranciaClaves()
+                                // Null tambien si ya esta mas cerca de una vecina que la
+                                // tolerancia: no se mueve (antes saltaba, incluso contra el dedo)
+                                val lim = c?.let { ClavesLinea.limites(it.claves, rombo.local, it.duracionUs, tol) }
+                                if (c == null || lim == null) {
+                                    estado.avisar(
+                                        if (AjustesEditor.ajustarFotogramas) "Demasiado juntas para el iman: apaga Ajustar a fotogramas para moverla"
+                                        else "No hay sitio entre las claves de al lado"
+                                    )
+                                    arrastrar(abajo.id) {}
+                                } else {
+                                    estado.empezarGesto()
+                                    // Desde donde se toco, no desde donde se vio el arrastre:
+                                    // la clave va bajo el dedo
+                                    var acumulado = pasado.x.toDouble()
+                                    fun mover() {
+                                        // Siempre desde como estaba al cogerla: un paso de deshacer
+                                        val d = ClavesLinea.destino(rombo.local, acumulado, pxPorUs, pz.inicio, lim, AjustesEditor.ajustarFotogramas)
+                                        claveCogida = ClaveCogida(c.id, d)
+                                        estado.ajustar { Edicion.moverClave(base, c.id, rombo.t, pz.inicio + d, tol) }
+                                    }
+                                    try {
+                                        mover()
+                                        arrastrar(abajo.id) { dx ->
+                                            acumulado += dx
+                                            mover()
+                                        }
+                                    } finally {
+                                        claveCogida = null
+                                        estado.terminarGesto()
+                                    }
+                                }
+                            } else if (asa != null) {
+                                // ---- Recortar ----
+                                estado.empezarGesto()
+                                val pz = asa.pieza
+                                val puntos = imanes(pz.id)
+                                var acumulado = 0f
+                                try {
+                                    arrastrar(abajo.id) { dx ->
+                                        acumulado += dx
+                                        var d = (acumulado / pxUs).toLong()
+                                        val borde = if (asa.derecha) pz.hasta else pz.desde
+                                        d = pegar(borde + d, puntos) - borde
+                                        estado.ajustar { recorte(base, pz, asa.derecha, d) }
+                                    }
+                                } finally {
+                                    estado.terminarGesto()
+                                }
+                            } else if (bloque != null) {
+                                // ---- Llevar a otro sitio ----
+                                val pz = bloque.pieza
+                                estado.elegir(if (pz.pista == Pista.AUDIO) Seleccion.Sonido(pz.id) else Seleccion.Bloque(pz.id))
+                                estado.empezarGesto()
+                                try {
+                                    val puntos = imanes(pz.id)
+                                    var dx = 0f
+                                    var dy = 0f
+                                    var x = abajo.position.x
+                                    when (pz.pista) {
+                                        Pista.PRINCIPAL -> {
+                                            // Se queda donde estaba hasta que el dedo pasa la mitad
+                                            // de un vecino; cada mitad pasada lo corre un sitio.
+                                            val fila = g.piezas.filter { it.pista == Pista.PRINCIPAL }
+                                            val original = fila.indexOfFirst { it.id == pz.id }
+                                            fun destino(): Int {
+                                                val t = tiempoEnX(x)
+                                                val antes = fila.subList(0, original).count { (it.desde + it.hasta) / 2 > t }
+                                                val despues = fila.subList(original + 1, fila.size).count { (it.desde + it.hasta) / 2 < t }
+                                                return original - antes + despues
+                                            }
+                                            cogido = Cogido(pz, x, abajo.position.y, destino())
+                                            arrastrar(abajo.id) { d ->
+                                                x += d
+                                                cogido = Cogido(pz, x, abajo.position.y, destino())
+                                            }
+                                            val a = destino()
+                                            cogido = null
+                                            estado.ajustar { Edicion.moverPrincipal(base, pz.id, a) }
+                                        }
+                                        Pista.CAPA -> arrastrar(abajo.id, vertical = { dy += it }) { d ->
+                                            dx += d
+                                            val dur = pz.hasta - pz.desde
+                                            var ini = pz.desde + (dx / pxUs).toLong()
+                                            // Se pega por el principio o por el final, lo que quede mas cerca
+                                            val a = pegar(ini, puntos)
+                                            val b = pegar(ini + dur, puntos) - dur
+                                            ini = if (abs(a - ini) <= abs(b - ini) && a != ini) a else if (b != ini) b else ini
+                                            val fila = (pz.fila + (dy / CAPA_PASO.dp.toPx()).roundToInt()).coerceAtLeast(0)
+                                            estado.ajustar { Edicion.moverCapa(base, pz.id, ini.coerceAtLeast(0), fila) }
+                                        }
+                                        Pista.AUDIO -> arrastrar(abajo.id) { d ->
+                                            dx += d
+                                            val ini = pegar(pz.desde + (dx / pxUs).toLong(), puntos).coerceAtLeast(0)
+                                            estado.ajustar { Edicion.cambiarAudio(base, pz.id) { it.copy(inicioUs = ini) } }
+                                        }
+                                    }
+                                } finally {
+                                    cogido = null
+                                    estado.terminarGesto()
+                                }
+                            } else {
+                                // ---- Mover el cabezal, con inercia al soltar ----
+                                val rastro = VelocityTracker()
+                                rastro.addPosition(abajo.uptimeMillis, abajo.position)
+                                while (true) {
+                                    val ev = awaitPointerEvent()
+                                    val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
+                                    if (!c.pressed) break
+                                    rastro.addPosition(c.uptimeMillis, c.position)
+                                    val d = c.positionChange().x
+                                    if (d != 0f) estado.irA(estado.tiempo - (d / pxUs).toLong())
+                                    c.consume()
+                                }
+                                val v = rastro.calculateVelocity().x
+                                if (abs(v) > 300f) {
+                                    inercia = alcance.launch {
+                                        var previo = 0f
+                                        AnimationState(0f, -v).animateDecay(exponentialDecay(frictionMultiplier = 1.6f)) {
+                                            val paso = value - previo
+                                            previo = value
+                                            val antes = estado.tiempo
+                                            estado.irA(estado.tiempo + (paso / pxUs).toLong())
+                                            if (estado.tiempo == antes) cancelAnimation()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Modo.NADA -> {}
+                    }
+                }
+            }
+    ) {
+        dibujar(estado, geo, recursos, medidor, desplazamientoY, cogido, claveCogida)
+    }
+}
+
+/** Sigue un dedo hasta que se levanta, avisando de cuanto se mueve de lado. */
+private suspend fun androidx.compose.ui.input.pointer.AwaitPointerEventScope.arrastrar(
+    id: androidx.compose.ui.input.pointer.PointerId,
+    vertical: (Float) -> Unit = {},
+    lateral: (Float) -> Unit
+) {
+    while (true) {
+        val ev = awaitPointerEvent()
+        val c = ev.changes.firstOrNull { it.id == id } ?: break
+        if (!c.pressed) break
+        val d = c.positionChange()
+        if (d.y != 0f) vertical(d.y)
+        if (d.x != 0f || d.y != 0f) lateral(d.x)
+        c.consume()
+    }
+}
+
+/** El recorte de una asa, calculado siempre desde como estaba al cogerla. */
+private fun recorte(base: Proyecto, pz: Pieza, derecha: Boolean, d: Long): Proyecto {
+    pz.audio?.let { a ->
+        return if (derecha) {
+            Edicion.recortarAudio(base, a.id, a.inicioUs, a.desdeUs, a.hastaUs + d)
+        } else {
+            val nd = (a.desdeUs + d).coerceIn(0, a.hastaUs - Clip.MINIMO_US).coerceAtLeast(a.desdeUs - a.inicioUs)
+            val delta = nd - a.desdeUs
+            Edicion.recortarAudio(base, a.id, a.inicioUs + delta, nd, a.hastaUs)
+        }
+    }
+    val c = pz.clip ?: return base
+    val v = if (c.esVideo) c.velocidad.toDouble() else 1.0
+    val enArchivo = (d * v).toLong()
+    val capa = base.capas.firstOrNull { it.id == c.id }
+    return if (derecha) {
+        if (c.esVideo) Edicion.recortar(base, c.id, c.desdeUs, c.hastaUs + enArchivo)
+        else Edicion.recortar(base, c.id, 0, c.duracionUs + d)
+    } else {
+        // Por la izquierda una capa no puede empezar antes de cero
+        val dd = if (capa != null) d.coerceAtLeast(-capa.inicioUs) else d
+        val q = if (c.esVideo) Edicion.recortar(base, c.id, c.desdeUs + (dd * v).toLong(), c.hastaUs)
+        else Edicion.recortar(base, c.id, 0, c.duracionUs - dd)
+        if (capa == null) q else {
+            val nueva = Edicion.clip(q, c.id) ?: return q
+            Edicion.cambiarCapa(q, c.id) { it.copy(inicioUs = capa.inicioUs + (c.duracionUs - nueva.duracionUs)) }
+        }
+    }
+}
+
+/** Donde empiezan las filas de sonido (en dp, sin desplazar). */
+private fun filasY(g: Geometria) = FILAS_Y + g.filasCapa * CAPA_PASO + (if (g.filasCapa > 0) 6f else 0f)
+
+private fun filaY(pz: Pieza, desplazamientoY: Float, g: Geometria? = null): Pair<Float, Float> = when (pz.pista) {
+    Pista.PRINCIPAL -> PRINCIPAL_Y to PRINCIPAL_Y + PRINCIPAL_H
+    Pista.CAPA -> {
+        val y = FILAS_Y + pz.fila * CAPA_PASO - desplazamientoY
+        y to y + CAPA_H
+    }
+    Pista.AUDIO -> {
+        val y = (g?.let { filasY(it) } ?: 0f) + pz.fila * AUDIO_PASO - desplazamientoY
+        y to y + AUDIO_H
+    }
+}
+
+// ----------------------------------------------------------------------
+// Dibujo
+// ----------------------------------------------------------------------
+
+private fun DrawScope.dibujar(
+    estado: EstadoEditor,
+    g: Geometria,
+    recursos: Recursos,
+    medidor: TextMeasurer,
+    desplazamientoY: Float,
+    cogido: Cogido?,
+    claveCogida: ClaveCogida?
+) {
+    val pxUs = estado.dpPorSegundo.dp.toPx() / 1_000_000f
+    val centro = size.width / 2f
+    val t0 = estado.tiempo
+    fun x(t: Long) = centro + (t - t0) * pxUs
+    val radio = CornerRadius(7.dp.toPx() * Estilo.redondez)
+    val elegido = estado.idElegido
+    val p = estado.proyecto
+
+    // ---- Filas de abajo (capas y sonido), recortadas bajo la principal ----
+    val arriba = FILAS_Y.dp.toPx() - 4.dp.toPx()
+    clipRect(top = arriba) {
+        for (pz in g.piezas) {
+            if (pz.pista == Pista.PRINCIPAL) continue
+            val (y0d, y1d) = filaY(pz, desplazamientoY, g)
+            val y0 = y0d.dp.toPx(); val y1 = y1d.dp.toPx()
+            val x0 = x(pz.desde); val x1 = x(pz.hasta)
+            if (x1 < -50 || x0 > size.width + 50 || y1 < arriba || y0 > size.height) continue
+            if (pz.pista == Pista.CAPA) bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = claveCogida?.takeIf { it.id == pz.id }?.local)
+            else sonido(pz, x0, x1, y0, y1, radio, recursos, medidor, pz.id == elegido)
+        }
+        if (g.filasAudio == 0) {
+            val y0 = (filasY(g) - desplazamientoY).dp.toPx()
+            val ancho = 150.dp.toPx()
+            val x0 = max(x(0), 12.dp.toPx())
+            drawRoundRect(Ink.White04, Offset(x0, y0), Size(ancho, AUDIO_H.dp.toPx()), radio)
+            drawRoundRect(Ink.White15, Offset(x0, y0), Size(ancho, AUDIO_H.dp.toPx()), radio, style = Stroke(1.dp.toPx()))
+            texto(medidor, "+  Agregar sonido", Offset(x0 + 12.dp.toPx(), y0 + AUDIO_H.dp.toPx() / 2), Ink.White50, 11.5f)
+        }
+    }
+
+    // ---- Regla ----
+    regla(t0, pxUs, centro, medidor, estado.duracion, estado.dpPorSegundo)
+
+    // ---- Pista principal ----
+    val y0 = PRINCIPAL_Y.dp.toPx(); val y1 = (PRINCIPAL_Y + PRINCIPAL_H).dp.toPx()
+    if (p.principal.isEmpty()) {
+        // Pegado al cero, donde va a empezar el video
+        val w = 210.dp.toPx()
+        val x0 = x(0)
+        drawRoundRect(Ink.White, Offset(x0, y0), Size(w, y1 - y0), radio)
+        val cruz = 9.dp.toPx(); val cx = x0 + 26.dp.toPx(); val cy = (y0 + y1) / 2
+        drawLine(Ink.Black, Offset(cx - cruz, cy), Offset(cx + cruz, cy), 2.2.dp.toPx(), StrokeCap.Round)
+        drawLine(Ink.Black, Offset(cx, cy - cruz), Offset(cx, cy + cruz), 2.2.dp.toPx(), StrokeCap.Round)
+        texto(medidor, "Agregar video o foto", Offset(x0 + 46.dp.toPx(), cy), Ink.Black, 13f, negrita = true)
+    }
+    for (pz in g.piezas) {
+        if (pz.pista != Pista.PRINCIPAL) continue
+        if (cogido?.pieza?.id == pz.id) continue
+        val x0 = x(pz.desde); val x1 = x(pz.hasta)
+        if (x1 < -50 || x0 > size.width + 50) continue
+        val cogida = claveCogida?.takeIf { it.id == pz.id }?.local
+        bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = cogida)
+    }
+    // Botones de transicion entre bloques
+    val elegidoPaso = (estado.seleccion as? Seleccion.Paso)?.id
+    // Las del bloque elegido se esconden: ahi van sus asas
+    val vecinos = p.principal.indexOfFirst { it.id == elegido }.let { i -> if (i < 0) emptySet() else setOfNotNull(elegido, p.principal.getOrNull(i - 1)?.id) }
+    for ((c, t) in g.pasos) {
+        if (c.id in vecinos && elegidoPaso == null) continue
+        val cx = x(t)
+        if (cx < -30 || cx > size.width + 30) continue
+        val r = BOTON_PASO.dp.toPx() / 2
+        val cy = (y0 + y1) / 2
+        val activo = c.id == elegidoPaso
+        drawRoundRect(if (activo) Ink.White else Ink.Black, Offset(cx - r, cy - r), Size(2 * r, 2 * r), CornerRadius(6.dp.toPx() * Estilo.redondez))
+        drawRoundRect(Ink.White50, Offset(cx - r, cy - r), Size(2 * r, 2 * r), CornerRadius(6.dp.toPx() * Estilo.redondez), style = Stroke(1.dp.toPx()))
+        translate(cx - r * 0.75f, cy - r * 0.75f) {
+            val s = Size(r * 1.5f, r * 1.5f)
+            val color = if (activo) Ink.Black else Ink.White
+            if (c.transicion == Transicion.NINGUNA) {
+                drawLine(color, Offset(s.width / 2, s.height * 0.2f), Offset(s.width / 2, s.height * 0.8f), 1.6.dp.toPx(), StrokeCap.Round)
+            } else {
+                val camino = Path().apply {
+                    moveTo(s.width * 0.12f, s.height * 0.18f); lineTo(s.width * 0.5f, s.height * 0.5f); lineTo(s.width * 0.12f, s.height * 0.82f); close()
+                    moveTo(s.width * 0.88f, s.height * 0.18f); lineTo(s.width * 0.5f, s.height * 0.5f); lineTo(s.width * 0.88f, s.height * 0.82f); close()
+                }
+                drawPath(camino, color)
+            }
+        }
+    }
+    // El "+" para seguir agregando
+    if (p.principal.isNotEmpty()) {
+        val xm = x(g.finPrincipal) + 14.dp.toPx()
+        val lado = 40.dp.toPx()
+        val ym = (y0 + y1) / 2 - lado / 2
+        drawRoundRect(Ink.White, Offset(xm, ym), Size(lado, lado), CornerRadius(9.dp.toPx() * Estilo.redondez))
+        val cruz = 8.dp.toPx()
+        drawLine(Ink.Black, Offset(xm + lado / 2 - cruz, ym + lado / 2), Offset(xm + lado / 2 + cruz, ym + lado / 2), 2.2.dp.toPx(), StrokeCap.Round)
+        drawLine(Ink.Black, Offset(xm + lado / 2, ym + lado / 2 - cruz), Offset(xm + lado / 2, ym + lado / 2 + cruz), 2.2.dp.toPx(), StrokeCap.Round)
+    }
+
+    // ---- Bloque cogido y donde caeria ----
+    if (cogido != null) {
+        val ini = Linea.inicios(p.principal.filter { it.id != cogido.pieza.id })
+        val resto = p.principal.filter { it.id != cogido.pieza.id }
+        val tDestino = if (cogido.destino < resto.size) ini[cogido.destino] else Linea.duracionPrincipal(resto)
+        val xd = x(tDestino)
+        drawLine(Ink.White, Offset(xd, y0 - 4.dp.toPx()), Offset(xd, y1 + 4.dp.toPx()), 3.dp.toPx(), StrokeCap.Round)
+        val w = min(x(cogido.pieza.hasta) - x(cogido.pieza.desde), 120.dp.toPx())
+        val gx = cogido.x - w / 2
+        drawRoundRect(Ink.Glow18, Offset(gx - 6, y0 - 10), Size(w + 12, y1 - y0 + 12), radio)
+        translate(0f, -8f) {
+            bloque(cogido.pieza, gx, gx + w, y0, y1, radio, pxUs, recursos, medidor, true, desdeX = gx)
+        }
+    }
+
+    // ---- Fronteras de fotograma (los cuadros que se exportan), con sitio de sobra ----
+    val desde = t0 - (centro / pxUs).toLong()
+    val hasta = t0 + ((size.width - centro) / pxUs).toLong()
+    val fronteras = ZoomLinea.fronteras(desde, hasta, pxUs.toDouble(), 40.dp.toPx())
+    if (fronteras.isNotEmpty()) {
+        val raya = PathEffect.dashPathEffect(floatArrayOf(3.dp.toPx(), 4.dp.toPx()))
+        for (tf in fronteras) {
+            val xf = x(tf)
+            drawLine(Ink.White30, Offset(xf, REGLA.dp.toPx()), Offset(xf, size.height), 1f, pathEffect = raya)
+        }
+    }
+
+    // ---- Cabezal ----
+    drawLine(Ink.Glow18, Offset(centro, 4.dp.toPx()), Offset(centro, size.height), 6.dp.toPx())
+    drawLine(Ink.White, Offset(centro, 4.dp.toPx()), Offset(centro, size.height), 2.dp.toPx())
+    drawCircle(Ink.White, 4.5.dp.toPx(), Offset(centro, 6.dp.toPx()))
+}
+
+private fun DrawScope.regla(t0: Long, pxUs: Float, centro: Float, medidor: TextMeasurer, duracion: Long, dpPorSegundo: Float) {
+    // Paso entre marcas con nombre (de 1 ms a 5 min) y puntos entre ellas
+    val paso = ZoomLinea.pasoRegla(dpPorSegundo)
+    val menor = ZoomLinea.menorRegla(paso)
+    val desde = t0 - (centro / pxUs).toLong()
+    val hasta = t0 + ((size.width - centro) / pxUs).toLong()
+    val yTexto = 10.dp.toPx()
+    // Al pie, una rayita en cada frontera de fotograma de la linea si caben
+    // holgadas (desde unos 300 dp/s; mas juntas serian un peine)
+    val abajo = REGLA.dp.toPx() - 1
+    for (tf in ZoomLinea.fronteras(desde, hasta, pxUs.toDouble(), 10.dp.toPx())) {
+        val xf = centro + (tf - t0) * pxUs
+        drawLine(if (tf <= duracion) Ink.White30 else Ink.White15, Offset(xf, abajo - 6.dp.toPx()), Offset(xf, abajo), 1.dp.toPx())
+    }
+    var t = max(0L, floor(desde.toDouble() / menor).toLong() * menor)
+    while (t <= hasta) {
+        val xx = centro + (t - t0) * pxUs
+        if (t % paso == 0L) {
+            texto(medidor, ZoomLinea.etiquetaRegla(t, paso), Offset(xx, yTexto), if (t <= duracion) Ink.White50 else Ink.White30, 9.5f, centrado = true)
+        } else {
+            // Sin puntos pegados a una etiqueta: se leeria peor
+            val m = Math.round(t.toDouble() / paso) * paso
+            val mayorCerca = abs((m - t) * pxUs) < 20.dp.toPx()
+            if (!mayorCerca) drawCircle(if (t <= duracion) Ink.White30 else Ink.White15, 1.3.dp.toPx(), Offset(xx, yTexto))
+        }
+        t += menor
+    }
+    drawLine(Ink.White08, Offset(0f, REGLA.dp.toPx() - 1), Offset(size.width, REGLA.dp.toPx() - 1), 1f)
+}
+
+/**
+ * Lo que se ve de un bloque entre [x0] y [x1] (sus bordes de verdad, que a
+ * zoom fino pueden quedar a millones de pixeles). Fondo, recorte y rayas se
+ * acotan a la pantalla con un margen; las cuentas que dependen del principio
+ * (miniaturas, rombos, tramos) usan los bordes de verdad.
+ *
+ * [cogida] es el tiempo (del bloque) de la clave que se esta arrastrando.
+ */
+private fun DrawScope.bloque(
+    pz: Pieza, x0: Float, x1: Float, y0: Float, y1: Float, radio: CornerRadius, pxUs: Float,
+    recursos: Recursos, medidor: TextMeasurer, elegido: Boolean, desdeX: Float? = null, cogida: Long? = null
+) {
+    val c = pz.clip ?: return
+    val alto = y1 - y0
+    val margen = 48.dp.toPx()
+    val xa = max(x0, -margen)
+    val xz = min(x1, size.width + margen)
+    if (xz <= xa) return
+    /** Una franja horizontal del bloque, acotada a lo que se ve. */
+    fun franja(desde: Float, hasta: Float, y: Float, h: Float, color: Color) {
+        val a = max(desde, xa); val b = min(hasta, xz)
+        if (b > a) drawRect(color, Offset(a, y), Size(b - a, h))
+    }
+    val forma = Path().apply { addRoundRect(RoundRect(Rect(xa, y0, xz, y1), radio)) }
+    clipPath(forma) {
+        drawRect(if (c.esTexto) Ink.White15 else Ink.White08, Offset(xa, y0), Size(xz - xa, alto))
+        val o = c.origen
+        if (o != null) {
+            // Tira de fotogramas: cuadrados alineados con el principio del contenido
+            val lado = alto
+            val xIni = desdeX ?: (x0 - (pz.desde - pz.inicio) * pxUs)
+            val k0 = max(0, floor((max(x0, 0f) - xIni) / lado).toInt())
+            val k1 = ceil((min(x1, size.width) - xIni) / lado).toInt()
+            val usPorLado = (lado / pxUs).toLong().coerceAtLeast(1)
+            val v = if (c.esVideo) c.velocidad else 1f
+            // Cada cuanto se pide una miniatura: en pasos fijos (0.25 s, 0.5, 1,
+            // 2...) para que al pellizcar se reutilicen las ya sacadas en vez
+            // de pedir una tanda nueva por cada nivel de zoom.
+            var cuanto = 250_000L
+            while (cuanto < usPorLado * v) cuanto *= 2
+            fun ta(k: Int): Long {
+                val local = (k.toDouble() * lado + lado / 2) / pxUs
+                return if (c.esVideo) (c.tiempoArchivo(local.toLong()) / cuanto) * cuanto else 0L
+            }
+            for (k in k0..k1) {
+                val img = recursos.miniatura(o, ta(k)) ?: continue
+                val dx = xIni + k * lado
+                // Recorte al centro para llenar el cuadrado. A pixel entero y el
+                // resto con translate: redondeada, la tira temblaba medio pixel
+                // contra el bloque al avanzar suave mientras suena.
+                val iw = img.width; val ih = img.height
+                val m = min(iw, ih)
+                val px = floor(dx)
+                translate(left = dx - px) {
+                    drawImage(
+                        img,
+                        srcOffset = IntOffset((iw - m) / 2, (ih - m) / 2),
+                        srcSize = IntSize(m, m),
+                        dstOffset = IntOffset(px.toInt(), y0.roundToInt()),
+                        dstSize = IntSize(ceil(lado).toInt() + 1, alto.roundToInt())
+                    )
+                }
+            }
+            // Las dos siguientes por la derecha se piden sin dibujarlas: al
+            // reproducir entran ya cargadas en vez de aparecer vacias y saltar
+            val kz = ceil((min(x1, size.width + 2 * lado) - xIni) / lado).toInt()
+            for (k in k1 + 1..kz) recursos.miniatura(o, ta(k))
+            drawRect(
+                Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)), y0 + alto * 0.45f, y1),
+                Offset(xa, y0), Size(xz - xa, alto)
+            )
+        }
+        // Donde empieza el contenido del bloque (antes de [x0] si hay transicion)
+        val xb = x0 - (pz.desde - pz.inicio) * pxUs
+        // Las heredadas y las aplicadas (Clip.animaciones) se marcan igual
+        val (tramoEntrada, tramoSalida) = c.tramosAnimacion()
+        val siempre = c.mueveSiempre()
+        if (tramoEntrada > 0 || tramoSalida > 0 || siempre) {
+            // Una raya arriba marca que el bloque lleva animacion
+            val ini = tramoEntrada * pxUs
+            val fin = tramoSalida * pxUs
+            val xFin = xb + c.duracionUs * pxUs
+            if (ini > 0) franja(xb, xb + ini, y0, 3.dp.toPx(), Ink.White70)
+            if (fin > 0) franja(xFin - fin, xFin, y0, 3.dp.toPx(), Ink.White70)
+            if (siempre) franja(xa, xz, y0, 1.5.dp.toPx(), Ink.White30)
+            if (elegido) {
+                // En el elegido, ademas, el tramo entero un poco aclarado y su
+                // borde: se ve hasta donde llega la entrada y desde donde la salida.
+                // Va antes de las etiquetas para que el borde no tape el texto
+                if (ini > 0) {
+                    franja(xb, xb + ini, y0, alto, Ink.White04)
+                    franja(xb + ini - 1.dp.toPx(), xb + ini, y0, alto, Ink.White30)
+                }
+                if (fin > 0) {
+                    franja(xFin - fin, xFin, y0, alto, Ink.White04)
+                    franja(xFin - fin, xFin - fin + 1.dp.toPx(), y0, alto, Ink.White30)
+                }
+            }
+        }
+        val ancho = x1 - x0
+        // En las filas bajas (capas) "FX n" no cabe en su propia linea: va detras de la etiqueta.
+        // Lleva el nombre de su combinacion: asi se reconocen los ejemplos sin abrirlos
+        val fxAparte = alto >= 48.dp.toPx()
+        val rotuloFx = TramosEfecto.rotuloBloque(c.efectos)
+        val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  $rotuloFx" else ""
+        if (c.esTexto) {
+            texto(medidor, "T  " + c.nombre() + fxDetras, Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
+        } else if (ancho > 44.dp.toPx()) {
+            var etiqueta = segundos(c.duracionUs)
+            if (c.esVideo && c.velocidad != 1f) etiqueta += "  ·  ${"%.2g".format(c.velocidad)}x"
+            etiqueta += fxDetras
+            texto(medidor, etiqueta, Offset(x0 + 7.dp.toPx(), y1 - 9.dp.toPx()), Color.White.copy(alpha = 0.92f), 9.5f, maxAncho = min(ancho, size.width) - 10.dp.toPx())
+        }
+        if (c.efectos.isNotEmpty()) {
+            // Cada raya conserva el intervalo real del efecto, incluso con transiciones.
+            c.efectos.take(3).forEachIndexed { i, efecto ->
+                val xi = xb + efecto.inicioUs * pxUs
+                val xf = xb + min(efecto.finUs, c.duracionUs) * pxUs
+                if (xf > xi) franja(xi, xf, y0 + (6 + i * 4).dp.toPx(), 2.dp.toPx(), if (efecto.activo) Ink.White90 else Ink.White30)
+            }
+            // Con fondo: encima de una foto clara no se leia. Tras una union de la
+            // principal empieza despues de su boton, que tapaba el principio
+            val dx = if (pz.pista == Pista.PRINCIPAL && pz.desde > 0) 16.dp.toPx() else 7.dp.toPx()
+            if (fxAparte && ancho > 55.dp.toPx()) texto(
+                medidor, rotuloFx, Offset(x0 + dx, y0 + 23.dp.toPx()),
+                Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - dx - 7.dp.toPx(), fondo = Color.Black.copy(alpha = 0.55f)
+            )
+        }
+    }
+    if (elegido) {
+        drawRoundRect(Ink.White, Offset(xa, y0), Size(xz - xa, alto), radio, style = Stroke(2.dp.toPx()))
+        asas(x0, x1, y0, y1)
+        // Fotogramas clave
+        val xb = x0 - (pz.desde - pz.inicio) * pxUs
+        val r = 4.5.dp.toPx()
+        val cy = y0 + alto / 2
+        for (k in c.claves) {
+            val xk = xb + k.tiempoUs * pxUs
+            if (xk < x0 - 1 || xk > x1 + 1 || xk < -r * 2 || xk > size.width + r * 2) continue
+            val cogidaAqui = cogida == k.tiempoUs
+            if (cogidaAqui) drawCircle(Ink.Glow35, r * 3f, Offset(xk, cy))
+            rotate(45f, Offset(xk, cy)) {
+                drawRect(Ink.Black, Offset(xk - r, cy - r), Size(2 * r, 2 * r))
+                drawRect(Ink.White, Offset(xk - r * 0.7f, cy - r * 0.7f), Size(1.4f * r, 1.4f * r))
+            }
+        }
+        // El tiempo exacto de la clave que se arrastra, encima de ella
+        if (cogida != null) {
+            val xk = xb + cogida * pxUs
+            etiquetaClave(medidor, TiempoPreciso.texto(cogida), Offset(xk, y0 + 9.dp.toPx()))
+        }
+    } else {
+        drawRoundRect(Color.Black.copy(alpha = 0.6f), Offset(xa, y0), Size(xz - xa, alto), radio, style = Stroke(1.dp.toPx()))
+    }
+}
+
+/** Pastilla con un tiempo, centrada en [en] (para la clave que se arrastra). */
+private fun DrawScope.etiquetaClave(medidor: TextMeasurer, s: String, en: Offset) {
+    val estilo = TextStyle(color = Ink.Black, fontSize = (10f * Estilo.letra).sp, fontWeight = FontWeight.Medium)
+    val r = medidor.measure(s, estilo, maxLines = 1)
+    val w = r.size.width + 12.dp.toPx()
+    val h = r.size.height + 4.dp.toPx()
+    // Sin salirse de la pantalla por los lados
+    val x = (en.x - w / 2).coerceIn(2.dp.toPx(), max(2.dp.toPx(), size.width - w - 2.dp.toPx()))
+    drawRoundRect(Ink.White, Offset(x, en.y - h / 2), Size(w, h), CornerRadius(h / 2))
+    drawText(r, topLeft = Offset(x + 6.dp.toPx(), en.y - r.size.height / 2))
+}
+
+private fun DrawScope.asas(x0: Float, x1: Float, y0: Float, y1: Float) {
+    val w = ASA.dp.toPx()
+    val r = CornerRadius(5.dp.toPx())
+    val alto = y1 - y0
+    for (der in listOf(false, true)) {
+        val xa = if (der) x1 else x0 - w
+        // A zoom fino una asa puede quedar a millones de pixeles: no se dibuja
+        if (xa + w < -w || xa > size.width + w) continue
+        drawRoundRect(Ink.White, Offset(xa, y0), Size(w, alto), r)
+        val cx = xa + w / 2
+        val cy = y0 + alto / 2
+        val s = 4.dp.toPx()
+        val dir = if (der) 1 else -1
+        drawLine(Ink.Black, Offset(cx - dir * s / 2, cy - s), Offset(cx + dir * s / 2, cy), 1.8.dp.toPx(), StrokeCap.Round)
+        drawLine(Ink.Black, Offset(cx + dir * s / 2, cy), Offset(cx - dir * s / 2, cy + s), 1.8.dp.toPx(), StrokeCap.Round)
+    }
+}
+
+private fun DrawScope.sonido(
+    pz: Pieza, x0: Float, x1: Float, y0: Float, y1: Float, radio: CornerRadius,
+    recursos: Recursos, medidor: TextMeasurer, elegido: Boolean
+) {
+    val a = pz.audio ?: return
+    val alto = y1 - y0
+    // Acotado a lo que se ve, como los bloques
+    val margen = 48.dp.toPx()
+    val xa = max(x0, -margen)
+    val xz = min(x1, size.width + margen)
+    if (xz <= xa) return
+    val forma = Path().apply { addRoundRect(RoundRect(Rect(xa, y0, xz, y1), radio)) }
+    clipPath(forma) {
+        drawRect(Ink.White08, Offset(xa, y0), Size(xz - xa, alto))
+        val picos = recursos.onda(a.origen)
+        if (picos != null && picos.isNotEmpty()) {
+            val paso = 3.dp.toPx()
+            val usPx = (pz.hasta - pz.desde) / max(1f, x1 - x0)
+            var xx = max(x0, 0f)
+            val fin = min(x1, size.width)
+            val cy = y0 + alto * 0.55f
+            while (xx < fin) {
+                val t = a.desdeUs + ((xx - x0) * usPx).toLong()
+                val i = (t / Recursos.PICOS_US).toInt().coerceIn(0, picos.lastIndex)
+                val h = max(1.dp.toPx(), picos[i] * alto * 0.7f) * a.volumen.coerceIn(0.2f, 1.5f)
+                drawLine(Ink.White50, Offset(xx, cy - h / 2), Offset(xx, cy + h / 2), 1.6.dp.toPx(), StrokeCap.Round)
+                xx += paso
+            }
+        }
+        texto(medidor, "♪  " + a.origen.nombre, Offset(x0 + 8.dp.toPx(), y0 + 9.dp.toPx()), Ink.White90, 9.5f, maxAncho = min(x1 - x0, size.width) - 12.dp.toPx())
+    }
+    if (elegido) {
+        drawRoundRect(Ink.White, Offset(xa, y0), Size(xz - xa, alto), radio, style = Stroke(2.dp.toPx()))
+        asas(x0, x1, y0, y1)
+    }
+}
+
+private fun DrawScope.texto(
+    medidor: TextMeasurer, s: String, en: Offset, color: Color, sp: Float,
+    centrado: Boolean = false, negrita: Boolean = false, maxAncho: Float = Float.MAX_VALUE, fondo: Color? = null
+) {
+    if (maxAncho < 8f) return
+    val estilo = TextStyle(color = color, fontSize = (sp * Estilo.letra).sp, fontWeight = if (negrita) FontWeight.Medium else FontWeight.Normal, letterSpacing = 0.2.sp)
+    val r = medidor.measure(
+        s, estilo, overflow = TextOverflow.Ellipsis, maxLines = 1,
+        constraints = Constraints(maxWidth = if (maxAncho == Float.MAX_VALUE) Constraints.Infinity else maxAncho.toInt().coerceAtLeast(1))
+    )
+    val x = if (centrado) en.x - r.size.width / 2 else en.x
+    val y = en.y - r.size.height / 2
+    if (fondo != null) {
+        val m = 3.dp.toPx()
+        drawRoundRect(fondo, Offset(x - m, y), Size(r.size.width + 2 * m, r.size.height.toFloat()), CornerRadius(m, m))
+    }
+    drawText(r, topLeft = Offset(x, y))
+}

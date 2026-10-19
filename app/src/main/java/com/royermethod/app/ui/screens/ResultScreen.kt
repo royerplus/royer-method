@@ -56,19 +56,20 @@ import com.royermethod.app.ui.components.BotonRedondo
 import com.royermethod.app.ui.components.ComparadorCompleto
 import com.royermethod.app.ui.components.ComparadorImagenes
 import com.royermethod.app.ui.components.GhostButton
-import com.royermethod.app.ui.components.Glifo
 import com.royermethod.app.ui.components.LienzoLado
+import com.royermethod.app.ui.components.Simbolo
 import com.royermethod.app.ui.components.NeonButton
 import com.royermethod.app.ui.components.recordarPareja
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
+import com.royermethod.app.ui.theme.radio
+import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.io.File
 
-/** El azul apagado del fondo del icono de la app. */
-private val FONDO_ICONO = Color(0xFF0B141F).copy(alpha = 0.85f)
+/** Luz tenue de arriba, del color del neon que haya elegido el usuario. */
+private val LUZ_ARRIBA: Color get() = Ink.White.copy(alpha = 0.09f)
 
 /**
  * Antes y despues, los dos en marcha y en bucle.
@@ -168,15 +169,14 @@ fun ResultScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // El mismo azul apagado del fondo del icono, muy tenue y saliendo
-            // de arriba. En negro puro la pantalla quedaba plana; una sola
-            // fuente de luz basta para que tenga profundidad sin dejar de ser
-            // monocroma.
+            // Una luz muy tenue saliendo de arriba. En negro puro la pantalla
+            // quedaba plana; una sola fuente de luz basta para que tenga
+            // profundidad sin dejar de ser monocroma.
             .drawBehind {
                 drawRect(Ink.Black)
                 drawRect(
                     brush = Brush.radialGradient(
-                        colors = listOf(FONDO_ICONO, Color.Transparent),
+                        colors = listOf(LUZ_ARRIBA, Color.Transparent),
                         center = Offset(size.width * 0.5f, -size.height * 0.15f),
                         radius = size.height * 0.85f
                     )
@@ -274,12 +274,12 @@ fun ResultScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         BotonRedondo(
-                            glifo = Glifo.Lupa,
+                            glifo = Simbolo.Lupa,
                             onClick = { comparando = true },
                             modifier = Modifier.size(42.dp)
                         )
                         BotonRedondo(
-                            glifo = if (sonido) Glifo.Sonido else Glifo.Silencio,
+                            glifo = if (sonido) Simbolo.Sonido else Simbolo.Silencio,
                             onClick = { sonido = !sonido },
                             encendido = sonido,
                             modifier = Modifier.size(42.dp)
@@ -326,7 +326,7 @@ fun ResultScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         BotonRedondo(
-                            glifo = Glifo.Lupa,
+                            glifo = Simbolo.Lupa,
                             onClick = { comparando = true },
                             modifier = Modifier.size(42.dp)
                         )
@@ -454,12 +454,12 @@ private fun Panel(
             Modifier
                 .fillMaxWidth()
                 .aspectRatio(proporcion)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(radio(16.dp)))
                 .drawBehind {
                     drawRoundRect(
                         color = Ink.White,
                         alpha = 0.04f,
-                        cornerRadius = CornerRadius(16.dp.toPx())
+                        cornerRadius = CornerRadius(radio(16.dp).toPx())
                     )
                 }
         ) {

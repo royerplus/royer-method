@@ -18,7 +18,7 @@ import com.royermethod.app.ui.theme.Ink
  * que el logo no salte de sitio al navegar.
  */
 @Composable
-fun AppHeader(modifier: Modifier = Modifier) {
+fun AppHeader(modifier: Modifier = Modifier, onPersonalizar: (() -> Unit)? = null) {
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically
@@ -31,6 +31,6 @@ fun AppHeader(modifier: Modifier = Modifier) {
             color = Ink.White90
         )
         Spacer(Modifier.weight(1f))
-        GlowDot()
+        if (onPersonalizar != null) BotonIcono(Glifos.ajustes, onPersonalizar, color = Ink.White70) else GlowDot()
     }
 }
