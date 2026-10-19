@@ -8,6 +8,7 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.geometry.CornerRadius
@@ -193,7 +195,9 @@ fun LineaTiempo(
     onAgregarSonido: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val medidor = rememberTextMeasurer()
+    // Cada repintado mide 10-11 textos distintos (regla, bloques, efectos,
+    // sonido): con la cache de 8 de fabrica casi todos se volvian a maquetar
+    val medidor = rememberTextMeasurer(cacheSize = 32)
     val alcance = rememberCoroutineScope()
     val proyecto = estado.proyecto
     val geo = remember(proyecto) { geometria(proyecto) }
@@ -205,6 +209,21 @@ fun LineaTiempo(
     // Se lee solo al dibujar: arrastrar una clave repinta, no recompone
     var claveCogida by remember { mutableStateOf<ClaveCogida?>(null) }
     var inercia by remember { mutableStateOf<Job?>(null) }
+
+    // Sonando, el cabezal avanza en cada refresco de pantalla con el reloj de
+    // la vista previa, no a saltos de 33 ms cuando publica un fotograma. Solo
+    // mientras la linea esta a la vista; con un panel abierto vuelven a mandar
+    // los avisos de 30 por segundo.
+    LaunchedEffect(estado.reproduciendo) {
+        val instante = estado.instanteSonando ?: return@LaunchedEffect
+        if (!estado.reproduciendo) return@LaunchedEffect
+        estado.siguiendoReloj = true
+        try {
+            while (true) withFrameNanos { ns -> if (estado.reproduciendo) estado.tiempo = instante(ns) }
+        } finally {
+            estado.siguiendoReloj = false
+        }
+    }
 
     Canvas(
         modifier
@@ -770,22 +789,33 @@ private fun DrawScope.bloque(
             // de pedir una tanda nueva por cada nivel de zoom.
             var cuanto = 250_000L
             while (cuanto < usPorLado * v) cuanto *= 2
-            for (k in k0..k1) {
+            fun ta(k: Int): Long {
                 val local = (k.toDouble() * lado + lado / 2) / pxUs
-                val ta = if (c.esVideo) (c.tiempoArchivo(local.toLong()) / cuanto) * cuanto else 0L
-                val img = recursos.miniatura(o, ta) ?: continue
+                return if (c.esVideo) (c.tiempoArchivo(local.toLong()) / cuanto) * cuanto else 0L
+            }
+            for (k in k0..k1) {
+                val img = recursos.miniatura(o, ta(k)) ?: continue
                 val dx = xIni + k * lado
-                // Recorte al centro para llenar el cuadrado
+                // Recorte al centro para llenar el cuadrado. A pixel entero y el
+                // resto con translate: redondeada, la tira temblaba medio pixel
+                // contra el bloque al avanzar suave mientras suena.
                 val iw = img.width; val ih = img.height
                 val m = min(iw, ih)
-                drawImage(
-                    img,
-                    srcOffset = IntOffset((iw - m) / 2, (ih - m) / 2),
-                    srcSize = IntSize(m, m),
-                    dstOffset = IntOffset(dx.roundToInt(), y0.roundToInt()),
-                    dstSize = IntSize(ceil(lado).toInt() + 1, alto.roundToInt())
-                )
+                val px = floor(dx)
+                translate(left = dx - px) {
+                    drawImage(
+                        img,
+                        srcOffset = IntOffset((iw - m) / 2, (ih - m) / 2),
+                        srcSize = IntSize(m, m),
+                        dstOffset = IntOffset(px.toInt(), y0.roundToInt()),
+                        dstSize = IntSize(ceil(lado).toInt() + 1, alto.roundToInt())
+                    )
+                }
             }
+            // Las dos siguientes por la derecha se piden sin dibujarlas: al
+            // reproducir entran ya cargadas en vez de aparecer vacias y saltar
+            val kz = ceil((min(x1, size.width + 2 * lado) - xIni) / lado).toInt()
+            for (k in k1 + 1..kz) recursos.miniatura(o, ta(k))
             drawRect(
                 Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.55f)), y0 + alto * 0.45f, y1),
                 Offset(xa, y0), Size(xz - xa, alto)

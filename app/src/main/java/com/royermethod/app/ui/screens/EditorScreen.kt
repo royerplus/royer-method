@@ -93,7 +93,10 @@ fun EditorScreen(onVolver: () -> Unit) {
         // Pausa en el acto: pausarEn la pide antes de mover el cabezal, asi la
         // busqueda llega con la vista previa ya parada y el cabezal queda exacto
         estado.alPausar = { prev.pausar() }
-        prev.alTiempo = { estado.tiempo = it }
+        // Sonando, si la linea va con el reloj (instanteSonando), sus avisos
+        // sobran; la pausa, el final y las busquedas llegan ya parados y entran
+        prev.alTiempo = { if (!estado.reproduciendo || !estado.siguiendoReloj) estado.tiempo = it }
+        estado.instanteSonando = { prev.instanteEn(it) }
         prev.alReproducir = { estado.reproduciendo = it }
         prev.proyecto(estado.proyecto)
         prev.irA(estado.tiempo)

@@ -247,10 +247,13 @@ private fun Transporte(estado: EstadoEditor) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            // El cabezal, en pausa con milesimas (0,005 s y 0,001 s se distinguen);
-            // sonando, decimas, que no bailan a 30 cambios por segundo. La duracion
-            // sigue en decimas: con las dos en milesimas no cabe en 360 dp
-            Text(reloj(estado.tiempo, milesimas = !estado.reproduciendo), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp), color = Ink.White, maxLines = 1, softWrap = false)
+            // El cabezal, con milesimas solo en pausa y con el zoom fino puesto
+            // (para ver si una clave esta en 0,005 s o en 0,001 s); si no,
+            // decimas. La duracion siempre en decimas: con las
+            // dos en milesimas no cabe en 360 dp. Por derivedStateOf: sonando,
+            // el tiempo cambia en cada refresco y el texto solo 10 veces por segundo
+            val cabezal by remember(estado) { derivedStateOf { reloj(estado.tiempo, milesimas = estado.zoomFino && !estado.reproduciendo) } }
+            Text(cabezal, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp), color = Ink.White, maxLines = 1, softWrap = false)
             Text(" / " + reloj(estado.duracion), style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.5.sp), color = Ink.White50, maxLines = 1, softWrap = false)
         }
         Box(

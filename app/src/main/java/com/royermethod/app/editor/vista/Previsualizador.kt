@@ -96,6 +96,8 @@ class Previsualizador(context: Context) {
     private var busquedaDelBucle = 0
     private val ordenes = AtomicInteger(0)
     private val controlTiempo = Any()
+    /** Lo que ensena la interfaz en cada refresco mientras suena. Con [controlTiempo]. */
+    private val instante = InstanteSonando()
     @Volatile
     private var cerrado = false
 
@@ -207,6 +209,15 @@ class Previsualizador(context: Context) {
     @Volatile
     private var busquedas = 0
 
+    /**
+     * Donde va la reproduccion en el refresco de pantalla [frameNs] (base de
+     * System.nanoTime), para que la interfaz avance en cada refresco y no a
+     * saltos de fotograma (ver [InstanteSonando]). En pausa, el cabezal.
+     */
+    fun instanteEn(frameNs: Long): Long = synchronized(controlTiempo) {
+        if (reproduciendo) instante.en(frameNs) else tiempo
+    }
+
     /** Avisa del instante a la interfaz, salvo que se haya buscado otro entretanto. */
     private fun avisarTiempo(t: Long, desde: Int, orden: Int = ordenes.get()) {
         principal.post { if (!cerrado && busquedas == desde && ordenes.get() == orden) alTiempo(t) }
@@ -220,7 +231,11 @@ class Previsualizador(context: Context) {
         if (cerrado) return
         val d = Linea.duracion(proyecto)
         val destino = t.coerceIn(0, maxOf(0, d - 1))
-        val busqueda = synchronized(controlTiempo) { tiempo = destino; ++busquedas }
+        val busqueda = synchronized(controlTiempo) {
+            tiempo = destino
+            instante.reiniciar(destino)
+            ++busquedas
+        }
         val pedidoNs = if (sesion != null) System.nanoTime() else 0L
         h.post {
             if (cerrado || busqueda != busquedas) return@post
@@ -245,6 +260,7 @@ class Previsualizador(context: Context) {
         val orden = ordenes.incrementAndGet()
         synchronized(controlTiempo) {
             if (tiempo >= d - Linea.tiempoDe(1)) tiempo = 0
+            instante.reiniciar(tiempo)
             reproduciendo = true
         }
         avisarReproduccion(true, orden)
@@ -397,10 +413,13 @@ class Previsualizador(context: Context) {
             if (cerrado || !reproduciendo || b != busquedas) return
             val d = Linea.duracion(proyecto)
             val t = reloj(orden, b)
+            val leidoNs = System.nanoTime()
             val vigente = synchronized(controlTiempo) {
                 if (b != busquedas || ordenes.get() != orden || !reproduciendo) false
                 else {
+                    val antes = tiempo
                     tiempo = t.coerceAtMost(maxOf(0L, d - 1L))
+                    instante.leer(tiempo, leidoNs, tiempo > antes, maxOf(0L, d - 1L))
                     if (t >= d) reproduciendo = false
                     true
                 }
