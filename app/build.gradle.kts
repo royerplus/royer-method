@@ -74,7 +74,12 @@ android {
         // enlace. Va firmado con la clave de la CI, distinta de la del PC, asi
         // que lleva su propio id: se instala al lado de la app y de .prueba
         // sin reemplazar ni chocar con ninguna.
-        create("github") {
+        //
+        // Solo existe en Actions: uno compilado en el PC saldria con este mismo
+        // id y la clave del PC, y si se instalara, los del enlace ya no se
+        // podrian instalar encima ("conflicto con un paquete") sin desinstalar
+        // y perder lo que hubiera en la app.
+        if (System.getenv("GITHUB_ACTIONS") == "true") create("github") {
             initWith(getByName("prueba"))
             applicationIdSuffix = ".github"
             versionNameSuffix = "-github"
