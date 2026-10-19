@@ -65,13 +65,14 @@ jobs:
       - name: Compilar
         run: FIRMA_CI="$HOME/.android/debug.keystore" bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease assembleGithub
 
-      # Si un APK no sale con la clave de la cache, no se publica
+      # Si un APK no sale con la clave de la cache, no se publica. La huella
+      # se lee del propio APK con tools/huella_firma.py: con apksigner salia
+      # vacia.
       - name: Comprobar firma
         run: |
-          esperada=$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | sed -n 's/^.*SHA256: //p' | tr -d ':' | tr 'A-F' 'a-f')
-          herramientas=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          esperada=$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | sed -n 's/^.*SHA256: //p' | head -1 | tr -d ':' | tr 'A-F' 'a-f')
           for apk in app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/github/app-github.apk; do
-            tiene=$("$herramientas/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            tiene=$(python3 tools/huella_firma.py "$apk")
             echo "$apk firmado con $tiene (clave de la cache: $esperada)"
             [ -n "$esperada" ] && [ "$tiene" = "$esperada" ] || { echo "El APK no lleva la clave de la cache"; exit 1; }
           done
