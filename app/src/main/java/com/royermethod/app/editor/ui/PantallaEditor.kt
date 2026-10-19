@@ -48,6 +48,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
+import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Medidor
 import com.royermethod.app.editor.modelo.Origen
@@ -307,6 +308,19 @@ private fun BotonClave(estado: EstadoEditor) {
     )
 }
 
+/**
+ * El bloque que se ve bajo el cabezal: la capa de mas arriba y si no la
+ * pista principal (en una transicion, el que entra). Con [sinTextos] se
+ * salta las capas de texto, para lo que solo tiene sentido en una imagen.
+ */
+private fun bloqueBajoCabezal(estado: EstadoEditor, sinTextos: Boolean = false): Clip? {
+    val p = estado.proyecto
+    val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
+    return com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo)
+        .lastOrNull { !sinTextos || !it.clip.esTexto }?.clip
+        ?: en?.segundo ?: en?.primero
+}
+
 /** La fila de herramientas: cambia segun lo elegido. */
 @Composable
 private fun Herramientas(
@@ -337,23 +351,24 @@ private fun Herramientas(
             when (s) {
                 null -> {
                     Herramienta(Glifos.editar, "Editar", {
-                        // Elige lo que hay en la pista principal bajo el cabezal
-                        val p = estado.proyecto
-                        val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
-                        val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
-                            ?: en?.segundo ?: en?.primero
+                        val c = bloqueBajoCabezal(estado)
                         if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
                     })
                     Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
                     Herramienta(Glifos.ajustes, "Efectos", {
-                        val p = estado.proyecto
-                        val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
-                        val c = com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo).lastOrNull()?.clip
-                            ?: en?.segundo ?: en?.primero
+                        val c = bloqueBajoCabezal(estado)
                         if (c != null) {
                             estado.elegir(Seleccion.Bloque(c.id))
                             estado.panel = Panel.EFECTOS
                         } else estado.avisar("Selecciona una foto, un video o una capa para agregar efectos")
+                    })
+                    Herramienta(Glifos.color, "Ajustes", {
+                        // Brillo, nitidez, claridad... del bloque bajo el cabezal (un texto no tiene)
+                        val c = bloqueBajoCabezal(estado, sinTextos = true)?.takeUnless { it.esTexto }
+                        if (c != null) {
+                            estado.elegir(Seleccion.Bloque(c.id))
+                            estado.panel = Panel.COLOR
+                        } else estado.avisar("Pon el cabezal sobre una foto o un video para ajustar la imagen")
                     })
                     Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
                     Herramienta(Glifos.texto, "Texto", {
@@ -391,15 +406,17 @@ private fun Herramientas(
                     if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
                     if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
                     Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
-                    Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
+                    // Cerca del principio: al final de la fila nadie lo encontraba
+                    if (!c.esTexto) Herramienta(Glifos.color, "Ajustes", { estado.panel = Panel.COLOR },
+                        resaltada = !c.color.neutro || c.filtro != com.royermethod.app.editor.modelo.Filtro.NINGUNO)
                     Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
+                    Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
                     if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
                     Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
                     Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
                     // Otra version del mismo video: se cambia en todos los bloques que lo usan
                     c.origen?.let { o -> Herramienta(Glifos.reemplazar, "Reemplazar", { onReemplazar(o) }) }
                     Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
-                    if (!c.esTexto) Herramienta(Glifos.color, "Color", { estado.panel = Panel.COLOR })
                     Herramienta(Glifos.curva, "Claves", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())
                     if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
                     if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
@@ -421,7 +438,7 @@ private fun Herramientas(
  * al llegar.
  */
 @Composable
-private fun MasALaDerecha(desliza: ScrollState, modifier: Modifier) {
+internal fun MasALaDerecha(desliza: ScrollState, modifier: Modifier) {
     val alcance = rememberCoroutineScope()
     val hayMas by remember(desliza) { derivedStateOf { desliza.value < desliza.maxValue } }
     if (!hayMas) return

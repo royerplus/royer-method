@@ -229,6 +229,12 @@ uniform float uNeutro;
 uniform float uLuz;
 uniform float uRgb;
 uniform float uNegativo;
+uniform float uClaridad;
+uniform float uVivacidad;
+uniform float uDesvanecer;
+uniform float uGrano;
+// Numero de fotograma de la linea de tiempo (0..63): el grano cambia en cada uno
+uniform float uSemilla;
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
@@ -251,6 +257,189 @@ vec4 tomarRgb(vec2 uv, vec2 desp) {
         c = vec4(r.r, c.g, b.b, max(c.a, max(r.a, b.a)));
     }
     return c;
+}
+
+// ---- Nitidez: AMD FidelityFX CAS 1.20190610 (MIT), camino sin escalado con
+// CAS_BETTER_DIAGONALS y pesos por canal (CAS_SLOW). Trabaja sobre el color
+// premultiplicado tal como llega de la textura.
+vec4 afilarCas(vec2 uv, vec4 centro, float nitidez, vec2 paso) {
+    vec2 dx = vec2(paso.x, 0.0);
+    vec2 dy = vec2(0.0, paso.y);
+    vec3 a = tomar(uv - dx - dy).rgb;
+    vec3 b = tomar(uv - dy).rgb;
+    vec3 c = tomar(uv + dx - dy).rgb;
+    vec3 d = tomar(uv - dx).rgb;
+    vec3 e = centro.rgb;
+    vec3 f = tomar(uv + dx).rgb;
+    vec3 g = tomar(uv - dx + dy).rgb;
+    vec3 h = tomar(uv + dy).rgb;
+    vec3 i = tomar(uv + dx + dy).rgb;
+    // Minimo y maximo suaves: cruz mas caja 3x3, por eso llegan hasta 2
+    vec3 mnCruz = min(min(min(d, e), min(f, b)), h);
+    vec3 mxCruz = max(max(max(d, e), max(f, b)), h);
+    vec3 mn = mnCruz + min(mnCruz, min(min(a, c), min(g, i)));
+    vec3 mx = mxCruz + max(mxCruz, max(max(a, c), max(g, i)));
+    // Cuanto cabe afilar sin salirse de 0..1, dividido por el maximo
+    vec3 amp = sqrt(clamp(min(mn, 2.0 - mx) / max(mx, vec3(0.0001)), 0.0, 1.0));
+    // Lobulo negativo en cruz: de -1/8 (poco cerco) a -1/5 (el maximo de CAS)
+    vec3 w = amp * (-1.0 / mix(8.0, 5.0, clamp(nitidez, 0.0, 1.0)));
+    vec3 r = (b * w + d * w + f * w + h * w + e) / (1.0 + 4.0 * w);
+    // CAS con su mando a 0 ya afila: se funde con el original para que 0 sea
+    // nada. Hasta 0.5 llega a CAS entero; de ahi a 1 dobla lo que mueve, que
+    // CAS solo se queda corto para un "filo" que se note en el telefono
+    r = mix(e, r, nitidez * 2.0);
+    return vec4(clamp(r, 0.0, centro.a), centro.a);
+}
+
+// ---- Claridad: contraste local de radio grande en una sola pasada.
+// Formula de Poly Haven imgvwr (MIT): base + cantidad * (base - desenfoque) *
+// mascara de medios tonos. El desenfoque aqui es un anillo disperso de 16
+// tomas (8 a R y 8 a R/2 giradas 22.5 grados) pesadas por parecido con el
+// centro: una linea negra casi no entra en la media, asi el cerco y las
+// copias fantasma que da un anillo de pocas tomas quedan muy rebajados.
+const mat2 GIRO45 = mat2(0.70710678, 0.70710678, -0.70710678, 0.70710678);
+const mat2 GIRO22 = mat2(0.92387953, 0.38268343, -0.38268343, 0.92387953);
+
+float lumaEntorno(vec2 uv, float lCentro, float radio) {
+    vec2 eje = vec2(radio, 0.0);
+    float suma = 0.0;
+    float pesos = 0.0;
+    for (int j = 0; j < 8; j++) {
+        vec4 t1 = tomar(uv + eje * uTexel);
+        vec4 t2 = tomar(uv + (GIRO22 * eje) * (0.5 * uTexel));
+        float l1 = dot(t1.rgb, LUMA) / max(t1.a, 0.001);
+        float l2 = dot(t2.rgb, LUMA) / max(t2.a, 0.001);
+        // Peso 1/2 a 0.25 de diferencia de luma, casi 0 a partir de 0.6
+        float d1 = (l1 - lCentro) * 4.0;
+        float d2 = (l2 - lCentro) * 4.0;
+        float w1 = t1.a * exp2(-d1 * d1);
+        float w2 = t2.a * exp2(-d2 * d2);
+        suma += l1 * w1 + l2 * w2;
+        pesos += w1 + w2;
+        eje = GIRO45 * eje;
+    }
+    return pesos > 0.0001 ? suma / pesos : lCentro;
+}
+
+vec3 claridad(vec3 c, float lCentro, float lEntorno, float cantidad) {
+    float detalle = lCentro - lEntorno;
+    // Freno suave: los saltos grandes crecen poco, los pequenos casi enteros
+    detalle = detalle / (1.0 + 2.0 * abs(detalle));
+    float l = dot(c, LUMA);
+    float medios = smoothstep(0.05, 0.25, l) * (1.0 - smoothstep(0.80, 0.98, l));
+    return c + vec3(cantidad * detalle * medios);
+}
+
+// ---- Exposicion: GPUImageExposureFilter (rgb * 2^ev, BSD-3) hecho en luz
+// lineal aproximada, con un hombro suave: por encima de la rodilla las luces
+// se acercan a 1 sin cortarse.
+vec3 exposicion(vec3 c, float ev) {
+    vec3 lin = pow(max(c, vec3(0.000001)), vec3(2.2)) * exp2(ev);
+    vec3 hombro = 0.8 + 0.2 * (1.0 - exp((0.8 - lin) / 0.2));
+    lin = mix(lin, hombro, step(0.8, lin));
+    return pow(lin, vec3(1.0 / 2.2));
+}
+
+// ---- Contraste: sigmoidal-contrast de ImageMagick (MagickCore/enhance.c).
+// Positivo = curva en S escalada para que 0 y 1 queden fijos; negativo = su
+// inversa. Sin tanh ni atanh, que GLSL ES 1.00 no tiene.
+vec3 contraste(vec3 c, float k) {
+    float a = abs(k) * 8.0;
+    if (a < 0.01) return c;
+    float s0 = 1.0 / (1.0 + exp(0.5 * a));
+    float s1 = 1.0 / (1.0 + exp(-0.5 * a));
+    if (k > 0.0) {
+        vec3 s = 1.0 / (1.0 + exp(a * (0.5 - c)));
+        return (s - s0) / (s1 - s0);
+    }
+    vec3 y = clamp((s1 - s0) * c + s0, 0.0001, 0.9999);
+    return 0.5 - log(1.0 / y - 1.0) / a;
+}
+
+// ---- Sombras y luces: GPUImageHighlightShadowFilter (BSD-3). GPUImage solo
+// levanta sombras y solo baja luces; el lado contrario usa la ganancia
+// inversa, asi el negro y el blanco no se mueven nunca.
+float curvaSombras(float l, float s) {
+    float x = max(l, 0.000001);
+    return clamp(pow(x, 1.0 / (s + 1.0)) - 0.76 * pow(x, 2.0 / (s + 1.0)) - l, 0.0, 1.0);
+}
+
+float curvaLuces(float l, float h) {
+    float u = max(1.0 - l, 0.000001);
+    return clamp(1.0 - (pow(u, 1.0 / (2.0 - h)) - 0.8 * pow(u, 2.0 / (2.0 - h))) - l, -1.0, 0.0);
+}
+
+vec3 sombrasLuces(vec3 c, float sombras, float luces) {
+    float l = clamp(dot(c, vec3(0.33333333)), 0.0, 1.0);
+    if (sombras != 0.0) {
+        float g = (l + curvaSombras(l, abs(sombras) * 1.4)) / max(l, 0.0001);
+        c *= sombras > 0.0 ? g : 1.0 / g;
+        l = clamp(dot(c, vec3(0.33333333)), 0.0, 1.0);
+    }
+    if (luces != 0.0) {
+        float bajar = -curvaLuces(l, 1.0 - abs(luces) * 1.4);
+        float u = 1.0 - l;
+        if (luces < 0.0) c *= (l - bajar) / max(l, 0.0001);
+        else c = 1.0 - (1.0 - c) * (u / max(u + bajar, 0.0001));
+    }
+    return c;
+}
+
+// ---- Desvanecer (mate): levanta los negros. GPUImageLevelsFilter haria
+// mix(minSalida, 1.0, c); aqui el levantamiento se apaga hacia las luces para
+// que el blanco siga blanco, y se quita un poco de color como en el mate.
+vec3 desvanecer(vec3 c, float f) {
+    vec3 u = 1.0 - c;
+    c += f * 0.25 * u * u;
+    float l = dot(c, LUMA);
+    return mix(vec3(l), c, 1.0 - 0.25 * f);
+}
+
+// ---- Saturacion: GPUImageSaturationFilter (BSD-3), con tope de gama: al
+// subir, ningun canal sale de 0..1, asi el tono no cambia al recortar.
+vec3 saturacion(vec3 c, float s) {
+    float l = dot(c, LUMA);
+    float f = 1.0 + s;
+    if (f > 1.0) {
+        float mx = max(c.r, max(c.g, c.b));
+        float mn = min(c.r, min(c.g, c.b));
+        float topeAlto = mx > l + 0.0001 ? (1.0 - l) / (mx - l) : 10000.0;
+        float topeBajo = mn < l - 0.0001 ? l / (l - mn) : 10000.0;
+        f = min(f, max(min(topeAlto, topeBajo), 1.0));
+    }
+    return mix(vec3(l), c, f);
+}
+
+// ---- Vivacidad que respeta lo ya saturado: misma mezcla que la saturacion,
+// pesada por (1 - saturacion HSV)^2. Los colores apagados suben mucho y los
+// intensos del anime casi nada, asi no se queman.
+vec3 vivacidad(vec3 c, float v) {
+    float mx = max(c.r, max(c.g, c.b));
+    float mn = min(c.r, min(c.g, c.b));
+    float sat = (mx - mn) / max(mx, 0.0001);
+    // Bajando, k no pasa de -1: con 1 + k < 0 el color se daria la vuelta
+    float k = v * (v > 0.0 ? 1.5 : 1.0) * (1.0 - sat) * (1.0 - sat);
+    float l = dot(c, LUMA);
+    return mix(vec3(l), c, 1.0 + k);
+}
+
+// ---- Grano. Hash sin seno de David Hoskins (MIT, shadertoy.com/view/4djSRW)
+float hash12(vec2 p) {
+    vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+    p3 += dot(p3, p3.yzx + 33.33);
+    return fract((p3.x + p3.y) * p3.z);
+}
+
+// FilmGrain de SweetFX (CeeJay.dk, MIT): ruido gaussiano por Box-Muller que
+// multiplica el color. Relacion senal/ruido 2: los claros reciben menos y el
+// negro, al multiplicar, ninguno. [semilla] sale del numero de fotograma.
+vec3 grano(vec3 c, vec2 pixel, float semilla, float cantidad) {
+    vec2 q = floor(pixel) + vec2(semilla * 37.0, semilla * 61.0);
+    float u1 = max(hash12(q), 0.0001);
+    float u2 = hash12(q + vec2(19.19, 47.47));
+    float gauss = sqrt(-2.0 * log(u1)) * cos(6.2831853 * u2);
+    float inv = 1.0 - (c.r + c.g + c.b) / 3.0;
+    return c * (1.0 + gauss * cantidad * 0.35 * inv * inv);
 }
 
 vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
@@ -287,17 +476,9 @@ vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
         return s / 12.0;
     }
     vec4 c = tomar(uv);
-    if (uNitidez > 0.0) {
-        vec4 a = tomar(uv + vec2(uTexel.x, 0.0));
-        vec4 b = tomar(uv - vec2(uTexel.x, 0.0));
-        vec4 d = tomar(uv + vec2(0.0, uTexel.y));
-        vec4 e = tomar(uv - vec2(0.0, uTexel.y));
-        vec4 afilado = c + (c - (a + b + d + e) * 0.25) * uNitidez * 1.6;
-        // Limitado al rango de los vecinos: afila sin el cerco blanco
-        vec4 suelo = min(min(min(a, b), min(d, e)), c);
-        vec4 techo = max(max(max(a, b), max(d, e)), c);
-        c = clamp(afilado, suelo, techo);
-    }
+    // Un texel de la fuente, o un pixel del lienzo si la foto se ve mas chica
+    // que su textura: asi el filo se nota igual en cualquier tamano
+    if (uNitidez > 0.0) c = afilarCas(uv, c, uNitidez, max(uTexel, pixel));
     if (uRgb > 0.0) {
         // Rojo de un lado y azul del otro. El alfa, el mayor de los tres:
         // en un texto el borde rojo y el azul se ven fuera de la letra.
@@ -308,20 +489,32 @@ vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
     return c;
 }
 
-vec3 ajustar(vec3 c, vec2 uv) {
-    c *= exp2(uExposicion);
-    c += uBrillo * 0.25;
-    float l = dot(c, LUMA);
-    c += uSombras * 0.25 * (1.0 - smoothstep(0.0, 0.55, l));
-    c += uLuces * 0.25 * smoothstep(0.45, 1.0, l);
-    c = (c - 0.5) * (1.0 + uContraste) + 0.5;
+// Orden: lo que mira la imagen tal cual (claridad), luz y color de la toma
+// (exposicion, calidez, brillo), curvas de tono, color y al final el grano,
+// para que ningun paso lo escale ni lo tina. [uv] es la de la textura (vineta) y [p]
+// el pixel del lienzo (grano).
+vec3 ajustar(vec3 c, vec2 uv, vec2 p, float lEntorno) {
+    c = clamp(c, 0.0, 1.0);
+    if (uClaridad != 0.0)
+        c = clamp(claridad(c, dot(c, LUMA), lEntorno, uClaridad > 0.0 ? uClaridad * 1.5 : uClaridad), 0.0, 1.0);
+    if (uExposicion != 0.0) c = exposicion(c, uExposicion * 1.5);
+    // Calidez, tinte y brillo, los de siempre: sumar es lo que hace
+    // GPUImageBrightnessFilter, y oscurece tambien el blanco
     c.r += uCalidez * 0.08;
     c.b -= uCalidez * 0.08;
     c.g += uTinte * 0.06;
-    l = dot(c, LUMA);
-    c = mix(vec3(l), c, 1.0 + uSaturacion);
+    c = clamp(c + uBrillo * 0.25, 0.0, 1.0);
+    if (uContraste != 0.0) c = contraste(c, uContraste);
+    if (uSombras != 0.0 || uLuces != 0.0) c = clamp(sombrasLuces(c, uSombras, uLuces), 0.0, 1.0);
+    if (uDesvanecer > 0.0) c = desvanecer(c, uDesvanecer);
+    if (uSaturacion != 0.0) c = saturacion(c, uSaturacion);
+    if (uVivacidad != 0.0) c = vivacidad(c, uVivacidad);
     float d = distance(uv, vec2(0.5));
     c *= 1.0 - uVineta * smoothstep(0.25, 0.8, d);
+    c = clamp(c, 0.0, 1.0);
+    // El grano va en celdas de 1/540 del lado corto del lienzo: mide lo mismo
+    // en la vista previa que en el video exportado
+    if (uGrano > 0.0) c = grano(c, p * (540.0 / min(uLienzo.x, uLienzo.y)), uSemilla, uGrano);
     return clamp(c, 0.0, 1.0);
 }
 
@@ -379,7 +572,14 @@ void main() {
     suma /= uN;
     if (suma.a > 0.0 && (uNeutro < 0.5 || uLuz != 0.0 || uNegativo > 0.0)) {
         vec3 recto = suma.rgb / suma.a;
-        if (uNeutro < 0.5) recto = ajustar(recto, uvPrimero);
+        if (uNeutro < 0.5) {
+            // Claridad: luz del entorno, una vez por pixel desde la muestra 0.
+            // Radio de 2% del lado corto de la textura, igual en vista y video
+            float lEntorno = 0.0;
+            if (uClaridad != 0.0)
+                lEntorno = lumaEntorno(uvPrimero, dot(recto, LUMA), 0.02 / max(uTexel.x, uTexel.y));
+            recto = ajustar(recto, uvPrimero, p, lEntorno);
+        }
         recto = mix(recto, vec3(1.0) - recto, uNegativo);
         recto = uLuz > 0.0 ? mix(recto, vec3(1.0), uLuz) : recto * (1.0 + uLuz);
         suma.rgb = recto * suma.a;

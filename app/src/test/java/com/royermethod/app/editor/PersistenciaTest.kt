@@ -28,7 +28,7 @@ class PersistenciaTest {
             principal = listOf(
                 Clip(
                     id = 1, origen = video, desdeUs = 100, hastaUs = 3_000_000, velocidad = 1.5f, volumen = 0.7f,
-                    mantenerTono = false, fundidoEntradaUs = 200_000, color = AjustesColor(brillo = 0.1f, vineta = 0.3f),
+                    mantenerTono = false, fundidoEntradaUs = 200_000, color = AjustesColor(brillo = 0.1f, vineta = 0.3f, claridad = -0.4f, vivacidad = 0.25f, desvanecer = 0.3f, grano = 0.2f),
                     filtro = Filtro.ANIME, intensidadFiltro = 0.5f,
                     encuadre = Encuadre(Ajuste.ENCAJAR, 1.2f, 0.1f, -0.2f, 15f, 0.9f, true, Recorte(0.1f, 0f, 0.05f, 0.2f)),
                     claves = listOf(Clave(0, Encuadre()), Clave(500_000, Encuadre(escala = 2f), Curva.ENTRADA)),
@@ -45,6 +45,17 @@ class PersistenciaTest {
         )
         val q = Persistencia.deTexto(Persistencia.aTexto(p))
         assertEquals(p, q)
+    }
+
+    @Test
+    fun unColorGuardadoAntesDeLaClaridadSeAbreConLoNuevoACero() {
+        // Los proyectos de antes guardaban 10 numeros; los ajustes nuevos van detras
+        val q = Persistencia.deTexto(
+            """{"principal":[{"id":1,"texto":{"contenido":"a"},"color":[0.2,0,0,0,0,0,0,0,0.5,0]}]}"""
+        )!!
+        assertEquals(AjustesColor(brillo = 0.2f, nitidez = 0.5f), q.principal[0].color)
+        val neutro = Persistencia.deTexto("""{"principal":[{"id":1,"texto":{"contenido":"a"},"color":[0,0,0,0,0,0,0,0,0,0]}]}""")!!
+        assertTrue(neutro.principal[0].color.neutro)
     }
 
     @Test

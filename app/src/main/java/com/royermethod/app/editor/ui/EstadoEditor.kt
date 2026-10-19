@@ -33,7 +33,7 @@ enum class Panel(val titulo: String) {
     PIEZAS("Partes de la imagen"),
     EFECTOS("Efectos de video"),
     TRANSICION("Transicion"),
-    COLOR("Color y filtros"),
+    COLOR("Ajustes"),
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
     FORMATO("Formato"),

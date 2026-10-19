@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -193,19 +195,31 @@ fun PanelVolumen(estado: EstadoEditor) {
 // Color
 // ----------------------------------------------------------------------
 
-private class Ajustito(val nombre: String, val desde: Float, val leer: (AjustesColor) -> Float, val poner: (AjustesColor, Float) -> AjustesColor)
+private class Ajustito(
+    val nombre: String,
+    val desde: Float,
+    val leer: (AjustesColor) -> Float,
+    val poner: (AjustesColor, Float) -> AjustesColor,
+    val nota: String? = null
+)
 
+// En el orden de CapCut, con lo mas usado al principio: solo caben unas
+// cuatro pastillas a lo ancho del telefono.
 private val AJUSTES = listOf(
     Ajustito("Brillo", -1f, { it.brillo }, { a, v -> a.copy(brillo = v) }),
     Ajustito("Contraste", -1f, { it.contraste }, { a, v -> a.copy(contraste = v) }),
     Ajustito("Saturacion", -1f, { it.saturacion }, { a, v -> a.copy(saturacion = v) }),
+    Ajustito("Nitidez", 0f, { it.nitidez }, { a, v -> a.copy(nitidez = v) }, "Marca el filo de las lineas"),
+    Ajustito("Claridad", -1f, { it.claridad }, { a, v -> a.copy(claridad = v) }, "Mas volumen en el pelo y la ropa; a la izquierda suaviza"),
     Ajustito("Exposicion", -1f, { it.exposicion }, { a, v -> a.copy(exposicion = v) }),
+    Ajustito("Luces", -1f, { it.luces }, { a, v -> a.copy(luces = v) }),
+    Ajustito("Sombras", -1f, { it.sombras }, { a, v -> a.copy(sombras = v) }),
     Ajustito("Calidez", -1f, { it.calidez }, { a, v -> a.copy(calidez = v) }),
     Ajustito("Tinte", -1f, { it.tinte }, { a, v -> a.copy(tinte = v) }),
-    Ajustito("Sombras", -1f, { it.sombras }, { a, v -> a.copy(sombras = v) }),
-    Ajustito("Luces", -1f, { it.luces }, { a, v -> a.copy(luces = v) }),
-    Ajustito("Nitidez", 0f, { it.nitidez }, { a, v -> a.copy(nitidez = v) }),
-    Ajustito("Vineta", 0f, { it.vineta }, { a, v -> a.copy(vineta = v) })
+    Ajustito("Vivacidad", -1f, { it.vivacidad }, { a, v -> a.copy(vivacidad = v) }, "Sube los colores apagados sin quemar los fuertes"),
+    Ajustito("Desvanecer", 0f, { it.desvanecer }, { a, v -> a.copy(desvanecer = v) }),
+    Ajustito("Vineta", 0f, { it.vineta }, { a, v -> a.copy(vineta = v) }),
+    Ajustito("Grano", 0f, { it.grano }, { a, v -> a.copy(grano = v) }, "El grano cambia en cada fotograma: el video exportado pesa mas")
 )
 
 /** Un color que representa cada filtro en su casilla. */
@@ -222,13 +236,35 @@ private fun muestraDe(f: Filtro): List<Color> = when (f) {
     Filtro.DRAMA -> listOf(Color(0xFF370617), Color(0xFFE85D04))
 }
 
+/**
+ * Ajustes y filtros del bloque. Como en CapCut: un solo deslizador, el del
+ * ajuste elegido en la fila de pastillas de abajo; un punto marca los que
+ * tienen algo puesto. Asi caben todos sin una columna de catorce barras.
+ */
 @Composable
 fun PanelColor(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
     var pestana by rememberSaveable { mutableIntStateOf(0) }
-    Pestanas(listOf("Filtros", "Ajustes"), pestana, { pestana = it })
+    var elegido by rememberSaveable { mutableIntStateOf(0) }
+    Pestanas(listOf("Ajustes", "Filtros"), pestana, { pestana = it })
     Hueco(6)
     if (pestana == 0) {
+        val a = AJUSTES[elegido]
+        // key: cada ajuste su deslizador, que el gesto guarda el rango y el neutro con que empezo
+        key(elegido) {
+            Deslizador(a.nombre, a.leer(c.color), a.desde, 1f, { v -> estado.cambiarClip(true) { it.copy(color = a.poner(it.color, v)) } },
+                neutro = 0f, texto = { if (a.desde < 0) "%+d".format((it * 100).toInt()) else "${(it * 100).toInt()}" })
+        }
+        Nota(a.nota ?: "", color = Ink.White50)
+        Hueco(6)
+        val desliza = rememberScrollState()
+        Box(Modifier.fillMaxWidth()) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(desliza), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AJUSTES.forEachIndexed { i, x -> Chip(x.nombre, i == elegido, { elegido = i }, marca = x.leer(c.color) != 0f) }
+            }
+            MasALaDerecha(desliza, Modifier.align(Alignment.CenterEnd).height(40.dp))
+        }
+    } else {
         Cuadricula(Filtro.values().toList()) { f, m ->
             val colores = muestraDe(f)
             Mosaico(f.nombre, c.filtro == f, { estado.cambiarClip { it.copy(filtro = f) } }, m) { _ ->
@@ -240,20 +276,20 @@ fun PanelColor(estado: EstadoEditor) {
             Hueco(6)
             Deslizador("Intensidad", c.intensidadFiltro, 0f, 1f, { v -> estado.cambiarClip(true) { it.copy(intensidadFiltro = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
         }
-    } else {
-        AJUSTES.forEach { a ->
-            Deslizador(a.nombre, a.leer(c.color), a.desde, 1f, { v -> estado.cambiarClip(true) { it.copy(color = a.poner(it.color, v)) } },
-                neutro = 0f, texto = { if (a.desde < 0) "%+d".format((it * 100).toInt()) else "${(it * 100).toInt()}" })
-        }
     }
     Hueco(10)
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        BotonBorde("Restablecer", { estado.cambiarClip { it.copy(color = AjustesColor(), filtro = Filtro.NINGUNO, intensidadFiltro = 1f) } }, glifo = Glifos.reiniciar)
+        // Cada pestana quita lo suyo: quitar los ajustes no se lleva el filtro
+        BotonBorde("Restablecer", {
+            if (pestana == 0) estado.cambiarClip { it.copy(color = AjustesColor()) }
+            else estado.cambiarClip { it.copy(filtro = Filtro.NINGUNO, intensidadFiltro = 1f) }
+        }, glifo = Glifos.reiniciar)
         BotonBorde("Aplicar a todos", {
             estado.hacer { p ->
-                p.copy(principal = p.principal.map { it.copy(color = c.color, filtro = c.filtro, intensidadFiltro = c.intensidadFiltro) })
+                // Los textos no tienen ajustes de imagen
+                p.copy(principal = p.principal.map { if (it.esTexto) it else it.copy(color = c.color, filtro = c.filtro, intensidadFiltro = c.intensidadFiltro) })
             }
-            estado.avisar("Color aplicado a toda la pista principal")
+            estado.avisar("Ajustes y filtro aplicados a toda la pista principal")
         })
     }
 }

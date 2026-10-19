@@ -293,7 +293,9 @@ object Persistencia {
     }
 
     private fun color(a: AjustesColor) = JSONArray().apply {
-        listOf(a.brillo, a.contraste, a.saturacion, a.exposicion, a.calidez, a.tinte, a.sombras, a.luces, a.nitidez, a.vineta)
+        // Por posicion: lo nuevo, siempre detras (un proyecto viejo lo lee como 0)
+        listOf(a.brillo, a.contraste, a.saturacion, a.exposicion, a.calidez, a.tinte, a.sombras, a.luces, a.nitidez, a.vineta,
+            a.claridad, a.vivacidad, a.desvanecer, a.grano)
             .forEach { put(it.toDouble()) }
     }
 
@@ -619,6 +621,7 @@ object Persistencia {
 
     private fun colorDe(a: JSONArray): AjustesColor {
         fun v(i: Int) = a.optDouble(i, 0.0).toFloat() + 0f
-        return AjustesColor(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8), v(9))
+        return AjustesColor(v(0), v(1), v(2), v(3), v(4), v(5), v(6), v(7), v(8), v(9),
+            claridad = v(10), vivacidad = v(11), desvanecer = v(12), grano = v(13))
     }
 }

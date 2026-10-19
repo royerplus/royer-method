@@ -85,6 +85,14 @@ class Compositor(
 
     private var numero = 0L
 
+    /**
+     * El fotograma de la linea de tiempo que se esta dibujando (0..63), para
+     * el grano. Sale de Cuadro.numero y no de [numero], que cuenta tambien
+     * los redibujos en pausa: asi un fotograma da el mismo grano en la vista
+     * previa y en el video.
+     */
+    private var semilla = 0f
+
     /** Algo fallo al leer una fuente en el ultimo cuadro (se dibuja lo que hay). */
     var avisos = 0
         private set
@@ -97,6 +105,7 @@ class Compositor(
      */
     fun dibujar(cuadro: Cuadro, destino: Lamina? = null) {
         numero++
+        semilla = Math.floorMod(cuadro.numero, 64L).toFloat()
         // 1. que cada fuente tenga su fotograma, antes de tocar el destino
         val texturas = IdentityHashMap<PasoClip, Textura>()
         val preparadas = HashMap<ClaveTextura, Textura?>()
@@ -481,6 +490,13 @@ class Compositor(
         GLES20.glUniform1f(capa.u("uSombras"), c.sombras)
         GLES20.glUniform1f(capa.u("uLuces"), c.luces)
         GLES20.glUniform1f(capa.u("uVineta"), c.vineta)
+        // El relleno es una miniatura de pocos pixeles: claridad y grano ahi
+        // serian manchas, como la nitidez
+        GLES20.glUniform1f(capa.u("uClaridad"), if (p.esFondo) 0f else c.claridad)
+        GLES20.glUniform1f(capa.u("uVivacidad"), c.vivacidad)
+        GLES20.glUniform1f(capa.u("uDesvanecer"), c.desvanecer)
+        GLES20.glUniform1f(capa.u("uGrano"), if (p.esFondo) 0f else c.grano)
+        GLES20.glUniform1f(capa.u("uSemilla"), semilla)
         GLES20.glUniform1f(capa.u("uNeutro"), if (c.copy(nitidez = 0f).neutro) 1f else 0f)
         GLES20.glUniform1f(capa.u("uLuz"), p.luz)
         GLES20.glUniform1f(capa.u("uRgb"), if (p.esFondo) 0f else p.rgb)

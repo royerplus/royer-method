@@ -177,22 +177,25 @@ class EscenaRendimientoTest {
         return when {
             radio <= 0f && rastro -> ceil(2.0 * (abs(dx) + abs(dy)) / 3.0).toInt().coerceIn(16, 64) * porToma
             radio > 0f || rastro -> 12 * porToma
-            else -> 1 + (if (!p.esFondo && p.color.nitidez > 0f) 4 else 0) + (if (rgb) 2 else 0)
+            else -> 1 + (if (!p.esFondo && p.color.nitidez > 0f) 8 else 0) + (if (rgb) 2 else 0)
         }
     }
+
+    /** Las del anillo de la claridad: una vez por pixel, no por muestra del obturador. */
+    private fun lecturasClaridad(p: PasoClip): Int = if (!p.esFondo && p.color.claridad != 0f) 16 else 0
 
     /** Como Compositor.dibujar: un dibujo de lienzo completo por paso, por corte y muestra en las partes. */
     private fun contar(pasos: List<Paso>, c: Cuenta, alto: Int) {
         for (p in pasos) when (p) {
             is PasoSolido -> if (p.opacidadMedia > 0.002f) c.dibujos++
             is PasoLinea -> c.dibujos++
-            is PasoClip -> if (p.visible) { c.dibujos++; c.lecturas += p.muestras * lecturas(p, alto).toDouble() }
+            is PasoClip -> if (p.visible) { c.dibujos++; c.lecturas += p.muestras * lecturas(p, alto).toDouble() + lecturasClaridad(p) }
             is PasoPartes -> if (p.visible) {
                 for (i in 0 until p.muestras) {
                     for (corte in p.cortesEn(i)) {
                         val parte = p.partes[corte.parte]
                         if (!parte.visible) continue
-                        c.dibujos++; c.lecturas += lecturas(parte, alto)
+                        c.dibujos++; c.lecturas += lecturas(parte, alto) + lecturasClaridad(parte)
                     }
                     // La muestra se suma al promedio
                     c.dibujos++; c.lecturas += 1

@@ -472,8 +472,11 @@ data class AjusteTransicion(
 }
 
 /**
- * Correccion de color. Todo en -1..1 con 0 neutro, salvo nitidez y vineta,
- * que van de 0 a 1.
+ * Correccion de color. Todo en -1..1 con 0 neutro, salvo nitidez, vineta,
+ * desvanecer y grano, que van de 0 a 1.
+ *
+ * Los campos nuevos van siempre al final: el proyecto los guarda por
+ * posicion (Persistencia.color) y uno en medio correria los de despues.
  */
 data class AjustesColor(
     val brillo: Float = 0f,
@@ -485,7 +488,15 @@ data class AjustesColor(
     val sombras: Float = 0f,
     val luces: Float = 0f,
     val nitidez: Float = 0f,
-    val vineta: Float = 0f
+    val vineta: Float = 0f,
+    /** Contraste local de los medios tonos: positivo marca volumen, negativo suaviza. */
+    val claridad: Float = 0f,
+    /** Saturacion que sube sobre todo los colores apagados. */
+    val vivacidad: Float = 0f,
+    /** Negros levantados, aspecto mate. */
+    val desvanecer: Float = 0f,
+    /** Grano de pelicula, distinto en cada fotograma. */
+    val grano: Float = 0f
 ) {
     val neutro: Boolean get() = this == NEUTRO
 
@@ -499,7 +510,11 @@ data class AjustesColor(
         sombras = sombras + o.sombras * f,
         luces = luces + o.luces * f,
         nitidez = (nitidez + o.nitidez * f).coerceIn(0f, 1f),
-        vineta = (vineta + o.vineta * f).coerceIn(0f, 1f)
+        vineta = (vineta + o.vineta * f).coerceIn(0f, 1f),
+        claridad = claridad + o.claridad * f,
+        vivacidad = vivacidad + o.vivacidad * f,
+        desvanecer = (desvanecer + o.desvanecer * f).coerceIn(0f, 1f),
+        grano = (grano + o.grano * f).coerceIn(0f, 1f)
     )
 
     companion object {

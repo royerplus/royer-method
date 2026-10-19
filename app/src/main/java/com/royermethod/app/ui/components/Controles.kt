@@ -254,18 +254,19 @@ fun Deslizador(
     }
 }
 
-/** Una pastilla elegible. */
+/** Una pastilla elegible. [marca] pone un punto al lado del nombre: "esta tiene algo puesto". */
 @Composable
-fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, marca: Boolean = false) {
     val fondo by animateColorAsState(if (elegido) Ink.White else Ink.White08, tween(180), label = "chip")
-    Box(
+    Row(
         modifier
             .heightIn(min = 40.dp)
             .clip(esquinas(20.dp))
             .background(fondo)
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
-        contentAlignment = Alignment.Center
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             texto,
@@ -273,6 +274,10 @@ fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifie
             color = if (elegido) Ink.Black else Ink.White70,
             maxLines = 1
         )
+        if (marca) {
+            Spacer(Modifier.width(6.dp))
+            Box(Modifier.size(6.dp).clip(CircleShape).background(if (elegido) Ink.Black else Ink.White))
+        }
     }
 }
 
