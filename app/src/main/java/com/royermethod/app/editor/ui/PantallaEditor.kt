@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Medidor
+import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.ui.components.BotonIcono
 import com.royermethod.app.ui.components.Glifos
 import com.royermethod.app.ui.components.Herramienta
@@ -96,6 +97,8 @@ fun PantallaEditor(
     onGuardarProyecto: () -> Unit = {},
     /** Agrega los ejemplos de movimiento (mitades, circulo y anillo, latigazo, barrido). */
     onEjemplos: () -> Unit = {},
+    /** Elegir otro archivo para todos los bloques que usan este. */
+    onReemplazar: (Origen) -> Unit = {},
     modifier: Modifier = Modifier,
     vista: @Composable (Modifier) -> Unit
 ) {
@@ -158,7 +161,7 @@ fun PantallaEditor(
                                     LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxSize())
                                     ControlesZoom(estado, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp))
                                 }
-                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto, onEjemplos)
+                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto, onEjemplos, onReemplazar)
                             }
                         }
                     }
@@ -313,7 +316,8 @@ private fun Herramientas(
     onAgregarSonido: () -> Unit,
     onAbrirProyecto: () -> Unit,
     onGuardarProyecto: () -> Unit,
-    onEjemplos: () -> Unit
+    onEjemplos: () -> Unit,
+    onReemplazar: (Origen) -> Unit
 ) {
     val s = estado.seleccion
     val desliza = rememberScrollState()
@@ -392,6 +396,8 @@ private fun Herramientas(
                     if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
                     Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
                     Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                    // Otra version del mismo video: se cambia en todos los bloques que lo usan
+                    c.origen?.let { o -> Herramienta(Glifos.reemplazar, "Reemplazar", { onReemplazar(o) }) }
                     Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
                     if (!c.esTexto) Herramienta(Glifos.color, "Color", { estado.panel = Panel.COLOR })
                     Herramienta(Glifos.curva, "Claves", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())

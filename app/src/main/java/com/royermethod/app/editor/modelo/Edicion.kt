@@ -366,6 +366,74 @@ object Edicion {
     }
 
     // ------------------------------------------------------------------
+    // Cambiar el archivo
+    // ------------------------------------------------------------------
+
+    /** Lo que sale de [reemplazar]. */
+    sealed interface Reemplazo {
+        /**
+         * [usos]: bloques y sonidos que tenian el archivo; [recortados]: los
+         * que se acortaron un poco para no pasar del final del nuevo.
+         */
+        data class Hecho(val proyecto: Proyecto, val usos: Int, val recortados: Int) : Reemplazo
+        /** El nuevo dura [duracionUs] y la edicion usa el anterior hasta [usadoUs]. */
+        data class Corto(val duracionUs: Long, val usadoUs: Long) : Reemplazo
+        /** Un video por una imagen o al reves. */
+        data object OtroTipo : Reemplazo
+        /** Se eligio el mismo archivo. */
+        data object Mismo : Reemplazo
+        /** Nada usa ese archivo. */
+        data object SinUso : Reemplazo
+    }
+
+    /**
+     * Pone [nuevo] en lugar del archivo [uri] en todos los bloques y sonidos
+     * que lo usan, y deja todo lo demas como esta: divisiones, tramos,
+     * velocidad, encuadre, animaciones, efectos y transiciones.
+     *
+     * Sirve para cambiar un video por otra version del mismo (otro render con
+     * los mismos tiempos). Los tramos son instantes del archivo, asi que el
+     * nuevo tiene que llegar hasta donde se usaba el anterior. Si se queda
+     * corto por [HOLGURA_REEMPLAZO_US] o menos (los mismos fotogramas pueden
+     * dar duraciones algo distintas segun el sonido y el contenedor), lo que
+     * pasa del final se recorta; si es mas, no se cambia nada.
+     */
+    fun reemplazar(p: Proyecto, uri: String, nuevo: Origen): Reemplazo {
+        val clips = (p.principal + p.capas.map { it.clip }).filter { it.origen?.uri == uri }
+        val sonidos = p.audios.filter { it.origen.uri == uri }
+        val viejo = clips.firstOrNull()?.origen ?: sonidos.firstOrNull()?.origen ?: return Reemplazo.SinUso
+        if (nuevo.uri == uri) return Reemplazo.Mismo
+        if (nuevo.tipo != viejo.tipo) return Reemplazo.OtroTipo
+        val fin = nuevo.duracionUs
+        val conTiempo = viejo.tipo != TipoOrigen.IMAGEN
+        if (conTiempo) {
+            val usado = (clips.map { it.hastaUs } + sonidos.map { it.hastaUs }).max()
+            // Cada uno tiene que conservar su principio y lo minimo de un bloque
+            val cabe = clips.all { it.desdeUs + (Clip.MINIMO_US * it.velocidad).toLong() <= fin } &&
+                sonidos.all { it.desdeUs + Clip.MINIMO_US <= fin }
+            if (usado - fin > HOLGURA_REEMPLAZO_US || !cabe) return Reemplazo.Corto(fin, usado)
+        }
+        var q = p.copy(
+            principal = p.principal.map { if (it.origen?.uri == uri) it.copy(origen = nuevo) else it },
+            capas = p.capas.map { if (it.clip.origen?.uri == uri) it.copy(clip = it.clip.copy(origen = nuevo)) else it },
+            audios = p.audios.map { if (it.origen.uri == uri) it.copy(origen = nuevo) else it }
+        )
+        var recortados = 0
+        if (conTiempo) {
+            // Como al recortar a mano: claves, efectos y partes se ajustan al nuevo final
+            clips.filter { it.hastaUs > fin }.forEach {
+                q = recortar(q, it.id, it.desdeUs, fin)
+                recortados++
+            }
+            sonidos.filter { it.hastaUs > fin }.forEach {
+                q = recortarAudio(q, it.id, it.inicioUs, it.desdeUs, fin)
+                recortados++
+            }
+        }
+        return Reemplazo.Hecho(q, clips.size + sonidos.size, recortados)
+    }
+
+    // ------------------------------------------------------------------
     // Fotogramas clave
     // ------------------------------------------------------------------
 
@@ -582,6 +650,9 @@ object Edicion {
 
     /** Medio fotograma: lo que se considera "el mismo instante" para un clave. */
     const val TOLERANCIA_CLAVE = 16_000L
+
+    /** Lo que el archivo nuevo de [reemplazar] puede durar de menos: tres fotogramas. */
+    const val HOLGURA_REEMPLAZO_US = 100_000L
 
     /**
      * Para colocar claves sin el iman a fotogramas: 0,0002 s. Deja poner una

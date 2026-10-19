@@ -209,6 +209,13 @@ object Glifos {
         camino(c, true, false, 6f, 4f, 18f, 4f, 18f, 20f, 12f, 15.5f, 6f, 20f)
     }
     val flecha: Glifo = { c -> linea(c, 4f, 12f, 19f, 12f); camino(c, false, false, 13f, 6f, 19f, 12f, 13f, 18f) }
+    /** Dos flechas que se cruzan: cambiar un archivo por otro. */
+    val reemplazar: Glifo = { c ->
+        linea(c, 4f, 8f, 19f, 8f)
+        camino(c, false, false, 15f, 4f, 19f, 8f, 15f, 12f)
+        linea(c, 20f, 16f, 5f, 16f)
+        camino(c, false, false, 9f, 12f, 5f, 16f, 9f, 20f)
+    }
     /** Fotogramas que se encadenan: generar los que faltan. */
     val fluidez: Glifo = { c ->
         camino(c, true, false, 11f, 7f, 20f, 12f, 11f, 17f)

@@ -441,3 +441,9 @@ Royer probó el `RoyerMethodGitHub.apk` de 3f0f23d en el teléfono y mandó tres
 
 Para probar con el dedo (`RoyerMethodGitHub.apk`): exportar un proyecto con cortes y mirar el resultado y el vídeo; reproducir y mirar las miniaturas y el reloj; buscar y seguir reproduciendo en los puntos donde antes se iba la imagen (si el vídeo de origen era una exportación de esta app, mejor).
 
+
+## Reemplazar el video de una edición (2026-10-19)
+
+Royer tiene una edición hecha sobre un video (exportado de Codex) partido solo con Dividir, sin borrar nada, y quiere cambiarlo por otra versión del mismo video que dura lo mismo, sin rehacer la edición. Ya hay un botón **Reemplazar** en la barra del bloque (video o foto): abre el selector, y `Edicion.reemplazar` cambia el `Origen` en todos los bloques, capas y sonidos que usan ese archivo (misma `uri`), sin tocar tramos, velocidad, encuadre, animaciones, efectos ni transiciones. Si el nuevo dura hasta 0,1 s menos (`HOLGURA_REEMPLAZO_US`), se recorta el final con `recortar`; si es más corto, no cambia nada y lo dice. Se puede deshacer. Pruebas: `ReemplazarTest` (7). **Sin probar en el teléfono**; falta pasar el arnés JVM completo (solo se pasaron `ReemplazarTest` y `EdicionTest`).
+
+Si su edición está en otra de las apps (la normal o la `.prueba`), puede pasarla con «Guardar proyecto» allí y «Abrir proyecto» en `RoyerMethodGitHub.apk`, si esa versión ya tiene esos botones.

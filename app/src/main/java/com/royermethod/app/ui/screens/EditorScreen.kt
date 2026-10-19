@@ -43,6 +43,7 @@ import com.royermethod.app.editor.ui.EstadoExportar
 import com.royermethod.app.editor.ui.PantallaEditor
 import com.royermethod.app.editor.ui.ResultadoExportar
 import com.royermethod.app.editor.ui.Seleccion
+import com.royermethod.app.editor.ui.avisoReemplazo
 import com.royermethod.app.editor.vista.Importar
 import com.royermethod.app.editor.vista.Previsualizador
 import com.royermethod.app.editor.vista.RecursosAndroid
@@ -82,6 +83,8 @@ fun EditorScreen(onVolver: () -> Unit) {
     var operandoProyecto by remember { mutableStateOf(false) }
     var haciendoEjemplos by remember { mutableStateOf(false) }
     var porGuardar by remember { mutableStateOf<Proyecto?>(null) }
+    // El archivo que se cambia por otro, mientras se elige el nuevo
+    var porReemplazar by remember { mutableStateOf<Origen?>(null) }
 
     LaunchedEffect(Unit) {
         withContext(Dispatchers.IO) { limpiezaImportados.limpiar() }
@@ -152,6 +155,20 @@ fun EditorScreen(onVolver: () -> Unit) {
     val elegirSonido = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         val t = estado.tiempo
         importar(listOfNotNull(uri)) { p, o -> Edicion.agregarAudio(p, o.first(), t).first }
+    }
+
+    val elegirReemplazo = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        val viejo = porReemplazar
+        porReemplazar = null
+        if (uri != null && viejo != null) alcance.launch {
+            val nuevo = withContext(Dispatchers.IO) { Importar.origen(context, uri) }
+            if (nuevo == null) estado.avisar("No se pudo abrir el archivo")
+            else {
+                val r = Edicion.reemplazar(estado.proyecto, viejo.uri, nuevo)
+                if (r is Edicion.Reemplazo.Hecho) estado.hacer { r.proyecto }
+                estado.avisar(avisoReemplazo(r, viejo))
+            }
+        }
     }
 
     val abrirProyecto = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -237,6 +254,10 @@ fun EditorScreen(onVolver: () -> Unit) {
                 porGuardar = estado.proyecto
                 guardarProyecto.launch("Proyecto-Royer.royer")
             }
+        },
+        onReemplazar = { o ->
+            porReemplazar = o
+            elegirReemplazo.launch(arrayOf(if (o.esImagen) "image/*" else "video/*"))
         },
         onEjemplos = {
             // Las fotos se pintan fuera del hilo principal; dos toques seguidos no agregan dos veces
