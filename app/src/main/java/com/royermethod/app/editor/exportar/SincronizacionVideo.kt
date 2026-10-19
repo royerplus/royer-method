@@ -44,13 +44,16 @@ internal object SincronizacionVideo {
     /**
      * ¿Se puede empezar a decodificar en este paquete? Si es un IDR, un IRAP
      * de H.265 o, en H.264, una imagen I (asi marcan sus puntos de acceso los
-     * GOP abiertos). null si no se entiende.
+     * GOP abiertos) o una con SEI de punto de recuperacion (el refresco
+     * intra periodico, sin imagenes I). null si no se entiende.
      */
     fun puedeEmpezar(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): Boolean? {
-        val imagen = nals(mime, datos, offset, tamano)?.firstOrNull { esImagen(mime, it.tipo) } ?: return null
+        val nals = nals(mime, datos, offset, tamano) ?: return null
+        val imagen = nals.firstOrNull { esImagen(mime, it.tipo) } ?: return null
         if (independiente(mime, imagen.tipo)) return true
         if (mime == HEVC) return imagen.tipo in 22..23
         if (imagen.tipo != 1) return false
+        if (nals.any { it.tipo == 6 && conRecuperacion(datos, it) }) return true
         val corte = tipoCorte(datos, imagen) ?: return null
         return corte % 5 == 2 || corte % 5 == 4
     }
@@ -63,6 +66,33 @@ internal object SincronizacionVideo {
         val imagen = nals(mime, datos, offset, tamano)?.firstOrNull { esImagen(mime, it.tipo) } ?: return null
         return if (mime == HEVC) !(imagen.tipo < 16 && imagen.tipo % 2 == 0)
         else (datos.get(imagen.inicio).toInt() ushr 5) and 3 != 0
+    }
+
+    /**
+     * ¿Lleva este SEI de H.264 un punto de recuperacion (payloadType 6)? Se
+     * recorren sus mensajes por tipo y tamano; si algo no cuadra, se para.
+     */
+    private fun conRecuperacion(b: ByteBuffer, nal: Nal): Boolean {
+        val fin = nal.inicio + nal.largo
+        var p = nal.inicio + 1
+        fun numero(): Int? {
+            var v = 0
+            while (true) {
+                if (p >= fin) return null
+                val x = b.get(p++).toInt() and 255
+                v += x
+                if (x != 255) return v
+            }
+        }
+        while (p < fin) {
+            // 0x80: el final del SEI
+            if (b.get(p).toInt() and 255 == 0x80 && p == fin - 1) return false
+            val tipo = numero() ?: return false
+            if (tipo == 6) return true
+            val tam = numero() ?: return false
+            p += tam
+        }
+        return false
     }
 
     /** slice_type de un corte H.264: el segundo ue(v) tras la cabecera del NAL. */

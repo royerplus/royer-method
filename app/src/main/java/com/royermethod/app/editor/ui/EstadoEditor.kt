@@ -126,9 +126,9 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     /**
      * Mientras suena, donde va la vista previa en un refresco de pantalla
      * (base de System.nanoTime). Lo cablea EditorScreen; null si no hay vista
-     * previa (pruebas, escritorio).
+     * previa (pruebas, escritorio). Da null si la vista previa ya paro.
      */
-    var instanteSonando: ((Long) -> Long)? = null
+    var instanteSonando: ((Long) -> Long?)? = null
     /**
      * La linea de tiempo esta moviendo [tiempo] en cada refresco con
      * [instanteSonando]: los avisos de la vista previa, 30 por segundo, sobran.

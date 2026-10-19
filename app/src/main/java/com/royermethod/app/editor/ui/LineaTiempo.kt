@@ -219,7 +219,7 @@ fun LineaTiempo(
         if (!estado.reproduciendo) return@LaunchedEffect
         estado.siguiendoReloj = true
         try {
-            while (true) withFrameNanos { ns -> if (estado.reproduciendo) estado.tiempo = instante(ns) }
+            while (true) withFrameNanos { ns -> if (estado.reproduciendo) instante(ns)?.let { estado.tiempo = it } }
         } finally {
             estado.siguiendoReloj = false
         }

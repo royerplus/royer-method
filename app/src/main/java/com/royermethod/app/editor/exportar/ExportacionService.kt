@@ -48,8 +48,13 @@ class ExportacionService : Service() {
             val destino = File(cacheDir, "exportado.mp4")
             val r = runCatching {
                 Exportador(this, proyecto, destino, cancelado = { Exportacion.cancelado }, alRepetir = {
-                    // Vuelve a cero: el tiempo restante se calcula desde aqui
-                    principal.post { Exportacion.arranqueMs = System.currentTimeMillis() }
+                    // Vuelve a cero: la barra, el aviso y el tiempo restante,
+                    // que se calcula desde aqui
+                    principal.post {
+                        Exportacion.hechos = 0
+                        Exportacion.arranqueMs = System.currentTimeMillis()
+                    }
+                    anunciar(0, 1)
                 }) { hechos, total ->
                     principal.post {
                         Exportacion.hechos = hechos

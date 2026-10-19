@@ -29,9 +29,9 @@ internal object EntradaVideo {
         fun entrada(): Boolean?
     }
 
-    /** Primer paso hacia atras despues del sync de al lado; luego se dobla. */
+    /** Primer paso hacia atras; luego se dobla. */
     const val PASO_US = 500_000L
-    /** 1 us, 0,5 s, 1, 2, 4, 8, 16 y 32 s hacia atras como mucho. */
+    /** 0,5 s, 1, 2, 4, 8, 16, 32 y 64 s hacia atras como mucho. */
     const val MAX_INTENTOS = 8
     /** Paquetes que se miran en cada intento. */
     const val MAX_MUESTRAS = 4000
@@ -47,7 +47,9 @@ internal object EntradaVideo {
         if (inicio < 0 || m.entrada() != false) return inicio
         var retroceso = 0L
         for (intento in 0 until MAX_INTENTOS) {
-            retroceso = if (retroceso == 0L) 1L else maxOf(retroceso * 2, PASO_US)
+            // No un paso minimo: con B, el sync de justo antes puede ir detras
+            // del de donde se cayo en el orden de decodificar
+            retroceso = if (retroceso == 0L) PASO_US else retroceso * 2
             val desde = m.buscar(maxOf(inicio - retroceso, 0L))
             if (desde < 0) break
             if (desde < inicio) {
@@ -55,7 +57,10 @@ internal object EntradaVideo {
                 // punto de entrada de verdad que no pase del objetivo
                 var ultima = -1L
                 var vistas = 0
-                while (m.instante != inicio && vistas < MAX_MUESTRAS) {
+                // Lo que va antes de donde se cayo no se ensena mucho despues:
+                // pasado eso, ya se esta por detras y no hay nada que buscar
+                val tope = maxOf(inicio, objetivo) + PASO_US
+                while (m.instante != inicio && m.instante <= tope && vistas < MAX_MUESTRAS) {
                     if (m.instante in 0..objetivo && m.entrada() == true) ultima = m.instante
                     vistas++
                     if (!m.avanzar()) break

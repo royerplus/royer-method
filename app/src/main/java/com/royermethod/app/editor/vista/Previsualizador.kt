@@ -212,10 +212,11 @@ class Previsualizador(context: Context) {
     /**
      * Donde va la reproduccion en el refresco de pantalla [frameNs] (base de
      * System.nanoTime), para que la interfaz avance en cada refresco y no a
-     * saltos de fotograma (ver [InstanteSonando]). En pausa, el cabezal.
+     * saltos de fotograma (ver [InstanteSonando]). null si no esta sonando:
+     * al parar, el cabezal exacto llega despues con [alTiempo].
      */
-    fun instanteEn(frameNs: Long): Long = synchronized(controlTiempo) {
-        if (reproduciendo) instante.en(frameNs) else tiempo
+    fun instanteEn(frameNs: Long): Long? = synchronized(controlTiempo) {
+        if (reproduciendo) instante.en(frameNs) else null
     }
 
     /** Avisa del instante a la interfaz, salvo que se haya buscado otro entretanto. */

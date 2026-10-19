@@ -94,8 +94,11 @@ fun EditorScreen(onVolver: () -> Unit) {
         // busqueda llega con la vista previa ya parada y el cabezal queda exacto
         estado.alPausar = { prev.pausar() }
         // Sonando, si la linea va con el reloj (instanteSonando), sus avisos
-        // sobran; la pausa, el final y las busquedas llegan ya parados y entran
-        prev.alTiempo = { if (!estado.reproduciendo || !estado.siguiendoReloj) estado.tiempo = it }
+        // sobran; la pausa, el final y las busquedas llegan ya parados y entran.
+        // Se mira si la vista previa para de verdad, no la interfaz: entre que
+        // se toca pausa (o se coge la linea) y la vista previa para, aun
+        // llegarian avisos de antes que echarian el cabezal atras.
+        prev.alTiempo = { if (!prev.reproduciendo || (estado.reproduciendo && !estado.siguiendoReloj)) estado.tiempo = it }
         estado.instanteSonando = { prev.instanteEn(it) }
         prev.alReproducir = { estado.reproduciendo = it }
         prev.proyecto(estado.proyecto)

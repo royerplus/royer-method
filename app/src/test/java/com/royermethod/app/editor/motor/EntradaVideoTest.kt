@@ -14,6 +14,7 @@ class EntradaVideoTest {
     private class Archivo(val paquetes: List<Paquete>) : EntradaVideo.Muestras {
         var actual = -1
         var leidas = 0
+        var avances = 0
 
         override fun buscar(t: Long): Long {
             // El paquete que se ve en t (el de mayor instante que no pasa) y,
@@ -25,6 +26,7 @@ class EntradaVideoTest {
         }
 
         override fun avanzar(): Boolean {
+            avances++
             if (actual < 0 || actual + 1 >= paquetes.size) { actual = -1; return false }
             actual++
             return true
@@ -120,6 +122,16 @@ class EntradaVideoTest {
         val largo = archivo(20, 240, colgados = false) { _, _, _ -> true }
         assertEquals(240 * fotograma, EntradaVideo.posicionar(largo, 479 * fotograma))
         assertTrue(largo.pasaPorEntradaAntesDe(479 * fotograma))
+    }
+
+    @Test
+    fun sinIndiceEnUnPNoSeRecorreElArchivoEntero() {
+        // Cayendo en el P 158, el sync de justo antes (el B 157) se decodifica
+        // despues de el: desde ahi no se vuelve a pasar por el 158
+        val a = archivo(20, 60, colgados = false) { _, _, _ -> true }
+        assertEquals(120 * fotograma, EntradaVideo.posicionar(a, 158 * fotograma))
+        assertTrue(a.pasaPorEntradaAntesDe(158 * fotograma))
+        assertTrue("avances ${a.avances}", a.avances < 200)
     }
 
     @Test

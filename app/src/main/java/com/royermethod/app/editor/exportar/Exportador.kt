@@ -108,10 +108,25 @@ class Exportador(
         val guardado = ajustes.getString(clave, null)?.split('|', limit = 2)
         var modo = guardado?.takeIf { it.size == 2 && it[1] == Build.FINGERPRINT }
             ?.let { g -> Modo.entries.firstOrNull { it.name == g[0] } } ?: Modo.NORMAL
+        // Sin cortes secos no se pide ningun completo y los modos solo se
+        // distinguirian por los B. Se dejan; si aun asi queda algo colgado (en
+        // un IDR que el codificador pone por su cuenta), se repite una vez sin
+        // B y no se guarda nada: lo aprendido es de los cortes.
+        val sinCortes = Linea.cortes(proyecto).isEmpty()
+        var sinCortesSinB = false
         while (true) {
             try {
-                return intentar(modo, segmentos, conAudio, plan0, hevc)
+                val conB = if (sinCortes) !sinCortesSinB else modo.conB
+                val repetible = if (sinCortes) !sinCortesSinB else modo != Modo.entries.last()
+                return intentar(modo, segmentos, conAudio, plan0, hevc, conB, repetible)
             } catch (e: Colgado) {
+                if (sinCortes) {
+                    Log.w(TAG, "${e.message} sin cortes; se repite sin B")
+                    sinCortesSinB = true
+                    modo = Modo.SIN_B
+                    alRepetir()
+                    continue
+                }
                 val siguiente = Modo.entries[modo.ordinal + 1]
                 Log.w(TAG, "${e.message} con $modo; se repite con $siguiente")
                 // Se guarda ya: lo de este modo no depende de que el siguiente
@@ -123,13 +138,16 @@ class Exportador(
         }
     }
 
-    private fun intentar(modo: Modo, segmentos: List<Segmento>, conAudio: Boolean, plan0: PlanExportacion, hevc: Boolean): Informe {
+    /**
+     * @param conB dejar fotogramas B al codificador
+     * @param repetible si queda algo colgado, parar para repetir; si no (en el
+     *   ultimo intento), lo que salga se queda y la verificacion lo cuenta
+     */
+    private fun intentar(modo: Modo, segmentos: List<Segmento>, conAudio: Boolean, plan0: PlanExportacion, hevc: Boolean,
+                         conB: Boolean, repetible: Boolean): Informe {
         if (destino.exists()) destino.delete()
         var plan = if (hevc == plan0.hevc) plan0 else PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
         require(plan.fotogramas > 0) { "El proyecto esta vacio" }
-        // En el ultimo modo no hay a donde pasar: lo que salga se queda, y la
-        // verificacion lo cuenta.
-        val repetible = modo != Modo.entries.last()
 
         var video: MediaCodec? = null
         var audio: MediaCodec? = null
@@ -140,13 +158,11 @@ class Exportador(
         val contenedor = Contenedor(destino, if (conAudio) 2 else 1)
         var bien = false
         try {
-            // Sin cortes secos no se pide ningun completo y los B no pueden
-            // quedar colgados: ahi se dejan aunque el modo los quite.
             val cortes = Linea.cortes(proyecto)
-            val (codec, mime, sinB) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc, modo.conB || cortes.isEmpty())
+            val (codec, mime, sinB) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc, conB)
             video = codec
-            // Si no se pudieron quitar los B, SIN_B seria repetir lo mismo
-            if (modo == Modo.SIN_B && cortes.isNotEmpty() && !sinB) throw Colgado("No se pudieron quitar los fotogramas B")
+            // Si no se pudieron quitar los B, seria repetir lo mismo
+            if (!conB && !sinB && repetible) throw Colgado("No se pudieron quitar los fotogramas B")
             // Si H.265 decia que si pero luego no arranco, sale en H.264, que
             // necesita mas bits para la misma calidad: el plan se rehace.
             if (plan.hevc && mime != Codificadores.HEVC) plan = PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
@@ -229,7 +245,7 @@ class Exportador(
                 codec = if (mime == Codificadores.HEVC) "H.265" else "H.264",
                 verificacion = verificacion,
                 avisos = compositor.avisos,
-                ajuste = if (cortes.isEmpty()) null else modo.ajuste
+                ajuste = if (cortes.isEmpty() && conB) null else modo.ajuste
             )
         } finally {
             mezclador?.cerrar()

@@ -188,6 +188,20 @@ class SincronizacionVideoTest {
     }
 
     @Test
+    fun enH264UnPConPuntoDeRecuperacionTambienVale() {
+        val p = byteArrayOf(0x41, 0x98.toByte(), 0x80.toByte())
+        fun sei(vararg b: Int) = ByteArray(b.size + 1) { if (it == 0) 0x06 else b[it - 1].toByte() }
+        // SEI con punto de recuperacion (tipo 6), solo o detras de otro mensaje
+        assertEquals(true, empieza(avc, avcc(sei(6, 2, 0x84, 0x00, 0x80), p)))
+        assertEquals(true, empieza(avc, avcc(sei(5, 1, 0x00, 6, 1, 0x84, 0x80), p)))
+        // Otro SEI, uno de tipo 255 + 6 o uno roto no hacen del P una entrada
+        assertEquals(false, empieza(avc, avcc(sei(1, 1, 0x00, 0x80), p)))
+        assertEquals(false, empieza(avc, avcc(sei(0xFF, 6, 1, 0x00, 0x80), p)))
+        assertEquals(false, empieza(avc, avcc(sei(5, 0x10, 0x00), p)))
+        assertEquals(false, empieza(avc, avcc(p)))
+    }
+
+    @Test
     fun seEmpiezaTambienConStartCodes() {
         // Como lo da MediaExtractor: Annex B con start codes de cuatro bytes
         val idr = ByteBuffer.wrap(byteArrayOf(0, 0, 0, 1, 0x40, 1, 9, 0, 0, 0, 1, 0x26, 1, 0x55))
