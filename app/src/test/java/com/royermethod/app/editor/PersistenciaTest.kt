@@ -59,6 +59,24 @@ class PersistenciaTest {
     }
 
     @Test
+    fun elColorVaSiempreEnElMismoOrden() {
+        // El arreglo se lee por posicion: un campo metido en medio cambiaria lo
+        // que ven los proyectos viejos y las versiones viejas de la app
+        val viejo = Persistencia.deTexto(
+            """{"principal":[{"id":1,"texto":{"contenido":"a"},"color":[0.01,0.02,0.03,0.04,0.05,0.06,0.07,0.08,0.09,0.1]}]}"""
+        )!!.principal[0].color
+        assertEquals(AjustesColor(
+            brillo = 0.01f, contraste = 0.02f, saturacion = 0.03f, exposicion = 0.04f, calidez = 0.05f,
+            tinte = 0.06f, sombras = 0.07f, luces = 0.08f, nitidez = 0.09f, vineta = 0.1f
+        ), viejo)
+        val todos = viejo.copy(claridad = 0.11f, vivacidad = 0.12f, desvanecer = 0.13f, grano = 0.14f)
+        val texto = Persistencia.aTexto(Proyecto(principal = listOf(Clip(id = 1, texto = Texto("a"), color = todos))))
+        val arreglo = org.json.JSONObject(texto).getJSONArray("principal").getJSONObject(0).getJSONArray("color")
+        assertEquals(14, arreglo.length())
+        for (i in 0 until 14) assertEquals("posicion $i", (i + 1) / 100.0, arreglo.getDouble(i), 1e-6)
+    }
+
+    @Test
     fun loQueNoSeEntiendeSeIgnora() {
         val q = Persistencia.deTexto("""{"formato":"RARO","principal":[{"id":5,"texto":{"contenido":"x"},"transicion":"NUEVA"}]}""")!!
         assertEquals(Formato.VERTICAL, q.formato)

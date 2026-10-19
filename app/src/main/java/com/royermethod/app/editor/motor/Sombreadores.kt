@@ -286,8 +286,14 @@ vec4 afilarCas(vec2 uv, vec4 centro, float nitidez, vec2 paso) {
     vec3 r = (b * w + d * w + f * w + h * w + e) / (1.0 + 4.0 * w);
     // CAS con su mando a 0 ya afila: se funde con el original para que 0 sea
     // nada. Hasta 0.5 llega a CAS entero; de ahi a 1 dobla lo que mueve, que
-    // CAS solo se queda corto para un "filo" que se note en el telefono
-    r = mix(e, r, nitidez * 2.0);
+    // CAS solo se queda corto para un "filo" que se note en el telefono.
+    // Lo que se dobla por encima de CAS no sale del minimo y el maximo de la
+    // caja 3x3: sin ese tope habia pixeles a negro o blanco puro y tonos
+    // cambiados (marron a verde en el pelo). Hasta 0.5 queda CAS tal cual.
+    vec3 cas = mix(e, r, min(nitidez * 2.0, 1.0));
+    vec3 mn3 = min(mnCruz, min(min(a, c), min(g, i)));
+    vec3 mx3 = max(mxCruz, max(max(a, c), max(g, i)));
+    r = clamp(mix(e, r, nitidez * 2.0), min(cas, mn3), max(cas, mx3));
     return vec4(clamp(r, 0.0, centro.a), centro.a);
 }
 
@@ -359,13 +365,15 @@ vec3 contraste(vec3 c, float k) {
 // ---- Sombras y luces: GPUImageHighlightShadowFilter (BSD-3). GPUImage solo
 // levanta sombras y solo baja luces; el lado contrario usa la ganancia
 // inversa, asi el negro y el blanco no se mueven nunca.
+// Los suelos de 0.0001 y no menos: en mediump un 1e-6 se queda en 0 y el
+// negro con sombras hacia abajo daria 0 * infinito.
 float curvaSombras(float l, float s) {
-    float x = max(l, 0.000001);
+    float x = max(l, 0.0001);
     return clamp(pow(x, 1.0 / (s + 1.0)) - 0.76 * pow(x, 2.0 / (s + 1.0)) - l, 0.0, 1.0);
 }
 
 float curvaLuces(float l, float h) {
-    float u = max(1.0 - l, 0.000001);
+    float u = max(1.0 - l, 0.0001);
     return clamp(1.0 - (pow(u, 1.0 / (2.0 - h)) - 0.8 * pow(u, 2.0 / (2.0 - h))) - l, -1.0, 0.0);
 }
 
@@ -373,7 +381,7 @@ vec3 sombrasLuces(vec3 c, float sombras, float luces) {
     float l = clamp(dot(c, vec3(0.33333333)), 0.0, 1.0);
     if (sombras != 0.0) {
         float g = (l + curvaSombras(l, abs(sombras) * 1.4)) / max(l, 0.0001);
-        c *= sombras > 0.0 ? g : 1.0 / g;
+        c *= sombras > 0.0 ? g : 1.0 / max(g, 0.0001);
         l = clamp(dot(c, vec3(0.33333333)), 0.0, 1.0);
     }
     if (luces != 0.0) {
@@ -434,12 +442,18 @@ float hash12(vec2 p) {
 // multiplica el color. Relacion senal/ruido 2: los claros reciben menos y el
 // negro, al multiplicar, ninguno. [semilla] sale del numero de fotograma.
 vec3 grano(vec3 c, vec2 pixel, float semilla, float cantidad) {
+#ifndef GL_FRAGMENT_PRECISION_HIGH
+    // Sin highp (Mali-400 y parecidos) el hash da cuatro valores y el grano
+    // seria un aclarado plano: mejor nada
+    return c;
+#else
     vec2 q = floor(pixel) + vec2(semilla * 37.0, semilla * 61.0);
     float u1 = max(hash12(q), 0.0001);
     float u2 = hash12(q + vec2(19.19, 47.47));
     float gauss = sqrt(-2.0 * log(u1)) * cos(6.2831853 * u2);
     float inv = 1.0 - (c.r + c.g + c.b) / 3.0;
     return c * (1.0 + gauss * cantidad * 0.35 * inv * inv);
+#endif
 }
 
 vec4 muestra(vec2 uv, vec2 pixel, vec2 desp, vec2 ejeX, vec2 ejeY, float fase) {
@@ -513,8 +527,13 @@ vec3 ajustar(vec3 c, vec2 uv, vec2 p, float lEntorno) {
     c *= 1.0 - uVineta * smoothstep(0.25, 0.8, d);
     c = clamp(c, 0.0, 1.0);
     // El grano va en celdas de 1/540 del lado corto del lienzo: mide lo mismo
-    // en la vista previa que en el video exportado
-    if (uGrano > 0.0) c = grano(c, p * (540.0 / min(uLienzo.x, uLienzo.y)), uSemilla, uGrano);
+    // en la vista previa que en el video exportado. Con menos de 540 px cada
+    // pixel muestra una celda entera, mientras que el video exportado, visto
+    // a ese tamano, junta varias y se ve mas suave: se baja en proporcion.
+    if (uGrano > 0.0) {
+        float corto = min(uLienzo.x, uLienzo.y);
+        c = grano(c, p * (540.0 / corto), uSemilla, uGrano * min(1.0, corto / 540.0));
+    }
     return clamp(c, 0.0, 1.0);
 }
 

@@ -186,6 +186,21 @@ class LineaTest {
     }
 
     @Test
+    fun elGranoPideMasBits() {
+        val foto = Clip(id = 1, origen = Origen("content://i", "i", TipoOrigen.IMAGEN, 1000, 1000))
+        val sin = PlanExportacion.de(Proyecto(principal = listOf(foto)))
+        val con = PlanExportacion.de(Proyecto(principal = listOf(foto.copy(color = AjustesColor(grano = 1f)))))
+        // Por lo menos lo de un video normal, no lo de una foto quieta
+        assertTrue(con.bitrateEn(10) >= 1.5 * sin.bitrateEn(10))
+        assertTrue(con.bytesEstimados > sin.bytesEstimados)
+        // Una capa con grano encima de un video tambien
+        val capa = Capa(0, 0, foto.copy(id = 2))
+        val p = Proyecto(principal = listOf(video(3, 1.0)), capas = listOf(capa))
+        val conCapa = p.copy(capas = listOf(capa.copy(clip = capa.clip.copy(color = AjustesColor(grano = 1f)))))
+        assertTrue(PlanExportacion.de(conCapa).bitrateEn(10) > PlanExportacion.de(p).bitrateEn(10))
+    }
+
+    @Test
     fun origenesQueVanAAparecer() {
         val a = video(1, 2.0); val b = video(2, 2.0)
         val capa = Capa(3_000_000, 0, video(3, 1.0))

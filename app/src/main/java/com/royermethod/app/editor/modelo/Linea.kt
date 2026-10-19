@@ -229,15 +229,22 @@ object Linea {
         // codificador no puede aprovechar el fotograma anterior
         if (en != null && (golpea(en.primero, en.localPrimero) ||
                 en.segundo?.let { golpea(it, en.localSegundo) } == true)) f *= 1.25f
+        // El grano es ruido nuevo en cada fotograma y en cada pixel, lo mas
+        // caro para el codificador: con los bits de una foto quieta lo borraba
+        // casi entero y el video exportado no se parecia a la vista previa
+        if (en != null) {
+            val g = maxOf(en.primero.colorFinal().grano, en.segundo?.colorFinal()?.grano ?: 0f)
+            if (g > 0f) f = maxOf(f, 1f) * (1f + 0.8f * g)
+        }
         // Lo que el usuario le pidio a ese bloque: en una transicion, la media de los dos
         if (en != null) f *= en.segundo?.let { (en.primero.calidad + it.calidad) / 2f } ?: en.primero.calidad
         // Lo que va encima tambien hay que pagarlo
         val encima = capasEn(p.capas, t)
-        for (c in encima) f += c.clip.calidad * when {
+        for (c in encima) f += c.clip.calidad * (when {
             c.clip.esVideo -> 0.35f
             seMueve(c.clip, t - c.inicioUs) -> 0.25f
             else -> 0.1f
-        }
+        } + c.clip.colorFinal().grano * 0.5f)
         if (encima.any { golpea(it.clip, t - it.inicioUs) }) f *= 1.15f
         return f.coerceIn(0.2f, 3.3f)
     }

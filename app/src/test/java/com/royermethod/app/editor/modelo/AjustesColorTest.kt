@@ -37,11 +37,16 @@ class AjustesColorTest {
     }
 
     @Test
-    fun losFiltrosDeSiempreNoCambian() {
-        // Ningun filtro usa los ajustes nuevos: un proyecto viejo con filtro se ve igual
+    fun losFiltrosNoUsanLosAjustesNuevos() {
+        // Los filtros siguen con los mismos valores que antes. No se ven
+        // identicos: contraste, saturacion, sombras, luces, exposicion y
+        // nitidez cambiaron de formula con los ajustes nuevos.
         for (f in Filtro.values()) {
             val a = f.ajustes
-            assertEquals(f.nombre, 0f, a.claridad + a.vivacidad + a.desvanecer + a.grano, 0f)
+            assertEquals(f.nombre, 0f, a.claridad, 0f)
+            assertEquals(f.nombre, 0f, a.vivacidad, 0f)
+            assertEquals(f.nombre, 0f, a.desvanecer, 0f)
+            assertEquals(f.nombre, 0f, a.grano, 0f)
         }
     }
 }
