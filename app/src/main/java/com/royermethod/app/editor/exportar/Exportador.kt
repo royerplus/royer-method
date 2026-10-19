@@ -3,12 +3,15 @@ package com.royermethod.app.editor.exportar
 import android.content.Context
 import android.media.MediaCodec
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.view.Surface
 import com.royermethod.app.editor.audio.DecodificadorAudio
 import com.royermethod.app.editor.audio.Mezclador
 import com.royermethod.app.editor.audio.Pcm
 import com.royermethod.app.editor.audio.PlanAudio
+import com.royermethod.app.editor.audio.Segmento
 import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.PlanExportacion
@@ -31,7 +34,12 @@ data class Informe(
     val codec: String,
     val verificacion: Verificacion,
     /** Fuentes que no se pudieron leer bien en algun fotograma. */
-    val avisos: Int
+    val avisos: Int,
+    /**
+     * null si el codificador se uso como siempre; si no, que se le quito
+     * para que los cortes salieran bien (ver [VigiaColgados]).
+     */
+    val ajuste: String? = null
 )
 
 /**
@@ -50,25 +58,78 @@ data class Informe(
  *
  * El audio se codifica a la vez, por delante del video lo justo para que el
  * MP4 quede intercalado y se pueda reproducir mientras se descarga.
+ *
+ * Si el codificador deja un fotograma colgado en un corte (ver
+ * [VigiaColgados]), se para en el acto y se repite con el siguiente [Modo],
+ * que se recuerda para las proximas exportaciones en este telefono.
  */
 class Exportador(
     private val context: Context,
     private val proyecto: Proyecto,
     private val destino: File,
     private val cancelado: () -> Boolean = { false },
+    /** Se tira lo hecho y se empieza otra vez (ver [Modo]); el avance vuelve a cero. */
+    private val alRepetir: () -> Unit = {},
     private val alAvanzar: (hechos: Long, total: Long) -> Unit = { _, _ -> }
 ) {
     private val info = MediaCodec.BufferInfo()
 
+    /**
+     * Como se usa el codificador de video, de mejor a peor. Se pasa al
+     * siguiente solo si el anterior dejo fotogramas colgados.
+     */
+    private enum class Modo(val conB: Boolean, val completoEnCortes: Boolean, val ajuste: String?) {
+        /** Fotogramas B y uno completo en cada corte. */
+        NORMAL(true, true, null),
+        /** Sin B: con ellos este codificador rompe el corte donde se pide el completo. */
+        SIN_B(false, true, "sin fotogramas B"),
+        /**
+         * Por si ni sin B sale bien: no se piden completos en los cortes. Los
+         * que pone el codificador por su cuenta (cada pocos segundos) salen
+         * bien aun con B (el B pendiente va como RADL), asi que los B se dejan.
+         */
+        SIN_COMPLETOS(true, false, "sin fotograma completo en los cortes")
+    }
+
+    /** Este [Modo] no sirve con este codificador: hay que repetir con el siguiente. */
+    private class Colgado(motivo: String) : Exception(motivo)
+
     fun exportar(): Informe {
-        if (destino.exists()) destino.delete()
         val segmentos = PlanAudio.de(proyecto)
         val conAudio = segmentos.isNotEmpty()
         val plan0 = PlanExportacion.de(proyecto, conAudio = conAudio)
         // H.265 solo si de verdad hay codificador para ese tamano
         val hevc = plan0.hevc && Codificadores.hay(Codificadores.HEVC, plan0.ancho, plan0.alto)
+        val ajustes = context.getSharedPreferences(AJUSTES, Context.MODE_PRIVATE)
+        val clave = if (hevc) "modo.hevc" else "modo.avc"
+        // Va con la huella del sistema: en otro telefono (una copia de
+        // seguridad restaurada) o tras una actualizacion se vuelve a probar
+        // desde NORMAL, por si ese codificador si hace bien los cortes.
+        val guardado = ajustes.getString(clave, null)?.split('|', limit = 2)
+        var modo = guardado?.takeIf { it.size == 2 && it[1] == Build.FINGERPRINT }
+            ?.let { g -> Modo.entries.firstOrNull { it.name == g[0] } } ?: Modo.NORMAL
+        while (true) {
+            try {
+                return intentar(modo, segmentos, conAudio, plan0, hevc)
+            } catch (e: Colgado) {
+                val siguiente = Modo.entries[modo.ordinal + 1]
+                Log.w(TAG, "${e.message} con $modo; se repite con $siguiente")
+                // Se guarda ya: lo de este modo no depende de que el siguiente
+                // intento acabe (se puede cancelar al ver que vuelve a empezar).
+                ajustes.edit().putString(clave, "${siguiente.name}|${Build.FINGERPRINT}").apply()
+                modo = siguiente
+                alRepetir()
+            }
+        }
+    }
+
+    private fun intentar(modo: Modo, segmentos: List<Segmento>, conAudio: Boolean, plan0: PlanExportacion, hevc: Boolean): Informe {
+        if (destino.exists()) destino.delete()
         var plan = if (hevc == plan0.hevc) plan0 else PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
         require(plan.fotogramas > 0) { "El proyecto esta vacio" }
+        // En el ultimo modo no hay a donde pasar: lo que salga se queda, y la
+        // verificacion lo cuenta.
+        val repetible = modo != Modo.entries.last()
 
         var video: MediaCodec? = null
         var audio: MediaCodec? = null
@@ -79,8 +140,13 @@ class Exportador(
         val contenedor = Contenedor(destino, if (conAudio) 2 else 1)
         var bien = false
         try {
-            val (codec, mime) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc)
+            // Sin cortes secos no se pide ningun completo y los B no pueden
+            // quedar colgados: ahi se dejan aunque el modo los quite.
+            val cortes = Linea.cortes(proyecto)
+            val (codec, mime, sinB) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc, modo.conB || cortes.isEmpty())
             video = codec
+            // Si no se pudieron quitar los B, SIN_B seria repetir lo mismo
+            if (modo == Modo.SIN_B && cortes.isNotEmpty() && !sinB) throw Colgado("No se pudieron quitar los fotogramas B")
             // Si H.265 decia que si pero luego no arranco, sale en H.264, que
             // necesita mas bits para la misma calidad: el plan se rehace.
             if (plan.hevc && mime != Codificadores.HEVC) plan = PlanExportacion.de(proyecto, hevc = false, conAudio = conAudio)
@@ -106,7 +172,6 @@ class Exportador(
             val pistaAudio = Pista()
             val audioEnvio = EnvioAudio(totalAudio)
 
-            val cortes = Linea.cortes(proyecto)
             // -1: el primero siempre se manda, por si el plan cambio tras configurar
             var bitrate = -1
             for (n in 0 until plan.fotogramas) {
@@ -117,7 +182,7 @@ class Exportador(
                     bitrate = b
                     codec.setParameters(Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_VIDEO_BITRATE, b) })
                 }
-                if (n > 0 && n in cortes) {
+                if (modo.completoEnCortes && n > 0 && n in cortes) {
                     codec.setParameters(Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0) })
                 }
 
@@ -125,6 +190,7 @@ class Exportador(
                 egl.marcarTiempo(n * 1_000_000_000L / Linea.FPS)
                 egl.publicar()
                 drenar(codec, pistaVideo, contenedor, fin = false)
+                if (repetible && contenedor.colgados > 0) throw Colgado(COLGADO)
 
                 // Audio hasta medio segundo por delante del video
                 if (audio != null && mezclador != null) {
@@ -149,6 +215,7 @@ class Exportador(
                 }
             }
             drenar(codec, pistaVideo, contenedor, fin = true)
+            if (repetible && contenedor.colgados > 0) throw Colgado(COLGADO)
             if (audio != null) drenar(audio, pistaAudio, contenedor, fin = true)
             contenedor.cerrar()
 
@@ -161,7 +228,8 @@ class Exportador(
                 alto = plan.alto,
                 codec = if (mime == Codificadores.HEVC) "H.265" else "H.264",
                 verificacion = verificacion,
-                avisos = compositor.avisos
+                avisos = compositor.avisos,
+                ajuste = if (cortes.isEmpty()) null else modo.ajuste
             )
         } finally {
             mezclador?.cerrar()
@@ -175,6 +243,13 @@ class Exportador(
             contenedor.cerrar()
             if (!bien) destino.delete()
         }
+    }
+
+    private companion object {
+        const val TAG = "RoyerExportar"
+        /** Donde se recuerda el [Modo] que necesito el codificador de este telefono. */
+        const val AJUSTES = "exportacion"
+        const val COLGADO = "El codificador dejo un fotograma colgado en un corte"
     }
 
     private class Pista {

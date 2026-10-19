@@ -14,20 +14,43 @@ internal object SincronizacionVideo {
     fun admite(mime: String?): Boolean = mime == AVC || mime == HEVC
 
     /** Lee solo el tramo indicado y conserva posicion y limite del buffer. */
-    fun esClave(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): Boolean {
-        if (!admite(mime) || offset < 0 || tamano <= 0 || offset > datos.limit() || tamano > datos.limit() - offset) return false
+    fun esClave(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): Boolean =
+        tipos(mime, datos, offset, tamano)?.any { independiente(mime, it) } ?: false
+
+    /**
+     * Los tipos de NAL del tramo, en orden; null si no se entiende. Como
+     * [esClave], no mueve el buffer.
+     */
+    fun tipos(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): List<Int>? {
+        if (!admite(mime) || offset < 0 || tamano <= 0 || offset > datos.limit() || tamano > datos.limit() - offset) return null
         val fin = offset + tamano
         // Primero los largos de cuatro bytes. Un largo de 256 empieza como un
         // start code de tres bytes: comprobar la estructura completa evita la
         // ambiguedad con Annex B.
-        largos(mime, datos, offset, fin)?.let { return it }
-        return annexB(mime, datos, offset, fin)
+        return largos(mime, datos, offset, fin) ?: annexB(mime, datos, offset, fin)
+    }
+
+    /** El tipo de la imagen: el de su primer NAL de video, o null si no lleva. */
+    fun tipoImagen(mime: String, tipos: List<Int>): Int? =
+        tipos.firstOrNull { if (mime == AVC) it in 1..5 else it in 0..31 }
+
+    /**
+     * Despues de [irap] (un punto de acceso), que tipos pueden llegar y aun asi
+     * ensenarse antes que el. Fuera de esos, la norma no deja ninguno.
+     */
+    fun anterioresPermitidos(mime: String, irap: Int): IntRange? = when {
+        mime != HEVC -> null
+        // CRA y BLA_W_LP: RADL y RASL
+        irap == 21 || irap == 16 -> 6..9
+        // IDR_W_RADL y BLA_W_RADL: solo RADL, que se apoyan en el propio IRAP
+        irap == 19 || irap == 17 -> 6..7
+        else -> null
     }
 
     /** null si no es una secuencia completa de NAL con largos de cuatro bytes. */
-    private fun largos(mime: String, b: ByteBuffer, inicio: Int, fin: Int): Boolean? {
+    private fun largos(mime: String, b: ByteBuffer, inicio: Int, fin: Int): List<Int>? {
         var p = inicio
-        var clave = false
+        val tipos = ArrayList<Int>(4)
         while (p < fin) {
             if (fin - p < 4) return null
             val n = ((b.get(p).toLong() and 255) shl 24) or
@@ -35,27 +58,25 @@ internal object SincronizacionVideo {
                 ((b.get(p + 2).toLong() and 255) shl 8) or (b.get(p + 3).toLong() and 255)
             p += 4
             if (n <= 0 || n > fin - p) return null
-            val tipo = tipo(mime, b, p, n.toInt()) ?: return null
-            if (independiente(mime, tipo)) clave = true
+            tipos.add(tipo(mime, b, p, n.toInt()) ?: return null)
             p += n.toInt()
         }
-        return clave
+        return tipos
     }
 
-    private fun annexB(mime: String, b: ByteBuffer, inicio: Int, fin: Int): Boolean {
+    private fun annexB(mime: String, b: ByteBuffer, inicio: Int, fin: Int): List<Int>? {
         var p = inicio
-        var clave = false
+        val tipos = ArrayList<Int>(4)
         while (p < fin) {
             val largo = prefijo(b, p, fin)
-            if (largo == 0) return false
+            if (largo == 0) return null
             val nal = p + largo
             var siguiente = nal
             while (siguiente < fin && prefijo(b, siguiente, fin) == 0) siguiente++
-            val tipo = tipo(mime, b, nal, siguiente - nal) ?: return false
-            if (independiente(mime, tipo)) clave = true
+            tipos.add(tipo(mime, b, nal, siguiente - nal) ?: return null)
             p = siguiente
         }
-        return clave
+        return tipos
     }
 
     private fun prefijo(b: ByteBuffer, p: Int, fin: Int): Int {
@@ -73,6 +94,38 @@ internal object SincronizacionVideo {
         } else (cabecera and 31).takeIf { it > 0 }
     }
 
-    private fun independiente(mime: String, tipo: Int): Boolean =
+    fun independiente(mime: String, tipo: Int): Boolean =
         if (mime == AVC) tipo == 5 else tipo in 16..21
+}
+
+/**
+ * Cuenta los fotogramas que llegan detras de un punto de acceso (IDR) pero se
+ * ensenan antes que el y no estan entre los que la norma permite ahi.
+ *
+ * Pasa con algunos codificadores que usan fotogramas B cuando se les pide un
+ * fotograma completo en un corte: convierten en IDR el P que tocaba y luego
+ * mandan el B que quedaba pendiente, apoyado en fotogramas de antes del IDR,
+ * que el decodificador ya tiro. Ese B sale gris o mal, y si el reproductor
+ * se lia con el orden, lo que viene detras se pinta sobre un fotograma
+ * equivocado hasta el siguiente IDR: oscuro y con manchas.
+ *
+ * Los paquetes se le pasan en el orden del archivo (el de decodificar).
+ */
+internal class VigiaColgados(private val mime: String) {
+    private var claveUs = Long.MIN_VALUE
+    private var permitidos: IntRange? = null
+
+    var cuantos = 0
+        private set
+
+    fun ver(datos: ByteBuffer, offset: Int, tamano: Int, tiempoUs: Long) {
+        val tipos = SincronizacionVideo.tipos(mime, datos, offset, tamano) ?: return
+        val tipo = SincronizacionVideo.tipoImagen(mime, tipos) ?: return
+        if (SincronizacionVideo.independiente(mime, tipo)) {
+            claveUs = tiempoUs
+            permitidos = SincronizacionVideo.anterioresPermitidos(mime, tipo)
+        } else if (tiempoUs < claveUs && permitidos?.contains(tipo) != true) {
+            cuantos++
+        }
+    }
 }

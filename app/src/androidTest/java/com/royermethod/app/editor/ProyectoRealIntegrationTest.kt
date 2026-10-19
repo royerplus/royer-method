@@ -330,6 +330,7 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
             val v = resultado.verificacion
             informe.put("estado", "COMPLETADO")
                 .put("codec", resultado.codec)
+                .put("ajusteCodificador", resultado.ajuste ?: JSONObject.NULL)
                 .put("bytes", resultado.bytes)
                 .put("ancho", resultado.ancho)
                 .put("alto", resultado.alto)
@@ -337,6 +338,7 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
                 .put("fotogramas", v.fotogramas)
                 .put("fps", v.fps)
                 .put("irregulares", v.irregulares)
+                .put("colgados", v.colgados)
                 .put("duracionVideoUs", v.duracionVideoUs)
                 .put("duracionAudioUs", v.duracionAudioUs)
                 .put("verificacionPerfecta", v.perfecta)
@@ -346,6 +348,7 @@ class ProyectoRealIntegrationTest : InstrumentationTestCase() {
             assertTrue("No se genero el MP4", destino.isFile && resultado.bytes > 0)
             assertEquals("Se perdieron fotogramas al exportar", v.esperados, v.fotogramas.toLong())
             assertEquals("El video tiene marcas de tiempo irregulares", 0, v.irregulares)
+            assertEquals("El codificador dejo fotogramas colgados de un IDR", 0, v.colgados)
             assertEquals("Alguna fuente no se pudo leer durante la exportacion", 0, resultado.avisos)
         } catch (fallo: Throwable) {
             informe.put("estado", "FALLIDO")

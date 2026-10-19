@@ -19,6 +19,10 @@ internal class Contenedor(archivo: File, private val pistasEsperadas: Int) {
     private var pistas = 0
     private var arrancado = false
     private val tipos = HashMap<Int, String>()
+    private val vigias = HashMap<Int, VigiaColgados>()
+
+    /** Fotogramas colgados de un IDR escritos hasta ahora (ver [VigiaColgados]). */
+    val colgados: Int get() = vigias.values.sumOf { it.cuantos }
 
     private class Guardado(val pista: Int, val datos: ByteBuffer, val tiempo: Long, val banderas: Int)
 
@@ -27,7 +31,10 @@ internal class Contenedor(archivo: File, private val pistasEsperadas: Int) {
     fun pista(formato: MediaFormat): Int {
         check(!arrancado) { "pista despues de arrancar" }
         val i = muxer.addTrack(formato)
-        formato.getString(MediaFormat.KEY_MIME)?.let { tipos[i] = it }
+        formato.getString(MediaFormat.KEY_MIME)?.let {
+            tipos[i] = it
+            if (SincronizacionVideo.admite(it)) vigias[i] = VigiaColgados(it)
+        }
         pistas++
         if (pistas == pistasEsperadas) {
             muxer.start()
@@ -50,6 +57,7 @@ internal class Contenedor(archivo: File, private val pistasEsperadas: Int) {
             val clave = SincronizacionVideo.esClave(mime!!, datos, info.offset, info.size)
             info.flags = if (clave) info.flags or MediaCodec.BUFFER_FLAG_KEY_FRAME
                 else info.flags and MediaCodec.BUFFER_FLAG_KEY_FRAME.inv()
+            vigias[pista]?.ver(datos, info.offset, info.size, info.presentationTimeUs)
         }
         datos.position(info.offset)
         datos.limit(info.offset + info.size)

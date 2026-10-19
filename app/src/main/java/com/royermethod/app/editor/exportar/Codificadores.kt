@@ -46,8 +46,10 @@ internal object Codificadores {
      * @param conPerfil pedir el mejor perfil (High en H.264, que comprime
      *   bastante mejor que el Baseline que algunos ponen por defecto). Si el
      *   codificador lo rechaza se vuelve a intentar sin.
+     * @param conB permitir fotogramas B (solo cuenta con perfil). Si no, se
+     *   piden cero expresamente, por si el codificador los pusiera solo.
      */
-    fun formatoVideo(info: MediaCodecInfo, mime: String, ancho: Int, alto: Int, bitrate: Int, conPerfil: Boolean): MediaFormat {
+    fun formatoVideo(info: MediaCodecInfo, mime: String, ancho: Int, alto: Int, bitrate: Int, conPerfil: Boolean, conB: Boolean = true): MediaFormat {
         val caps = info.getCapabilitiesForType(mime)
         val f = MediaFormat.createVideoFormat(mime, ancho, alto)
         f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
@@ -75,7 +77,9 @@ internal object Codificadores {
                 // en algo que se mueve suave (zoom, deslizar, fundido) cuestan
                 // mucho menos. El que no los tenga lo ignora; si el
                 // codificador lo rechaza, se reintenta sin perfil y sin esto.
-                f.setInteger(MediaFormat.KEY_MAX_B_FRAMES, 2)
+                // Hay codificadores que con B rompen los cortes (ver
+                // VigiaColgados): ahi el exportador los quita.
+                f.setInteger(MediaFormat.KEY_MAX_B_FRAMES, if (conB) 2 else 0)
             }
         }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
@@ -92,9 +96,10 @@ internal object Codificadores {
      * El primer codificador de video que arranca: H.265 si se pide y existe,
      * si no H.264; hardware antes que software; con perfil y, si no, sin.
      *
-     * @return el codec configurado (sin arrancar) y su mime
+     * @param conB permitir fotogramas B (ver [formatoVideo])
+     * @return el codec configurado (sin arrancar), su mime y si se le quitaron los B
      */
-    fun video(ancho: Int, alto: Int, bitrate: Int, hevc: Boolean): Pair<MediaCodec, String> {
+    fun video(ancho: Int, alto: Int, bitrate: Int, hevc: Boolean, conB: Boolean = true): Video {
         val orden = if (hevc) listOf(HEVC, AVC) else listOf(AVC)
         var ultimo: Exception? = null
         for (mime in orden) {
@@ -102,8 +107,8 @@ internal object Codificadores {
                 for (perfil in listOf(true, false)) {
                     val codec = runCatching { MediaCodec.createByCodecName(info.name) }.getOrNull() ?: continue
                     try {
-                        codec.configure(formatoVideo(info, mime, ancho, alto, bitrate, perfil), null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
-                        return codec to mime
+                        codec.configure(formatoVideo(info, mime, ancho, alto, bitrate, perfil, conB), null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                        return Video(codec, mime, !conB && perfil && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     } catch (e: Exception) {
                         ultimo = e
                         codec.release()
@@ -113,6 +118,14 @@ internal object Codificadores {
         }
         throw IllegalStateException("Este telefono no tiene un codificador de video que acepte ${ancho}x$alto", ultimo)
     }
+
+    /**
+     * Lo que da [video].
+     *
+     * @property sinB se pidieron cero fotogramas B. Solo se puede con perfil y
+     *   desde Android 10; si no, el codificador usa los que quiera.
+     */
+    data class Video(val codec: MediaCodec, val mime: String, val sinB: Boolean)
 
     /** AAC-LC estereo a 48 kHz: lo que reproduce absolutamente todo. */
     fun audio(kbps: Int): MediaCodec {

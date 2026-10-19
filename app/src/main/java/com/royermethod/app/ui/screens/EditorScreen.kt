@@ -268,7 +268,8 @@ private fun estadoExportar(): EstadoExportar {
         fraccion = f,
         restanteMs = restante,
         resultado = Exportacion.informe?.let {
-            ResultadoExportar(it.bytes, it.ancho, it.alto, it.codec, it.verificacion.resumen(), it.verificacion.perfecta, it.avisos)
+            val codec = it.codec + (it.ajuste?.let { a -> "  ·  $a" } ?: "")
+            ResultadoExportar(it.bytes, it.ancho, it.alto, codec, it.verificacion.resumen(), it.verificacion.perfecta, it.avisos)
         },
         fallo = Exportacion.fallo
     )
