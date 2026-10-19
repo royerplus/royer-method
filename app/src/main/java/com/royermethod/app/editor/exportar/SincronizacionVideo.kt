@@ -21,7 +21,13 @@ internal object SincronizacionVideo {
      * Los tipos de NAL del tramo, en orden; null si no se entiende. Como
      * [esClave], no mueve el buffer.
      */
-    fun tipos(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): List<Int>? {
+    fun tipos(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): List<Int>? =
+        nals(mime, datos, offset, tamano)?.map { it.tipo }
+
+    /** Cada NAL: su tipo y donde empieza (en su cabecera). */
+    private class Nal(val tipo: Int, val inicio: Int, val largo: Int)
+
+    private fun nals(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): List<Nal>? {
         if (!admite(mime) || offset < 0 || tamano <= 0 || offset > datos.limit() || tamano > datos.limit() - offset) return null
         val fin = offset + tamano
         // Primero los largos de cuatro bytes. Un largo de 256 empieza como un
@@ -30,9 +36,72 @@ internal object SincronizacionVideo {
         return largos(mime, datos, offset, fin) ?: annexB(mime, datos, offset, fin)
     }
 
+    private fun esImagen(mime: String, tipo: Int) = if (mime == AVC) tipo in 1..5 else tipo in 0..31
+
     /** El tipo de la imagen: el de su primer NAL de video, o null si no lleva. */
-    fun tipoImagen(mime: String, tipos: List<Int>): Int? =
-        tipos.firstOrNull { if (mime == AVC) it in 1..5 else it in 0..31 }
+    fun tipoImagen(mime: String, tipos: List<Int>): Int? = tipos.firstOrNull { esImagen(mime, it) }
+
+    /**
+     * ¿Se puede empezar a decodificar en este paquete? Si es un IDR, un IRAP
+     * de H.265 o, en H.264, una imagen I (asi marcan sus puntos de acceso los
+     * GOP abiertos). null si no se entiende.
+     */
+    fun puedeEmpezar(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): Boolean? {
+        val imagen = nals(mime, datos, offset, tamano)?.firstOrNull { esImagen(mime, it.tipo) } ?: return null
+        if (independiente(mime, imagen.tipo)) return true
+        if (mime == HEVC) return imagen.tipo in 22..23
+        if (imagen.tipo != 1) return false
+        val corte = tipoCorte(datos, imagen) ?: return null
+        return corte % 5 == 2 || corte % 5 == 4
+    }
+
+    /**
+     * ¿Hay fotogramas que se apoyan en este? En H.265 lo dice el tipo (los
+     * pares por debajo de 16 no); en H.264, nal_ref_idc. null si no se entiende.
+     */
+    fun esReferencia(mime: String, datos: ByteBuffer, offset: Int, tamano: Int): Boolean? {
+        val imagen = nals(mime, datos, offset, tamano)?.firstOrNull { esImagen(mime, it.tipo) } ?: return null
+        return if (mime == HEVC) !(imagen.tipo < 16 && imagen.tipo % 2 == 0)
+        else (datos.get(imagen.inicio).toInt() ushr 5) and 3 != 0
+    }
+
+    /** slice_type de un corte H.264: el segundo ue(v) tras la cabecera del NAL. */
+    private fun tipoCorte(b: ByteBuffer, nal: Nal): Int? {
+        val fin = nal.inicio + nal.largo
+        var p = nal.inicio + 1
+        var ceros = 0
+        var byte = 0
+        var bit = 8
+        fun leer(): Int? {
+            if (bit == 8) {
+                if (p >= fin) return null
+                var v = b.get(p++).toInt() and 255
+                // Byte de prevencion (00 00 03): no es del corte
+                if (ceros >= 2 && v == 3) {
+                    if (p >= fin) return null
+                    v = b.get(p++).toInt() and 255
+                    ceros = 0
+                }
+                ceros = if (v == 0) ceros + 1 else 0
+                byte = v
+                bit = 0
+            }
+            return (byte ushr (7 - bit++)) and 1
+        }
+        fun ue(): Int? {
+            var n = 0
+            while (true) {
+                val v = leer() ?: return null
+                if (v == 1) break
+                if (++n > 16) return null
+            }
+            var r = 0
+            repeat(n) { r = (r shl 1) or (leer() ?: return null) }
+            return (1 shl n) - 1 + r
+        }
+        ue() ?: return null
+        return ue()
+    }
 
     /**
      * Despues de [irap] (un punto de acceso), que tipos pueden llegar y aun asi
@@ -48,9 +117,9 @@ internal object SincronizacionVideo {
     }
 
     /** null si no es una secuencia completa de NAL con largos de cuatro bytes. */
-    private fun largos(mime: String, b: ByteBuffer, inicio: Int, fin: Int): List<Int>? {
+    private fun largos(mime: String, b: ByteBuffer, inicio: Int, fin: Int): List<Nal>? {
         var p = inicio
-        val tipos = ArrayList<Int>(4)
+        val tipos = ArrayList<Nal>(4)
         while (p < fin) {
             if (fin - p < 4) return null
             val n = ((b.get(p).toLong() and 255) shl 24) or
@@ -58,22 +127,22 @@ internal object SincronizacionVideo {
                 ((b.get(p + 2).toLong() and 255) shl 8) or (b.get(p + 3).toLong() and 255)
             p += 4
             if (n <= 0 || n > fin - p) return null
-            tipos.add(tipo(mime, b, p, n.toInt()) ?: return null)
+            tipos.add(Nal(tipo(mime, b, p, n.toInt()) ?: return null, p, n.toInt()))
             p += n.toInt()
         }
         return tipos
     }
 
-    private fun annexB(mime: String, b: ByteBuffer, inicio: Int, fin: Int): List<Int>? {
+    private fun annexB(mime: String, b: ByteBuffer, inicio: Int, fin: Int): List<Nal>? {
         var p = inicio
-        val tipos = ArrayList<Int>(4)
+        val tipos = ArrayList<Nal>(4)
         while (p < fin) {
             val largo = prefijo(b, p, fin)
             if (largo == 0) return null
             val nal = p + largo
             var siguiente = nal
             while (siguiente < fin && prefijo(b, siguiente, fin) == 0) siguiente++
-            tipos.add(tipo(mime, b, nal, siguiente - nal) ?: return null)
+            tipos.add(Nal(tipo(mime, b, nal, siguiente - nal) ?: return null, nal, siguiente - nal))
             p = siguiente
         }
         return tipos
@@ -112,20 +181,52 @@ internal object SincronizacionVideo {
  * Los paquetes se le pasan en el orden del archivo (el de decodificar).
  */
 internal class VigiaColgados(private val mime: String) {
-    private var claveUs = Long.MIN_VALUE
+    /** Instante del ultimo punto de acceso visto. */
+    var claveUs = Long.MIN_VALUE
+        private set
     private var permitidos: IntRange? = null
 
     var cuantos = 0
         private set
 
-    fun ver(datos: ByteBuffer, offset: Int, tamano: Int, tiempoUs: Long) {
-        val tipos = SincronizacionVideo.tipos(mime, datos, offset, tamano) ?: return
-        val tipo = SincronizacionVideo.tipoImagen(mime, tipos) ?: return
+    /** @return si este paquete esta colgado */
+    fun ver(datos: ByteBuffer, offset: Int, tamano: Int, tiempoUs: Long): Boolean {
+        val tipos = SincronizacionVideo.tipos(mime, datos, offset, tamano) ?: return false
+        val tipo = SincronizacionVideo.tipoImagen(mime, tipos) ?: return false
         if (SincronizacionVideo.independiente(mime, tipo)) {
             claveUs = tiempoUs
             permitidos = SincronizacionVideo.anterioresPermitidos(mime, tipo)
         } else if (tiempoUs < claveUs && permitidos?.contains(tipo) != true) {
             cuantos++
+            return true
         }
+        return false
+    }
+}
+
+/**
+ * Al leer un video para decodificarlo, los paquetes que no se le dan al
+ * decodificador: los colgados de [VigiaColgados] en los que no se apoya nadie.
+ * Con uno dentro, algunos decodificadores pintan oscuro o con manchas todo lo
+ * que viene hasta el siguiente IDR (medio segundo o varios); sin el, solo falta
+ * ese fotograma y se ve el anterior. Pasa con los videos que exporto esta app
+ * con fotogramas B antes de corregirlo, si se vuelven a meter en un proyecto.
+ *
+ * Para no abrir cada paquete, solo se miran los que el archivo marca como sync
+ * y los que llegan con un instante anterior al del ultimo punto de acceso; un
+ * video normal no tiene de esos.
+ *
+ * Los paquetes van en el orden del archivo; despues de buscar, uno nuevo.
+ */
+internal class FiltroColgados(private val mime: String) {
+    private val vigia = VigiaColgados(mime)
+
+    /** Tirados hasta ahora. */
+    val tirados: Int get() = vigia.cuantos
+
+    fun tirar(datos: ByteBuffer, offset: Int, tamano: Int, tiempoUs: Long, sync: Boolean): Boolean {
+        if (!sync && tiempoUs >= vigia.claveUs) return false
+        return vigia.ver(datos, offset, tamano, tiempoUs) &&
+            SincronizacionVideo.esReferencia(mime, datos, offset, tamano) == false
     }
 }

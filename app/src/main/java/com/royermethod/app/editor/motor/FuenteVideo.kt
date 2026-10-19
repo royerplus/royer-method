@@ -8,9 +8,13 @@ import android.media.MediaFormat
 import android.net.Uri
 import android.opengl.GLES11Ext
 import android.opengl.GLES20
+import android.os.Build
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.Surface
+import com.royermethod.app.editor.exportar.FiltroColgados
+import com.royermethod.app.editor.exportar.SincronizacionVideo
+import java.nio.ByteBuffer
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
@@ -44,6 +48,12 @@ class FuenteVideo(
     /** Medidas del fotograma tal y como viene, sin girar. */
     val anchoCrudo: Int
     val altoCrudo: Int
+    private val mime: String
+    /** H.264 y H.265: se mira donde se cae al saltar y se tiran los B colgados. */
+    private val revisar: Boolean
+    private var filtro: FiltroColgados? = null
+    /** Para leer un paquete sin darselo al decodificador; crece si hace falta. */
+    private var paquete: ByteBuffer? = null
 
     /** Instante del fotograma que hay ahora en la textura. -1 si ninguno. */
     var ptsActual = -1L
@@ -93,6 +103,9 @@ class FuenteVideo(
             // decodificador, unos moviles lo meten en la matriz de la textura y
             // otros no, y el video saldria girado dos veces o ninguna.
             if (formato.containsKey(MediaFormat.KEY_ROTATION)) formato.setInteger(MediaFormat.KEY_ROTATION, 0)
+            mime = formato.getString(MediaFormat.KEY_MIME)!!
+            revisar = SincronizacionVideo.admite(mime)
+            filtro = if (revisar) FiltroColgados(mime) else null
 
             val ids = IntArray(1)
             GLES20.glGenTextures(1, ids, 0)
@@ -103,7 +116,7 @@ class FuenteVideo(
             st.setOnFrameAvailableListener({ hayFotograma.release() }, avisos)
             sup = Surface(st)
 
-            codec = MediaCodec.createDecoderByType(formato.getString(MediaFormat.KEY_MIME)!!)
+            codec = MediaCodec.createDecoderByType(mime)
             codec.configure(formato, sup, null, 0)
             codec.start()
         } catch (e: Exception) {
@@ -239,7 +252,12 @@ class FuenteVideo(
             val idx = decodificador.dequeueInputBuffer(0)
             if (idx < 0) return
             val buffer = decodificador.getInputBuffer(idx) ?: return
-            val leidos = extractor.readSampleData(buffer, 0)
+            var leidos = extractor.readSampleData(buffer, 0)
+            // Los B colgados de un IDR no se le dan (ver FiltroColgados)
+            while (leidos >= 0 && colgado(buffer, leidos)) {
+                extractor.advance()
+                leidos = extractor.readSampleData(buffer, 0)
+            }
             if (leidos < 0) {
                 decodificador.queueInputBuffer(idx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 entradaAgotada = true
@@ -250,17 +268,71 @@ class FuenteVideo(
         }
     }
 
+    private fun colgado(buffer: ByteBuffer, leidos: Int): Boolean {
+        val f = filtro ?: return false
+        val sync = extractor.sampleFlags and MediaExtractor.SAMPLE_FLAG_SYNC != 0
+        return f.tirar(buffer, 0, leidos, extractor.sampleTime, sync)
+    }
+
     private fun saltar(objetivo: Long) {
         if (pendiente >= 0) {
             runCatching { decodificador.releaseOutputBuffer(pendiente, false) }
             pendiente = -1
         }
-        extractor.seekTo(objetivo.coerceAtLeast(0), MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        val destino = objetivo.coerceAtLeast(0)
+        if (revisar) {
+            EntradaVideo.posicionar(muestras, destino)
+            filtro = FiltroColgados(mime)
+        } else {
+            extractor.seekTo(destino, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+        }
         decodificador.flush()
         entradaAgotada = false
         salidaAgotada = false
         ptsActual = -1
         ptsCopia = -1
+    }
+
+    /** El archivo visto paquete a paquete, para [EntradaVideo]. */
+    private val muestras = object : EntradaVideo.Muestras {
+        override fun buscar(t: Long): Long {
+            extractor.seekTo(t, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            return extractor.sampleTime
+        }
+
+        override fun avanzar(): Boolean = extractor.advance()
+
+        override val instante: Long get() = extractor.sampleTime
+
+        override fun entrada(): Boolean? {
+            val b = leerPaquete() ?: return null
+            return SincronizacionVideo.puedeEmpezar(mime, b, 0, b.limit())
+        }
+    }
+
+    /** El paquete actual, sin avanzar; null si no hay o no cabe en [PAQUETE_MAXIMO]. */
+    private fun leerPaquete(): ByteBuffer? {
+        var b = paquete ?: ByteBuffer.allocateDirect(PAQUETE_INICIAL).also { paquete = it }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val tam = extractor.sampleSize
+            if (tam > PAQUETE_MAXIMO) return null
+            if (tam > b.capacity()) b = ByteBuffer.allocateDirect(tam.toInt()).also { paquete = it }
+        }
+        while (true) {
+            b.clear()
+            // Si no cabe, readSampleData lanza IllegalArgumentException
+            val n = try {
+                extractor.readSampleData(b, 0)
+            } catch (e: IllegalArgumentException) {
+                if (b.capacity() >= PAQUETE_MAXIMO || Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) return null
+                b = ByteBuffer.allocateDirect(b.capacity() * 2).also { paquete = it }
+                continue
+            }
+            if (n <= 0) return null
+            b.position(0)
+            b.limit(n)
+            return b
+        }
     }
 
     /**
@@ -368,6 +440,9 @@ class FuenteVideo(
 
         /** Mas alla de esto por delante, saltar sale mas barato que decodificar. */
         private const val SALTO_LARGO = 3_000_000L
+
+        private const val PAQUETE_INICIAL = 512 * 1024
+        private const val PAQUETE_MAXIMO = 16 * 1024 * 1024
 
         /**
          * Los avisos de "hay fotograma nuevo" llegan por aqui. Si fueran al
