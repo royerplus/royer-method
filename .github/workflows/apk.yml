@@ -37,10 +37,10 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v4
 
-      # El release se firma con la clave de depuracion. Cada maquina nueva de
-      # GitHub crearia una distinta y el telefono no dejaria instalar encima
-      # sin desinstalar, asi que la primera se guarda en la cache y se reusa.
-      # No va en el repo porque el repo es publico.
+      # El release se firma con una clave que se guarda en la cache y se reusa:
+      # con una nueva en cada compilacion el telefono no deja instalar encima
+      # sin desinstalar. No va en el repo porque el repo es publico. Ojo:
+      # GitHub borra una cache que no se usa en 7 dias.
       - name: Clave de firma
         uses: actions/cache@v4
         with:
@@ -59,8 +59,22 @@ jobs:
       - name: Dependencias nativas
         run: bash tools/traer_dependencias.sh
 
+      # FIRMA_CI le dice a app/build.gradle.kts que firme con la clave de la
+      # cache. Hasta el 2026-10-19 no se le decia y el plugin de Android se
+      # hacia una clave propia en cada compilacion.
       - name: Compilar
-        run: bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease assembleGithub
+        run: FIRMA_CI="$HOME/.android/debug.keystore" bash ./gradlew --no-daemon "-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8" assembleRelease assembleGithub
+
+      # Si un APK no sale con la clave de la cache, no se publica
+      - name: Comprobar firma
+        run: |
+          esperada=$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey | sed -n 's/^.*SHA256: //p' | tr -d ':' | tr 'A-F' 'a-f')
+          herramientas=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          for apk in app/build/outputs/apk/release/app-release.apk app/build/outputs/apk/github/app-github.apk; do
+            tiene=$("$herramientas/apksigner" verify --print-certs "$apk" | sed -n 's/^Signer #1 certificate SHA-256 digest: //p')
+            echo "$apk firmado con $tiene (clave de la cache: $esperada)"
+            [ -n "$esperada" ] && [ "$tiene" = "$esperada" ] || { echo "El APK no lleva la clave de la cache"; exit 1; }
+          done
 
       - name: Publicar
         env:

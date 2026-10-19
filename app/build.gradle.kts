@@ -44,6 +44,21 @@ android {
         }
     }
 
+    signingConfigs {
+        // En GitHub Actions, la clave que guarda la cache (ver apk.yml), siempre
+        // la misma. Sin esto el plugin de Android se hacia una de depuracion
+        // nueva en cada compilacion y el telefono no dejaba instalar encima
+        // ("conflicto con un paquete"). En el PC no existe y se usa la de siempre.
+        System.getenv("FIRMA_CI")?.let { ruta ->
+            create("ci") {
+                storeFile = file(ruta)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Permite validar el editor en el telefono sin sustituir la app instalada.
@@ -61,7 +76,7 @@ android {
             // medir el rendimiento de verdad. Un build de depuracion lleva
             // comprobaciones extra de Compose y va notablemente mas lento, asi
             // que juzgar la fluidez con el APK debug enganaba.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("ci") ?: signingConfigs.getByName("debug")
         }
         create("prueba") {
             initWith(getByName("release"))
@@ -76,9 +91,8 @@ android {
         // sin reemplazar ni chocar con ninguna.
         //
         // Solo existe en Actions: uno compilado en el PC saldria con este mismo
-        // id y la clave del PC, y si se instalara, los del enlace ya no se
-        // podrian instalar encima ("conflicto con un paquete") sin desinstalar
-        // y perder lo que hubiera en la app.
+        // id y la clave del PC, y los del enlace ya no se podrian instalar
+        // encima sin desinstalar y perder lo que hubiera en la app.
         if (System.getenv("GITHUB_ACTIONS") == "true") create("github") {
             initWith(getByName("prueba"))
             applicationIdSuffix = ".github"
