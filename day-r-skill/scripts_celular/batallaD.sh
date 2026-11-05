@@ -38,7 +38,7 @@ pergamino() {
     v2=$(B ver); [ "$(campo "$v2" PANT)" = PERGAMINO ] || return 0
     h1=$(campo "$v2" HASH); visto "$h1" && { FALLA=1; log "el click no avanzo (pantalla igual o ya vista): clickeo las demas opciones"; }
     # nuevo: aunque cada click abra una pagina nueva, si tras PMAX1 clicks de la 1a opcion no hay batalla -> ronda con las demas opciones
-    [ $PCL -ge ${PMAX1:-1} ] && { PCL=0; ronda; }
+    [ $FIN = 0 ] && [ $PCL -ge ${PMAX1:-1} ] && { PCL=0; ronda; }   # solo mientras NO haya habido batalla (FIN=0): tras ganar, no se prueban otras opciones
   else
     for y in 756 883; do
       si_encuentro
