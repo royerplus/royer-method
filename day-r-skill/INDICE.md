@@ -85,3 +85,5 @@ Capturas del juego: las que devuelve `screenshot` se guardan en el sandbox (`...
 
 ## Imagenes de referencia
 `REFERENCIAS.md` y carpeta `referencias/` (prohibidos, ruinas, multisitios, 68 capturas de Royer por categoria).
+
+`scripts_celular/` = copias de `batallaD.sh` y `encuentro.sh` actuales (el resto de scripts sigue solo en el celular, ver GUIA_RAPIDA.md seccion 4). `encuentro.sh` ya no esta en la raiz.

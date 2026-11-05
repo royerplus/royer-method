@@ -12,7 +12,7 @@
 | Situacion | Script / accion | Resultado y siguiente paso |
 |---|---|---|
 | Ventana "Has visto a un enemigo" (mapa o durante el luteo) | `sh encuentro.sh [max_s]` | Hace TODO: Batalla automatica o, si "demasiado fuerte", OK->Ataque->`batallaD.sh`. Imprime `AUTO_HECHA` / `FIN_BATALLA`. Despues: re-ver items, `saquear.sh` x2, recoger (ver 4). |
-| Pergamino / evento con opciones (p. ej. "Mujer, casa encantada") | NO tocar: `batallaD.sh`/`encuentro.sh` ya pulsan la 1a opcion (`pergamino()`) | Solo lanzar `encuentro.sh`. |
+| Pergamino / evento con opciones (p. ej. "Mujer, casa encantada") | NO tocar: `batallaD.sh`/`encuentro.sh` pulsan la 1a opcion y, si tras 3 clicks no hay batalla, prueban las demas (ronda) comprobando antes que no salga la ventana de enemigo | Solo lanzar `encuentro.sh`. |
 | Pantalla de armas / combate por turnos | `sh encuentro.sh` (o `sh batallaD.sh [max_s]`) | Un solo script a la vez. Log: `bc.log`, `enc.log`. Termina en `FIN_BATALLA` (victoria + mision cumplida cerradas). |
 | Combate: errores | `SLOTS_DESCONOCIDOS` (exit 6) = no reconozco el orden de armas por icono: avisar, NO adivinar. `INVOCACION_FALLA` (exit 2). `PANTALLA_DESCONOCIDA` (exit 5, deja `pantalla_rara.raw`). `JUEGO_FUERA`/`SIN_VENTANA` = juego no al frente. | Ver `combate_notas.md` y `SKILL.md` (Combate). |
 | En ciudad, ir a un edificio de la ruta | `nav.py captura.png DESTINO` (sandbox) -> da `camara.sh DX DY` + `input tap` | Ruta: `zaraysk_ruta.json` + `zaraysk_mosaico.png`. |
@@ -29,8 +29,8 @@ Solo si NO hay script para eso (p. ej. un dialogo nuevo desconocido): primero de
 ## 3. Orden normal de una sesion de luteo
 `ver pantalla` -> (si ventana enemigo: `encuentro.sh`) -> `nav.py` al siguiente edificio -> entrar con lupa -> `casa_auto.sh` -> leer `casa_auto.res` -> `rc.sh FLAGS` -> siguiente. Parada actual de Zaraysk: 11 "Colegio - Biblioteca".
 
-## 4. Lo que NO esta en el repositorio (solo en el celular)
-`batallaD.sh`, `encuentro.sh` (copia en esta carpeta), `casa_auto.sh`, `rc.sh`, `recoger.sh`, `linterna.sh`, `luz.sh`, `puerta.sh`, `estado.sh`, `bcv.sh`, `bcv.jar` (v20) y sus respaldos `*.bak`. Pendiente: copiarlos aqui cuando el celular este conectado (`cat` por shell en bloques con md5, o `adb pull`), para que una sesion nueva pueda reinstalarlos.
+## 4. Scripts del celular
+Ya en el repo (`scripts_celular/`): `batallaD.sh`, `encuentro.sh` (version actual, 2026-11-05). Aun SOLO en el celular: `casa_auto.sh`, `rc.sh`, `recoger.sh`, `linterna.sh`, `luz.sh`, `puerta.sh`, `estado.sh`, `bcv.sh`, `bcv.jar` (v20) y sus respaldos `*.bak`. Pendiente: copiarlos aqui cuando el celular este conectado (`cat` por shell en bloques con md5, o `adb pull`), para que una sesion nueva pueda reinstalarlos.
 
 ## 5. Imagenes de referencia
 Para reconocer que recoger/no recoger, edificios prohibidos, ventanas y combate: `REFERENCIAS.md` (carpeta `referencias/`). Mirarlas antes de decidir.

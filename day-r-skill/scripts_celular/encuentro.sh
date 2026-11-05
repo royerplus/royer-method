@@ -1,7 +1,9 @@
 #!/system/bin/sh
 # encuentro.sh [max_s] -- ventana "Has visto a un enemigo" (mapa) -> deja la batalla corriendo con batallaD.sh.
 # evita duplicados: mata batallas/encuentros previos (dos scripts a la vez pelean por bcv.cmd y dan NO_MUNECO en bucle)
+[ -z "$ENC_TEST" ] && {
 for p in $(ps -A -o PID,ARGS | grep -E "sh (batallaD|encuentro)\.sh" | grep -v grep | awk "{print \$1}"); do [ "$p" != "$$" ] && kill $p 2>/dev/null; done
+}
 #  1. Pulsa "Batalla automatica".
 #  2. Si sale el cartel "El enemigo es demasiado fuerte..." (nivel Mortal, etc.): OK -> "Ataque" -> sigue con batallaD.sh (batalla normal).
 #  3. Si no sale ese cartel: Confirmar -> Cerrar (la batalla se resolvio sola). Imprime AUTO_HECHA.

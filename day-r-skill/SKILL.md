@@ -194,3 +194,11 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Prueba offline: skill_dayr/muneco_pegado.raw -> 7 enemigos + aliado 4,6 (granjero). skill_dayr/interiores.png muestra los interiores.
 - Jar v20 (fuente skill_dayr/Bcv.java). Respaldos en celular: bcv_v18_antes_aliados.bak (v18).
 - Jar celular: bcv.jar = v20 (md5 df36d3ed...), respaldo del anterior (v19, regla de aro verde mala): bcv_v19_ring.bak.
+
+## Eventos (pergamino) que no llegan a batalla: RONDA de opciones (2026-11-05)
+- Diseno pedido por el usuario: si el evento no avanza a la batalla, probar TODAS las opciones visibles, un click a cada una, comprobando ANTES de cada click que no haya empezado la ventana de enemigo.
+- Falla que habia: el script solo probaba las demas opciones si el click "no avanzaba" (pantalla igual/ya vista). En eventos largos cada click abre una pagina nueva, asi que nunca lo hacia y se quedaba en la opcion 1 (ej. evento "Mujer / casa encantada", paginas con 3 opciones y flecha ▼).
+- Ahora (`scripts_celular/batallaD.sh`): tras PMAX1=3 clicks de la 1a opcion sin batalla -> `ronda()` (filas y=747 y y=864; fila 1 y=630 ya probada), con `si_encuentro` antes y despues de cada click (usa `ENC_TEST=1 sh encuentro.sh`; si hay ventana de enemigo -> `exec sh encuentro.sh`). Limite 90 s en el evento (`PERGAMINO_ATASCADO`).
+- Probado en vivo: llego a batalla y combatio hasta el turno 5 (luego el juego salio de pantalla).
+- Pendiente: la flecha ▼ (mas opciones abajo) no se toca; el umbral PMAX1 (3) se puede cambiar (`PMAX1=5 sh encuentro.sh`).
+- `batallaD.sh` ahora NO toca nada si el juego no tiene el foco (comprueba `dumpsys window | grep mCurrentFocus`); sale con JUEGO_FUERA a los 20 s.
