@@ -1,3 +1,5 @@
+> Para decidir QUE script usar en cada momento: `GUIA_RAPIDA.md`.
+
 # Índice: qué hace cada cosa y dónde buscarla (Day R)
 
 Dos lugares: **SANDBOX** = `/tmp/claude-0/-home-user-royer-method/caac0904-0b46-56da-8dcb-c80004fee664/scratchpad/` (donde corro Python y guardo capturas) y **CELULAR** = `/data/local/tmp/` (donde viven los scripts de shell; se corren con `sh /data/local/tmp/<x>.sh` por `mcp__Aaacelu__shell`).

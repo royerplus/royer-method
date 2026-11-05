@@ -1,3 +1,5 @@
+> **EMPEZAR POR `GUIA_RAPIDA.md`**: tabla situacion -> script, y la regla "si hay script, no tocar a mano".
+
 ---
 name: dayr-exploracion
 description: Jugar Day R Survival Premium en el celular de Royer (MCP Aaacelu): entrar a una ciudad, mapear sus edificios, planear la ruta edificio por edificio, lutear cada casa y resolver los combates que salgan. Se va completando con lo aprendido.
