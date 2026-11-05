@@ -212,3 +212,10 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Eventos: `PMAX1` por defecto 8 (el usuario lo pidio: 8 clics en la opcion 1 antes de la ronda; los clics se cortan solos al salir del pergamino).
 - Corregido tras probarlo en vivo (v21): la ronda de opciones SOLO corre mientras no haya habido batalla (`FIN=0`). Despues de VICTORIA/MISION el evento que sigue se resuelve con la 1a opcion, sin ronda. Prueba en vivo v21: batalla de bandidos con cajas/manchas/barriles ganada en 126 s; los blancos (1,4 3,2 4,0 0,1...) eran bandidos con aro; sin disparos a cajas.
 - PMAX1 final = 8 (decision del usuario, 2026-11-05): 8 clics en la 1a opcion (0,5 s de espera cada uno; tras cada clic se lee la pantalla y si ya no es PERGAMINO sale al instante) y despues la ronda con las demas opciones. Tope 90 s por evento.
+
+## Ficha CLARA con aro no se identificaba: Chupacabras (v22, 2026-11-05)
+- Error: el bot no identificaba a un enemigo (la Chupacabras, N=9, casilla 8,3, cara blanca y ancha). Causa: `analiza()` exigia >=5 de 8 puntos oscuros alrededor del centro; con un dibujo claro solo salian 4 y la rechazaba aunque tuviera aro.
+- Arreglo: `if (dd < 5 && !aro && !tieneAroEnemigo(cx,cy)) continue;` -> una ficha con aro azul/verde vale aunque su dibujo sea claro.
+- Pruebas: `chupacabras.png`/`.raw` (N=9) debe dar enemigos 2,3 / 8,3 (+ el jugador 7,4 offline); T9 acepta N como argumento (`java T9 9`). Las demas capturas de combate no cambian. `T10.java N col fila` explica por que una casilla se acepta/rechaza.
+- Jar celular: bcv.jar = v22 (md5 ce2935d5...), respaldo bcv_v21_antes_ficha_clara.bak.
+- Tableros: N puede ser 7, 8 o 9 (se lee de la captura); las pruebas deben usar el N correcto.

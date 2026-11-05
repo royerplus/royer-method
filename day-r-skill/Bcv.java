@@ -236,7 +236,7 @@ public class Bcv {
             int o = 0, b7 = b * 7 / 10; int[][] op = {{b, 0}, {-b, 0}, {0, b}, {0, -b}, {b7, b7}, {-b7, -b7}};
             int o2 = 0; for (int[] q : op) { if (ora(cx + q[0], cy + q[1])) o++; if (ora2(cx + q[0], cy + q[1])) o2++; }
             boolean aro = o >= 2 || o2 >= 2;
-            if (dd < 5 && !aro) continue;   // ficha: >=5 de 8 puntos oscuros; el jugador (aro naranja) basta con >=3 (el icono de radiacion le tapa el anillo)
+            if (dd < 5 && !aro && !tieneAroEnemigo(cx, cy)) continue;   // ficha clara (cara blanca, p. ej. Chupacabras): vale si lleva aro azul/verde   // ficha: >=5 de 8 puntos oscuros; el jugador (aro naranja) basta con >=3 (el icono de radiacion le tapa el anillo)
             int g = 0, u = 1018 * 140 / (N * 1000), v = 1018 * 195 / (N * 1000);
             int[][] gp = {{-u, -(u * 55 / 100)}, {0, -v}, {u, -(u * 55 / 100)}};
             for (int[] q : gp) { int[] p = px(cx + q[0], cy + q[1]); if (p[1] > p[0] + 60 && p[1] > p[2] + 100) g++; }
