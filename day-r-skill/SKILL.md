@@ -209,5 +209,6 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - `tieneAroEnemigo`: corona r=38..64: azul (b>r+35,b>g+15) >=8 puntos o verde oliva (g>r+12,g>b+30,g>=40) >=6. El primer intento (verde vivo g>r+25) perdia enemigos con aro verde oscuro: SIEMPRE probar con las capturas.
 - Pruebas: `regresion.sh` (chkE): bandidos_cajas 7 enemigos (incl. el bandido de aro verde 0,2), nuevo_dim 6 (la roca 3,7 ya NO es enemigo; antes si), clasico1 4. T9.java imprime enemigos/aliados/sinAro.
 - Jar celular: bcv.jar = v21 (md5 896a251f...), respaldo bcv_v20_antes_aro_req.bak.
-- Eventos: `PMAX1` por defecto ahora 1 (opcion 1 una vez y luego la ronda con las demas opciones).
+- Eventos: `PMAX1` por defecto 8 (el usuario lo pidio: 8 clics en la opcion 1 antes de la ronda; los clics se cortan solos al salir del pergamino).
 - Corregido tras probarlo en vivo (v21): la ronda de opciones SOLO corre mientras no haya habido batalla (`FIN=0`). Despues de VICTORIA/MISION el evento que sigue se resuelve con la 1a opcion, sin ronda. Prueba en vivo v21: batalla de bandidos con cajas/manchas/barriles ganada en 126 s; los blancos (1,4 3,2 4,0 0,1...) eran bandidos con aro; sin disparos a cajas.
+- PMAX1 final = 8 (decision del usuario, 2026-11-05): 8 clics en la 1a opcion (0,5 s de espera cada uno; tras cada clic se lee la pantalla y si ya no es PERGAMINO sale al instante) y despues la ronda con las demas opciones. Tope 90 s por evento.
