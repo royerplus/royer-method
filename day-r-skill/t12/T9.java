@@ -1,0 +1,1 @@
+public class T9 { public static void main(String[] a) throws Exception { Bcv.N=8; Bcv.cap(); Bcv.escribeJug=true; Bcv.analiza(); StringBuilder sb=new StringBuilder(); for (Bcv.Tok t: Bcv.sinAro) sb.append(t.c+","+t.r+" "); System.out.println("ene="+Bcv.listaEnemigos()+" | aliados:"+Bcv.otrosAliados.size()+" | SINARO="+sb); } }

@@ -1,7 +1,7 @@
 #!/system/bin/sh
 # batallaD.sh [max_s] -- CICLO COMPLETO de combate/mision, RAPIDO: toda la vision y los toques los hace el servicio Java (bcv.sh -> Bcv.java), una captura por decision.
 # Mismas reglas que batallaC.sh (ese queda como respaldo):
-#  - Pergamino/evento: 1a opcion. Si tras PMAX1 (3) clicks de la 1a opcion NO se llega a batalla (aunque cada click abra una pagina nueva) -> RONDA: un click a cada una de las demas opciones visibles (filas 2 y 3), comprobando ANTES de cada click que no ha empezado la ventana de enemigo (si empezo: encuentro.sh). Si el click no avanza (pantalla igual/ya vista) -> modo fila. >90 s en la ventana: termina. Delay 0.5 s. Cartel PELIGRO: nada. Armas: "Empezar batalla".
+#  - Pergamino/evento: 1a opcion. Si tras PMAX1 (1) clic de la 1a opcion NO se llega a batalla (aunque cada click abra una pagina nueva) -> RONDA: un click a cada una de las demas opciones visibles (filas 2 y 3), comprobando ANTES de cada click que no ha empezado la ventana de enemigo (si empezo: encuentro.sh). Si el click no avanza (pantalla igual/ya vista) -> modo fila. >90 s en la ventana: termina. Delay 0.5 s. Cartel PELIGRO: nada. Armas: "Empezar batalla".
 #  - TURNO 1 (muneco libre en el 1er turno): invocar y pasar, SIN disparar ni mover. Muneco muerto: reinvocar y seguir con el rifle.
 #  - Mi turno: rifle a los enemigos en rango MIENTRAS haya puntos de accion (>=2) y usos; cambia de blanco solo. Nadie a tiro: UN movimiento hacia el mas cercano. Sin disparos posibles: pasar.
 #  - Turno del muneco: habilidad 3 al mejor enemigo (si no esta en enfriamiento, nada) y pasar. Cada pase se verifica (reintenta).
@@ -38,7 +38,7 @@ pergamino() {
     v2=$(B ver); [ "$(campo "$v2" PANT)" = PERGAMINO ] || return 0
     h1=$(campo "$v2" HASH); visto "$h1" && { FALLA=1; log "el click no avanzo (pantalla igual o ya vista): clickeo las demas opciones"; }
     # nuevo: aunque cada click abra una pagina nueva, si tras PMAX1 clicks de la 1a opcion no hay batalla -> ronda con las demas opciones
-    [ $PCL -ge ${PMAX1:-3} ] && { PCL=0; ronda; }
+    [ $PCL -ge ${PMAX1:-1} ] && { PCL=0; ronda; }
   else
     for y in 756 883; do
       si_encuentro

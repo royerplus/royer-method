@@ -186,7 +186,19 @@ public class Bcv {
 
     static class Tok { int c, r, x, y; boolean e; long dist; }
     static List<Tok> enemigos = new ArrayList<>();
-    static List<Tok> otrosAliados = new ArrayList<>();   // fichas con aro verde (aliados): no se les dispara ni se persigue
+    static List<Tok> otrosAliados = new ArrayList<>();
+    static List<Tok> sinAro = new ArrayList<>();   // fichas oscuras sin aro: cajas/objetos   // fichas con aro verde (aliados): no se les dispara ni se persigue
+    /** Aro de enemigo: la ficha de un enemigo lleva aro AZUL (escudo) y/o VERDE (vida) en la corona r=38..64. Una caja/barril en casilla naranja NO tiene ninguno: no es enemigo. */
+    static boolean tieneAroEnemigo(int cx, int cy) {
+        int g = 0, b = 0;
+        for (int rad = 38; rad < 66; rad += 2) for (int ang = 0; ang < 360; ang += 15) {
+            int x = cx + (int) Math.round(rad * Math.cos(Math.toRadians(ang))), y = cy + (int) Math.round(rad * Math.sin(Math.toRadians(ang)));
+            int[] p = px(x, y);
+            if (p[1] > p[0] + 12 && p[1] > p[2] + 30 && p[1] >= 40) g++;   // verde oliva de la barra de vida
+            if (p[2] > p[0] + 35 && p[2] > p[1] + 15) b++;
+        }
+        return b >= 8 || g >= 6;
+    }
     /** Interior verde (aliado): cuenta pixeles muy verdes (g>r+40 y g>b+40) en el disco r<=33 de la ficha. El aro verde de los enemigos es solo su barra de vida: NO cuenta. */
     static boolean interiorVerde(int cx, int cy) {
         int g = 0;
@@ -211,7 +223,7 @@ public class Bcv {
     }
     /** Analiza fichas: jugador (aro naranja), aliado (cara verde), enemigos (ordenados: en rango primero, luego mas cerca del jugador). */
     static void analiza() {
-        enemigos.clear(); ac = -1; ar = -1; aroEnAliado = false; aroEnJug = false; otrosAliados.clear();
+        enemigos.clear(); ac = -1; ar = -1; aroEnAliado = false; aroEnJug = false; otrosAliados.clear(); sinAro.clear();
         List<int[]> fichas = new ArrayList<>();
         int pc = -1, pr = -1;
         for (int r = 0; r < N; r++) for (int c = 0; c < N; c++) {
@@ -240,7 +252,8 @@ public class Bcv {
             int c = f[0], r = f[1];
             if (c == jc && r == jr) continue; // jugador (posicion guardada)
             Tok t = new Tok(); t.c = c; t.r = r; t.x = f[2]; t.y = f[3];
-            if (interiorVerde(t.x, t.y)) { otrosAliados.add(t); continue; }   // interior VERDE = aliado (granjero/mago...): no es un blanco
+            if (interiorVerde(t.x, t.y)) { otrosAliados.add(t); continue; }
+            if (!tieneAroEnemigo(t.x, t.y)) { sinAro.add(t); continue; }   // sin aro azul/verde = objeto (caja, barril...), NO enemigo aunque la casilla este naranja   // interior VERDE = aliado (granjero/mago...): no es un blanco
             t.e = lit(709 + 1018 * (c + 1) / N - 14, 30 + 1018 * (r + 1) / N - 14);
             t.dist = jc < 0 ? 0 : (long) (c - jc) * (c - jc) + (long) (r - jr) * (r - jr);
             enemigos.add(t);

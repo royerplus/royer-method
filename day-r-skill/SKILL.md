@@ -202,3 +202,11 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Probado en vivo: llego a batalla y combatio hasta el turno 5 (luego el juego salio de pantalla).
 - Pendiente: la flecha ▼ (mas opciones abajo) no se toca; el umbral PMAX1 (3) se puede cambiar (`PMAX1=5 sh encuentro.sh`).
 - `batallaD.sh` ahora NO toca nada si el juego no tiene el foco (comprueba `dumpsys window | grep mCurrentFocus`); sale con JUEGO_FUERA a los 20 s.
+
+## Enemigo = ficha CON ARO azul o verde; cajas/objetos NO (v21, 2026-11-05)
+- Error: el bot disparaba a una caja/roca en casilla iluminada NARANJA. `analiza()` contaba como ficha cualquier cosa oscura en la casilla; la casilla naranja solo marca el rango, NO hace enemigo a nada.
+- Regla (usuario): enemigo = ficha con aro AZUL (escudo) y/o VERDE oliva (vida, ~60,85,25). Sin ninguno -> objeto, no se dispara. Aliado = interior VERDE (v20) aunque tenga aro. Orden: interior verde -> aliado; sin aro azul/verde -> `sinAro` (objeto); resto -> enemigo.
+- `tieneAroEnemigo`: corona r=38..64: azul (b>r+35,b>g+15) >=8 puntos o verde oliva (g>r+12,g>b+30,g>=40) >=6. El primer intento (verde vivo g>r+25) perdia enemigos con aro verde oscuro: SIEMPRE probar con las capturas.
+- Pruebas: `regresion.sh` (chkE): bandidos_cajas 7 enemigos (incl. el bandido de aro verde 0,2), nuevo_dim 6 (la roca 3,7 ya NO es enemigo; antes si), clasico1 4. T9.java imprime enemigos/aliados/sinAro.
+- Jar celular: bcv.jar = v21 (md5 896a251f...), respaldo bcv_v20_antes_aro_req.bak.
+- Eventos: `PMAX1` por defecto ahora 1 (opcion 1 una vez y luego la ronda con las demas opciones).
