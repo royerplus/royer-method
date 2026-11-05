@@ -1,0 +1,1 @@
+public class T8 { public static void main(String[] a) throws Exception { Bcv.N=8; Bcv.cap(); Bcv.escribeJug=true; Bcv.analiza(); System.out.println("jug="+Bcv.jc+","+Bcv.jr+" ali="+Bcv.ac+","+Bcv.ar+" ene="+Bcv.listaEnemigos()); StringBuilder sb=new StringBuilder(); for (Bcv.Tok t: Bcv.otrosAliados) sb.append(t.c+","+t.r+" "); System.out.println("aliados="+sb); } }

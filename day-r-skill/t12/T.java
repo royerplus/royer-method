@@ -1,0 +1,1 @@
+public class T { public static void main(String[] a) throws Exception { Bcv.cap(); System.out.println("armas="+Bcv.armas()); Bcv.leeSlotsArmas(); System.out.println("MROW="+Bcv.MROW+" PROW="+Bcv.PROW+" RROW="+Bcv.RROW+" Yaliado="+Bcv.Y_ALIADO+" Yrifle="+Bcv.Y_RIFLE); } }

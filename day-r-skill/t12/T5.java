@@ -1,0 +1,1 @@
+public class T5 { public static void main(String[] a) throws Exception { Bcv.N=8; Bcv.cap(); System.out.println("turno="+Bcv.turno()+" seguro="+Bcv.turnoSeguro()+" aroEnAliado="+Bcv.aroEnAliado+" aroEsEnemigo="+Bcv.aroEsEnemigo+" jug="+Bcv.jc+","+Bcv.jr+" ali="+Bcv.ac+","+Bcv.ar); } }

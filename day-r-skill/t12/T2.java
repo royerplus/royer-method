@@ -1,0 +1,1 @@
+public class T2 { public static void main(String[] a) throws Exception { Bcv.cap(); boolean ok = Bcv.detectaSlotsIconos(); System.out.println("ok=" + ok + " m=" + Bcv.MROW + " p=" + Bcv.PROW + " r=" + Bcv.RROW + " | Yaliado=" + Bcv.Y_ALIADO + " Yrifle=" + Bcv.Y_RIFLE); } }

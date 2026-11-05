@@ -1,0 +1,1 @@
+public class T4 { public static void main(String[] a) throws Exception { Bcv.N=8; Bcv.cap(); Bcv.analiza(); System.out.println("jug="+Bcv.jc+","+Bcv.jr+" ali="+Bcv.ac+","+Bcv.ar+" ene="+Bcv.listaEnemigos()); } }
