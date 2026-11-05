@@ -31,3 +31,6 @@ Solo si NO hay script para eso (p. ej. un dialogo nuevo desconocido): primero de
 
 ## 4. Lo que NO esta en el repositorio (solo en el celular)
 `batallaD.sh`, `encuentro.sh` (copia en esta carpeta), `casa_auto.sh`, `rc.sh`, `recoger.sh`, `linterna.sh`, `luz.sh`, `puerta.sh`, `estado.sh`, `bcv.sh`, `bcv.jar` (v20) y sus respaldos `*.bak`. Pendiente: copiarlos aqui cuando el celular este conectado (`cat` por shell en bloques con md5, o `adb pull`), para que una sesion nueva pueda reinstalarlos.
+
+## 5. Imagenes de referencia
+Para reconocer que recoger/no recoger, edificios prohibidos, ventanas y combate: `REFERENCIAS.md` (carpeta `referencias/`). Mirarlas antes de decidir.

@@ -1,4 +1,4 @@
-> **EMPEZAR POR `GUIA_RAPIDA.md`**: tabla situacion -> script, y la regla "si hay script, no tocar a mano".
+> **EMPEZAR POR `GUIA_RAPIDA.md`** (y `REFERENCIAS.md` para las fotos: que recoger, que no, edificios): tabla situacion -> script, y la regla "si hay script, no tocar a mano".
 
 ---
 name: dayr-exploracion

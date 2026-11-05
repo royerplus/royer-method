@@ -82,3 +82,6 @@ Capturas del juego: las que devuelve `screenshot` se guardan en el sandbox (`...
 4. Falta probar en vivo el evento "Mujer / casa encantada" (el script pulsa la 1a opcion del pergamino solo; requiere el juego al frente y horizontal, sin cambiar de app).
 5. Luteo Zaraysk: continuar en la parada 11 "Colegio - Biblioteca" (nav.py + casa_auto.sh + rc.sh); radiacion 0 (efecto desconocido), peso ~1043/1050.
 6. Reglas operativas: no tocar el juego si el celular esta en vertical/otra app; el script termina con SIN_VENTANA o JUEGO_FUERA en ese caso.
+
+## Imagenes de referencia
+`REFERENCIAS.md` y carpeta `referencias/` (prohibidos, ruinas, multisitios, 68 capturas de Royer por categoria).
