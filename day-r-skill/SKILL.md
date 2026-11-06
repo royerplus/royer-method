@@ -131,7 +131,7 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Integrado en `casa_auto.sh` (pasos 1-4 automaticos); el paso 5 (flags) lo decide Claude mirando la captura.
 
 ## Progreso Zaraysk (guardado)
-- Hechas: 1-10 (Colegio: Gimnasio, Cantina y Aulas). Siguiente: 11 Colegio - Biblioteca, luego 12 Bloque azul SE, 13 Fabrica...
+- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": tiene CAJA FUERTE con dinamita, NO abierta: pendiente decision de Royer). Siguiente: 16 Edificio marron SO, 17 Mansion blanca... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
 - Radiación llegó a 0 tras la parada 10 (empezó en 15, ~1 por búsqueda). Peso 1 043+/1 050 (icono rojo, limite practico ~1300). Ver que pasa con radiación 0 antes de seguir mucho.
 - `casa_auto.sh` + `rc.sh` probados en vivo en 3 sitios seguidos (20-30 s cada uno). enlupa.sh funciono (desmintio un AGOTADO falso en el mapa).
 
@@ -250,3 +250,12 @@ Idea de Royer: al abrir y cerrar la lupa la camara se centra en el personaje (12
 - Verificacion opcional (sandbox): `python3 -I loc.py captura.png` ubica la captura en el mosaico (SIFT) y da el centro en coord de ruta; debe coincidir con la parada.
 - Cuidado: los puntos intermedios de un tramo son suelo/edificios cualquiera (el 1er tramo de 12->11 cayo sobre "Colegio - Aulas", sin consecuencias). Si un intermedio cae en un sitio con enemigos (crater rojo, edificios rojos), poner waypoints: `viaje.py 12 x,y` y luego `viaje.py x,y 11`.
 - Si el personaje queda en un edificio con enemigos, el sitio de parada de la ruta (x,y) ya es el punto seguro elegido; usar siempre esos puntos como "acomodo" tras cada edificio (terminar de lutear -> estamos en SU x,y).
+
+## Recorrido Zaraysk 11-15 con viaje.py + casa_auto.sh + rc.sh (hecho en vivo)
+- Orden por parada: `python3 -I viaje.py ACTUAL SIGUIENTE` -> ejecutar tap/sleep + `sh recentrar.sh` (CENTRADO) -> `rm -f casa_auto.res; (sh casa_auto.sh >/dev/null 2>&1 &)` -> esperar ~40 s -> mirar `casa_auto.res`/captura -> `sh rc.sh FLAGS`.
+- ZOOM: usar `zoomnivel.sh 3` (T=826): ahi ESC=0.9194 (viaje.py ya lo usa). Si el estado `zoom_T` esta desfasado (la vista real no coincide), `echo M > /data/local/tmp/zoom_T; sh zoomnivel.sh 3` re-normaliza. A otro zoom la escala cambia (medido 1.9311 mas cerca).
+- Si no sabemos donde estamos (Royer movio al personaje): captura -> `python3 -I loc.py captura.png` da el centro en coord de ruta tras recentrar; `python3 -I viaje.py X,Y DESTINO`.
+- casa_auto.sh puede cortarse a medias (sin casa_auto.res) tras un combate o por foco: mirar la captura; si "Saquear a todos" esta activo -> `saquear.sh` x2 + `fin.sh 40`, luego recoger.
+- Tras un combate en el luteo (parada 15) casa_auto salio PARA_PANTALLA/TIEMPO_AGOTADO; la lista tenia abejas (NO), revolver/camion con icono de reparar (NO), mesa (NO). Recogidos: casquillos, monedas, alfombra, sillon.
+- CAJA FUERTE (panel derecho: puerta de boveda con dinamita, boton de cerradura): `puerta.sh` dice SIN_PUERTA y `estado.sh` OTRO. Dialogo no resuelto: NO tocar sin que Royer diga como abrirla.
+- Exclusiones aplicadas: tele "?", pistolas/bici/camion con icono rojo de reparar, mesa de madera, abejas, cadaver (tras saquear desaparece de la lista).

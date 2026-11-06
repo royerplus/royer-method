@@ -6,7 +6,7 @@ Si el destino cae fuera de la zona segura de toque, se parte en tramos iguales (
 Imprime comandos para el celular:  input tap X Y / sleep N / sh recentrar.sh   (ejecutar de a un tramo y comprobar que imprime CENTRADO)."""
 import sys, json, os, math
 AQUI=os.path.dirname(os.path.abspath(__file__)); K=1.5      # coord ruta -> mosaico
-ESC=1.9311                                                    # px de pantalla por px de mosaico a zoom 3 (medido)
+ESC=0.9194                                                    # px de pantalla por px de mosaico a zoom NIVEL 3 (zoomnivel.sh 3 -> T=826), medido con SIFT (1167 inliers). (A un zoom mas cercano medi 1.9311.)
 CX,CY=1218,540; X0,Y0,X1,Y1=560,200,1900,880                  # zona segura de toque (fuera: paneles/botones)
 r=json.load(open(AQUI+'/zaraysk_ruta.json')); ruta=r['ruta'] if isinstance(r,dict) else r
 def punto(s):
