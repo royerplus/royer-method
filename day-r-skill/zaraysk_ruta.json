@@ -86,7 +86,8 @@
    "nombre": "Edificio marron SO",
    "x": 330,
    "y": 965,
-   "tipo": "V"
+   "tipo": "V",
+   "hecha": true
   },
   {
    "n": 17,

@@ -131,7 +131,7 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Integrado en `casa_auto.sh` (pasos 1-4 automaticos); el paso 5 (flags) lo decide Claude mirando la captura.
 
 ## Progreso Zaraysk (guardado)
-- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": su CAJA FUERTE con dinamita es DE PAGA: se omite y la parada 15 cuenta como COMPLETADA aunque el edificio no salga en gris). Siguiente: 16 Edificio marron SO, 17 Mansion blanca... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
+- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": su CAJA FUERTE con dinamita es DE PAGA: se omite y la parada 15 cuenta como COMPLETADA aunque el edificio no salga en gris). 16 Edificio marron SO (Supermercado) HECHA. Siguiente: 17 Mansion blanca... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
 - Radiación llegó a 0 tras la parada 10 (empezó en 15, ~1 por búsqueda). Peso 1 043+/1 050 (icono rojo, limite practico ~1300). Ver que pasa con radiación 0 antes de seguir mucho.
 - `casa_auto.sh` + `rc.sh` probados en vivo en 3 sitios seguidos (20-30 s cada uno). enlupa.sh funciono (desmintio un AGOTADO falso en el mapa).
 
@@ -263,3 +263,13 @@ Idea de Royer: al abrir y cerrar la lupa la camara se centra en el personaje (12
 ## Si Royer mueve el personaje/camara entre paradas (viaje por calculo)
 - El calculo supone que al recentrar el personaje esta en la x,y de la ultima parada. Si Royer lo mueve, NO se auto-corrige: el siguiente tramo sale desplazado EXACTAMENTE lo que el se movio (y el error se arrastra a las paradas siguientes).
 - Antes de cada viaje, si hubo intervencion o hay duda: `sh recentrar.sh` + captura + `python3 -I loc.py captura.png` (da la posicion real en coord de ruta) y usar `viaje.py X,Y DESTINO` con esa posicion. Tambien sirve comprobar el nombre sobre el personaje al llegar.
+
+## VIAJE CON VERIFICACION DE POSICION (pos.py) -- sustituye al calculo ciego cuando hay duda (hecho y probado: 15 -> 16)
+Pedido de Royer: verificar posicion antes de la lupa; si no estoy bien, recolocar y volver a preguntar; marcar el destino y llegar sin importar nada (ataque skipeable, empujon, zona enemiga donde no queda en el centro); la parada solo cuenta cuando se llega al punto.
+- `python3 -I pos.py CAPTURA.png DESTINO` (1 screenshot, ~2 s): ubica la captura en el mosaico (SIFT, mide la escala/zoom sola) + encuentra la ficha del personaje (plantilla `ficha_personaje.png`, visible a zoom nivel 3 o mas lejos) -> posicion en coord de ruta SIN recentrar (probado: mismo resultado con la ficha centrada o en (1124,367) a otro zoom).
+- Imprime `LLEGADO a N (error e)` si e<2.5 unidades; si no, `RUTA SEGURA: aqui -> ... -> destino` + `input tap X Y` + `sleep N` (tramo parcial si el destino cae fuera de la zona segura de toque).
+- RUTEO SEGURO: evita sitios enemigos (tipo E de `zaraysk_ruta.json`: campamentos, hogueras, crater) con margen 50 unidades y avanza por paradas V como waypoints (Dijkstra). Si no hay camino: `SIN_RUTA_SEGURA` (ir a mano).
+- BUCLE (Claude): screenshot -> pos.py -> `input tap` -> `sleep` -> `sh recentrar.sh` (CENTRADO; si SIN_LUPA seguir igual) -> screenshot -> pos.py ... hasta LLEGADO; entonces `casa_auto.sh`. Tras un ataque skipeable (encuentro.sh) o si Royer movio algo: el mismo bucle.
+- Medido: un personaje parado en una parada V queda a <1 unidad del punto (Colegio-Aulas 0.3, Banco 0.0, Supermercado 0.4). Tras mover Royer el personaje: error de decenas de unidades (detectado y corregido con el bucle).
+- Limites: la ficha del personaje no se ve a zoom muy cercano (ahi se dibuja distinto); de noche SIFT podria fallar (SIN_UBICACION). Si SIN_FICHA: recentrar con la lupa y usar `viaje.py`.
+- `viaje.py` (calculo puro, sin captura) sigue sirviendo cuando se sabe seguro de donde se parte.
