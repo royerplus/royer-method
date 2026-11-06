@@ -107,6 +107,9 @@ public class Pos {
             case "refsave": Bcv.cap(); if (!Bcv.ok()) return "NO_HORIZONTAL"; saveRef(a[1], Double.parseDouble(a[2])); return "REF_OK " + a[1];
             case "pos": { Bcv.cap(); if (!Bcv.ok()) return "NO_HORIZONTAL"; double[] m = medir(a[1]); if (m == null) return "SIN_REF " + a[1];
                 return String.format(Locale.US, "POS %d %d %.2f %.3f %.4f", (int) m[0], (int) m[1], m[2], m[3], m[4]); }
+            case "quedan": { Bcv.cap(); if (!Bcv.ok()) return "NO_HORIZONTAL"; int[] xs = {268, 436, 603, 770, 938, 1106, 1274, 1442}, ys = {270, 438, 605, 773}; int n = 0; StringBuilder sb = new StringBuilder();
+                for (int y : ys) for (int x : xs) { double sum = 0, sum2 = 0; int c = 0; for (int v = -30; v < 30; v += 3) for (int u = -40; u < 40; u += 3) { int g = gray(x + u, y + v); sum += g; sum2 += g * g; c++; } double sd = Math.sqrt(Math.max(0, sum2 / c - (sum / c) * (sum / c))); if (sd > 12) { n++; sb.append('1'); } else sb.append('0'); }
+                return "QUEDAN " + n + " " + sb; }
             case "loc": { Bcv.cap(); if (!Bcv.ok()) return "NO_HORIZONTAL"; String bn = null; double[] bm = null; File[] fs = new File(DIR).listFiles();
                 if (fs != null) for (File f : fs) { String n = f.getName(); if (!n.startsWith("ref_") || !n.endsWith(".bin")) continue; n = n.substring(4, n.length() - 4); double[] m = medir(n); if (m != null && (bm == null || m[2] > bm[2])) { bm = m; bn = n; } }
                 if (bm == null || bm[2] < 0.45) return "PERDIDO"; return String.format(Locale.US, "LOC %s %d %d %.2f %.3f %.4f", bn, (int) bm[0], (int) bm[1], bm[2], bm[3], bm[4]); }

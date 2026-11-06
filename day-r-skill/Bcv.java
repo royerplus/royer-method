@@ -632,7 +632,7 @@ public class Bcv {
             case "pasar": System.out.println(pasar(a.length > 1 ? a[1] : "MIO")); break;
             case "turno_mio": System.out.println(turnoMio(a.length > 1 && a[1].equals("1"))); break;
             case "turno_muneco": System.out.println(turnoMuneco()); break;
-            case "refsave": case "pos": case "loc": case "ruta": case "paso": System.out.println(Pos.run(a)); break;
+            case "refsave": case "pos": case "quedan": case "loc": case "ruta": case "paso": System.out.println(Pos.run(a)); break;
             case "ping": System.out.println("PONG"); break;
             default: System.out.println("comando?");
         }
