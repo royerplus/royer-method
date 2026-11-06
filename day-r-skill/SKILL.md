@@ -273,3 +273,6 @@ Pedido de Royer: verificar posicion antes de la lupa; si no estoy bien, recoloca
 - Medido: un personaje parado en una parada V queda a <1 unidad del punto (Colegio-Aulas 0.3, Banco 0.0, Supermercado 0.4). Tras mover Royer el personaje: error de decenas de unidades (detectado y corregido con el bucle).
 - Limites: la ficha del personaje no se ve a zoom muy cercano (ahi se dibuja distinto); de noche SIFT podria fallar (SIN_UBICACION). Si SIN_FICHA: recentrar con la lupa y usar `viaje.py`.
 - `viaje.py` (calculo puro, sin captura) sigue sirviendo cuando se sabe seguro de donde se parte.
+
+## Leer el mapa: edificio gris/sepia = SIN lutear (dicho por Royer)
+- En el mapa de una ciudad, un edificio desaturado (gris/sepia) esta SIN lutear; a color = ya saqueado. Sirve para saber que falta en una ciudad nueva (ej. captura de otra ciudad con un edificio gris junto a la carretera). Ojo: la parada 15 (Banco, caja de paga) puede seguir sin ponerse a color aunque este completada.
