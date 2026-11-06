@@ -199,6 +199,15 @@ public class Bcv {
         }
         return b >= 8 || g >= 6;
     }
+    /** Fondo negro de la ficha (anillos r=46,50,54): >=78% oscuro. Objetos (rocas, cajas, manchas) quedan <=70%. */
+    static boolean discoNegro(int cx, int cy) {
+        int n = 0, d = 0;
+        for (int rad = 46; rad <= 54; rad += 4) for (int ang = 0; ang < 360; ang += 12) {
+            int[] p = px(cx + (int) Math.round(rad * Math.cos(Math.toRadians(ang))), cy + (int) Math.round(rad * Math.sin(Math.toRadians(ang))));
+            n++; if (p[0] + p[1] + p[2] < 165) d++;
+        }
+        return d * 100 >= n * 78;
+    }
     /** Interior verde (aliado): cuenta pixeles muy verdes (g>r+40 y g>b+40) en el disco r<=33 de la ficha. El aro verde de los enemigos es solo su barra de vida: NO cuenta. */
     static boolean interiorVerde(int cx, int cy) {
         int g = 0;
@@ -253,7 +262,7 @@ public class Bcv {
             if (c == jc && r == jr) continue; // jugador (posicion guardada)
             Tok t = new Tok(); t.c = c; t.r = r; t.x = f[2]; t.y = f[3];
             if (interiorVerde(t.x, t.y)) { otrosAliados.add(t); continue; }
-            if (!tieneAroEnemigo(t.x, t.y)) { sinAro.add(t); continue; }   // sin aro azul/verde = objeto (caja, barril...), NO enemigo aunque la casilla este naranja   // interior VERDE = aliado (granjero/mago...): no es un blanco
+            if (!tieneAroEnemigo(t.x, t.y) && !(discoNegro(t.x, t.y) && !(t.c == jc && t.r == jr))) { sinAro.add(t); continue; }   // v23: barra casi vacia/tapada por debuffs -> vale el fondo negro de la ficha (salvo la casilla del jugador)   // sin aro azul/verde = objeto (caja, barril...), NO enemigo aunque la casilla este naranja   // interior VERDE = aliado (granjero/mago...): no es un blanco
             t.e = lit(709 + 1018 * (c + 1) / N - 14, 30 + 1018 * (r + 1) / N - 14);
             t.dist = jc < 0 ? 0 : (long) (c - jc) * (c - jc) + (long) (r - jr) * (r - jr);
             enemigos.add(t);
@@ -501,6 +510,10 @@ public class Bcv {
             if (shots >= max) return "LIMITE " + shots;
             cargaEstado(); actualizaN(); escribeJug = false; aroEsEnemigo = true; analiza(); escribeJug = true; aroEsEnemigo = false;
             // ¿sigue vivo el blanco fijado?
+            if (fc >= 0 && !hayFicha(fc, fr)) {   // v24: no darlo por muerto por una sola captura (destello/dano en animacion): espera y recaptura
+                pausa(500); cap(); cargaEstado(); actualizaN(); escribeJug = false; aroEsEnemigo = true; analiza(); escribeJug = true; aroEsEnemigo = false;
+                if (hayFicha(fc, fr)) log("blanco " + fc + "," + fr + " reaparece tras recaptura (no estaba muerto)");
+            }
             if (fc >= 0 && !hayFicha(fc, fr)) { log("blanco " + fc + "," + fr + " ELIMINADO tras " + shots + " disparos"); fc = -1; ne = 0; }
             if (fc < 0) {
                 Tok obj = null; probando = false;

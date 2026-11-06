@@ -20,8 +20,8 @@ ancho() { dd if=$f bs=4 count=1 2>/dev/null | od -An -tu4 | tr -d ' '; }
 rgb() { dd if=$f bs=4 skip=$(( 4 + $2*2436 + $1 )) count=1 2>/dev/null | od -An -tu1 | tr -s ' '; }
 # Ventana de encuentro: boton Batalla automatica (tostado) y boton Ataque (verde grisaceo)
 esencuentro() {
-  set -- $(rgb 760 712); [ $(( $1-$2 )) -ge 20 ] && [ $(( $1-$3 )) -ge 45 ] && [ $1 -lt 190 ] || return 1
-  set -- $(rgb 1000 770); [ $(( $1-$2 )) -ge 20 ] && [ $(( $1-$3 )) -ge 45 ] && [ $1 -lt 190 ] || return 1
+  set -- $(rgb 760 712); [ $(( $1-$2 )) -ge 20 ] && [ $(( $1-$3 )) -ge 45 ] || return 1
+  set -- $(rgb 1000 770); [ $(( $1-$2 )) -ge 20 ] && [ $(( $1-$3 )) -ge 45 ] || return 1
   set -- $(rgb 1420 712); [ $(( $2-$1 )) -ge 3 ] && [ $(( $2-$3 )) -ge 30 ] && [ $1 -lt 175 ] || return 1
   set -- $(rgb 1650 770); [ $(( $2-$1 )) -ge 3 ] && [ $(( $2-$3 )) -ge 30 ] && [ $1 -lt 175 ] || return 1
   return 0

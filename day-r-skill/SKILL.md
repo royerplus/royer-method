@@ -224,9 +224,19 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Problema: enemigo casi muerto (barra de vida vacia o tapada por debuffs) no tiene aro azul/verde suficiente -> v22 lo trataba como objeto (caso Tentaculo, t12/tentaculo.png; fotos bajavida1/2.jpg).
 - Arreglo: `discoNegro()` (anillos r=46/50/54, >=78% pixeles oscuros) cuenta como enemigo; objetos quedan <=70%. Excluye la casilla `jug_pos` (el jugador sin aro naranja tambien tiene fondo negro).
 - El aro naranja del jugador solo aparece mientras hay una accion (arma/invocacion) seleccionada; por eso el jugador se reconoce con `jug_pos`.
-- Respaldo de v22 en el celular: `bcv_v22_antes_disconegro.bak`. Fuente: `Bcv_v23_pendiente.java`.
+- Respaldo de v22 en el celular: `bcv_v22_antes_disconegro.bak`. Fuente: ver `Bcv.java`.
 
 ## v24 (instalada): no dar un blanco por muerto con una sola captura
 - Problema: `atacar()` declaraba "ELIMINADO" si en UNA captura la ficha del blanco no estaba en `enemigos`. Con destello/numero de dano/animacion la deteccion falla un instante y el bot cambiaba de blanco sin haberlo matado.
 - Arreglo: si no aparece, espera 500 ms, recaptura y reanaliza; solo si sigue ausente lo da por muerto (log: "reaparece tras recaptura" si no estaba muerto). Costo ~0,5 s por baja.
-- Respaldo de v23 en el celular: `bcv_v23_antes_debounce.bak`. Fuente: `Bcv_v24.java`.
+- Respaldo de v23 en el celular: `bcv_v23_antes_debounce.bak`. Fuente: `Bcv.java` (version vigente).
+
+## Estado del combate (cierre) y pendientes leves
+Combate completo y probado en vivo con v24 (varias victorias seguidas: batallas normales, eventos con pergamino, ronda de opciones). Scripts vigentes: `scripts_celular/batallaD.sh`, `scripts_celular/encuentro.sh`, servicio `Bcv.java` (v24). Para recompilar: javac --release 8 -> D8 --min-api 26 -> zip classes.dex (ver secciones de despliegue arriba); correr `regresion.sh` (usa `cls24`) antes de desplegar.
+Pendientes leves (NO arreglar sin que Royer lo pida):
+- A veces un turno pasa sin disparar con 1 punto de accion y enemigo en rango (el siguiente turno lo mata).
+- "Probar al mas cercano" dispara a distancia 0 / sin linea de tiro (se descarta solo).
+- La invocacion puede seguir disparando al jugador.
+- Armas nuevas: si los iconos de slots no se reconocen (`slots por icono: NO seguro`) puede tocar el slot equivocado.
+- Si la app de Claude pasa al frente (Royer escribiendo en el mismo celular) el script se detiene (JUEGO_FUERA/NO_HORIZONTAL): es a proposito.
+Siguiente fase: ciudades (luteo/caminar): nav.py + casa_auto.sh + rc.sh; Zaraysk parada 11 "Colegio - Biblioteca".

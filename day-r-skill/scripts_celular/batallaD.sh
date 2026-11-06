@@ -1,11 +1,11 @@
 #!/system/bin/sh
 # batallaD.sh [max_s] -- CICLO COMPLETO de combate/mision, RAPIDO: toda la vision y los toques los hace el servicio Java (bcv.sh -> Bcv.java), una captura por decision.
 # Mismas reglas que batallaC.sh (ese queda como respaldo):
-#  - Pergamino/evento: 1a opcion. Si tras PMAX1 (8) clics de la 1a opcion NO se llega a batalla (aunque cada click abra una pagina nueva) -> RONDA: un click a cada una de las demas opciones visibles (filas 2 y 3), comprobando ANTES de cada click que no ha empezado la ventana de enemigo (si empezo: encuentro.sh). Si el click no avanza (pantalla igual/ya vista) -> modo fila. >90 s en la ventana: termina. Delay 0.5 s. Cartel PELIGRO: nada. Armas: "Empezar batalla".
+#  - Pergamino: 1a opcion; si el click no avanza (pantalla igual/ya vista) -> clickea las demas en fila; >60 s en la ventana: termina. Delay 0.5 s. Cartel PELIGRO: nada. Armas: "Empezar batalla".
 #  - TURNO 1 (muneco libre en el 1er turno): invocar y pasar, SIN disparar ni mover. Muneco muerto: reinvocar y seguir con el rifle.
 #  - Mi turno: rifle a los enemigos en rango MIENTRAS haya puntos de accion (>=2) y usos; cambia de blanco solo. Nadie a tiro: UN movimiento hacia el mas cercano. Sin disparos posibles: pasar.
 #  - Turno del muneco: habilidad 3 al mejor enemigo (si no esta en enfriamiento, nada) y pasar. Cada pase se verifica (reintenta).
-#  - Victoria / Mision cumplida -> Cerrar. Nunca reabre el juego: si sale de pantalla >20 s termina. SEGURIDAD: si el juego no tiene el foco (otra app encima) no toca nada.
+#  - Victoria / Mision cumplida -> Cerrar. Nunca reabre el juego: si sale de pantalla >20 s termina.
 # Imprime: FIN_BATALLA | SIN_VENTANA | TIEMPO | JUEGO_FUERA | INVOCACION_FALLA | PERGAMINO_ATASCADO | PANTALLA_DESCONOCIDA.  Decisiones en bc.log.
 cd /data/local/tmp
 MAX=${1:-900}; t0=$(date +%s); : > bc.log; rm -f n_tablero jug_pos
