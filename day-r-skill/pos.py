@@ -34,7 +34,7 @@ else:
 err=math.hypot(dx-p[0],dy-p[1])
 # RUTEO SEGURO: evitar sitios enemigos (tipo E: campamentos, hogueras, crater) con margen RADIO; se avanza por paradas V visitables como waypoints
 RADIO=50
-E=[(q['x'],q['y']) for q in ruta if q.get('tipo')=='E']
+E=[(q['x'],q['y']) for q in ruta if q.get('tipo')=='E' and math.hypot(q['x']-dx,q['y']-dy)>1]   # el propio destino enemigo NO se evita (se va a el a proposito)
 def dseg(a,b,c):   # distancia del punto c al segmento ab
     ax,ay=a;bx2,by2=b;cx,cy=c;vx,vy=bx2-ax,by2-ay;L=vx*vx+vy*vy
     t=0 if L==0 else max(0,min(1,((cx-ax)*vx+(cy-ay)*vy)/L));return math.hypot(ax+t*vx-cx,ay+t*vy-cy)

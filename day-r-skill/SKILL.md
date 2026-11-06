@@ -279,3 +279,9 @@ Pedido de Royer: verificar posicion antes de la lupa; si no estoy bien, recoloca
 
 ## Edificio de 2 partes luteables (dicho por Royer, otra ciudad)
 - Fabrica de ladrillo con chimenea y tejado rojo (foto `referencias/multisitios/fabrica_dos_partes_otra_ciudad.jpg`): tiene DOS sitios luteables. Tratar como 2 paradas ("Fabrica - A" / "Fabrica - B"): tocar cada parte, leer el nombre sobre el personaje y lutear por separado. Mismo criterio que Colegio (4) y Clinica (2) en MULTISITIOS.md.
+
+## Sitios con enemigos: llegar, batalla, REPOSICIONAR, luego lutear (pedido de Royer)
+- Al ir a un sitio con enemigos (portal del abismo, hoguera de zombis, campamento: tipo E en la ruta) el personaje se queda en una ESQUINA del edificio/sitio, no en su punto. La parada NO cuenta hasta quedar bien colocada.
+- Orden: 1) viaje hasta el sitio (pos.py; el propio destino enemigo no se evita) 2) si sale la ventana "Has visto a un enemigo": `sh encuentro.sh` (batalla) 3) REPOSICIONAR: screenshot -> `python3 -I pos.py CAPTURA.png DESTINO` -> `input tap` -> repetir hasta `LLEGADO` (error <2.5) 4) `sh recentrar.sh` y `casa_auto.sh`. Royer: "necesito que quede bien"; si la reposicion tarda, lutear primero NO es valido como parada completada hasta LLEGADO.
+- Si pos.py da SIN_FICHA/SIN_UBICACION (otra ciudad, noche, zoom muy cercano): `recentrar.sh` + `viaje.py` o ir por nombre sobre el personaje.
+- Pendiente: `zaraysk_ruta.json` tiene los E (27-31) con x,y aproximado de la hoguera/campamento, no el punto de luteo exacto: medirlo la primera vez que se llegue (tocar, leer nombre, anotar la posicion con pos.py).
