@@ -240,3 +240,13 @@ Pendientes leves (NO arreglar sin que Royer lo pida):
 - Armas nuevas: si los iconos de slots no se reconocen (`slots por icono: NO seguro`) puede tocar el slot equivocado.
 - Si la app de Claude pasa al frente (Royer escribiendo en el mismo celular) el script se detiene (JUEGO_FUERA/NO_HORIZONTAL): es a proposito.
 Siguiente fase: ciudades (luteo/caminar): nav.py + casa_auto.sh + rc.sh; Zaraysk parada 11 "Colegio - Biblioteca".
+
+## VIAJE POR CALCULO entre paradas (probado en vivo, Zaraysk) -- viaje.py + recentrar.sh
+Idea de Royer: al abrir y cerrar la lupa la camara se centra en el personaje (1218,540). Hechos medidos (error <0.1 px del mosaico, 4 pruebas):
+- Tocar un punto del suelo O un edificio: el personaje termina EXACTAMENTE en el punto tocado (no se desvia; el punto de parada de cada edificio es su x,y de `zaraysk_ruta.json`).
+- A ZOOM 3 (`zoomnivel.sh estado` -> T=738) la escala es 1.9311 px de pantalla por px de mosaico (ruta*1.5 = mosaico). Constante.
+- Por tanto: siguiente toque = (1218,540) + (destino - origen)*1.5*1.9311, SIN mirar el mapa. Requisitos: zoom 3, saber la parada actual, y `sh recentrar.sh` tras cada llegada (imprime CENTRADO; solo cierra la lupa si se abrio: el boton X esta junto al de pausa).
+- Uso: `python3 -I viaje.py 12 11` (parada actual -> destino; acepta numero, nombre o x,y) -> imprime los toques; si la distancia excede la zona segura de toque (x560-1900,y200-880) lo parte en tramos iguales (tap, sleep, recentrar). Ejemplo real: 12 Bloque azul SE -> 11 Colegio-Biblioteca en 2 tramos, llego exacto.
+- Verificacion opcional (sandbox): `python3 -I loc.py captura.png` ubica la captura en el mosaico (SIFT) y da el centro en coord de ruta; debe coincidir con la parada.
+- Cuidado: los puntos intermedios de un tramo son suelo/edificios cualquiera (el 1er tramo de 12->11 cayo sobre "Colegio - Aulas", sin consecuencias). Si un intermedio cae en un sitio con enemigos (crater rojo, edificios rojos), poner waypoints: `viaje.py 12 x,y` y luego `viaje.py x,y 11`.
+- Si el personaje queda en un edificio con enemigos, el sitio de parada de la ruta (x,y) ya es el punto seguro elegido; usar siempre esos puntos como "acomodo" tras cada edificio (terminar de lutear -> estamos en SU x,y).
