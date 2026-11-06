@@ -27,6 +27,7 @@
 Solo si NO hay script para eso (p. ej. un dialogo nuevo desconocido): primero describir la pantalla al usuario, tocar UNA vez, comprobar con `bcv.sh ver 2`, y despues AGREGAR el caso al script y a esta guia. Nunca repetir toques a ciegas.
 
 ## 3. Orden normal de una sesion de luteo
+**REGLA FIJA: primero reposicion (`pos.py` -> LLEGADO), luego lutear. Ver SKILL.md 'REGLA FIJA' y 'VIAJE CON VERIFICACION'.**
 `ver pantalla` -> (si ventana enemigo: `encuentro.sh`) -> `nav.py` al siguiente edificio -> entrar con lupa -> `casa_auto.sh` -> leer `casa_auto.res` -> `rc.sh FLAGS` -> siguiente. Parada actual de Zaraysk: 11 "Colegio - Biblioteca".
 
 ## 4. Scripts del celular

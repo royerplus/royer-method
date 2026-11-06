@@ -285,3 +285,8 @@ Pedido de Royer: verificar posicion antes de la lupa; si no estoy bien, recoloca
 - Orden: 1) viaje hasta el sitio (pos.py; el propio destino enemigo no se evita) 2) si sale la ventana "Has visto a un enemigo": `sh encuentro.sh` (batalla) 3) REPOSICIONAR: screenshot -> `python3 -I pos.py CAPTURA.png DESTINO` -> `input tap` -> repetir hasta `LLEGADO` (error <2.5) 4) `sh recentrar.sh` y `casa_auto.sh`. Royer: "necesito que quede bien"; si la reposicion tarda, lutear primero NO es valido como parada completada hasta LLEGADO.
 - Si pos.py da SIN_FICHA/SIN_UBICACION (otra ciudad, noche, zoom muy cercano): `recentrar.sh` + `viaje.py` o ir por nombre sobre el personaje.
 - Pendiente: `zaraysk_ruta.json` tiene los E (27-31) con x,y aproximado de la hoguera/campamento, no el punto de luteo exacto: medirlo la primera vez que se llegue (tocar, leer nombre, anotar la posicion con pos.py).
+
+## REGLA FIJA (Royer): primero REPOSICION, despues lutear
+- NUNCA lanzar `casa_auto.sh` sin que `pos.py DESTINO` haya dicho `LLEGADO` en la captura mas reciente. Sirve para no lutear un sitio que no toca (p. ej. si una batalla/ataque random interrumpio el trayecto y el personaje esta a medio camino o en la esquina de otro edificio): si no es LLEGADO, se sigue el tramo.
+- Secuencia unica por parada: viajar -> (si sale "Has visto a un enemigo": `encuentro.sh`) -> captura -> `pos.py DESTINO` -> si FALTA: tap + sleep y repetir -> LLEGADO -> `recentrar.sh` -> `casa_auto.sh` -> `rc.sh`.
+- Tras cualquier batalla o interrupcion a mitad de ruta: ignorar lo que haya delante y volver a `pos.py` para retomar el tramo hacia el destino original.
