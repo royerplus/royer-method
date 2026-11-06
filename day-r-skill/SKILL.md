@@ -276,3 +276,6 @@ Pedido de Royer: verificar posicion antes de la lupa; si no estoy bien, recoloca
 
 ## Leer el mapa: edificio gris/sepia = SIN lutear (dicho por Royer)
 - En el mapa de una ciudad, un edificio desaturado (gris/sepia) esta SIN lutear; a color = ya saqueado. Sirve para saber que falta en una ciudad nueva (ej. captura de otra ciudad con un edificio gris junto a la carretera). Ojo: la parada 15 (Banco, caja de paga) puede seguir sin ponerse a color aunque este completada.
+
+## Edificio de 2 partes luteables (dicho por Royer, otra ciudad)
+- Fabrica de ladrillo con chimenea y tejado rojo (foto `referencias/multisitios/fabrica_dos_partes_otra_ciudad.jpg`): tiene DOS sitios luteables. Tratar como 2 paradas ("Fabrica - A" / "Fabrica - B"): tocar cada parte, leer el nombre sobre el personaje y lutear por separado. Mismo criterio que Colegio (4) y Clinica (2) en MULTISITIOS.md.
