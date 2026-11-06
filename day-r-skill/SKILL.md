@@ -131,7 +131,7 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Integrado en `casa_auto.sh` (pasos 1-4 automaticos); el paso 5 (flags) lo decide Claude mirando la captura.
 
 ## Progreso Zaraysk (guardado)
-- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": tiene CAJA FUERTE con dinamita, NO abierta: pendiente decision de Royer). Siguiente: 16 Edificio marron SO, 17 Mansion blanca... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
+- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": su CAJA FUERTE con dinamita es DE PAGA: se omite y la parada 15 cuenta como COMPLETADA aunque el edificio no salga en gris). Siguiente: 16 Edificio marron SO, 17 Mansion blanca... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
 - Radiación llegó a 0 tras la parada 10 (empezó en 15, ~1 por búsqueda). Peso 1 043+/1 050 (icono rojo, limite practico ~1300). Ver que pasa con radiación 0 antes de seguir mucho.
 - `casa_auto.sh` + `rc.sh` probados en vivo en 3 sitios seguidos (20-30 s cada uno). enlupa.sh funciono (desmintio un AGOTADO falso en el mapa).
 
@@ -257,5 +257,9 @@ Idea de Royer: al abrir y cerrar la lupa la camara se centra en el personaje (12
 - Si no sabemos donde estamos (Royer movio al personaje): captura -> `python3 -I loc.py captura.png` da el centro en coord de ruta tras recentrar; `python3 -I viaje.py X,Y DESTINO`.
 - casa_auto.sh puede cortarse a medias (sin casa_auto.res) tras un combate o por foco: mirar la captura; si "Saquear a todos" esta activo -> `saquear.sh` x2 + `fin.sh 40`, luego recoger.
 - Tras un combate en el luteo (parada 15) casa_auto salio PARA_PANTALLA/TIEMPO_AGOTADO; la lista tenia abejas (NO), revolver/camion con icono de reparar (NO), mesa (NO). Recogidos: casquillos, monedas, alfombra, sillon.
-- CAJA FUERTE (panel derecho: puerta de boveda con dinamita, boton de cerradura): `puerta.sh` dice SIN_PUERTA y `estado.sh` OTRO. Dialogo no resuelto: NO tocar sin que Royer diga como abrirla.
+- CAJA FUERTE (panel derecho: puerta de boveda con dinamita, boton de cerradura) = DE PAGA: no abrirla; marcar la parada como completada y seguir (`puerta.sh` dice SIN_PUERTA, `estado.sh` OTRO: normal).
 - Exclusiones aplicadas: tele "?", pistolas/bici/camion con icono rojo de reparar, mesa de madera, abejas, cadaver (tras saquear desaparece de la lista).
+
+## Si Royer mueve el personaje/camara entre paradas (viaje por calculo)
+- El calculo supone que al recentrar el personaje esta en la x,y de la ultima parada. Si Royer lo mueve, NO se auto-corrige: el siguiente tramo sale desplazado EXACTAMENTE lo que el se movio (y el error se arrastra a las paradas siguientes).
+- Antes de cada viaje, si hubo intervencion o hay duda: `sh recentrar.sh` + captura + `python3 -I loc.py captura.png` (da la posicion real en coord de ruta) y usar `viaje.py X,Y DESTINO` con esa posicion. Tambien sirve comprobar el nombre sobre el personaje al llegar.
