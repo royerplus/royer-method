@@ -219,3 +219,9 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Pruebas: `chupacabras.png`/`.raw` (N=9) debe dar enemigos 2,3 / 8,3 (+ el jugador 7,4 offline); T9 acepta N como argumento (`java T9 9`). Las demas capturas de combate no cambian. `T10.java N col fila` explica por que una casilla se acepta/rechaza.
 - Jar celular: bcv.jar = v22 (md5 ce2935d5...), respaldo bcv_v21_antes_ficha_clara.bak.
 - Tableros: N puede ser 7, 8 o 9 (se lee de la captura); las pruebas deben usar el N correcto.
+
+## v23 (instalada): ficha con fondo negro = enemigo
+- Problema: enemigo casi muerto (barra de vida vacia o tapada por debuffs) no tiene aro azul/verde suficiente -> v22 lo trataba como objeto (caso Tentaculo, t12/tentaculo.png; fotos bajavida1/2.jpg).
+- Arreglo: `discoNegro()` (anillos r=46/50/54, >=78% pixeles oscuros) cuenta como enemigo; objetos quedan <=70%. Excluye la casilla `jug_pos` (el jugador sin aro naranja tambien tiene fondo negro).
+- El aro naranja del jugador solo aparece mientras hay una accion (arma/invocacion) seleccionada; por eso el jugador se reconoce con `jug_pos`.
+- Respaldo de v22 en el celular: `bcv_v22_antes_disconegro.bak`. Fuente: `Bcv_v23_pendiente.java`.
