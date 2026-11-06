@@ -91,10 +91,11 @@
   },
   {
    "n": 17,
-   "nombre": "Mansion blanca",
+   "nombre": "Biblioteca (antes \"Mansion blanca\")",
    "x": 225,
    "y": 800,
-   "tipo": "V"
+   "tipo": "V",
+   "hecha": true
   },
   {
    "n": 18,

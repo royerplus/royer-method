@@ -131,7 +131,7 @@ Puede salir "Has visto a un enemigo" en cualquier momento del luteo (suele salir
 - Integrado en `casa_auto.sh` (pasos 1-4 automaticos); el paso 5 (flags) lo decide Claude mirando la captura.
 
 ## Progreso Zaraysk (guardado)
-- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": su CAJA FUERTE con dinamita es DE PAGA: se omite y la parada 15 cuenta como COMPLETADA aunque el edificio no salga en gris). 16 Edificio marron SO (Supermercado) HECHA. Siguiente: 17 Mansion blanca... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
+- Hechas: 1-15 (15 = Edificio blanco neoclasico = "Banco": su CAJA FUERTE con dinamita es DE PAGA: se omite y la parada 15 cuenta como COMPLETADA aunque el edificio no salga en gris). 16 (Supermercado) y 17 (Biblioteca, antes 'Mansion blanca') HECHAS. Siguiente: 18 Casa pequena O... Peso >1165/1050 tras la 15 (limite practico ~1300): vigilar antes de seguir.
 - Radiación llegó a 0 tras la parada 10 (empezó en 15, ~1 por búsqueda). Peso 1 043+/1 050 (icono rojo, limite practico ~1300). Ver que pasa con radiación 0 antes de seguir mucho.
 - `casa_auto.sh` + `rc.sh` probados en vivo en 3 sitios seguidos (20-30 s cada uno). enlupa.sh funciono (desmintio un AGOTADO falso en el mapa).
 
@@ -300,3 +300,9 @@ Pedido de Royer: que el viaje sea script en el celular; Claude solo elige objeto
 - Orden por parada (regla fija): `viajar.sh N` -> LLEGADO -> `casa_auto.sh` -> (Claude elige flags) `rc.sh`. Sitios con enemigos: viajar -> (batalla) -> reposicionar hasta LLEGADO -> lutear.
 - TRANSFERENCIA DE ARCHIVOS AL CELULAR: el repo es PUBLICO. `sh dl.sh URL destino` (dl.jar, `scripts_celular/dl.jar`; la primera vez se pasa por texto ~2 KB) baja de raw.githubusercontent.com (usar la URL con el SHA del commit para evitar cache). Mucho mas facil que base64 en trozos: subir el archivo al repo -> `dl.sh` -> md5sum -> `cp` -> reiniciar servicio. Ojo: `pkill -f app_process` dentro de la misma orden de shell mata el propio shell; usar ordenes separadas.
 - Pendiente: `rc.sh`/`recoger.sh` v3 (espera estabilidad + cuenta lo que queda; error del refri) esta instalada en el celular pero NO en el repo ni probada; el refri del Supermercado (parada 16) sigue sin recoger.
+
+## Primera prueba en vivo del viaje a script (Zaraysk 10 -> 6 -> 17) y errores aprendidos
+- `viajar.sh 17` salio de la parada 10 (con ref aprendida), paso por 6 y llego: `LLEGADO_SIN_REF 17`; pos.py confirmo error 0.5 unidades. Tarda ~40 s en total. Luego `aprender.sh 17` + `casa_auto.sh` + `rc.sh`.
+- Antes de viajar, si Royer dejo la vista lejana (zoom distinto): `echo M > /data/local/tmp/zoom_T; sh zoomnivel.sh 3`, `sh recentrar.sh`, captura y `python3 -I pos.py captura DESTINO` para ubicar.
+- ERROR DEL REFRI (parada 16): NO fue del script: la lista tenia 12 objetos y yo envie 11 flags. Arreglo: `recoger.sh` v4 cuenta los objetos antes (`bcv quedan`, textura de parche: ocupada >12, vacia <5) y se niega con `FLAGS_NO_COINCIDEN objetos=N flags=M` (exit 7). SIEMPRE contar la lista fila a fila antes de armar FLAGS; si el script se niega, recontar. (El conteo por pixel unico fallaba por la vineta del papel.)
+- El nombre sobre el personaje puede diferir del de la ruta (17 = "Biblioteca"): fiarse de la posicion (pos.py), no del nombre.
