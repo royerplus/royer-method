@@ -140,15 +140,13 @@ private val NOMBRES_PESTANAS = listOf("Fuente", "Color", "Borde", "Sombra", "Fon
 /** Las pestanas: un dibujo que dice que hay dentro y el nombre. */
 @Composable
 private fun PestanasTexto(elegida: Int, t: Texto, onElegir: (Int) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
+    // Las seis a lo ancho, sin desplazar: todas a la vista
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         NOMBRES_PESTANAS.forEachIndexed { i, n ->
             val sel = i == elegida
             Column(
                 Modifier
-                    .width(54.dp)
+                    .weight(1f)
                     .clip(esquinas(10.dp))
                     .background(if (sel) Ink.White15 else Color.Transparent)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onElegir(i) }
@@ -157,7 +155,7 @@ private fun PestanasTexto(elegida: Int, t: Texto, onElegir: (Int) -> Unit) {
             ) {
                 Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { DibujoPestana(i, t, sel) }
                 Spacer(Modifier.height(3.dp))
-                Text(n, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp), color = if (sel) Ink.White else Ink.White50)
+                Text(n, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp), color = if (sel) Ink.White else Ink.White50, maxLines = 1)
             }
         }
     }
@@ -210,7 +208,7 @@ private fun DrawScope.tarjeta(inclX: Float, inclY: Float, col: Color, relleno: B
     }
 }
 
-private fun familia(f: Fuente): FontFamily = FontFamily(MaquetaTexto.tipo(f, negrita = false))
+private fun familia(f: Fuente, negrita: Boolean = false): FontFamily = FontFamily(MaquetaTexto.tipo(f, negrita))
 
 /** Una casilla con un dibujo o una muestra y su nombre debajo. */
 @Composable
@@ -249,7 +247,7 @@ private fun TextoFuente(estado: EstadoEditor, t: Texto) {
     Tira {
         for (f in Fuente.values()) {
             Casilla(f.nombre, t.fuente == f, { cambiar(estado) { it.copy(fuente = f) } }) {
-                Text("Aa", style = TextStyle(fontSize = 22.sp, color = Ink.White, fontFamily = familia(f), fontWeight = if (t.negrita) FontWeight.Bold else FontWeight.Normal))
+                Text("Aa", style = TextStyle(fontSize = 22.sp, color = Ink.White, fontFamily = familia(f, t.negrita)))
             }
         }
     }
@@ -388,8 +386,8 @@ private fun MuestraSombra(t: Texto) {
                 Modifier.weight(1f).height(70.dp).clip(esquinas(12.dp)).background(fondo),
                 contentAlignment = Alignment.Center
             ) {
-                Text("Aa", style = TextStyle(fontSize = 34.sp, fontWeight = if (t.negrita) FontWeight.Bold else FontWeight.Normal,
-                    fontFamily = familia(t.fuente), color = Color(t.color), shadow = sombraCompose(t, 34f)))
+                Text("Aa", style = TextStyle(fontSize = 34.sp,
+                    fontFamily = familia(t.fuente, t.negrita), color = Color(t.color), shadow = sombraCompose(t, 34f)))
             }
         }
     }

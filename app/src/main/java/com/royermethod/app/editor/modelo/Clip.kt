@@ -590,7 +590,9 @@ enum class Fuente(val nombre: String) {
     CONDENSADA("Estrecha"),
     SERIF("Serif"),
     MONO("Maquina"),
-    REDONDA("Casual")
+    REDONDA("Casual"),
+    MANUSCRITA("Manuscrita"),
+    VERSALITAS("Versalitas")
 }
 
 enum class Alineacion { IZQUIERDA, CENTRO, DERECHA }
