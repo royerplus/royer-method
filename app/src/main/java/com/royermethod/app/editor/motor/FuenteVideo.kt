@@ -28,7 +28,8 @@ import java.util.concurrent.TimeUnit
  * guardado en el decodificador, sin soltar, para la proxima peticion. Asi no
  * se pierde ni se repite ninguno por ir con prisa o con retraso.
  *
- * Todo se llama desde el hilo que tiene el contexto de OpenGL.
+ * Todo se llama desde el hilo que tiene el contexto de OpenGL, salvo
+ * [preparar] y [soltarDecodificador], que no lo tocan.
  */
 class FuenteVideo(
     context: Context,
@@ -50,10 +51,18 @@ class FuenteVideo(
      * Lo que hay que sumar a los instantes de [abrir] para que sean los de
      * [uri] (la copia puede empezar en 0 aunque el original no).
      */
-    private val corrimientoUs: Long = 0L
+    private val corrimientoUs: Long = 0L,
+    /**
+     * Abrir el archivo y el decodificador cuesta de 20 a 60 ms. Con esto se
+     * deja para [preparar], que va en otro hilo; aqui solo lo de OpenGL. Asi
+     * anticipar un bloque no atasca el hilo de dibujo (ver Compositor).
+     */
+    diferida: Boolean = false
 ) {
     private val extractor = MediaExtractor()
-    private val decodificador: MediaCodec
+    private val contexto: Context = context.applicationContext
+    private val archivo = abrir
+    private lateinit var decodificador: MediaCodec
     private val texturaOes: Int
     private val superficieTextura: SurfaceTexture
     private val superficie: Surface
@@ -62,11 +71,13 @@ class FuenteVideo(
     private val matrizOes = FloatArray(16)
 
     /** Medidas del fotograma tal y como viene, sin girar. */
-    val anchoCrudo: Int
-    val altoCrudo: Int
-    private val mime: String
+    var anchoCrudo = 0
+        private set
+    var altoCrudo = 0
+        private set
+    private var mime = ""
     /** H.264 y H.265: se mira donde se cae al saltar y se tiran los B colgados. */
-    private val revisar: Boolean
+    private var revisar = false
     private var filtro: FiltroColgados? = null
     /** Para leer un paquete sin darselo al decodificador; crece si hace falta. */
     private var paquete: ByteBuffer? = null
@@ -105,62 +116,19 @@ class FuenteVideo(
         var textura = 0
         var st: SurfaceTexture? = null
         var sup: Surface? = null
-        var codec: MediaCodec? = null
         try {
-            extractor.setDataSource(context, abrir, null)
-            var pista = -1
-            for (i in 0 until extractor.trackCount) {
-                val mime = extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: continue
-                if (mime.startsWith("video/")) { pista = i; break }
-            }
-            require(pista >= 0) { "el archivo no tiene video" }
-            extractor.selectTrack(pista)
-            val formato = extractor.getTrackFormat(pista)
-            anchoCrudo = formato.getInteger(MediaFormat.KEY_WIDTH)
-            altoCrudo = formato.getInteger(MediaFormat.KEY_HEIGHT)
-            // El giro lo aplicamos nosotros al copiar. Si se lo dejamos al
-            // decodificador, unos moviles lo meten en la matriz de la textura y
-            // otros no, y el video saldria girado dos veces o ninguna.
-            if (formato.containsKey(MediaFormat.KEY_ROTATION)) formato.setInteger(MediaFormat.KEY_ROTATION, 0)
-            mime = formato.getString(MediaFormat.KEY_MIME)!!
-            revisar = SincronizacionVideo.admite(mime)
-            filtro = if (revisar) FiltroColgados(mime) else null
-
             val ids = IntArray(1)
             GLES20.glGenTextures(1, ids, 0)
             textura = ids[0]
             GLES20.glBindTexture(GLES11Ext.GL_TEXTURE_EXTERNAL_OES, textura)
             Lamina.filtros(GLES11Ext.GL_TEXTURE_EXTERNAL_OES)
+            // Se une al contexto de OpenGL en el primer updateTexImage, que
+            // siempre es en este hilo: puede recibir fotogramas antes desde otro
             st = SurfaceTexture(textura)
             st.setOnFrameAvailableListener({ hayFotograma.release() }, avisos)
             sup = Surface(st)
-
-            if (vista) {
-                // Lo mas rapido que pueda: saltar a un instante obliga a leer
-                // desde el fotograma clave, y a su ritmo normal el movil va
-                // poco mas deprisa que el video. Si no lo acepta, como siempre.
-                val f = extractor.getTrackFormat(pista)
-                if (f.containsKey(MediaFormat.KEY_ROTATION)) f.setInteger(MediaFormat.KEY_ROTATION, 0)
-                f.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE.toInt())
-                f.setInteger(MediaFormat.KEY_PRIORITY, 0)
-                var c: MediaCodec? = null
-                codec = try {
-                    c = MediaCodec.createDecoderByType(mime)
-                    c.configure(f, sup, null, 0)
-                    c.start()
-                    c
-                } catch (e: Exception) {
-                    runCatching { c?.release() }
-                    null
-                }
-            }
-            if (codec == null) {
-                codec = MediaCodec.createDecoderByType(mime)
-                codec.configure(formato, sup, null, 0)
-                codec.start()
-            }
+            if (!diferida) abrirDecodificador(sup)
         } catch (e: Exception) {
-            runCatching { codec?.release() }
             runCatching { sup?.release() }
             runCatching { st?.release() }
             if (textura != 0) GLES20.glDeleteTextures(1, intArrayOf(textura), 0)
@@ -170,6 +138,59 @@ class FuenteVideo(
         texturaOes = textura
         superficieTextura = st
         superficie = sup
+    }
+
+    /** La parte lenta de abrir: el archivo y el decodificador. No toca OpenGL. */
+    private fun abrirDecodificador(sup: Surface) {
+        extractor.setDataSource(contexto, archivo, null)
+        var pista = -1
+        for (i in 0 until extractor.trackCount) {
+            val mime = extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: continue
+            if (mime.startsWith("video/")) { pista = i; break }
+        }
+        require(pista >= 0) { "el archivo no tiene video" }
+        extractor.selectTrack(pista)
+        val formato = extractor.getTrackFormat(pista)
+        anchoCrudo = formato.getInteger(MediaFormat.KEY_WIDTH)
+        altoCrudo = formato.getInteger(MediaFormat.KEY_HEIGHT)
+        // El giro lo aplicamos nosotros al copiar. Si se lo dejamos al
+        // decodificador, unos moviles lo meten en la matriz de la textura y
+        // otros no, y el video saldria girado dos veces o ninguna.
+        if (formato.containsKey(MediaFormat.KEY_ROTATION)) formato.setInteger(MediaFormat.KEY_ROTATION, 0)
+        mime = formato.getString(MediaFormat.KEY_MIME)!!
+        revisar = SincronizacionVideo.admite(mime)
+        filtro = if (revisar) FiltroColgados(mime) else null
+
+        var codec: MediaCodec? = null
+        if (vista) {
+            // Lo mas rapido que pueda: saltar a un instante obliga a leer
+            // desde el fotograma clave, y a su ritmo normal el movil va
+            // poco mas deprisa que el video. Si no lo acepta, como siempre.
+            val f = extractor.getTrackFormat(pista)
+            if (f.containsKey(MediaFormat.KEY_ROTATION)) f.setInteger(MediaFormat.KEY_ROTATION, 0)
+            f.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE.toInt())
+            f.setInteger(MediaFormat.KEY_PRIORITY, 0)
+            var c: MediaCodec? = null
+            codec = try {
+                c = MediaCodec.createDecoderByType(mime)
+                c.configure(f, sup, null, 0)
+                c.start()
+                c
+            } catch (e: Exception) {
+                runCatching { c?.release() }
+                null
+            }
+        }
+        if (codec == null) {
+            try {
+                codec = MediaCodec.createDecoderByType(mime)
+                codec.configure(formato, sup, null, 0)
+                codec.start()
+            } catch (e: Exception) {
+                runCatching { codec?.release() }
+                throw e
+            }
+        }
         decodificador = codec
     }
 
@@ -292,6 +313,7 @@ class FuenteVideo(
      * abandono ([seguir]) o no se pudo: entonces no sirve y hay que cerrarla.
      */
     fun preparar(objetivo: Long, seguir: () -> Boolean): Boolean {
+        if (!::decodificador.isInitialized) abrirDecodificador(superficie)
         saltar(objetivo)
         val limite = System.nanoTime() + 6_000_000_000L
         while (seguir()) {
@@ -526,10 +548,13 @@ class FuenteVideo(
      * y despues [soltarGl] en el del contexto.
      */
     fun soltarDecodificador() {
-        if (pendiente >= 0) runCatching { decodificador.releaseOutputBuffer(pendiente, false) }
+        // Diferida y sin llegar a abrirse (se abandono o fallo al abrir)
+        if (::decodificador.isInitialized) {
+            if (pendiente >= 0) runCatching { decodificador.releaseOutputBuffer(pendiente, false) }
+            runCatching { decodificador.stop() }
+            runCatching { decodificador.release() }
+        }
         pendiente = -1
-        runCatching { decodificador.stop() }
-        runCatching { decodificador.release() }
         runCatching { extractor.release() }
         runCatching { superficie.release() }
         decodificadorSuelto = true

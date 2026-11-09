@@ -480,3 +480,15 @@ Medido en el teléfono de Royer (Infinix X6871, app GitHub, su proyecto 9:16 108
 | 79b673c | 32-68 ms (387 ms el primer play al abrir) | 27,7 / 28,8 / 28,9 / 29,3 | 65 ms |
 
 Queda: alrededor del 35-45 % de los intervalos de publicación caen fuera de 25-42 ms (p95 ~50 ms); ya pasaba antes de estos cambios y no se ha tocado.
+
+### Elitecraft a tirones, reanudar al instante y arrastrar en vivo (2026-11-09)
+
+Queja de Royer: donde entra la imagen «ELITE CRAFT» (`medios/00006.png`, capa 52, 5,35-8,7 s, sube en 0,34 s) la vista previa no va fluida aunque lo exportado sí; quiere que quitar la pausa sea instantáneo y ver el video en vivo al arrastrar el cabezal hacia atrás y hacia delante.
+
+- **3ffefa8**: la vista previa pasa de TextureView a SurfaceView y cada fotograma se dibuja ~50 ms antes con su hora de presentación (`eglPresentationTimeANDROID`), elegida por `Ritmo` (refresco de destino, enganche de fase para que los refrescos caigan en mitad de cada fotograma, solo se adelanta si el reloj avanza). Antes el 50-87 % de los cuadros salía fuera de 25-42 ms. `Surface.setFrameRate(30, FIXED_SOURCE)` en Android 11+.
+- **0a090c8**: `Ligeras`: copias ligeras de los videos solo para la vista previa (H.264 sin B, lado corto 720, mismos instantes, sin sonido, en `cacheDir/ligeras`, hasta 1,5 GB), hechas en segundo plano mientras no suena ni se arrastra. La exportación sigue con los originales. Arrastrando en pausa, un dibujo ya empezado se deja terminar aunque llegue otra búsqueda.
+- **Este cambio** (medido antes en el teléfono: 120 Hz, cuadros a 33,5 ms parejos; las 6 copias en 1,4 min, 67 MB):
+  - Un tirón (2 cuadros tarde y 1 sin dibujar) justo al entrar Elitecraft: a 5 s del corte siguiente se anticipaban 2 decodificadores y abrirlos atascaba el hilo de dibujo hasta 55 ms. Ahora `FuenteVideo(diferida = true)` solo crea la textura y el archivo y el decodificador se abren en el hilo de la anticipación (`preparar`).
+  - El primer play tras hacerse las copias tardaba 336 ms (primer movimiento 671 ms): se cerraban los decodificadores del original y se reabrían al dar play. Ahora en pausa se reabren al momento con la copia.
+  - Reanudar: 59 ms con el sonido guardado, ~256 ms si la pausa pasaba de 30 s. El sonido en pausa se guarda 5 min (se suelta antes si la vista sale de pantalla).
+  - Arrastrar hacia delante: ~75 cuadros por segundo. Hacia atrás: ~5 (cada video leía hasta 30 cuadros desde la clave; con 3 videos, 150-270 ms por cuadro). Copias con clave cada 0,2 s (antes 0,5 s; 0,15 bits por píxel, `VERSION` 2: se rehacen) y se deja terminar un dibujo de arrastre hasta 150 ms (antes 80, y la mitad se abandonaba).

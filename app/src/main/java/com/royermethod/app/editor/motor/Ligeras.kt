@@ -42,7 +42,7 @@ object Ligeras {
 
     private const val ETIQUETA = "RoyerVista"
     /** Cambia si cambia como se hacen: las de antes dejan de valer. */
-    private const val VERSION = 1
+    private const val VERSION = 2
 
     private val listas = ConcurrentHashMap<String, Copia>()
     /** Originales que no necesitan copia o con los que fallo: no se reintentan en esta sesion. */
@@ -358,8 +358,12 @@ object Ligeras {
 internal object PlanLigera {
     /** Lado corto de la copia: de sobra para la vista previa (unos 620 de ancho). */
     const val LADO_CORTO = 720
-    /** Cada cuanto un fotograma clave en la copia. */
-    const val CLAVE_US = 500_000L
+    /**
+     * Cada cuanto un fotograma clave en la copia. Ir hacia atras obliga a
+     * leer desde el clave anterior: con 0,5 s eran hasta 30 cuadros por video
+     * (60-80 ms cada uno) y arrastrando hacia atras se veian unos 5 por segundo.
+     */
+    const val CLAVE_US = 200_000L
 
     data class Guardada(val nombre: String, val bytes: Long, val usadaMs: Long)
 
@@ -374,10 +378,10 @@ internal object PlanLigera {
         return redondear(ancho) to redondear(alto)
     }
 
-    /** Unos 0,1 bits por pixel y fotograma: se ve limpio en la vista previa y pesa poco. */
+    /** Unos 0,15 bits por pixel y fotograma (con tantas claves): se ve limpio en la vista previa y pesa poco. */
     fun bitrate(ancho: Int, alto: Int, fps: Float): Int {
         val f = if (fps > 0f) fps.coerceIn(10f, 120f) else 30f
-        return (ancho.toLong() * alto * f * 0.1).toLong().coerceIn(1_500_000L, 10_000_000L).toInt()
+        return (ancho.toLong() * alto * f * 0.15).toLong().coerceIn(1_500_000L, 10_000_000L).toInt()
     }
 
     /** Entera (casi todos los fotogramas) y con claves cada poco (el codificador pudo no hacer caso). */

@@ -172,7 +172,18 @@ class Previsualizador(context: Context) {
     fun copiaLista(uri: String) {
         h.post {
             if (cerrado) return@post
-            if (reproduciendo) copiasPorUsar.add(uri) else compositor?.cerrarVideosDe(uri)
+            if (reproduciendo) {
+                copiasPorUsar.add(uri)
+                return@post
+            }
+            val c = compositor ?: return@post
+            c.cerrarVideosDe(uri)
+            // Se reabre ya, con la copia, lo que se ve: si no, el siguiente play
+            // tenia que abrirlo y la imagen arrancaba tarde (300 ms medidos)
+            val orden = ordenes.get()
+            val b = busquedas
+            ultimoDibujado = -1
+            dibujarAhora { ordenes.get() == orden && busquedas == b && !cerrado && !reproduciendo }
         }
     }
 
@@ -215,6 +226,8 @@ class Previsualizador(context: Context) {
     fun soltarSuperficie() {
         val listo = CountDownLatch(1)
         h.post {
+            // Fuera de la pantalla no hace falta tener el sonido a punto
+            if (!reproduciendo && sonido?.pausada == true) soltarSonido()
             soltarGl()
             listo.countDown()
         }
@@ -841,12 +854,16 @@ class Previsualizador(context: Context) {
          */
         private const val ANTICIPO_VIDEO_US = 5_000_000L
         /** Arrastrando en pausa, lo que se deja terminar un dibujo aunque ya haya otra busqueda. */
-        private const val TERMINAR_ARRASTRE_NS = 80_000_000L
+        private const val TERMINAR_ARRASTRE_NS = 150_000_000L
         /** Tras mover el cabezal, cuanto se considera que se sigue arrastrando. */
         private const val OCUPADA_TRAS_BUSCAR_NS = 1_500_000_000L
         /** Un fotograma que tarda mas que esto calla el sonido hasta que llegue (ver vigia). */
         private const val ESPERA_IMAGEN_MS = 250L
-        /** Cuanto se guarda el sonido en pausa por si se vuelve a dar play. */
-        private const val RETENER_PAUSA_MS = 30_000L
+        /**
+         * Cuanto se guarda el sonido en pausa por si se vuelve a dar play:
+         * rehacerlo retrasa el play unos 250 ms. Con 30 s, una pausa algo
+         * larga ya arrancaba tarde.
+         */
+        private const val RETENER_PAUSA_MS = 300_000L
     }
 }

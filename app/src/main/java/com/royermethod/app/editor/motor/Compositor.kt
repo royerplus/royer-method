@@ -232,7 +232,9 @@ class Compositor(
                         v.ultimaPeticion in (p.tiempoArchivoUs - CERCA_US)..p.tiempoArchivoUs
                 }) continue
             if (anticipados.any { (v, a) -> v.uri.toString() == p.uri && kotlin.math.abs(a.objetivo - p.tiempoArchivoUs) < CERCA_US }) continue
-            val v = runCatching { abrirVideo(p.uri, p.giro) }.getOrNull() ?: continue
+            // Aqui solo la textura: el archivo y el decodificador se abren en su
+            // hilo (abrirlos aqui atascaba el dibujo 20-60 ms y se veia un tiron)
+            val v = runCatching { abrirVideo(p.uri, p.giro, diferida = true) }.getOrNull() ?: continue
             anotar("anticipa ${Uri.parse(p.uri).lastPathSegment} en ${p.tiempoArchivoUs / 1000} ms, ${p.fotogramasHasta} cuadros antes")
             val a = Anticipo(p.tiempoArchivoUs, numero + p.fotogramasHasta + RETENER)
             videos.add(v)
@@ -241,7 +243,7 @@ class Compositor(
                 Thread(r, "anticipar-video").apply { priority = Thread.NORM_PRIORITY - 1 }
             }.also { anticipador = it }
             a.futuro = hilo.submit<Boolean> { runCatching { v.preparar(a.objetivo) { !a.abandonar } }.getOrDefault(false) }
-            // Abrir un decodificador cuesta unos ms en este hilo: uno por cuadro
+            // Uno por cuadro
             return
         }
     }
@@ -394,16 +396,16 @@ class Compositor(
      * no, o al exportar, el original. Si la copia no abre, se olvida y se
      * sigue con el original.
      */
-    private fun abrirVideo(uri: String, giro: Int): FuenteVideo {
+    private fun abrirVideo(uri: String, giro: Int, diferida: Boolean = false): FuenteVideo {
         val ligera = if (vista) Ligeras.de(uri) else null
         if (ligera != null) {
             try {
-                return FuenteVideo(context, Uri.parse(uri), giro, vista, Uri.fromFile(ligera.archivo), ligera.corrimientoUs)
+                return FuenteVideo(context, Uri.parse(uri), giro, vista, Uri.fromFile(ligera.archivo), ligera.corrimientoUs, diferida)
             } catch (e: Exception) {
                 Ligeras.descartar(uri)
             }
         }
-        return FuenteVideo(context, Uri.parse(uri), giro, vista)
+        return FuenteVideo(context, Uri.parse(uri), giro, vista, diferida = diferida)
     }
 
     /**
