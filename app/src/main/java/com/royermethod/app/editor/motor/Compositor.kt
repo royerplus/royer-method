@@ -232,7 +232,7 @@ class Compositor(
                         v.ultimaPeticion in (p.tiempoArchivoUs - CERCA_US)..p.tiempoArchivoUs
                 }) continue
             if (anticipados.any { (v, a) -> v.uri.toString() == p.uri && kotlin.math.abs(a.objetivo - p.tiempoArchivoUs) < CERCA_US }) continue
-            val v = runCatching { FuenteVideo(context, Uri.parse(p.uri), p.giro, vista) }.getOrNull() ?: continue
+            val v = runCatching { abrirVideo(p.uri, p.giro) }.getOrNull() ?: continue
             anotar("anticipa ${Uri.parse(p.uri).lastPathSegment} en ${p.tiempoArchivoUs / 1000} ms, ${p.fotogramasHasta} cuadros antes")
             val a = Anticipo(p.tiempoArchivoUs, numero + p.fotogramasHasta + RETENER)
             videos.add(v)
@@ -389,6 +389,33 @@ class Compositor(
      * en una transicion entre dos trozos del mismo clip, cada uno necesita el
      * suyo.
      */
+    /**
+     * En la vista previa, la copia ligera si ya esta hecha (ver Ligeras); si
+     * no, o al exportar, el original. Si la copia no abre, se olvida y se
+     * sigue con el original.
+     */
+    private fun abrirVideo(uri: String, giro: Int): FuenteVideo {
+        val ligera = if (vista) Ligeras.de(uri) else null
+        if (ligera != null) {
+            try {
+                return FuenteVideo(context, Uri.parse(uri), giro, vista, Uri.fromFile(ligera.archivo), ligera.corrimientoUs)
+            } catch (e: Exception) {
+                Ligeras.descartar(uri)
+            }
+        }
+        return FuenteVideo(context, Uri.parse(uri), giro, vista)
+    }
+
+    /**
+     * Cierra lo abierto de [uri] que no se este preparando: el siguiente
+     * fotograma lo vuelve a abrir (con la copia ligera que acaba de quedar
+     * lista). Entre fotogramas, en el hilo de dibujo.
+     */
+    fun cerrarVideosDe(uri: String) {
+        if (soltado) return
+        videos.filter { it.uri.toString() == uri && it !in anticipados }.forEach { cerrar(it) }
+    }
+
     private fun video(uri: String, giro: Int, tiempo: Long): FuenteVideo? {
         // Ya pedida en este mismo cuadro para el mismo instante (el fondo y el
         // clip de delante, por ejemplo): la misma.
@@ -432,8 +459,9 @@ class Compositor(
         // Un archivo que acaba de fallar no se reintenta en cada fotograma: abrir
         // un decodificador cuesta, y si falta el archivo fallara igual.
         fallos[uri]?.let { if (numero - it < REINTENTO_FOTOGRAMAS) { avisos++; return null } }
-        anotar("abre ${Uri.parse(uri).lastPathSegment} en ${tiempo / 1000} ms (${videos.size} abiertos, ${anticipados.size} anticipados)")
-        return runCatching { FuenteVideo(context, Uri.parse(uri), giro, vista) }
+        anotar("abre ${Uri.parse(uri).lastPathSegment} en ${tiempo / 1000} ms (${videos.size} abiertos, ${anticipados.size} anticipados)" +
+            if (vista && Ligeras.de(uri) != null) ", copia ligera" else "")
+        return runCatching { abrirVideo(uri, giro) }
             .onFailure { avisos++; fallos[uri] = numero }
             .onSuccess { fallos.remove(uri) }
             .getOrNull()

@@ -150,6 +150,32 @@ class Previsualizador(context: Context) {
     var tiempo = 0L
         private set
 
+    /** Cuando se movio el cabezal por ultima vez (System.nanoTime). */
+    @Volatile
+    private var ultimaBusquedaNs = 0L
+
+    /**
+     * Sonando, o con el cabezal moviendose hace nada: lo pesado de fondo (las
+     * copias ligeras) espera para no quitarle el decodificador.
+     */
+    val ocupada: Boolean
+        get() = reproduciendo || System.nanoTime() - ultimaBusquedaNs < OCUPADA_TRAS_BUSCAR_NS
+
+    /** Copias ligeras que quedaron listas mientras sonaba: se usan al parar. Hilo de dibujo. */
+    private val copiasPorUsar = HashSet<String>()
+
+    /**
+     * La copia ligera de [uri] ya esta (ver Ligeras): se cierra lo abierto del
+     * original y lo siguiente que se dibuje la usa. Sonando se deja para la
+     * pausa, que cambiar de archivo a mitad costaria un tiron.
+     */
+    fun copiaLista(uri: String) {
+        h.post {
+            if (cerrado) return@post
+            if (reproduciendo) copiasPorUsar.add(uri) else compositor?.cerrarVideosDe(uri)
+        }
+    }
+
     // ------------------------------------------------------------------
     // Superficie
     // ------------------------------------------------------------------
@@ -262,6 +288,7 @@ class Previsualizador(context: Context) {
 
     fun irA(t: Long) {
         if (cerrado) return
+        ultimaBusquedaNs = System.nanoTime()
         val d = Linea.duracion(proyecto)
         val destino = t.coerceIn(0, maxOf(0, d - 1))
         val busqueda = synchronized(controlTiempo) {
@@ -284,8 +311,14 @@ class Previsualizador(context: Context) {
             if (busqueda != busquedas) return@post
             ultimoDibujado = -1
             // Arrastrando, cada busqueda nueva deja atras la anterior: no se
-            // termina de leer un instante que ya no se va a ver
-            dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo) { busqueda == busquedas && !cerrado }
+            // termina de leer un instante que ya no se va a ver. Pero en pausa
+            // uno que ya casi esta se acaba y se ensena: si no, arrastrando
+            // seguido cada uno cortaba al anterior y la imagen no se movia
+            val desdeNs = System.nanoTime()
+            dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo) {
+                !cerrado && (busqueda == busquedas ||
+                    !reproduciendo && System.nanoTime() - desdeNs < TERMINAR_ARRASTRE_NS)
+            }
             if (reproduciendo && busqueda == busquedas && ordenes.get() == orden) sonido?.arrancar()
             reiniciarRitmo(destino)
             programarBucle()
@@ -400,6 +433,10 @@ class Previsualizador(context: Context) {
             invalidarReloj()
             terminarSesion("pausa")
             vigilarPausa()
+            if (copiasPorUsar.isNotEmpty()) {
+                copiasPorUsar.forEach { compositor?.cerrarVideosDe(it) }
+                copiasPorUsar.clear()
+            }
             if (cerrado || ordenes.get() != orden || busquedas != b) return@post
             // El fotograma de pausa, con todas sus muestras. Si entretanto se da
             // play o se mueve el cabezal, se deja: ese ya dibuja lo suyo
@@ -803,6 +840,10 @@ class Previsualizador(context: Context) {
          * mientras suena el resto del proyecto eso puede pasar de 3 s.
          */
         private const val ANTICIPO_VIDEO_US = 5_000_000L
+        /** Arrastrando en pausa, lo que se deja terminar un dibujo aunque ya haya otra busqueda. */
+        private const val TERMINAR_ARRASTRE_NS = 80_000_000L
+        /** Tras mover el cabezal, cuanto se considera que se sigue arrastrando. */
+        private const val OCUPADA_TRAS_BUSCAR_NS = 1_500_000_000L
         /** Un fotograma que tarda mas que esto calla el sonido hasta que llegue (ver vigia). */
         private const val ESPERA_IMAGEN_MS = 250L
         /** Cuanto se guarda el sonido en pausa por si se vuelve a dar play. */

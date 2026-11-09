@@ -40,7 +40,17 @@ class FuenteVideo(
      * atras, dar por bueno el fotograma de casi el mismo instante (ver
      * [TOLERANCIA_VISTA]). La exportacion va sin esto, exacta.
      */
-    private val vista: Boolean = false
+    private val vista: Boolean = false,
+    /**
+     * El archivo que de verdad se lee, si no es [uri]: la copia ligera de la
+     * vista previa (ver Ligeras). Todo lo de fuera sigue hablando de [uri].
+     */
+    abrir: Uri = uri,
+    /**
+     * Lo que hay que sumar a los instantes de [abrir] para que sean los de
+     * [uri] (la copia puede empezar en 0 aunque el original no).
+     */
+    private val corrimientoUs: Long = 0L
 ) {
     private val extractor = MediaExtractor()
     private val decodificador: MediaCodec
@@ -97,7 +107,7 @@ class FuenteVideo(
         var sup: Surface? = null
         var codec: MediaCodec? = null
         try {
-            extractor.setDataSource(context, uri, null)
+            extractor.setDataSource(context, abrir, null)
             var pista = -1
             for (i in 0 until extractor.trackCount) {
                 val mime = extractor.getTrackFormat(i).getString(MediaFormat.KEY_MIME) ?: continue
@@ -368,7 +378,7 @@ class FuenteVideo(
                 decodificador.queueInputBuffer(idx, 0, 0, 0, MediaCodec.BUFFER_FLAG_END_OF_STREAM)
                 entradaAgotada = true
             } else {
-                decodificador.queueInputBuffer(idx, 0, leidos, extractor.sampleTime, 0)
+                decodificador.queueInputBuffer(idx, 0, leidos, extractor.sampleTime + corrimientoUs, 0)
                 extractor.advance()
             }
         }
@@ -390,7 +400,7 @@ class FuenteVideo(
             EntradaVideo.posicionar(muestras, destino)
             filtro = FiltroColgados(mime)
         } else {
-            extractor.seekTo(destino, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            extractor.seekTo(destino - corrimientoUs, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
         }
         decodificador.flush()
         entradaAgotada = false
@@ -402,13 +412,13 @@ class FuenteVideo(
     /** El archivo visto paquete a paquete, para [EntradaVideo]. */
     private val muestras = object : EntradaVideo.Muestras {
         override fun buscar(t: Long): Long {
-            extractor.seekTo(t, MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
-            return extractor.sampleTime
+            extractor.seekTo(maxOf(0L, t - corrimientoUs), MediaExtractor.SEEK_TO_PREVIOUS_SYNC)
+            return instante
         }
 
         override fun avanzar(): Boolean = extractor.advance()
 
-        override val instante: Long get() = extractor.sampleTime
+        override val instante: Long get() = extractor.sampleTime.let { if (it < 0) it else it + corrimientoUs }
 
         override fun entrada(): Boolean? {
             val b = leerPaquete() ?: return null

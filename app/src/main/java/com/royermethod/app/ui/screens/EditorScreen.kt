@@ -41,6 +41,7 @@ import com.royermethod.app.editor.modelo.EjemplosMovimiento
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.TipoOrigen
+import com.royermethod.app.editor.motor.Ligeras
 import com.royermethod.app.editor.motor.MaquetaTexto
 import com.royermethod.app.editor.ui.AjustesEditor
 import com.royermethod.app.editor.ui.EstadoEditor
@@ -118,6 +119,22 @@ fun EditorScreen(onVolver: () -> Unit) {
             recursos.cerrar()
         }
     }
+
+    // Copias ligeras de los videos para la vista previa (ver Ligeras): se
+    // hacen de fondo y esperan mientras suena, se arrastra o se exporta
+    DisposableEffect(Unit) {
+        Ligeras.ocupado = { prev.ocupada || Exportacion.corriendo }
+        Ligeras.alListo = { uri -> prev.copiaLista(uri) }
+        onDispose {
+            Ligeras.ocupado = { false }
+            Ligeras.alListo = null
+        }
+    }
+    val videosDelProyecto = remember(estado.proyecto) {
+        (estado.proyecto.principal.mapNotNull { it.origen } + estado.proyecto.capas.mapNotNull { it.clip.origen })
+            .filter { it.esVideo }.distinctBy { it.uri }
+    }
+    LaunchedEffect(videosDelProyecto) { Ligeras.pedir(context, videosDelProyecto) }
 
     // Al salir de la app (inicio, otra app, pantalla apagada) se pausa: si no,
     // el sonido seguia sonando por detras
