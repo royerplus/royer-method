@@ -200,7 +200,9 @@ class Compositor(
     fun anticiparVideos(proximos: List<VideoProximo>) {
         if (soltado) return
         for (p in proximos) {
-            if (videos.size >= MAX_VIDEOS) return
+            // Solo con sitio de sobra: si no, el cuadro siguiente tendria que
+            // cerrar uno que se esta viendo y abrirlo otra vez desde su clave
+            if (anticipados.size >= MAX_ANTICIPADOS || videos.size >= MAX_VIDEOS - 1) return
             if (fallos.containsKey(p.uri)) continue
             // Uno libre que ya llega seguido, o uno que ya se esta preparando para ahi
             if (videos.any { v ->
@@ -209,6 +211,7 @@ class Compositor(
                 }) continue
             if (anticipados.any { (v, a) -> v.uri.toString() == p.uri && kotlin.math.abs(a.objetivo - p.tiempoArchivoUs) < CERCA_US }) continue
             val v = runCatching { FuenteVideo(context, Uri.parse(p.uri), p.giro) }.getOrNull() ?: continue
+            anotar("anticipa ${Uri.parse(p.uri).lastPathSegment} en ${p.tiempoArchivoUs / 1000} ms, ${p.fotogramasHasta} cuadros antes")
             val a = Anticipo(p.tiempoArchivoUs, numero + p.fotogramasHasta + RETENER)
             videos.add(v)
             anticipados[v] = a
@@ -234,6 +237,11 @@ class Compositor(
         // Fallo o sigue sin acabar: se cierra cuando acabe (ver soltarAnticipados)
         a.abandonar = true
         return null
+    }
+
+    /** Diagnostico de la vista previa (RoyerVista, ver FuenteVideo.registrar). */
+    private fun anotar(texto: String) {
+        if (FuenteVideo.registrar) runCatching { android.util.Log.i("RoyerVista", texto) }
     }
 
     /** Cierra los anticipados que ya no se van a usar, en cuanto su hilo los suelta. */
@@ -376,13 +384,23 @@ class Compositor(
         // Los moviles tienen pocos decodificadores por hardware. Si ya hay
         // muchos abiertos, se cierra el que lleve mas tiempo sin usarse.
         if (videos.size >= MAX_VIDEOS) {
-            videos.filter { it.usadaEn != numero && it !in anticipados }.minByOrNull { it.usadaEn }?.let {
-                cerrar(it)
-            }
+            // Primero uno sin usar desde hace un rato; si no, uno anticipado (es
+            // solo una ayuda); y solo si no queda otra, el mas viejo, aunque sea
+            // del cuadro anterior y haya que reabrirlo enseguida.
+            val viejo = videos.filter { it.usadaEn < numero - 1 && it !in anticipados }.minByOrNull { it.usadaEn }
+            anotar("sin sitio para otro video: cierra ${if (viejo != null) "uno sin usar" else if (anticipados.isNotEmpty()) "uno anticipado" else "uno del cuadro anterior"}")
+            if (viejo != null) cerrar(viejo)
+            else if (anticipados.isNotEmpty()) {
+                val (v, a) = anticipados.entries.maxByOrNull { it.value.hasta }!!.toPair()
+                a.abandonar = true
+                runCatching { a.futuro?.get(1, TimeUnit.SECONDS) }
+                if (a.futuro?.isDone != false) { anticipados.remove(v); cerrar(v) }
+            } else videos.filter { it.usadaEn != numero }.minByOrNull { it.usadaEn }?.let { cerrar(it) }
         }
         // Un archivo que acaba de fallar no se reintenta en cada fotograma: abrir
         // un decodificador cuesta, y si falta el archivo fallara igual.
         fallos[uri]?.let { if (numero - it < REINTENTO_FOTOGRAMAS) { avisos++; return null } }
+        anotar("abre ${Uri.parse(uri).lastPathSegment} en ${tiempo / 1000} ms (${videos.size} abiertos, ${anticipados.size} anticipados)")
         return runCatching { FuenteVideo(context, Uri.parse(uri), giro) }
             .onFailure { avisos++; fallos[uri] = numero }
             .onSuccess { fallos.remove(uri) }
@@ -682,6 +700,9 @@ class Compositor(
 
         /** Cuadros que se mantiene abierta una fuente sin usarse. */
         const val RETENER = 45L
+
+        /** Decodificadores a punto a la vez como mucho (ver anticiparVideos). */
+        const val MAX_ANTICIPADOS = 2
 
         /** Un decodificador que va hasta 1.5 s por detras llega antes leyendo que saltando. */
         const val CERCA_US = 1_500_000L
