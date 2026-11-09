@@ -96,6 +96,11 @@ fun EditorScreen(onVolver: () -> Unit) {
         withContext(Dispatchers.IO) { limpiezaImportados.limpiar() }
     }
 
+    // Zoom de la vista (herramienta Zoom): sin recomponer la pantalla en cada pellizco
+    LaunchedEffect(Unit) {
+        androidx.compose.runtime.snapshotFlow { estado.zoomVista }.collect { prev.zoom(it) }
+    }
+
     DisposableEffect(Unit) {
         estado.alCambiar = { prev.proyecto(it) }
         estado.alBuscar = { prev.irA(it) }

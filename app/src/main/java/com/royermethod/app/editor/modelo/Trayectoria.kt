@@ -371,7 +371,7 @@ object Trayectoria {
             val r = ArrayList<Clave>()
             for (i in 0 until n) if (queda[i]) {
                 val f = formas[i]
-                r.add(if (f == null) base[i] else base[i].copy(curva = f.curva, bezier = f.bezier))
+                r.add(if (f == null) base[i] else base[i].copy(curva = f.curva, bezier = f.bezier, velocidad = null))
             }
             return r
         }

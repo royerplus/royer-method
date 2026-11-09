@@ -71,8 +71,10 @@ object Preferencias {
             })
             put("curvasMias", JSONArray().apply {
                 AjustesEditor.curvasMias.forEach { c ->
-                    val b = c.bezier
-                    put(JSONObject().put("nombre", c.nombre).put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })))
+                    val o = JSONObject().put("nombre", c.nombre)
+                    c.bezier?.let { b -> o.put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })) }
+                    c.velocidad?.let { o.put("velocidad", Persistencia.velocidad(it)) }
+                    put(o)
                 }
             })
         })
@@ -112,10 +114,13 @@ object Preferencias {
         if (a == null) return emptyList()
         return (0 until a.length()).mapNotNull { i ->
             val o = a.optJSONObject(i) ?: return@mapNotNull null
-            val b = o.optJSONArray("bezier")?.takeIf { it.length() == 4 } ?: return@mapNotNull null
-            val v = FloatArray(4) { b.optDouble(it, Double.NaN).toFloat() }
-            if (!v.all { it.isFinite() }) return@mapNotNull null
-            CurvaMia(o.optString("nombre", "Mia"), Bezier(v[0].coerceIn(0f, 1f), v[1], v[2].coerceIn(0f, 1f), v[3]))
+            val vel = Persistencia.velocidadDe(o.optJSONArray("velocidad"))
+            val bz = o.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let { b ->
+                val v = FloatArray(4) { b.optDouble(it, Double.NaN).toFloat() }
+                if (v.all { it.isFinite() }) Bezier(v[0].coerceIn(0f, 1f), v[1], v[2].coerceIn(0f, 1f), v[3]) else null
+            }
+            if (vel == null && bz == null) return@mapNotNull null
+            CurvaMia(o.optString("nombre", "Mia"), bz, vel)
         }
     }
 

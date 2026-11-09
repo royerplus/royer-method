@@ -231,16 +231,19 @@ data class Recorte(
 /**
  * Un fotograma clave: como esta el encuadre en ese instante del clip.
  *
- * [curva] y [bezier] dicen como se llega desde aqui a la clave siguiente. Si
- * hay [bezier], manda ella: es la curva dibujada a mano en el editor.
+ * [curva], [bezier] y [velocidad] dicen como se llega desde aqui a la clave
+ * siguiente. Manda la de velocidad si la hay (la de puntos del editor), si no
+ * la [bezier] (plantillas), si no la [curva] con nombre.
  */
 data class Clave(
     val tiempoUs: Long,
     val encuadre: Encuadre,
     val curva: Curva = Curva.SUAVE,
-    val bezier: Bezier? = null
+    val bezier: Bezier? = null,
+    /** Curva de velocidad con puntos: si la hay, manda sobre [bezier] y [curva]. */
+    val velocidad: CurvaVelocidad? = null
 ) {
-    fun avance(x: Float): Float = bezier?.en(x) ?: Escena.curva(curva, x)
+    fun avance(x: Float): Float = velocidad?.en(x) ?: bezier?.en(x) ?: Escena.curva(curva, x)
 }
 
 /**

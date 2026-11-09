@@ -613,13 +613,15 @@ object Edicion {
     }
 
     /**
-     * Pone la misma curva ([curva] o, si la hay, [bezier]) en las claves de
+     * Pone la misma curva ([velocidad], si no [bezier], si no [curva]) en las claves de
      * [tiempos] del bloque [id] (null: en todas). Es la curva desde cada una
      * hasta la siguiente.
      */
-    fun curvaEnClaves(p: Proyecto, id: Long, tiempos: Set<Long>?, curva: Curva, bezier: Bezier?): Proyecto =
+    fun curvaEnClaves(p: Proyecto, id: Long, tiempos: Set<Long>?, curva: Curva, bezier: Bezier?, velocidad: CurvaVelocidad? = null): Proyecto =
         cambiar(p, id) { c ->
-            c.copy(claves = c.claves.map { if (tiempos == null || it.tiempoUs in tiempos) it.copy(curva = curva, bezier = bezier) else it })
+            c.copy(claves = c.claves.map {
+                if (tiempos == null || it.tiempoUs in tiempos) it.copy(curva = curva, bezier = bezier, velocidad = velocidad) else it
+            })
         }
 
     /**

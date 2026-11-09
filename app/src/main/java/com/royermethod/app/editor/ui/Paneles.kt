@@ -2,6 +2,7 @@ package com.royermethod.app.editor.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -61,7 +62,9 @@ import com.royermethod.app.editor.modelo.Bezier
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.CurvaMia
-import com.royermethod.app.editor.modelo.ModoMover
+import com.royermethod.app.editor.modelo.CurvaVelocidad
+import com.royermethod.app.editor.modelo.PlantillasVelocidad
+import com.royermethod.app.editor.modelo.PuntoVelocidad
 import com.royermethod.app.editor.modelo.PlantillasCurva
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Escena
@@ -92,6 +95,11 @@ import com.royermethod.app.ui.components.Pestanas
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.components.segundos
 import com.royermethod.app.ui.theme.Ink
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.text.style.TextOverflow
+import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlin.math.max
 import kotlin.math.min
 
@@ -551,7 +559,7 @@ private fun ClaveElegida(estado: EstadoEditor, c: com.royermethod.app.editor.mod
     Hueco(6)
     Nota(if (ultima) "Es el ultimo fotograma clave: la curva se usa si pones otro despues." else "Como se llega desde aqui al siguiente fotograma clave", color = Ink.White50)
     Hueco(4)
-    SelectorCurva(k.curva, k.bezier) { cu, b, arrastre -> poner({ it.copy(curva = cu, bezier = b) }, arrastre) }
+    SelectorCurva(k.curva, k.bezier, k.velocidad) { cu, b, v, arrastre -> poner({ it.copy(curva = cu, bezier = b, velocidad = v) }, arrastre) }
     Hueco(10)
     AplicarCurva(estado, c, k)
     Hueco(10)
@@ -668,60 +676,72 @@ private const val BEZIER_MIN = -0.7f
 private const val BEZIER_MAX = 1.7f
 
 /**
- * Elegir la curva de velocidad de una clave: las basicas, las plantillas, las
- * guardadas por el usuario y la curva a mano, con su grafica de velocidad
- * debajo. [poner] recibe la curva con nombre, la Bezier (null si es una
- * basica) y si es parte de un arrastre.
+ * Elegir la curva de velocidad de una clave, como en CapCut: una tira que se
+ * desliza a la derecha con el dibujo de la velocidad de cada curva (primero
+ * Personalizar y las tuyas, luego las de velocidad, las de siempre y las
+ * Bezier). Debajo, la de ahora: con puntos de velocidad se mueven, se
+ * agregan y se quitan ahi mismo. [poner] recibe la curva con nombre, la
+ * Bezier, los puntos de velocidad y si es parte de un arrastre.
  */
 @Composable
-private fun SelectorCurva(curva: Curva, bezier: Bezier?, poner: (Curva, Bezier?, Boolean) -> Unit) {
-    Etiqueta("Basicas")
-    Cuadricula(Curva.values().toList()) { cu, m ->
-        Mosaico(cu.nombre, bezier == null && curva == cu, { poner(cu, null, false) }, m) { col ->
-            dibujoCurva({ Escena.curva(cu, it) }, col)
-        }
-    }
-    Etiqueta("Plantillas")
-    Cuadricula(PlantillasCurva.TODAS) { pl, m ->
-        Mosaico(pl.nombre, bezier == pl.bezier, { poner(curva, pl.bezier, false) }, m) { col ->
-            dibujoCurva({ pl.bezier.en(it) }, col)
-        }
-    }
+private fun SelectorCurva(
+    curva: Curva,
+    bezier: Bezier?,
+    velocidad: CurvaVelocidad?,
+    poner: (Curva, Bezier?, CurvaVelocidad?, Boolean) -> Unit
+) {
     val mias = AjustesEditor.curvasMias
-    if (mias.isNotEmpty()) {
-        Etiqueta("Mis curvas")
-        Cuadricula(mias) { cm, m ->
-            Mosaico(cm.nombre, bezier == cm.bezier, { poner(curva, cm.bezier, false) }, m) { col ->
-                dibujoCurva({ cm.bezier.en(it) }, col)
-            }
+    fun esMia(cm: CurvaMia) = if (cm.velocidad != null) velocidad == cm.velocidad else velocidad == null && bezier == cm.bezier
+    val deVelocidad = PlantillasVelocidad.TODAS.firstOrNull { it.curva == velocidad }
+    val mia = mias.firstOrNull { esMia(it) }
+    val propia = velocidad != null && deVelocidad == null && mia == null
+    val f: (Float) -> Float = when {
+        velocidad != null -> ({ x: Float -> velocidad.en(x) })
+        bezier != null -> ({ x: Float -> bezier.en(x) })
+        else -> ({ x: Float -> Escena.curva(curva, x) })
+    }
+    val nombre = deVelocidad?.nombre ?: mia?.nombre ?: PlantillasCurva.nombreDe(bezier)
+        ?: if (velocidad != null || bezier != null) "Personalizada" else curva.nombre
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Etiqueta("Curva", Modifier.weight(1f))
+        Text(nombre, style = MaterialTheme.typography.labelMedium, color = Ink.White)
+    }
+    Hueco(6)
+    Row(
+        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        CasillaCurva("Personalizar", propia, Unit, null, {
+            // Parte de la curva de ahora, ya con sus puntos para moverlos
+            if (!propia) poner(curva, null, velocidad ?: CurvaVelocidad.desde(f), false)
+        })
+        for (cm in mias) {
+            val g: (Float) -> Float = cm.velocidad?.let { v -> { x: Float -> v.en(x) } } ?: cm.bezier!!.let { b -> { x: Float -> b.en(x) } }
+            CasillaCurva(cm.nombre, esMia(cm), cm, g, { poner(curva, cm.bezier, cm.velocidad, false) })
+        }
+        for (pl in PlantillasVelocidad.TODAS) {
+            CasillaCurva(pl.nombre, velocidad == pl.curva, pl.curva, { pl.curva.en(it) }, { poner(curva, null, pl.curva, false) })
+        }
+        for (cu in Curva.values()) {
+            CasillaCurva(cu.nombre, velocidad == null && bezier == null && curva == cu, cu, { Escena.curva(cu, it) }, { poner(cu, null, null, false) })
+        }
+        for (pl in PlantillasCurva.TODAS) {
+            CasillaCurva(pl.nombre, velocidad == null && bezier == pl.bezier, pl.bezier, { pl.bezier.en(it) }, { poner(curva, pl.bezier, null, false) })
         }
     }
-    Etiqueta("A mano")
-    if (bezier == null) {
-        Nota("Parte de la curva de ahora y mueve sus dos puntos.", color = Ink.White50)
-        Hueco(6)
-        BotonBorde("Editar esta curva a mano", { poner(curva, PlantillasCurva.aproximar(curva), false) }, glifo = Glifos.curva)
+    Hueco(10)
+    if (velocidad != null) {
+        EditorVelocidad(velocidad) { nv, arrastre -> poner(curva, null, nv, arrastre) }
     } else {
-        val mia = mias.firstOrNull { it.bezier == bezier }
-        Nota(
-            PlantillasCurva.nombreDe(bezier)?.let { "Plantilla $it: arrastra los puntos para retocarla" }
-                ?: mia?.let { "Tu curva ${it.nombre}" }
-                ?: "Curva a medida: arrastra los dos puntos",
-            color = Ink.White50
-        )
-        Hueco(6)
-        EditorBezier(bezier) { nb -> poner(curva, nb, true) }
+        GraficaVelocidad(f)
+        Hueco(4)
+        Nota("Toca Personalizar para mover sus puntos de velocidad.", color = Ink.White50)
     }
-    Hueco(8)
-    Etiqueta("Velocidad")
-    val f: (Float) -> Float = if (bezier != null) { x -> bezier.en(x) } else { x -> Escena.curva(curva, x) }
-    GraficaVelocidad(f)
-    if (bezier != null) {
+    if (velocidad != null || bezier != null) {
         Hueco(8)
-        val mia = mias.firstOrNull { it.bezier == bezier }
         if (mia == null) {
             BotonBorde("Guardar en mis curvas", {
-                AjustesEditor.curvasMias = mias + CurvaMia(AjustesEditor.nombreNuevo("Curva", mias.map { it.nombre }), bezier)
+                AjustesEditor.curvasMias = mias + CurvaMia(AjustesEditor.nombreNuevo("Curva", mias.map { it.nombre }), if (velocidad == null) bezier else null, velocidad)
                 AjustesEditor.alCambiar()
             }, glifo = Glifos.mas)
         } else {
@@ -731,6 +751,79 @@ private fun SelectorCurva(curva: Curva, bezier: Bezier?, poner: (Curva, Bezier?,
             }, glifo = Glifos.papelera)
         }
     }
+}
+
+/**
+ * Una casilla de la tira de curvas: el dibujo de la velocidad (arriba, mas
+ * rapido) y el nombre. [clave] solo sirve para no recalcular el dibujo en
+ * cada recomposicion. Sin [f] es la de Personalizar.
+ */
+@Composable
+private fun CasillaCurva(nombre: String, elegida: Boolean, clave: Any, f: ((Float) -> Float)?, onClick: () -> Unit) {
+    val grafica = remember(clave) { f?.let { PlantillasCurva.grafica(it, 48) } }
+    Column(
+        Modifier
+            .width(70.dp)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(50.dp)
+                .clip(esquinas(10.dp))
+                .background(if (elegida) Ink.White15 else Ink.White08)
+                .border(1.5.dp, if (elegida) Ink.White else Color.Transparent, esquinas(10.dp)),
+            contentAlignment = Alignment.Center
+        ) {
+            Canvas(Modifier.fillMaxSize().padding(horizontal = 7.dp, vertical = 8.dp)) {
+                val col = if (elegida) Ink.White else Ink.White70
+                if (grafica == null) {
+                    // Personalizar: una curva con sus puntos
+                    val pts = listOf(0f to 0.25f, 0.35f to 0.85f, 0.7f to 0.35f, 1f to 0.7f)
+                    val cv = CurvaVelocidad(pts.map { PuntoVelocidad(it.first, it.second * 4f) })
+                    val path = Path()
+                    for (i in 0..40) {
+                        val x = i / 40f
+                        val o = Offset(x * size.width, size.height * (1f - cv.velocidadCruda(x) / 4f))
+                        if (i == 0) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y)
+                    }
+                    drawPath(path, col, style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
+                    for ((x, v) in pts) drawCircle(col, 2.6.dp.toPx(), Offset(x * size.width, size.height * (1f - v)))
+                } else {
+                    dibujoVelocidad(grafica.first, grafica.second, col, if (elegida) Ink.Glow35 else Ink.White08)
+                }
+            }
+        }
+        Spacer(Modifier.height(4.dp))
+        Text(
+            nombre,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (elegida) Ink.White else Ink.White70,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+/** La grafica de velocidad [v] (con su [pico]) en todo el sitio: linea y relleno. */
+private fun DrawScope.dibujoVelocidad(v: FloatArray, pico: Float, linea: Color, relleno: Color) {
+    val atras = v.any { it < -1e-3f }
+    val base = if (atras) size.height * 0.7f else size.height
+    val alto = if (atras) size.height * 0.7f else size.height
+    fun aPx(i: Int) = Offset(size.width * i / (v.size - 1), base - alto * (v[i] / pico).coerceIn(-0.43f, 1f))
+    val l = Path()
+    val a = Path()
+    a.moveTo(0f, base)
+    for (i in v.indices) {
+        val o = aPx(i)
+        if (i == 0) l.moveTo(o.x, o.y) else l.lineTo(o.x, o.y)
+        a.lineTo(o.x, o.y)
+    }
+    a.lineTo(size.width, base)
+    a.close()
+    drawPath(a, relleno)
+    drawPath(l, linea, style = Stroke(1.6.dp.toPx(), cap = StrokeCap.Round))
 }
 
 /**
@@ -747,32 +840,147 @@ private fun GraficaVelocidad(f: (Float) -> Float) {
             .fillMaxWidth()
             .height(76.dp)
             .border(1.dp, Ink.White15, esquinas(12.dp))
+            .padding(10.dp)
     ) {
-        val m = 10.dp.toPx()
-        val w = size.width - 2 * m
-        val h = size.height - 2 * m
-        // Con partes hacia atras el cero sube para que quepan
-        val base = if (atras) m + h * 0.7f else m + h
-        val alto = if (atras) h * 0.7f else h
-        fun aPx(i: Int) = Offset(m + w * i / (v.size - 1), base - alto * (v[i] / pico).coerceIn(-0.43f, 1f))
-        val linea = Path()
-        val area = Path()
-        area.moveTo(m, base)
-        for (i in v.indices) {
-            val o = aPx(i)
-            if (i == 0) linea.moveTo(o.x, o.y) else linea.lineTo(o.x, o.y)
-            area.lineTo(o.x, o.y)
-        }
-        area.lineTo(m + w, base)
-        area.close()
-        drawLine(Ink.White15, Offset(m, base), Offset(m + w, base), 1.dp.toPx())
+        val base = if (atras) size.height * 0.7f else size.height
+        val alto = if (atras) size.height * 0.7f else size.height
+        drawLine(Ink.White15, Offset(0f, base), Offset(size.width, base), 1.dp.toPx())
         val uno = base - alto / pico
-        drawLine(Ink.White30, Offset(m, uno), Offset(m + w, uno), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
-        drawPath(area, Ink.Glow35)
-        drawPath(linea, Ink.White, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+        drawLine(Ink.White30, Offset(0f, uno), Offset(size.width, uno), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+        dibujoVelocidad(v, pico, Ink.White, Ink.Glow35)
     }
     Hueco(4)
     Nota("Arriba, mas rapido. Pico: %.1f veces la velocidad pareja (la linea de puntos)".format(pico), color = Ink.White50)
+}
+
+/**
+ * Curva de velocidad a mano: arriba es mas rapido. Los puntos se arrastran
+ * (los de los extremos solo arriba y abajo), tocar donde no hay punto agrega
+ * uno, y el elegido se quita con el boton. Solo se coge un punto si el dedo
+ * cae cerca: si no, el panel se sigue desplazando.
+ */
+@Composable
+private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boolean) -> Unit) {
+    val gestos = LocalGestos.current
+    val actual by androidx.compose.runtime.rememberUpdatedState(cv)
+    val cambio by androidx.compose.runtime.rememberUpdatedState(onCambio)
+    var elegido by remember { mutableStateOf(-1) }
+    val tope = CurvaVelocidad.MAXIMA
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(1.9f)
+            .border(1.dp, Ink.White15, esquinas(12.dp))
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    val abajo = awaitFirstDown()
+                    val m = 16.dp.toPx()
+                    val w = size.width - 2 * m
+                    val h = size.height - 2 * m
+                    fun aPx(p: PuntoVelocidad) = Offset(m + p.x * w, m + h * (1f - p.v / tope))
+                    fun xDe(px: Float) = ((px - m) / w).coerceIn(0f, 1f)
+                    fun vDe(py: Float) = ((1f - (py - m) / h) * tope).coerceIn(0f, tope)
+                    val pts = actual.puntos
+                    val cerca = pts.indices.minByOrNull { (aPx(pts[it]) - abajo.position).getDistance() }
+                    val agarra = cerca != null && (aPx(pts[cerca]) - abajo.position).getDistance() <= 32.dp.toPx()
+                    if (agarra && cerca != null) {
+                        abajo.consume()
+                        elegido = cerca
+                        val i = cerca
+                        gestos.empezar()
+                        try {
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val ch = ev.changes.firstOrNull { it.id == abajo.id } ?: break
+                                if (!ch.pressed) break
+                                val ps = actual.puntos
+                                if (i !in ps.indices) break
+                                val sep = CurvaVelocidad.SEPARACION
+                                val x = when (i) {
+                                    0 -> 0f
+                                    ps.lastIndex -> 1f
+                                    else -> xDe(ch.position.x).coerceIn(ps[i - 1].x + sep * 1.01f, ps[i + 1].x - sep * 1.01f)
+                                }
+                                val nuevo = ps.toMutableList().also { it[i] = PuntoVelocidad(x, vDe(ch.position.y)) }
+                                cambio(CurvaVelocidad(nuevo), true)
+                                ch.consume()
+                            }
+                        } finally {
+                            gestos.terminar()
+                        }
+                        return@awaitEachGesture
+                    }
+                    // Lejos de los puntos: si el dedo se suelta sin moverse es un
+                    // toque y agrega un punto; si se mueve, desplaza el panel
+                    val slop = viewConfiguration.touchSlop
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        val ch = ev.changes.firstOrNull { it.id == abajo.id } ?: return@awaitEachGesture
+                        if (ch.isConsumed || (ch.position - abajo.position).getDistance() > slop) return@awaitEachGesture
+                        if (!ch.pressed) break
+                    }
+                    val x = xDe(abajo.position.x)
+                    val ps = actual.puntos
+                    if (ps.any { abs(it.x - x) < CurvaVelocidad.SEPARACION * 1.01f }) return@awaitEachGesture
+                    val nuevo = (ps + PuntoVelocidad(x, vDe(abajo.position.y))).sortedBy { it.x }
+                    elegido = nuevo.indexOfFirst { it.x == x }
+                    cambio(CurvaVelocidad(nuevo), false)
+                }
+            }
+    ) {
+        val m = 16.dp.toPx()
+        val w = size.width - 2 * m
+        val h = size.height - 2 * m
+        fun aPx(x: Float, v: Float) = Offset(m + x * w, m + h * (1f - v / tope))
+        // La velocidad pareja (lo que seria ir siempre igual): la media
+        val media = (0..64).sumOf { cv.velocidadCruda(it / 64f).toDouble() }.toFloat() / 65f
+        if (media > 1e-3f) drawLine(Ink.White30, aPx(0f, media), aPx(1f, media), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+        drawLine(Ink.White15, aPx(0f, 0f), aPx(1f, 0f), 1.dp.toPx())
+        val linea = Path()
+        val area = Path()
+        area.moveTo(aPx(0f, 0f).x, aPx(0f, 0f).y)
+        for (i in 0..120) {
+            val x = i / 120f
+            val o = aPx(x, cv.velocidadCruda(x))
+            if (i == 0) linea.moveTo(o.x, o.y) else linea.lineTo(o.x, o.y)
+            area.lineTo(o.x, o.y)
+        }
+        area.lineTo(aPx(1f, 0f).x, aPx(1f, 0f).y)
+        area.close()
+        drawPath(area, Ink.Glow35)
+        drawPath(linea, Ink.White, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round))
+        cv.puntos.forEachIndexed { i, p ->
+            val o = aPx(p.x, p.v)
+            if (i == elegido) {
+                drawCircle(Ink.Glow35, 13.dp.toPx(), o)
+                drawCircle(Ink.White, 7.dp.toPx(), o)
+                drawCircle(Ink.Black, 2.5.dp.toPx(), o)
+            } else {
+                drawCircle(Ink.Black, 7.dp.toPx(), o)
+                drawCircle(Ink.White, 5.5.dp.toPx(), o)
+            }
+        }
+    }
+    Hueco(4)
+    val p = cv.puntos.getOrNull(elegido)
+    val media = remember(cv) { (0..64).sumOf { cv.velocidadCruda(it / 64f).toDouble() }.toFloat() / 65f }
+    Nota(
+        if (p != null && media > 1e-3f) "Punto en el %d %%: %.1f veces la velocidad pareja (la linea de puntos)".format((p.x * 100).roundToInt(), p.v / media)
+        else "Arrastra los puntos (arriba, mas rapido). Toca un sitio vacio para agregar uno.",
+        color = Ink.White50
+    )
+    Hueco(6)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val quitable = p != null && elegido in 1 until cv.puntos.lastIndex
+        if (quitable) BotonBorde("Quitar punto", {
+            onCambio(CurvaVelocidad(cv.puntos.filterIndexed { i, _ -> i != elegido }), false)
+            elegido = -1
+        }, glifo = Glifos.menos)
+        BotonBorde("Pareja", {
+            onCambio(CurvaVelocidad(listOf(PuntoVelocidad(0f, 1f), PuntoVelocidad(1f, 1f))), false)
+            elegido = -1
+        }, glifo = Glifos.reiniciar)
+    }
 }
 
 /** Llevar la curva de esta clave a todas, o a las elegidas. */
@@ -781,13 +989,13 @@ private fun AplicarCurva(estado: EstadoEditor, c: Clip, k: com.royermethod.app.e
     if (c.claves.size < 3) return
     val elegidas = estado.elegidasDe(c)
     BotonBorde("Usar esta curva en todas las claves", {
-        estado.hacer { Edicion.curvaEnClaves(it, c.id, null, k.curva, k.bezier) }
+        estado.hacer { Edicion.curvaEnClaves(it, c.id, null, k.curva, k.bezier, k.velocidad) }
         estado.avisar("Curva puesta en las ${c.claves.size} claves")
     })
     if (elegidas.size >= 2) {
         Hueco(6)
         BotonBorde("Usarla en las ${elegidas.size} elegidas", {
-            estado.hacer { Edicion.curvaEnClaves(it, c.id, elegidas, k.curva, k.bezier) }
+            estado.hacer { Edicion.curvaEnClaves(it, c.id, elegidas, k.curva, k.bezier, k.velocidad) }
             estado.avisar("Curva puesta en las ${elegidas.size} elegidas")
         })
     }
@@ -795,8 +1003,8 @@ private fun AplicarCurva(estado: EstadoEditor, c: Clip, k: com.royermethod.app.e
 
 /**
  * Elegir varias claves para moverlas juntas: en el tiempo (botones o
- * arrastrando una elegida en la linea de tiempo) y en la imagen (segun
- * [ModoMover], que tambien se cambia en la pastilla de la imagen).
+ * arrastrando una elegida en la linea de tiempo) y en la imagen (con
+ * [EstadoEditor.moverTodo], la herramienta Mover todo de la barra).
  */
 @Composable
 private fun VariasClaves(estado: EstadoEditor, c: Clip, ini: Long, k: com.royermethod.app.editor.modelo.Clave?, tolerancia: Long) {
@@ -824,11 +1032,11 @@ private fun VariasClaves(estado: EstadoEditor, c: Clip, ini: Long, k: com.royerm
         }
     }
     Hueco(8)
-    Etiqueta("Al arrastrar en la imagen se mueve")
-    Opciones(ModoMover.values().toList(), estado.modoMover, { it.nombre }, { estado.modoMover = it })
-    if (estado.modoMover == ModoMover.ELEGIDAS && elegidas.isEmpty()) {
-        Nota("Sin claves elegidas se mueve la de aqui, como siempre.", color = Ink.White50)
-    }
+    Interruptor(
+        if (elegidas.isEmpty()) "Mover todo el bloque en la imagen" else "Mover las elegidas en la imagen",
+        estado.moverTodo, { estado.moverTodo = it }
+    )
+    Nota("Tambien en la barra de abajo (Mover todo). Encendido, arrastrar no cambia ni crea claves.", color = Ink.White50)
 }
 
 /**

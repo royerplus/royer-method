@@ -2,12 +2,12 @@ package com.royermethod.app.editor.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.calculateCentroid
 import androidx.compose.foundation.gestures.calculatePan
 import androidx.compose.foundation.gestures.calculateRotation
 import androidx.compose.foundation.gestures.calculateZoom
@@ -27,8 +27,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
@@ -41,7 +44,7 @@ import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
-import com.royermethod.app.editor.modelo.ModoMover
+import com.royermethod.app.editor.modelo.ZoomVista
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.radio
@@ -96,9 +99,31 @@ fun Lienzo(
                     .pointerInput(escala, vw, vh) {
                         awaitEachGesture {
                             val abajo = awaitFirstDown(requireUnconsumed = false)
+                            if (estado.modoZoom) {
+                                // Herramienta Zoom: solo la vista, sin elegir ni mover nada
+                                try {
+                                    while (true) {
+                                        val ev = awaitPointerEvent()
+                                        if (ev.changes.none { it.pressed }) break
+                                        val foco = ev.calculateCentroid(useCurrent = false)
+                                        val pan = ev.calculatePan()
+                                        val f = ev.calculateZoom()
+                                        val fx = if (foco.isSpecified) foco.x else vw / 2
+                                        val fy = if (foco.isSpecified) foco.y else vh / 2
+                                        estado.zoomVista = estado.zoomVista.mover(f, fx, fy, pan.x, pan.y, vw, vh)
+                                        ev.changes.forEach { it.consume() }
+                                    }
+                                } finally {
+                                    if (!estado.zoomVista.puesto) estado.zoomVista = ZoomVista.NINGUNO
+                                }
+                                return@awaitEachGesture
+                            }
                             estado.reproduciendo = false
                             val t = estado.tiempo
-                            val enLienzo = Offset(abajo.position.x / escala, abajo.position.y / escala)
+                            // Con zoom, el dedo toca la pantalla, no el lienzo
+                            val zv = estado.zoomVista
+                            val (lx, ly) = zv.aLienzo(abajo.position.x, abajo.position.y, vw, vh)
+                            val enLienzo = Offset(lx / escala, ly / escala)
                             val tocado = bloqueEn(estado, escenaActual, enLienzo.x, enLienzo.y, t)
 
                             // El bloque que se mueve: el elegido si se toco dentro de el
@@ -145,8 +170,8 @@ fun Lienzo(
                                         pan += ev.calculatePan()
                                         zoom *= ev.calculateZoom()
                                         giro += ev.calculateRotation()
-                                        var x = inicial.x + pan.x / vw
-                                        var y = inicial.y + pan.y / vh
+                                        var x = inicial.x + pan.x / (vw * zv.escala)
+                                        var y = inicial.y + pan.y / (vh * zv.escala)
                                         var r = inicial.rotacion + giro
                                         guiaX = abs(x) < 0.012f
                                         guiaY = abs(y) < 0.012f
@@ -187,78 +212,78 @@ fun Lienzo(
                     }
             ) {
                 val pr = estado.proyecto
+                val z = estado.zoomVista
+                fun ap(px: Float, py: Float): Offset {
+                    val (sx, sy) = z.aPantalla(px, py, size.width, size.height)
+                    return Offset(sx, sy)
+                }
                 // El borde de lo que se exporta, siempre a la vista: lo que se
                 // salga de esta linea no va a salir en el video.
                 val grosor = 1.5.dp.toPx()
                 val esquina = radio(6.dp).toPx()
+                val o = ap(0f, 0f)
                 drawRoundRect(
-                    Color.White, Offset(grosor / 2, grosor / 2), Size(size.width - grosor, size.height - grosor),
+                    Color.White, Offset(o.x + grosor / 2, o.y + grosor / 2),
+                    Size(size.width * z.escala - grosor, size.height * z.escala - grosor),
                     CornerRadius(esquina, esquina), style = Stroke(grosor)
                 )
-                if (guiaX) drawLine(Ink.White70, Offset(size.width / 2, 0f), Offset(size.width / 2, size.height), 1.dp.toPx(),
+                val centro = ap(size.width / 2, size.height / 2)
+                if (guiaX) drawLine(Ink.White70, Offset(centro.x, 0f), Offset(centro.x, size.height), 1.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
-                if (guiaY) drawLine(Ink.White70, Offset(0f, size.height / 2), Offset(size.width, size.height / 2), 1.dp.toPx(),
+                if (guiaY) drawLine(Ink.White70, Offset(0f, centro.y), Offset(size.width, centro.y), 1.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
+                if (estado.modoZoom) return@Canvas
                 val id = (estado.seleccion as? Seleccion.Bloque)?.id ?: return@Canvas
                 val c = Edicion.clip(pr, id) ?: return@Canvas
                 val ini = Edicion.inicio(pr, id) ?: return@Canvas
                 val local = estado.tiempo - ini
                 if (local < 0 || local >= c.duracionUs) return@Canvas
                 val m = escena.marco(c, escena.encuadreEn(c, local))
-                val cx = m.cx * escala
-                val cy = m.cy * escala
-                val w = m.ancho * escala
-                val h = m.alto * escala
-                rotate(m.rotacion, Offset(cx, cy)) {
-                    drawRect(Ink.Glow35, Offset(cx - w / 2, cy - h / 2), Size(w, h), style = Stroke(4.dp.toPx()))
-                    drawRect(Ink.White, Offset(cx - w / 2, cy - h / 2), Size(w, h), style = Stroke(1.5.dp.toPx()))
-                    val r = 4.dp.toPx()
-                    for (sx in listOf(-1, 1)) for (sy in listOf(-1, 1)) {
-                        val o = Offset(cx + sx * w / 2, cy + sy * h / 2)
-                        drawCircle(Ink.Black, r + 1.5.dp.toPx(), o)
-                        drawCircle(Ink.White, r, o)
-                    }
-                }
+                val cen = ap(m.cx * escala, m.cy * escala)
+                marcoElegido(cen, m.ancho * escala * z.escala, m.alto * escala * z.escala, m.rotacion)
             }
-            ModoMoverLienzo(estado, Modifier.align(Alignment.BottomStart).padding(6.dp))
+            val z = estado.zoomVista
+            if (z.puesto || estado.modoZoom) {
+                Text(
+                    if (z.puesto) "Zoom " + "%.1f".format(z.escala) + "x" else "Zoom: pellizca para acercar",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Ink.White90,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(6.dp)
+                        .clip(esquinas(12.dp))
+                        .background(Color.Black.copy(alpha = 0.55f))
+                        .padding(horizontal = 10.dp, vertical = 5.dp)
+                )
+            }
         }
     }
 }
 
 /**
- * Con un bloque con fotogramas clave elegido, abajo a la izquierda de la
- * imagen (arriba la tapan los avisos): que mueve el dedo. Tocarla pasa al siguiente modo (las elegidas
- * solo si hay alguna), asi se cambia sin abrir ningun panel.
+ * El marco del bloque elegido: una linea fina y escuadras cortas en las
+ * esquinas, que crecen con el bloque pero nunca lo tapan (en uno chico son
+ * apenas una marca). Lleva una sombra fina para verse sobre fondo blanco.
  */
-@Composable
-private fun ModoMoverLienzo(estado: EstadoEditor, modifier: Modifier) {
-    val c = estado.clipElegido ?: return
-    if (estado.seleccion !is Seleccion.Bloque || c.claves.isEmpty()) return
-    val elegidas = estado.elegidasDe(c).size
-    val modo = if (estado.modoMover == ModoMover.ELEGIDAS && elegidas == 0) ModoMover.CLAVE else estado.modoMover
-    val texto = when (modo) {
-        ModoMover.ELEGIDAS -> "Mueve: $elegidas elegida" + if (elegidas == 1) "" else "s"
-        else -> "Mueve: " + modo.corto
-    }
-    Text(
-        texto,
-        style = MaterialTheme.typography.labelSmall,
-        color = if (modo == ModoMover.CLAVE) Ink.White90 else Ink.Black,
-        modifier = modifier
-            .clip(esquinas(12.dp))
-            .background(if (modo == ModoMover.CLAVE) Color.Black.copy(alpha = 0.55f) else Ink.White)
-            .clickable {
-                estado.modoMover = siguienteModo(modo, elegidas > 0)
-                estado.avisar("Al arrastrar se mueve " + estado.modoMover.corto)
+private fun DrawScope.marcoElegido(c: Offset, w: Float, h: Float, giro: Float) {
+    val linea = 1.dp.toPx()
+    val trazo = 2.5.dp.toPx()
+    val sombra = Color.Black.copy(alpha = 0.45f)
+    val brazo = minOf(14.dp.toPx(), minOf(w, h) * 0.3f).coerceAtLeast(3.dp.toPx())
+    rotate(giro, c) {
+        val a = Offset(c.x - w / 2, c.y - h / 2)
+        drawRect(sombra, a, Size(w, h), style = Stroke(linea + 1.5.dp.toPx()))
+        drawRect(Color.White.copy(alpha = 0.9f), a, Size(w, h), style = Stroke(linea))
+        for (sx in listOf(-1f, 1f)) for (sy in listOf(-1f, 1f)) {
+            val e = Offset(c.x + sx * w / 2, c.y + sy * h / 2)
+            val hx = Offset(e.x - sx * brazo, e.y)
+            val hy = Offset(e.x, e.y - sy * brazo)
+            for ((color, g) in listOf(sombra to trazo + 1.5.dp.toPx(), Color.White to trazo)) {
+                drawLine(color, e, hx, g, cap = StrokeCap.Round)
+                drawLine(color, e, hy, g, cap = StrokeCap.Round)
             }
-            .padding(horizontal = 10.dp, vertical = 6.dp)
-    )
-}
-
-internal fun siguienteModo(m: ModoMover, hayElegidas: Boolean): ModoMover = when (m) {
-    ModoMover.CLAVE -> ModoMover.TODO
-    ModoMover.TODO -> if (hayElegidas) ModoMover.ELEGIDAS else ModoMover.CLAVE
-    ModoMover.ELEGIDAS -> ModoMover.CLAVE
+        }
+    }
 }
 
 private fun visible(estado: EstadoEditor, id: Long, t: Long): Boolean {

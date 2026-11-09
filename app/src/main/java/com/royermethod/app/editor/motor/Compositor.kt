@@ -1,5 +1,7 @@
 package com.royermethod.app.editor.motor
 
+import com.royermethod.app.editor.modelo.ZoomVista
+import kotlin.math.roundToInt
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -169,7 +171,7 @@ class Compositor(
         // 3. dibujar de abajo arriba
         if (destino != null) destino.activar() else {
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
-            GLES20.glViewport(0, 0, ancho, alto)
+            ponerVistaPantalla()
         }
         val voltear = destino != null
         GLES20.glClearColor(0f, 0f, 0f, 1f)
@@ -279,6 +281,37 @@ class Compositor(
             anticipados.remove(v)
             cerrar(v)
         }
+    }
+
+    /**
+     * Zoom de la vista previa (herramienta Zoom): solo la pantalla, nunca lo
+     * que se exporta (eso dibuja en una [Lamina]). Se aplica agrandando el
+     * viewport de la pantalla: lo que cae fuera no se dibuja, asi que acercar
+     * no cuesta mas que sin zoom.
+     */
+    @Volatile
+    var zoom: ZoomVista = ZoomVista.NINGUNO
+
+    private var maxViewport = 0
+
+    private fun ponerVistaPantalla() {
+        val z = zoom
+        if (!vista || !z.puesto) {
+            GLES20.glViewport(0, 0, ancho, alto)
+            return
+        }
+        if (maxViewport == 0) {
+            val m = IntArray(2)
+            GLES20.glGetIntegerv(GLES20.GL_MAX_VIEWPORT_DIMS, m, 0)
+            maxViewport = minOf(m[0], m[1]).coerceAtLeast(2048)
+        }
+        val e = minOf(z.escala, maxViewport.toFloat() / maxOf(ancho, alto))
+        val w = (ancho * e).roundToInt()
+        val h = (alto * e).roundToInt()
+        val x0 = (ancho / 2f - z.x * w).roundToInt()
+        // GL cuenta desde abajo; y del zoom, desde arriba
+        val y0 = (alto / 2f - (1f - z.y) * h).roundToInt()
+        GLES20.glViewport(x0, y0, w, h)
     }
 
     private fun dibujarPaso(paso: Paso, texturas: Map<PasoClip, Textura>, voltear: Boolean) {

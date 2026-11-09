@@ -11,10 +11,10 @@ import com.royermethod.app.editor.modelo.Capa
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Linea
-import com.royermethod.app.editor.modelo.ModoMover
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.PistaAudio
 import com.royermethod.app.editor.modelo.Proyecto
+import com.royermethod.app.editor.modelo.ZoomVista
 import com.royermethod.app.ui.components.Gestos
 
 /** Lo que esta elegido en la linea de tiempo. */
@@ -121,8 +121,20 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
      * deja fuera las que ya no existen (tras deshacer, por ejemplo).
      */
     var clavesElegidas by mutableStateOf(ClavesElegidas.NINGUNA)
-    /** Que mueve el dedo sobre la imagen en un bloque con claves. Es de esta sesion. */
-    var modoMover by mutableStateOf(ModoMover.CLAVE)
+    /**
+     * Herramienta "Mover todo": arrastrar en la imagen un bloque con claves
+     * mueve todas sus claves juntas (o las elegidas, si hay) en vez de cambiar
+     * o crear la de bajo el cabezal. Es de esta sesion.
+     */
+    var moverTodo by mutableStateOf(false)
+    /**
+     * Herramienta Zoom: los dedos sobre la imagen acercan y desplazan la vista
+     * (solo la pantalla: el proyecto y lo que se exporta no cambian). Al
+     * apagarla el zoom se queda puesto y se edita con el.
+     */
+    var modoZoom by mutableStateOf(false)
+    /** El zoom de la vista ahora mismo. */
+    var zoomVista by mutableStateOf(ZoomVista.NINGUNO)
     /** Mensaje corto que se ensena un momento sobre la imagen. */
     var aviso by mutableStateOf<String?>(null)
         private set
@@ -397,15 +409,13 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     }
 
     /**
-     * Las claves que mueve un arrastre sobre la imagen del bloque [c] segun
-     * [modoMover]: null es el de siempre (la de bajo el cabezal), un conjunto
-     * vacio no se da. Sin claves elegidas, "las elegidas" es el de siempre.
+     * Las claves que mueve un arrastre sobre la imagen del bloque [c] con
+     * [moverTodo]: las elegidas o, si no hay, todas. Null es el de siempre (la
+     * de bajo el cabezal); un conjunto vacio no se da.
      */
     fun clavesQueMueve(c: Clip): Set<Long>? = when {
-        c.claves.isEmpty() -> null
-        modoMover == ModoMover.TODO -> c.claves.mapTo(HashSet()) { it.tiempoUs }
-        modoMover == ModoMover.ELEGIDAS -> elegidasDe(c).takeIf { it.isNotEmpty() }
-        else -> null
+        c.claves.isEmpty() || !moverTodo -> null
+        else -> elegidasDe(c).ifEmpty { c.claves.mapTo(HashSet()) { it.tiempoUs } }
     }
 
     /** Cambia el bloque elegido. */

@@ -182,10 +182,10 @@ fun PanelPiezas(estado: EstadoEditor) {
         }
         Nota("Curva desde esta clave hasta la siguiente de ${pieza.nombre.ifBlank { "esta parte" }}.", color = Ink.White50)
         Opciones(Curva.values().toList(), if (clave.bezier == null) clave.curva else null, { it.nombre }, { curva ->
-            cambiarClave { it.copy(curva = curva, bezier = null) }
+            cambiarClave { it.copy(curva = curva, bezier = null, velocidad = null) }
         })
         BotonBorde(if (clave.bezier == null) "Editar Bezier a mano" else "Bezier personalizada", {
-            cambiarClave { it.copy(bezier = it.bezier ?: Bezier.SUAVE) }
+            cambiarClave { it.copy(bezier = it.bezier ?: Bezier.SUAVE, velocidad = null) }
         }, glifo = Glifos.curva)
         val bezier = clave.bezier
         if (bezier != null) {

@@ -229,4 +229,24 @@ object Glifos {
         linea(c, 12f, 20.5f, 12f, 14.5f); camino(c, false, false, 9f, 17.5f, 12f, 14.5f, 15f, 17.5f)
         linea(c, 5f, 12f, 19f, 12f)
     }
+    /** Cuatro flechas: mover el bloque entero con sus claves. */
+    val moverTodo: Glifo = { c ->
+        linea(c, 12f, 4f, 12f, 20f); linea(c, 4f, 12f, 20f, 12f)
+        camino(c, false, false, 9.5f, 6.5f, 12f, 4f, 14.5f, 6.5f)
+        camino(c, false, false, 9.5f, 17.5f, 12f, 20f, 14.5f, 17.5f)
+        camino(c, false, false, 6.5f, 9.5f, 4f, 12f, 6.5f, 14.5f)
+        camino(c, false, false, 17.5f, 9.5f, 20f, 12f, 17.5f, 14.5f)
+    }
+    /** Lupa con un mas: acercar la vista. */
+    val zoom: Glifo = { c ->
+        circulo(c, 10.5f, 10.5f, 6f)
+        linea(c, 15f, 15f, 20f, 20f)
+        linea(c, 10.5f, 8f, 10.5f, 13f); linea(c, 8f, 10.5f, 13f, 10.5f)
+    }
+    /** Lupa con un menos: quitar el zoom. */
+    val sinZoom: Glifo = { c ->
+        circulo(c, 10.5f, 10.5f, 6f)
+        linea(c, 15f, 15f, 20f, 20f)
+        linea(c, 8f, 10.5f, 13f, 10.5f)
+    }
 }

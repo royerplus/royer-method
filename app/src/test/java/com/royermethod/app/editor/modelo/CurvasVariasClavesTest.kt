@@ -218,4 +218,89 @@ class CurvasVariasClavesTest {
         val unas = claves(Edicion.curvaEnClaves(proyecto(ks), 7, setOf(500_000L), Curva.RAPIDA, null))
         assertEquals(listOf(Curva.SUAVE, Curva.RAPIDA, Curva.SUAVE), unas.map { it.curva })
     }
+
+    // ---------------- Curvas con puntos de velocidad ----------------
+
+    private fun cv(vararg p: Float) = CurvaVelocidad(p.toList().chunked(2).map { PuntoVelocidad(it[0], it[1]) })
+
+    @Test
+    fun lasDeVelocidadVanDe0A1SinVolverYSinTemblar() {
+        val todas = PlantillasVelocidad.TODAS.map { it.curva } + cv(0f, 0f, 1f, 6f) + cv(0f, 6f, 0.03f, 0f, 1f, 6f)
+        for (c in todas) {
+            assertEquals(0f, c.en(0f), 0f)
+            assertEquals(1f, c.en(1f), 0f)
+            val n = 3000
+            val y = FloatArray(n + 1) { c.en(it / n.toFloat()) }
+            var temblor = 0f
+            for (i in 1..n) assertTrue("$c va hacia atras en $i", y[i] >= y[i - 1] - 1e-6f)
+            for (i in 1 until n) temblor = maxOf(temblor, abs(y[i + 1] - 2 * y[i] + y[i - 1]))
+            assertTrue("$c: temblor $temblor", temblor < 2e-4f)
+        }
+    }
+
+    @Test
+    fun laVelocidadDelAvanceEsLaDeLosPuntos() {
+        // Pareja: lineal
+        for (i in 0..20) assertEquals(i / 20f, CurvaVelocidad.PAREJA.en(i / 20f), 1e-4f)
+        // Doble de rapido al final que al principio: la pendiente lo sigue
+        val c = cv(0f, 1f, 1f, 2f)
+        val (v, _) = PlantillasCurva.grafica({ c.en(it) })
+        assertEquals(2f, v.last() / v.first(), 0.08f)
+        // Todo a cero no se rompe: va pareja
+        assertEquals(0.5f, cv(0f, 0f, 1f, 0f).en(0.5f), 1e-3f)
+    }
+
+    @Test
+    fun losPuntosSeOrdenanYLosExtremosSeFijan() {
+        val c = cv(0.2f, 1f, 0.9f, 3f, 0.5f, 2f, 0.51f, 9f, 0.5f, Float.NaN)
+        assertEquals(0f, c.puntos.first().x)
+        assertEquals(1f, c.puntos.last().x)
+        assertTrue(c.puntos.zipWithNext().all { (a, b) -> b.x - a.x >= CurvaVelocidad.SEPARACION * 0.5f })
+        assertTrue(c.puntos.all { it.v in 0f..CurvaVelocidad.MAXIMA })
+        assertEquals(cv(0f, 1f, 1f, 1f), CurvaVelocidad(emptyList()))
+        // Iguales por sus puntos: asi se reconoce la plantilla elegida
+        assertEquals(PlantillasVelocidad.TODAS[0].curva, cv(*PlantillasVelocidad.TODAS[0].curva.puntos.flatMap { listOf(it.x, it.v) }.toFloatArray()))
+    }
+
+    @Test
+    fun desdeUnaCurvaQuedaParecida() {
+        for (cu in listOf(Curva.SUAVE, Curva.LINEAL, Curva.ENTRADA, Curva.SALIDA)) {
+            val c = CurvaVelocidad.desde({ Escena.curva(cu, it) })
+            var peor = 0f
+            for (i in 0..100) peor = maxOf(peor, abs(c.en(i / 100f) - Escena.curva(cu, i / 100f)))
+            assertTrue("$cu se aparta $peor", peor < 0.06f)
+        }
+    }
+
+    @Test
+    fun laClaveUsaLaVelocidadAntesQueLaBezier() {
+        val v = PlantillasVelocidad.TODAS[1].curva
+        val k = Clave(0, Encuadre(), Curva.LINEAL, Bezier(0.1f, 0.9f, 0.9f, 0.1f), v)
+        assertEquals(v.en(0.3f), k.avance(0.3f), 0f)
+        val q = Edicion.curvaEnClaves(proyecto(listOf(clave(0), clave(1_000_000))), 7, null, Curva.SUAVE, null, v)
+        assertTrue(claves(q).all { it.velocidad == v })
+    }
+
+    // ---------------- Zoom de la vista ----------------
+
+    @Test
+    fun elZoomVaYVuelveYDejaElPuntoBajoLosDedos() {
+        val z = ZoomVista(2.5f, 0.3f, 0.6f)
+        val (sx, sy) = z.aPantalla(123f, 456f, 1000f, 800f)
+        val (lx, ly) = z.aLienzo(sx, sy, 1000f, 800f)
+        assertEquals(123f, lx, 1e-3f)
+        assertEquals(456f, ly, 1e-3f)
+        // Pellizco alrededor de un punto: lo que estaba bajo el se queda
+        val antes = ZoomVista.NINGUNO.aLienzo(400f, 300f, 1000f, 800f)
+        val n = ZoomVista.NINGUNO.mover(2f, 400f, 300f, 0f, 0f, 1000f, 800f)
+        val despues = n.aLienzo(400f, 300f, 1000f, 800f)
+        assertEquals(2f, n.escala, 1e-6f)
+        assertEquals(antes.first, despues.first, 1e-2f)
+        assertEquals(antes.second, despues.second, 1e-2f)
+        // Sin pasarse ni salirse del lienzo
+        val lejos = n.mover(100f, 0f, 0f, 1e6f, 1e6f, 1000f, 800f)
+        assertEquals(ZoomVista.MAXIMO, lejos.escala, 0f)
+        assertEquals(0.5f / ZoomVista.MAXIMO, lejos.x, 1e-6f)
+        assertTrue(!ZoomVista.NINGUNO.mover(0.5f, 0f, 0f, 0f, 0f, 1000f, 800f).puesto)
+    }
 }

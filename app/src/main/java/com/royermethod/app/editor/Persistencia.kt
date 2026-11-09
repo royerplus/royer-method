@@ -1,5 +1,7 @@
 package com.royermethod.app.editor
 
+import com.royermethod.app.editor.modelo.CurvaVelocidad
+import com.royermethod.app.editor.modelo.PuntoVelocidad
 import com.royermethod.app.editor.modelo.Ajuste
 import com.royermethod.app.editor.modelo.AjusteTransicion
 import com.royermethod.app.editor.modelo.AjustesColor
@@ -223,6 +225,21 @@ object Persistencia {
         if (!a.activa) put("activa", false)
     }
 
+    /** Los puntos de una curva de velocidad: [x, v, x, v, ...]. */
+    fun velocidad(c: CurvaVelocidad) = JSONArray().apply {
+        c.puntos.forEach { put(it.x.toDouble()); put(it.v.toDouble()) }
+    }
+
+    fun velocidadDe(a: JSONArray?): CurvaVelocidad? {
+        if (a == null || a.length() < 4) return null
+        val pts = (0 until a.length() / 2).mapNotNull { i ->
+            val x = a.optDouble(2 * i, Double.NaN).toFloat()
+            val v = a.optDouble(2 * i + 1, Double.NaN).toFloat()
+            if (x.isFinite() && v.isFinite()) PuntoVelocidad(x, v) else null
+        }
+        return if (pts.size >= 2) CurvaVelocidad(pts) else null
+    }
+
     private fun claves(l: List<Clave>) = JSONArray().apply {
         l.forEach { k ->
             put(JSONObject().apply {
@@ -230,6 +247,7 @@ object Persistencia {
                 put("encuadre", encuadre(k.encuadre))
                 put("curva", k.curva.name)
                 k.bezier?.let { b -> put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })) }
+                k.velocidad?.let { put("velocidad", velocidad(it)) }
             })
         }
     }
@@ -448,7 +466,8 @@ object Persistencia {
                 k.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let { b ->
                     fun v(i: Int) = b.optDouble(i, 0.0).toFloat().takeIf { it.isFinite() } ?: 0f
                     Bezier(v(0).coerceIn(0f, 1f), v(1), v(2).coerceIn(0f, 1f), v(3))
-                }
+                },
+                velocidadDe(k.optJSONArray("velocidad"))
             )
         }
     }

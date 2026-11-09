@@ -355,6 +355,7 @@ private fun Herramientas(
                         if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
                     })
                     Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
+                    HerramientasZoom(estado)
                     Herramienta(Glifos.ajustes, "Efectos", {
                         val c = bloqueBajoCabezal(estado)
                         if (c != null) {
@@ -403,9 +404,22 @@ private fun Herramientas(
                         val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
                         if (r == null) estado.avisar("Pon el cabezal dentro del bloque, lejos de sus bordes") else estado.hacer { r.first }
                     })
+                    // Mover el bloque entero (o las claves elegidas) sin cambiar ni crear claves
+                    if (c.claves.isNotEmpty()) {
+                        val elegidas = estado.elegidasDe(c).size
+                        Herramienta(Glifos.moverTodo, if (elegidas > 0) "Mover elegidas" else "Mover todo", {
+                            estado.moverTodo = !estado.moverTodo
+                            estado.avisar(
+                                if (!estado.moverTodo) "Arrastrar cambia la clave de bajo el cabezal"
+                                else if (elegidas > 0) "Arrastrar mueve las $elegidas claves elegidas juntas"
+                                else "Arrastrar mueve el bloque entero con sus claves"
+                            )
+                        }, resaltada = estado.moverTodo)
+                    }
                     if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
                     if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
                     Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
+                    HerramientasZoom(estado)
                     // Cerca del principio: al final de la fila nadie lo encontraba
                     if (!c.esTexto) Herramienta(Glifos.color, "Ajustes", { estado.panel = Panel.COLOR },
                         resaltada = !c.color.neutro || c.filtro != com.royermethod.app.editor.modelo.Filtro.NINGUNO)
@@ -477,4 +491,25 @@ private fun Aviso(estado: EstadoEditor, modifier: Modifier) {
                 .padding(horizontal = 14.dp, vertical = 8.dp)
         )
     }
+}
+
+/**
+ * Zoom de la vista: encendido, los dedos sobre la imagen solo acercan y
+ * desplazan (no eligen ni mueven nada). Al apagarlo el zoom se queda y se
+ * edita con el; "Sin zoom" lo quita.
+ */
+@Composable
+private fun HerramientasZoom(estado: EstadoEditor) {
+    Herramienta(Glifos.zoom, "Zoom", {
+        estado.modoZoom = !estado.modoZoom
+        estado.avisar(
+            if (estado.modoZoom) "Pellizca y arrastra la imagen para acercar; toca Zoom otra vez para editar"
+            else if (estado.zoomVista.puesto) "El zoom se queda: ya puedes editar con el"
+            else "Zoom apagado"
+        )
+    }, resaltada = estado.modoZoom)
+    if (estado.zoomVista.puesto) Herramienta(Glifos.sinZoom, "Sin zoom", {
+        estado.zoomVista = com.royermethod.app.editor.modelo.ZoomVista.NINGUNO
+        estado.modoZoom = false
+    })
 }

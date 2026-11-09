@@ -199,7 +199,7 @@ class Previsualizador(context: Context) {
                 e.activar()
                 egl = e
                 ancho = w; alto = hgt
-                compositor = Compositor(app, w, hgt, vista = true)
+                compositor = Compositor(app, w, hgt, vista = true).also { it.zoom = zoomVista }
                 escena = null
                 ultimoDibujado = -1
                 vigilarPausa()
@@ -209,6 +209,26 @@ class Previsualizador(context: Context) {
         }
     }
 
+    /**
+     * Zoom de la vista (herramienta Zoom). En pausa se redibuja el cuadro de
+     * ahora; sonando, lo coge el siguiente.
+     */
+    fun zoom(z: com.royermethod.app.editor.modelo.ZoomVista) {
+        zoomVista = z
+        h.post {
+            val c = compositor ?: return@post
+            if (c.zoom == zoomVista) return@post
+            c.zoom = zoomVista
+            if (!reproduciendo) {
+                ultimoDibujado = -1
+                dibujarAhora { c.zoom == zoomVista }
+            }
+        }
+    }
+
+    @Volatile
+    private var zoomVista = com.royermethod.app.editor.modelo.ZoomVista.NINGUNO
+
     fun cambiarTamano(w: Int, hgt: Int) {
         h.post {
             if (w == ancho && hgt == alto) return@post
@@ -216,7 +236,7 @@ class Previsualizador(context: Context) {
             compositor?.soltar()
             ancho = w; alto = hgt
             e.activar()
-            compositor = Compositor(app, w, hgt, vista = true)
+            compositor = Compositor(app, w, hgt, vista = true).also { it.zoom = zoomVista }
             escena = null
             dibujarAhora()
         }
