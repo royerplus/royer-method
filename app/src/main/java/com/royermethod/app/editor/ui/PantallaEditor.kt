@@ -503,7 +503,7 @@ private fun HerramientasZoom(estado: EstadoEditor) {
     Herramienta(Glifos.zoom, "Zoom", {
         estado.modoZoom = !estado.modoZoom
         estado.avisar(
-            if (estado.modoZoom) "Pellizca y arrastra la imagen para acercar; toca Zoom otra vez para editar"
+            if (estado.modoZoom) "Pellizca o toca dos veces la imagen para acercar. Toca Zoom otra vez para editar"
             else if (estado.zoomVista.puesto) "El zoom se queda: ya puedes editar con el"
             else "Zoom apagado"
         )

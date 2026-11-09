@@ -798,7 +798,7 @@ private fun CasillaCurva(nombre: String, elegida: Boolean, clave: Any, f: ((Floa
         Spacer(Modifier.height(4.dp))
         Text(
             nombre,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
             color = if (elegida) Ink.White else Ink.White70,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis

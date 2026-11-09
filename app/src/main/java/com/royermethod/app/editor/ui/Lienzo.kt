@@ -76,6 +76,8 @@ fun Lienzo(
     val escenaActual by rememberUpdatedState(escena)
     var guiaX by remember { mutableStateOf(false) }
     var guiaY by remember { mutableStateOf(false) }
+    // El ultimo toque con la herramienta Zoom (cuando y donde), para el doble toque
+    var toqueZoom by remember { mutableStateOf<Pair<Long, Offset>?>(null) }
 
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val densidad = LocalDensity.current
@@ -100,11 +102,16 @@ fun Lienzo(
                         awaitEachGesture {
                             val abajo = awaitFirstDown(requireUnconsumed = false)
                             if (estado.modoZoom) {
-                                // Herramienta Zoom: solo la vista, sin elegir ni mover nada
+                                // Herramienta Zoom: solo la vista, sin elegir ni mover nada.
+                                // Dos toques seguidos: acercar ahi (o quitar el zoom).
+                                var recorridoZoom = 0f
+                                var dosDedos = false
                                 try {
                                     while (true) {
                                         val ev = awaitPointerEvent()
                                         if (ev.changes.none { it.pressed }) break
+                                        if (ev.changes.count { it.pressed } >= 2) dosDedos = true
+                                        recorridoZoom += ev.changes.first().positionChange().getDistance()
                                         val foco = ev.calculateCentroid(useCurrent = false)
                                         val pan = ev.calculatePan()
                                         val f = ev.calculateZoom()
@@ -115,6 +122,15 @@ fun Lienzo(
                                     }
                                 } finally {
                                     if (!estado.zoomVista.puesto) estado.zoomVista = ZoomVista.NINGUNO
+                                }
+                                if (!dosDedos && recorridoZoom < viewConfiguration.touchSlop) {
+                                    val ahora = abajo.uptimeMillis
+                                    val antes = toqueZoom
+                                    if (antes != null && ahora - antes.first < 320 && (abajo.position - antes.second).getDistance() < 60.dp.toPx()) {
+                                        estado.zoomVista = if (estado.zoomVista.puesto) ZoomVista.NINGUNO
+                                        else ZoomVista.NINGUNO.mover(2.5f, abajo.position.x, abajo.position.y, 0f, 0f, vw, vh)
+                                        toqueZoom = null
+                                    } else toqueZoom = ahora to abajo.position
                                 }
                                 return@awaitEachGesture
                             }
@@ -245,7 +261,7 @@ fun Lienzo(
             val z = estado.zoomVista
             if (z.puesto || estado.modoZoom) {
                 Text(
-                    if (z.puesto) "Zoom " + "%.1f".format(z.escala) + "x" else "Zoom: pellizca para acercar",
+                    if (z.puesto) "%.1fx".format(z.escala) else "Zoom",
                     style = MaterialTheme.typography.labelSmall,
                     color = Ink.White90,
                     modifier = Modifier
