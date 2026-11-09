@@ -600,7 +600,6 @@ class Previsualizador(context: Context) {
             }
         }
         videosProximos.removeAll { it.first <= t }
-        if (videosProximos.isEmpty()) return
         c.anticiparVideos(videosProximos.map { (inicio, v) -> v.copy(fotogramasHasta = (inicio - t) / unCuadro + 1) })
     }
 
@@ -748,8 +747,12 @@ class Previsualizador(context: Context) {
         const val ETIQUETA = "RoyerVista"
         /** Cuanto antes de aparecer se empieza a leer una foto. */
         private const val ANTICIPO_US = 1_000_000L
-        /** Cuanto antes de empezar un bloque de video se deja a punto su decodificador. */
-        private const val ANTICIPO_VIDEO_US = 2_500_000L
+        /**
+         * Cuanto antes de empezar un bloque de video se deja a punto su
+         * decodificador. Con claves cada 7 s hay que leer unos 200 cuadros, y
+         * mientras suena el resto del proyecto eso puede pasar de 3 s.
+         */
+        private const val ANTICIPO_VIDEO_US = 5_000_000L
         /** Un fotograma que tarda mas que esto calla el sonido hasta que llegue (ver vigia). */
         private const val ESPERA_IMAGEN_MS = 250L
         /** Cuanto se guarda el sonido en pausa por si se vuelve a dar play. */

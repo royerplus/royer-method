@@ -199,6 +199,11 @@ class Compositor(
      */
     fun anticiparVideos(proximos: List<VideoProximo>) {
         if (soltado) return
+        // Los que ya no espera ningun comienzo (se paso sin usarlos o se salto a
+        // otro sitio) dejan su hueco: se cierran en cuanto su hilo los suelta
+        for ((v, a) in anticipados) {
+            if (proximos.none { it.uri == v.uri.toString() && kotlin.math.abs(it.tiempoArchivoUs - a.objetivo) < CERCA_US }) a.abandonar = true
+        }
         for (p in proximos) {
             // Solo con sitio de sobra: si no, el cuadro siguiente tendria que
             // cerrar uno que se esta viendo y abrirlo otra vez desde su clave
