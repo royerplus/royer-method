@@ -2,6 +2,10 @@ package com.royermethod.app.editor.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.calculatePan
@@ -37,6 +41,7 @@ import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
+import com.royermethod.app.editor.modelo.ModoMover
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.radio
@@ -102,6 +107,8 @@ fun Lienzo(
                             var objetivo: Long? = null
                             var movido = false
                             var e0: Encuadre? = null
+                            // Las claves que se mueven juntas (null: la de bajo el cabezal)
+                            var grupo: Set<Long>? = null
                             var pan = Offset.Zero
                             var zoom = 1f
                             var giro = 0f
@@ -128,6 +135,7 @@ fun Lienzo(
                                             val c = Edicion.clip(base, id)!!
                                             val ini = Edicion.inicio(base, id) ?: 0
                                             e0 = c.encuadreEn((t - ini).coerceIn(0, c.duracionUs))
+                                            grupo = estado.clavesQueMueve(c)
                                             estado.empezarGesto()
                                         }
                                     }
@@ -147,7 +155,14 @@ fun Lienzo(
                                         val recto = (r / 90f).roundToInt() * 90f
                                         if (abs(r - recto) < 4f) r = recto
                                         val s = (inicial.escala * zoom).coerceIn(0.05f, 20f)
-                                        estado.ajustar { q ->
+                                        val g = grupo
+                                        if (g != null) {
+                                            // Todas las claves lo mismo, siempre desde como estaban
+                                            // al empezar: el movimiento entre ellas no se deforma
+                                            estado.ajustar {
+                                                Edicion.desplazarClaves(base, id, g, x - inicial.x, y - inicial.y, s / inicial.escala, r - inicial.rotacion)
+                                            }
+                                        } else estado.ajustar { q ->
                                             Edicion.ajustarEncuadre(q, id, t, toleranciaClaves()) { it.copy(x = x, y = y, rotacion = r, escala = s) }
                                         }
                                         ev.changes.forEach { it.consume() }
@@ -205,8 +220,45 @@ fun Lienzo(
                     }
                 }
             }
+            ModoMoverLienzo(estado, Modifier.align(Alignment.TopStart).padding(6.dp))
         }
     }
+}
+
+/**
+ * Con un bloque con fotogramas clave elegido, arriba a la izquierda de la
+ * imagen: que mueve el dedo. Tocarla pasa al siguiente modo (las elegidas
+ * solo si hay alguna), asi se cambia sin abrir ningun panel.
+ */
+@Composable
+private fun ModoMoverLienzo(estado: EstadoEditor, modifier: Modifier) {
+    val c = estado.clipElegido ?: return
+    if (estado.seleccion !is Seleccion.Bloque || c.claves.isEmpty()) return
+    val elegidas = estado.elegidasDe(c).size
+    val modo = if (estado.modoMover == ModoMover.ELEGIDAS && elegidas == 0) ModoMover.CLAVE else estado.modoMover
+    val texto = when (modo) {
+        ModoMover.ELEGIDAS -> "Mueve: $elegidas elegida" + if (elegidas == 1) "" else "s"
+        else -> "Mueve: " + modo.corto
+    }
+    Text(
+        texto,
+        style = MaterialTheme.typography.labelSmall,
+        color = if (modo == ModoMover.CLAVE) Ink.White90 else Ink.Black,
+        modifier = modifier
+            .clip(esquinas(12.dp))
+            .background(if (modo == ModoMover.CLAVE) Color.Black.copy(alpha = 0.55f) else Ink.White)
+            .clickable {
+                estado.modoMover = siguienteModo(modo, elegidas > 0)
+                estado.avisar("Al arrastrar se mueve " + estado.modoMover.corto)
+            }
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    )
+}
+
+internal fun siguienteModo(m: ModoMover, hayElegidas: Boolean): ModoMover = when (m) {
+    ModoMover.CLAVE -> ModoMover.TODO
+    ModoMover.TODO -> if (hayElegidas) ModoMover.ELEGIDAS else ModoMover.CLAVE
+    ModoMover.ELEGIDAS -> ModoMover.CLAVE
 }
 
 private fun visible(estado: EstadoEditor, id: Long, t: Long): Boolean {

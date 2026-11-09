@@ -538,6 +538,90 @@ object Edicion {
         return claves.map { if (it.tiempoUs == k.tiempoUs) it.copy(tiempoUs = destino) else it }.sortedBy { it.tiempoUs }
     }
 
+    // ------------------------------------------------------------------
+    // Varias claves a la vez
+    // ------------------------------------------------------------------
+
+    /**
+     * Cuanto se pueden correr juntas las claves de [tiempos] (tiempos del
+     * bloque; las que comparten tiempo con una elegida van con ella): sin
+     * salir de 0..[duracionUs] y sin acercarse a [tolerancia] o menos de una
+     * clave que no va en el grupo, asi que ninguna adelanta a otra. Null si
+     * no hay ninguna elegida o si ya estan mas juntas que eso (correrlas las
+     * meteria de golpe en su hueco). El rango siempre contiene el 0.
+     */
+    fun margenGrupo(claves: List<Clave>, tiempos: Set<Long>, duracionUs: Long, tolerancia: Long): LongRange? {
+        val tol = tolerancia.coerceAtLeast(0)
+        val dur = duracionUs.coerceAtLeast(0)
+        val elegidas = claves.map { it.tiempoUs }.filter { it in tiempos }.distinct().sorted()
+        if (elegidas.isEmpty()) return null
+        val otras = claves.map { it.tiempoUs }.filter { it !in tiempos }.distinct().sorted()
+        var lo = -elegidas.first()
+        var hi = dur - elegidas.last()
+        for (s in elegidas) {
+            // La vecina de fuera mas cercana a cada lado es la que limita
+            val i = otras.binarySearch(s).let { if (it < 0) -it - 1 else it }
+            otras.getOrNull(i - 1)?.let { o -> lo = maxOf(lo, o + tol + 1 - s) }
+            otras.getOrNull(i)?.let { o -> hi = minOf(hi, o - tol - 1 - s) }
+        }
+        return if (lo <= 0 && hi >= 0) lo..hi else null
+    }
+
+    /**
+     * Corre [deltaUs] en el tiempo las claves de [tiempos] del bloque [id]
+     * (tiempos del bloque), con su encuadre y su curva. Se acota a
+     * [margenGrupo]; si no hay margen o queda donde estaba, no cambia nada.
+     */
+    fun moverClaves(p: Proyecto, id: Long, tiempos: Set<Long>, deltaUs: Long, tolerancia: Long = TOLERANCIA_CLAVE): Proyecto {
+        val c = clip(p, id) ?: return p
+        val m = margenGrupo(c.claves, tiempos, c.duracionUs, tolerancia) ?: return p
+        val d = deltaUs.coerceIn(m.first, m.last)
+        if (d == 0L) return p
+        return cambiar(p, id) { cl ->
+            cl.copy(claves = cl.claves.map { if (it.tiempoUs in tiempos) it.copy(tiempoUs = it.tiempoUs + d) else it }.sortedBy { it.tiempoUs })
+        }
+    }
+
+    /**
+     * Mueve en la imagen las claves de [tiempos] del bloque [id] (null: todas,
+     * y tambien el encuadre del bloque): [dx], [dy] se suman a la posicion,
+     * la escala se multiplica por [factorEscala] y [dGiro] se suma al giro.
+     * Todas lo mismo, asi el movimiento entre ellas no cambia de forma.
+     */
+    fun desplazarClaves(
+        p: Proyecto,
+        id: Long,
+        tiempos: Set<Long>?,
+        dx: Float,
+        dy: Float,
+        factorEscala: Float = 1f,
+        dGiro: Float = 0f
+    ): Proyecto {
+        val k = if (factorEscala.isFinite() && factorEscala > 0f) factorEscala else 1f
+        fun mover(e: Encuadre) = e.copy(
+            x = e.x + dx,
+            y = e.y + dy,
+            escala = (e.escala * k).coerceIn(0.05f, 20f),
+            rotacion = e.rotacion + dGiro
+        )
+        return cambiar(p, id) { c ->
+            c.copy(
+                encuadre = if (tiempos == null) mover(c.encuadre) else c.encuadre,
+                claves = c.claves.map { if (tiempos == null || it.tiempoUs in tiempos) it.copy(encuadre = mover(it.encuadre)) else it }
+            )
+        }
+    }
+
+    /**
+     * Pone la misma curva ([curva] o, si la hay, [bezier]) en las claves de
+     * [tiempos] del bloque [id] (null: en todas). Es la curva desde cada una
+     * hasta la siguiente.
+     */
+    fun curvaEnClaves(p: Proyecto, id: Long, tiempos: Set<Long>?, curva: Curva, bezier: Bezier?): Proyecto =
+        cambiar(p, id) { c ->
+            c.copy(claves = c.claves.map { if (tiempos == null || it.tiempoUs in tiempos) it.copy(curva = curva, bezier = bezier) else it })
+        }
+
     /**
      * Cambia el encuadre de un bloque tal y como se ve en [tUs].
      *

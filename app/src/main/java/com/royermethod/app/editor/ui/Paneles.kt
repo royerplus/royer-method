@@ -60,6 +60,9 @@ import com.royermethod.app.editor.modelo.Alineacion
 import com.royermethod.app.editor.modelo.Bezier
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Curva
+import com.royermethod.app.editor.modelo.CurvaMia
+import com.royermethod.app.editor.modelo.ModoMover
+import com.royermethod.app.editor.modelo.PlantillasCurva
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Filtro
@@ -452,10 +455,14 @@ fun PanelFormato(estado: EstadoEditor) {
 /** Dibuja la forma de una curva dentro de la casilla. */
 fun DrawScope.dibujoCurva(f: (Float) -> Float, color: Color) {
     val path = Path()
-    val n = 32
+    val n = 48
+    val ys = FloatArray(n + 1) { f(it / n.toFloat()) }
+    // Las que se pasan de 0..1 (rebotes, anticipaciones) se encogen para caber
+    val lo = minOf(0f, ys.min())
+    val hi = maxOf(1f, ys.max())
     for (i in 0..n) {
         val x = i / n.toFloat()
-        val y = f(x)
+        val y = (ys[i] - lo) / (hi - lo)
         val px = x * size.width
         val py = size.height * (0.85f - 0.7f * y)
         if (i == 0) path.moveTo(px, py) else path.lineTo(px, py)
@@ -501,6 +508,7 @@ fun PanelCurva(estado: EstadoEditor) {
     } else {
         ClaveElegida(estado, c, ini, k, tolerancia)
     }
+    if (c.claves.isNotEmpty()) VariasClaves(estado, c, ini, k, tolerancia)
     // Con muchas claves (una replica trae una por fotograma), simplificarlas
     if (c.claves.size >= 3 || c.clavesOriginales != null) {
         Hueco(14)
@@ -542,25 +550,10 @@ private fun ClaveElegida(estado: EstadoEditor, c: com.royermethod.app.editor.mod
     val ultima = c.claves.maxOf { it.tiempoUs } == k.tiempoUs
     Hueco(6)
     Nota(if (ultima) "Es el ultimo fotograma clave: la curva se usa si pones otro despues." else "Como se llega desde aqui al siguiente fotograma clave", color = Ink.White50)
-    Hueco(8)
-    // null es "A mano"
-    Cuadricula(Curva.values().toList() + listOf<Curva?>(null)) { cu, m ->
-        if (cu != null) {
-            Mosaico(cu.nombre, k.bezier == null && k.curva == cu, { poner({ it.copy(curva = cu, bezier = null) }) }, m) { col ->
-                dibujoCurva({ Escena.curva(cu, it) }, col)
-            }
-        } else {
-            Mosaico("A mano", k.bezier != null, { poner({ it.copy(bezier = it.bezier ?: Bezier.SUAVE) }) }, m) { col ->
-                dibujoCurva({ Bezier(0.1f, 0.9f, 0.4f, 0.1f).en(it) }, col)
-                drawCircle(col, 2.5.dp.toPx(), Offset(size.width * 0.1f, size.height * (0.85f - 0.7f * 0.9f)))
-            }
-        }
-    }
-    val b = k.bezier
-    if (b != null) {
-        Hueco(10)
-        EditorBezier(b, { nb -> poner({ it.copy(bezier = nb) }, arrastre = true) })
-    }
+    Hueco(4)
+    SelectorCurva(k.curva, k.bezier) { cu, b, arrastre -> poner({ it.copy(curva = cu, bezier = b) }, arrastre) }
+    Hueco(10)
+    AplicarCurva(estado, c, k)
     Hueco(10)
     BotonBorde("Quitar este fotograma clave", { estado.hacer { Edicion.quitarClave(it, c.id, tk, tolerancia) } }, glifo = Glifos.papelera)
 }
@@ -607,7 +600,7 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
     Canvas(
         Modifier
             .fillMaxWidth()
-            .aspectRatio(1.8f)
+            .aspectRatio(1.4f)
             .border(1.dp, Ink.White15, esquinas(12.dp))
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -615,7 +608,7 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
                     val m = 18.dp.toPx()
                     val w = size.width - 2 * m
                     val h = size.height - 2 * m
-                    fun aPx(x: Float, y: Float) = Offset(m + x * w, m + h * (1f - (y + 0.3f) / 1.6f))
+                    fun aPx(x: Float, y: Float) = Offset(m + x * w, m + h * (1f - (y - BEZIER_MIN) / (BEZIER_MAX - BEZIER_MIN)))
                     val p1 = aPx(actual.x1, actual.y1)
                     val p2 = aPx(actual.x2, actual.y2)
                     val primero = (abajo.position - p1).getDistance() <= (abajo.position - p2).getDistance()
@@ -625,8 +618,8 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
                         val ch = ev.changes.firstOrNull { it.id == abajo.id } ?: break
                         if (!ch.pressed) break
                         val x = ((ch.position.x - m) / w).coerceIn(0f, 1f)
-                        val y = (1f - (ch.position.y - m) / h) * 1.6f - 0.3f
-                        val yy = y.coerceIn(-0.3f, 1.3f)
+                        val y = (1f - (ch.position.y - m) / h) * (BEZIER_MAX - BEZIER_MIN) + BEZIER_MIN
+                        val yy = y.coerceIn(BEZIER_MIN, BEZIER_MAX)
                         cambio(if (primero) actual.copy(x1 = x, y1 = yy) else actual.copy(x2 = x, y2 = yy))
                         ch.consume()
                     }
@@ -637,7 +630,7 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
         val m = 18.dp.toPx()
         val w = size.width - 2 * m
         val h = size.height - 2 * m
-        fun aPx(x: Float, y: Float) = Offset(m + x * w, m + h * (1f - (y + 0.3f) / 1.6f))
+        fun aPx(x: Float, y: Float) = Offset(m + x * w, m + h * (1f - (y - BEZIER_MIN) / (BEZIER_MAX - BEZIER_MIN)))
         val cero = aPx(0f, 0f)
         val uno = aPx(1f, 1f)
         drawLine(Ink.White15, aPx(0f, 0f), aPx(1f, 0f), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
@@ -647,8 +640,8 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
         drawLine(Ink.White30, cero, p1, 1.5.dp.toPx())
         drawLine(Ink.White30, uno, p2, 1.5.dp.toPx())
         val path = Path()
-        for (i in 0..48) {
-            val x = i / 48f
+        for (i in 0..96) {
+            val x = i / 96f
             val o = aPx(x, b.en(x))
             if (i == 0) path.moveTo(o.x, o.y) else path.lineTo(o.x, o.y)
         }
@@ -662,6 +655,198 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
             drawCircle(Ink.Black, 3.dp.toPx(), pt)
         }
     }
+}
+
+/** Lo que deja subir y bajar los puntos de la curva a mano: lo justo para rebotes y anticipaciones fuertes. */
+private const val BEZIER_MIN = -0.7f
+private const val BEZIER_MAX = 1.7f
+
+/**
+ * Elegir la curva de velocidad de una clave: las basicas, las plantillas, las
+ * guardadas por el usuario y la curva a mano, con su grafica de velocidad
+ * debajo. [poner] recibe la curva con nombre, la Bezier (null si es una
+ * basica) y si es parte de un arrastre.
+ */
+@Composable
+private fun SelectorCurva(curva: Curva, bezier: Bezier?, poner: (Curva, Bezier?, Boolean) -> Unit) {
+    Etiqueta("Basicas")
+    Cuadricula(Curva.values().toList()) { cu, m ->
+        Mosaico(cu.nombre, bezier == null && curva == cu, { poner(cu, null, false) }, m) { col ->
+            dibujoCurva({ Escena.curva(cu, it) }, col)
+        }
+    }
+    Etiqueta("Plantillas")
+    Cuadricula(PlantillasCurva.TODAS) { pl, m ->
+        Mosaico(pl.nombre, bezier == pl.bezier, { poner(curva, pl.bezier, false) }, m) { col ->
+            dibujoCurva({ pl.bezier.en(it) }, col)
+        }
+    }
+    val mias = AjustesEditor.curvasMias
+    if (mias.isNotEmpty()) {
+        Etiqueta("Mis curvas")
+        Cuadricula(mias) { cm, m ->
+            Mosaico(cm.nombre, bezier == cm.bezier, { poner(curva, cm.bezier, false) }, m) { col ->
+                dibujoCurva({ cm.bezier.en(it) }, col)
+            }
+        }
+    }
+    Etiqueta("A mano")
+    if (bezier == null) {
+        Nota("Parte de la curva de ahora y mueve sus dos puntos.", color = Ink.White50)
+        Hueco(6)
+        BotonBorde("Editar esta curva a mano", { poner(curva, PlantillasCurva.aproximar(curva), false) }, glifo = Glifos.curva)
+    } else {
+        val mia = mias.firstOrNull { it.bezier == bezier }
+        Nota(
+            PlantillasCurva.nombreDe(bezier)?.let { "Plantilla $it: arrastra los puntos para retocarla" }
+                ?: mia?.let { "Tu curva ${it.nombre}" }
+                ?: "Curva a medida: arrastra los dos puntos",
+            color = Ink.White50
+        )
+        Hueco(6)
+        EditorBezier(bezier) { nb -> poner(curva, nb, true) }
+    }
+    Hueco(8)
+    Etiqueta("Velocidad")
+    val f: (Float) -> Float = if (bezier != null) { x -> bezier.en(x) } else { x -> Escena.curva(curva, x) }
+    GraficaVelocidad(f)
+    if (bezier != null) {
+        Hueco(8)
+        val mia = mias.firstOrNull { it.bezier == bezier }
+        if (mia == null) {
+            BotonBorde("Guardar en mis curvas", {
+                AjustesEditor.curvasMias = mias + CurvaMia(AjustesEditor.nombreNuevo("Curva", mias.map { it.nombre }), bezier)
+                AjustesEditor.alCambiar()
+            }, glifo = Glifos.mas)
+        } else {
+            BotonBorde("Quitar ${mia.nombre} de mis curvas", {
+                AjustesEditor.curvasMias = mias.filter { it !== mia }
+                AjustesEditor.alCambiar()
+            }, glifo = Glifos.papelera)
+        }
+    }
+}
+
+/**
+ * La velocidad de la curva en el tiempo: arriba es mas rapido, la linea de
+ * puntos es ir siempre igual (una lineal). Lo que baja de cero va hacia atras
+ * (la anticipacion, el rebote que vuelve).
+ */
+@Composable
+private fun GraficaVelocidad(f: (Float) -> Float) {
+    val (v, pico) = PlantillasCurva.grafica(f)
+    val atras = v.any { it < -1e-3f }
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .height(76.dp)
+            .border(1.dp, Ink.White15, esquinas(12.dp))
+    ) {
+        val m = 10.dp.toPx()
+        val w = size.width - 2 * m
+        val h = size.height - 2 * m
+        // Con partes hacia atras el cero sube para que quepan
+        val base = if (atras) m + h * 0.7f else m + h
+        val alto = if (atras) h * 0.7f else h
+        fun aPx(i: Int) = Offset(m + w * i / (v.size - 1), base - alto * (v[i] / pico).coerceIn(-0.43f, 1f))
+        val linea = Path()
+        val area = Path()
+        area.moveTo(m, base)
+        for (i in v.indices) {
+            val o = aPx(i)
+            if (i == 0) linea.moveTo(o.x, o.y) else linea.lineTo(o.x, o.y)
+            area.lineTo(o.x, o.y)
+        }
+        area.lineTo(m + w, base)
+        area.close()
+        drawLine(Ink.White15, Offset(m, base), Offset(m + w, base), 1.dp.toPx())
+        val uno = base - alto / pico
+        drawLine(Ink.White30, Offset(m, uno), Offset(m + w, uno), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
+        drawPath(area, Ink.Glow35)
+        drawPath(linea, Ink.White, style = Stroke(2.dp.toPx(), cap = StrokeCap.Round))
+    }
+    Hueco(4)
+    Nota("Arriba, mas rapido. Pico: %.1f veces la velocidad pareja (la linea de puntos)".format(pico), color = Ink.White50)
+}
+
+/** Llevar la curva de esta clave a todas, o a las elegidas. */
+@Composable
+private fun AplicarCurva(estado: EstadoEditor, c: Clip, k: com.royermethod.app.editor.modelo.Clave) {
+    if (c.claves.size < 3) return
+    val elegidas = estado.elegidasDe(c)
+    BotonBorde("Usar esta curva en todas las claves", {
+        estado.hacer { Edicion.curvaEnClaves(it, c.id, null, k.curva, k.bezier) }
+        estado.avisar("Curva puesta en las ${c.claves.size} claves")
+    })
+    if (elegidas.size >= 2) {
+        Hueco(6)
+        BotonBorde("Usarla en las ${elegidas.size} elegidas", {
+            estado.hacer { Edicion.curvaEnClaves(it, c.id, elegidas, k.curva, k.bezier) }
+            estado.avisar("Curva puesta en las ${elegidas.size} elegidas")
+        })
+    }
+}
+
+/**
+ * Elegir varias claves para moverlas juntas: en el tiempo (botones o
+ * arrastrando una elegida en la linea de tiempo) y en la imagen (segun
+ * [ModoMover], que tambien se cambia en la pastilla de la imagen).
+ */
+@Composable
+private fun VariasClaves(estado: EstadoEditor, c: Clip, ini: Long, k: com.royermethod.app.editor.modelo.Clave?, tolerancia: Long) {
+    val elegidas = estado.elegidasDe(c)
+    val todas = c.claves.map { it.tiempoUs }.toSet()
+    Hueco(14)
+    Etiqueta("Varias claves a la vez")
+    Nota(
+        if (elegidas.isEmpty()) "En la linea de tiempo, manten pulsado un rombo para elegirlo. Arrastrar uno elegido mueve todos los elegidos."
+        else "${elegidas.size} de ${todas.size} elegidas. Arrastra una en la linea de tiempo o muevelas aqui.",
+        color = Ink.White50
+    )
+    Hueco(6)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (k != null) Chip(if (k.tiempoUs in elegidas) "Elegida" else "Elegir esta", k.tiempoUs in elegidas, { estado.alternarClave(c.id, k.tiempoUs) })
+        Chip("Todas", elegidas.size == todas.size, { estado.clavesElegidas = ClavesElegidas(c.id, todas) })
+        if (elegidas.isNotEmpty()) Chip("Ninguna", false, { estado.clavesElegidas = ClavesElegidas.NINGUNA })
+    }
+    if (elegidas.isNotEmpty()) {
+        Hueco(6)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val paso = if (AjustesEditor.ajustarFotogramas) "1 fotograma" else "0,001 s"
+            BotonBorde("- $paso", { moverElegidas(estado, c, ini, elegidas, -1, tolerancia) })
+            BotonBorde("+ $paso", { moverElegidas(estado, c, ini, elegidas, 1, tolerancia) })
+        }
+    }
+    Hueco(8)
+    Etiqueta("Al arrastrar en la imagen se mueve")
+    Opciones(ModoMover.values().toList(), estado.modoMover, { it.nombre }, { estado.modoMover = it })
+    if (estado.modoMover == ModoMover.ELEGIDAS && elegidas.isEmpty()) {
+        Nota("Sin claves elegidas se mueve la de aqui, como siempre.", color = Ink.White50)
+    }
+}
+
+/**
+ * Corre las claves [elegidas] un fotograma de la linea (o 1 ms sin el iman)
+ * hacia [sentido]. El paso se mide en la primera elegida: con el iman cae en
+ * el fotograma de al lado. El cabezal, si estaba en una elegida, la sigue.
+ */
+private fun moverElegidas(estado: EstadoEditor, c: Clip, ini: Long, elegidas: Set<Long>, sentido: Int, tolerancia: Long) {
+    val margen = Edicion.margenGrupo(c.claves, elegidas, c.duracionUs, tolerancia)
+    val t0 = elegidas.min()
+    val delta = if (AjustesEditor.ajustarFotogramas) {
+        val en = ini + t0
+        val f = if (sentido > 0) com.royermethod.app.editor.modelo.Linea.fotogramaEn(en) + 1 else com.royermethod.app.editor.modelo.Linea.fotogramaDe(en) - 1
+        com.royermethod.app.editor.modelo.Linea.tiempoDe(f.coerceAtLeast(0)) - en
+    } else sentido * 1_000L
+    val d = if (margen == null) 0L else delta.coerceIn(margen.first, margen.last)
+    if (d == 0L || (sentido > 0) != (d > 0)) {
+        estado.avisar("No hay sitio: chocarian con otra clave o con el borde del bloque")
+        return
+    }
+    val enUna = estado.localElegido?.let { l -> Edicion.claveCercana(c.claves, l, tolerancia)?.tiempoUs?.takeIf { it in elegidas } }
+    estado.hacer { Edicion.moverClaves(it, c.id, elegidas, d, tolerancia) }
+    estado.clavesElegidas = ClavesElegidas(c.id, elegidas.mapTo(HashSet()) { it + d })
+    if (enUna != null) estado.pausarEn(ini + enUna + d)
 }
 
 /** Para los paneles que no tienen nada que ensenar con lo elegido. */

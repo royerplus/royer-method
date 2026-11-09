@@ -11,6 +11,7 @@ import com.royermethod.app.editor.modelo.Capa
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Linea
+import com.royermethod.app.editor.modelo.ModoMover
 import com.royermethod.app.editor.modelo.Origen
 import com.royermethod.app.editor.modelo.PistaAudio
 import com.royermethod.app.editor.modelo.Proyecto
@@ -23,6 +24,13 @@ sealed interface Seleccion {
     /** La transicion que sale del bloque [id] hacia el siguiente. */
     data class Paso(val id: Long) : Seleccion
     data class Sonido(val id: Long) : Seleccion
+}
+
+/** Claves elegidas de un bloque: sus tiempos dentro del bloque. */
+data class ClavesElegidas(val id: Long, val tiempos: Set<Long>) {
+    companion object {
+        val NINGUNA = ClavesElegidas(-1L, emptySet())
+    }
 }
 
 /** Paneles que se abren abajo para cambiar algo. */
@@ -107,6 +115,14 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
      * panel de efectos y lo vuelve a poner en null.
      */
     var efectoAElegir by mutableStateOf<Long?>(null)
+    /**
+     * Las claves elegidas para moverlas juntas: tiempos (del bloque) de las
+     * claves del bloque [ClavesElegidas.id]. Leerlas con [elegidasDe], que
+     * deja fuera las que ya no existen (tras deshacer, por ejemplo).
+     */
+    var clavesElegidas by mutableStateOf(ClavesElegidas.NINGUNA)
+    /** Que mueve el dedo sobre la imagen en un bloque con claves. Es de esta sesion. */
+    var modoMover by mutableStateOf(ModoMover.CLAVE)
     /** Mensaje corto que se ensena un momento sobre la imagen. */
     var aviso by mutableStateOf<String?>(null)
         private set
@@ -324,6 +340,7 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
 
     fun elegir(s: Seleccion?) {
         if (s != seleccion) panel = null
+        if ((s as? Seleccion.Bloque)?.id != clavesElegidas.id) clavesElegidas = ClavesElegidas.NINGUNA
         seleccion = s
         if (s is Seleccion.Paso) panel = Panel.TRANSICION
     }
@@ -365,6 +382,31 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
             val l = tiempo - ini
             return if (l in 0..c.duracionUs) l else null
         }
+
+    /** Las claves elegidas de [c] que siguen existiendo. */
+    fun elegidasDe(c: Clip): Set<Long> {
+        val e = clavesElegidas
+        if (e.id != c.id || e.tiempos.isEmpty()) return emptySet()
+        return c.claves.mapTo(HashSet()) { it.tiempoUs }.apply { retainAll(e.tiempos) }
+    }
+
+    /** Elige o suelta la clave de [tUs] (tiempo del bloque) del bloque [id]. */
+    fun alternarClave(id: Long, tUs: Long) {
+        val e = clavesElegidas.takeIf { it.id == id }?.tiempos ?: emptySet()
+        clavesElegidas = ClavesElegidas(id, if (tUs in e) e - tUs else e + tUs)
+    }
+
+    /**
+     * Las claves que mueve un arrastre sobre la imagen del bloque [c] segun
+     * [modoMover]: null es el de siempre (la de bajo el cabezal), un conjunto
+     * vacio no se da. Sin claves elegidas, "las elegidas" es el de siempre.
+     */
+    fun clavesQueMueve(c: Clip): Set<Long>? = when {
+        c.claves.isEmpty() -> null
+        modoMover == ModoMover.TODO -> c.claves.mapTo(HashSet()) { it.tiempoUs }
+        modoMover == ModoMover.ELEGIDAS -> elegidasDe(c).takeIf { it.isNotEmpty() }
+        else -> null
+    }
 
     /** Cambia el bloque elegido. */
     fun cambiarClip(arrastre: Boolean = false, f: (Clip) -> Clip) {

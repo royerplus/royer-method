@@ -178,7 +178,8 @@ private fun ColumnScope.Editor() {
     Spacer(Modifier.height(10.dp))
     Etiqueta("Mis animaciones")
     val mias = AjustesEditor.mias.map { it.nombre to { guardar { AjustesEditor.mias = AjustesEditor.mias.filter { m -> m !== it } } } } +
-        AjustesEditor.continuasMias.map { it.first to { guardar { AjustesEditor.continuasMias = AjustesEditor.continuasMias.filter { m -> m !== it } } } }
+        AjustesEditor.continuasMias.map { it.first to { guardar { AjustesEditor.continuasMias = AjustesEditor.continuasMias.filter { m -> m !== it } } } } +
+        AjustesEditor.curvasMias.map { "Curva: ${it.nombre}" to { guardar { AjustesEditor.curvasMias = AjustesEditor.curvasMias.filter { m -> m !== it } } } }
     if (mias.isEmpty()) {
         Nota("Todavia no guardaste ninguna. En el editor, combina piezas en Animar y toca \"Guardar como mia\".")
     }

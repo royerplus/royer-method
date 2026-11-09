@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.royermethod.app.editor.modelo.CurvaMia
 import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Combinaciones
 import com.royermethod.app.editor.modelo.Continuo
@@ -35,6 +36,8 @@ object AjustesEditor {
     /** Animaciones combinadas por el usuario. */
     var mias by mutableStateOf<List<Combinaciones.Combinacion>>(emptyList())
     var continuasMias by mutableStateOf<List<Pair<String, List<Continuo>>>>(emptyList())
+    /** Curvas de velocidad guardadas por el usuario para sus fotogramas clave. */
+    var curvasMias by mutableStateOf<List<CurvaMia>>(emptyList())
 
     var alCambiar: () -> Unit = {}
 

@@ -181,6 +181,18 @@ private sealed interface Objetivo {
 
 private enum class Modo { TOQUE, ARRASTRE, VERTICAL, ZOOM, LARGO, NADA }
 
+/** Las claves elegidas del bloque de [pz] (vacio si no es el de las elegidas). */
+private fun elegidasDe(estado: EstadoEditor, pz: Pieza): Set<Long> {
+    val c = pz.clip ?: return emptySet()
+    return if (estado.clavesElegidas.id == c.id) estado.elegidasDe(c) else emptySet()
+}
+
+private fun avisoElegidas(n: Int): String = when (n) {
+    0 -> "Ninguna clave elegida"
+    1 -> "1 clave elegida: manten pulsadas otras para moverlas juntas"
+    else -> "$n claves elegidas: arrastra una y se mueven todas"
+}
+
 /** Un bloque cogido para llevarlo a otro sitio de la pista principal. */
 private class Cogido(val pieza: Pieza, val x: Float, val y: Float, val destino: Int)
 
@@ -378,16 +390,30 @@ fun LineaTiempo(
                             }
 
                             if (rombo != null) {
-                                // ---- Mover un fotograma clave ----
+                                // ---- Mover un fotograma clave (o las elegidas) ----
                                 val pz = rombo.pieza
                                 val c = pz.clip
                                 val tol = toleranciaClaves()
+                                // Mantener pulsado un rombo lo elige (o lo suelta si ya lo
+                                // estaba y no se arrastra): arrastrar uno elegido mueve todos
+                                var elegidas = c?.let { estado.elegidasDe(it) } ?: emptySet()
+                                val yaElegida = rombo.local in elegidas
+                                if (c != null && modo == Modo.LARGO && !yaElegida) {
+                                    estado.alternarClave(c.id, rombo.local)
+                                    elegidas = estado.elegidasDe(c)
+                                    estado.avisar(avisoElegidas(elegidas.size))
+                                }
+                                val grupo = c != null && rombo.local in elegidas && elegidas.size >= 2
                                 // Null tambien si ya esta mas cerca de una vecina que la
                                 // tolerancia: no se mueve (antes saltaba, incluso contra el dedo)
-                                val lim = c?.let { ClavesLinea.limites(it.claves, rombo.local, it.duracionUs, tol) }
+                                val lim = c?.let {
+                                    if (grupo) Edicion.margenGrupo(it.claves, elegidas, it.duracionUs, tol)?.let { m -> (rombo.local + m.first)..(rombo.local + m.last) }
+                                    else ClavesLinea.limites(it.claves, rombo.local, it.duracionUs, tol)
+                                }
                                 if (c == null || lim == null) {
                                     estado.avisar(
-                                        if (AjustesEditor.ajustarFotogramas) "Demasiado juntas para el iman: apaga Ajustar a fotogramas para moverla"
+                                        if (grupo) "Las elegidas no tienen sitio: chocarian con otra clave"
+                                        else if (AjustesEditor.ajustarFotogramas) "Demasiado juntas para el iman: apaga Ajustar a fotogramas para moverla"
                                         else "No hay sitio entre las claves de al lado"
                                     )
                                     arrastrar(abajo.id) {}
@@ -396,11 +422,19 @@ fun LineaTiempo(
                                     // Desde donde se toco, no desde donde se vio el arrastre:
                                     // la clave va bajo el dedo
                                     var acumulado = pasado.x.toDouble()
+                                    var movida = false
                                     fun mover() {
                                         // Siempre desde como estaba al cogerla: un paso de deshacer
                                         val d = ClavesLinea.destino(rombo.local, acumulado, pxPorUs, pz.inicio, lim, AjustesEditor.ajustarFotogramas)
+                                        if (d != rombo.local) movida = true
                                         claveCogida = ClaveCogida(c.id, d)
-                                        estado.ajustar { Edicion.moverClave(base, c.id, rombo.t, pz.inicio + d, tol) }
+                                        if (grupo) {
+                                            val delta = d - rombo.local
+                                            estado.ajustar { Edicion.moverClaves(base, c.id, elegidas, delta, tol) }
+                                            estado.clavesElegidas = ClavesElegidas(c.id, elegidas.mapTo(HashSet()) { it + delta })
+                                        } else {
+                                            estado.ajustar { Edicion.moverClave(base, c.id, rombo.t, pz.inicio + d, tol) }
+                                        }
                                     }
                                     try {
                                         mover()
@@ -411,6 +445,11 @@ fun LineaTiempo(
                                     } finally {
                                         claveCogida = null
                                         estado.terminarGesto()
+                                    }
+                                    // Pulsada sin moverla y ya elegida: se suelta
+                                    if (modo == Modo.LARGO && yaElegida && !movida) {
+                                        estado.alternarClave(c.id, rombo.local)
+                                        estado.avisar(avisoElegidas(estado.elegidasDe(c).size))
                                     }
                                 }
                             } else if (asa != null) {
@@ -612,7 +651,7 @@ private fun DrawScope.dibujar(
             val y0 = y0d.dp.toPx(); val y1 = y1d.dp.toPx()
             val x0 = x(pz.desde); val x1 = x(pz.hasta)
             if (x1 < -50 || x0 > size.width + 50 || y1 < arriba || y0 > size.height) continue
-            if (pz.pista == Pista.CAPA) bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = claveCogida?.takeIf { it.id == pz.id }?.local)
+            if (pz.pista == Pista.CAPA) bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = claveCogida?.takeIf { it.id == pz.id }?.local, elegidas = elegidasDe(estado, pz))
             else sonido(pz, x0, x1, y0, y1, radio, recursos, medidor, pz.id == elegido)
         }
         if (g.filasAudio == 0) {
@@ -646,7 +685,7 @@ private fun DrawScope.dibujar(
         val x0 = x(pz.desde); val x1 = x(pz.hasta)
         if (x1 < -50 || x0 > size.width + 50) continue
         val cogida = claveCogida?.takeIf { it.id == pz.id }?.local
-        bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = cogida)
+        bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = cogida, elegidas = elegidasDe(estado, pz))
     }
     // Botones de transicion entre bloques
     val elegidoPaso = (estado.seleccion as? Seleccion.Paso)?.id
@@ -759,7 +798,8 @@ private fun DrawScope.regla(t0: Long, pxUs: Float, centro: Float, medidor: TextM
  */
 private fun DrawScope.bloque(
     pz: Pieza, x0: Float, x1: Float, y0: Float, y1: Float, radio: CornerRadius, pxUs: Float,
-    recursos: Recursos, medidor: TextMeasurer, elegido: Boolean, desdeX: Float? = null, cogida: Long? = null
+    recursos: Recursos, medidor: TextMeasurer, elegido: Boolean, desdeX: Float? = null, cogida: Long? = null,
+    elegidas: Set<Long> = emptySet()
 ) {
     val c = pz.clip ?: return
     val alto = y1 - y0
@@ -890,7 +930,16 @@ private fun DrawScope.bloque(
             if (xk < x0 - 1 || xk > x1 + 1 || xk < -r * 2 || xk > size.width + r * 2) continue
             val cogidaAqui = cogida == k.tiempoUs
             if (cogidaAqui) drawCircle(Ink.Glow35, r * 3f, Offset(xk, cy))
-            rotate(45f, Offset(xk, cy)) {
+            if (k.tiempoUs in elegidas) {
+                // Elegida: mas grande, con halo y hueca, para verla entre las demas
+                val g = r * 1.35f
+                drawCircle(Ink.Glow35, r * 2.2f, Offset(xk, cy))
+                rotate(45f, Offset(xk, cy)) {
+                    drawRect(Ink.Black, Offset(xk - g - 1.dp.toPx(), cy - g - 1.dp.toPx()), Size(2 * g + 2.dp.toPx(), 2 * g + 2.dp.toPx()))
+                    drawRect(Ink.White, Offset(xk - g, cy - g), Size(2 * g, 2 * g))
+                    drawRect(Ink.Black, Offset(xk - g * 0.4f, cy - g * 0.4f), Size(0.8f * g, 0.8f * g))
+                }
+            } else rotate(45f, Offset(xk, cy)) {
                 drawRect(Ink.Black, Offset(xk - r, cy - r), Size(2 * r, 2 * r))
                 drawRect(Ink.White, Offset(xk - r * 0.7f, cy - r * 0.7f), Size(1.4f * r, 1.4f * r))
             }

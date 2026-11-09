@@ -5,7 +5,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import com.royermethod.app.editor.Persistencia
 import com.royermethod.app.editor.Persistencia.enumeracion
+import com.royermethod.app.editor.modelo.Bezier
 import com.royermethod.app.editor.modelo.Combinaciones
+import com.royermethod.app.editor.modelo.CurvaMia
 import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
 import com.royermethod.app.editor.ui.AjustesEditor
@@ -67,6 +69,12 @@ object Preferencias {
                     put(JSONObject().put("nombre", nombre).put("piezas", Persistencia.continuas(l)))
                 }
             })
+            put("curvasMias", JSONArray().apply {
+                AjustesEditor.curvasMias.forEach { c ->
+                    val b = c.bezier
+                    put(JSONObject().put("nombre", c.nombre).put("bezier", JSONArray(listOf(b.x1, b.y1, b.x2, b.y2).map { it.toDouble() })))
+                }
+            })
         })
     }
 
@@ -96,6 +104,18 @@ object Preferencias {
             AjustesEditor.continuasMias = lista(e.optJSONArray("continuasMias")) { nombre, a ->
                 Persistencia.continuasDe(a).takeIf { it.isNotEmpty() }?.let { nombre to it }
             }
+            AjustesEditor.curvasMias = curvas(e.optJSONArray("curvasMias"))
+        }
+    }
+
+    private fun curvas(a: JSONArray?): List<CurvaMia> {
+        if (a == null) return emptyList()
+        return (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val b = o.optJSONArray("bezier")?.takeIf { it.length() == 4 } ?: return@mapNotNull null
+            val v = FloatArray(4) { b.optDouble(it, Double.NaN).toFloat() }
+            if (!v.all { it.isFinite() }) return@mapNotNull null
+            CurvaMia(o.optString("nombre", "Mia"), Bezier(v[0].coerceIn(0f, 1f), v[1], v[2].coerceIn(0f, 1f), v[3]))
         }
     }
 
