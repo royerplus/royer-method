@@ -227,7 +227,7 @@ class Compositor(
     /** El anticipado para [uri] en [tiempo], ya listo (se espera si le falta). null si no hay. */
     private fun anticipado(uri: String, tiempo: Long): FuenteVideo? {
         val (v, a) = anticipados.entries.firstOrNull { (v, a) ->
-            v.uri.toString() == uri && tiempo >= a.objetivo - FuenteVideo.MARGEN_PREPARAR && tiempo - a.objetivo < CERCA_US
+            v.uri.toString() == uri && tiempo >= a.objetivo - FuenteVideo.MARGEN_PREPARAR && tiempo - a.objetivo <= 300_000L
         }?.toPair() ?: return null
         val listo = runCatching { a.futuro?.get(6, TimeUnit.SECONDS) == true }.getOrDefault(false)
         if (listo) {
@@ -372,12 +372,17 @@ class Compositor(
         // clip de delante, por ejemplo): la misma.
         videos.firstOrNull { it.usadaEn == numero && it.uri.toString() == uri && it.ultimaPeticion == tiempo && it !in anticipados }
             ?.let { return it }
-        if (anticipados.isNotEmpty()) anticipado(uri, tiempo)?.let { return it }
 
         val libres = videos.filter { it.uri.toString() == uri && it.usadaEn != numero && it !in anticipados }
         val cerca = libres
             .filter { it.ultimaPeticion in 0..tiempo && tiempo - it.ultimaPeticion < 1_500_000 }
             .minByOrNull { tiempo - it.ultimaPeticion }
+        // El anticipado es para el comienzo de su bloque: si uno que ya esta
+        // abierto queda mas cerca, ese (si no, se lo quedaria otro bloque del
+        // mismo archivo y tendria que leer desde el suyo)
+        if (anticipados.isNotEmpty() && (cerca == null || tiempo - cerca.ultimaPeticion > FuenteVideo.MARGEN_PREPARAR)) {
+            anticipado(uri, tiempo)?.let { return it }
+        }
         if (cerca != null) return cerca
         libres.firstOrNull()?.let { return it }
 
