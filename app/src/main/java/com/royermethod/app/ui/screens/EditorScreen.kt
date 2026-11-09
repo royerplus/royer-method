@@ -1,6 +1,7 @@
 package com.royermethod.app.ui.screens
 
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -26,6 +27,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.LifecycleOwner
 import com.royermethod.app.editor.Persistencia
 import com.royermethod.app.editor.PaqueteProyecto
 import com.royermethod.app.editor.ImportadosProyecto
@@ -112,6 +116,22 @@ fun EditorScreen(onVolver: () -> Unit) {
             prev.cerrar()
             recursos.cerrar()
         }
+    }
+
+    // Al salir de la app (inicio, otra app, pantalla apagada) se pausa: si no,
+    // el sonido seguia sonando por detras
+    DisposableEffect(Unit) {
+        var c: Context? = context
+        while (c !is LifecycleOwner && c is ContextWrapper) c = c.baseContext
+        val ciclo = (c as? LifecycleOwner)?.lifecycle
+        val observador = LifecycleEventObserver { _, evento ->
+            if (evento == Lifecycle.Event.ON_STOP && (estado.reproduciendo || prev.reproduciendo)) {
+                estado.reproduciendo = false
+                prev.pausar()
+            }
+        }
+        ciclo?.addObserver(observador)
+        onDispose { ciclo?.removeObserver(observador) }
     }
 
     // Guardado: cada cambio reinicia la espera, asi que se escribe una vez

@@ -461,3 +461,21 @@ Royer pidió «ajustes» para meter saturación, filo, oscurecer, claridad «y e
 - **Revisión del 2026-10-19** (workflow con lentes GPU, motor e interfaz; la de interfaz se cortó por el límite de uso): además de lo de arriba, suelos de 0,0001 en las curvas de sombras y luces (en mediump un 1e-6 daba 0 × infinito en el negro). Quedan sin tocar, a sabiendas: el relleno desenfocado de un bloque que no cubre el lienzo (siempre lleva brillo −0,12 y saturación +0,1) cambia un poco con las fórmulas nuevas (1 nivel en los cuadros de Royer, hasta 22 en colores neón); y en GPU sin highp el contraste muy pequeño se ve en escalones.
 - Atribuciones y licencias en `NOTICE.md`.
 - **Pruebas**: `AjustesColorTest` (4), `PersistenciaTest` (+2: proyecto con 10 números y orden fijo de las 14 posiciones) y `LineaTest.elGranoPideMasBits`. Arnés JVM de la nube: 399 pruebas, 0 fallos. El sombreador compila en WebGL (SwiftShader) y con glslang en highp y mediump. **Sin probar en el teléfono.**
+
+## Vista previa: pausar y seguir sin esperas (2026-11-09)
+
+Queja de Royer (2026-10-24): en un proyecto complejo, pausar y reanudar tardaba unos 2 s, a veces sonaba el audio sin imagen, y había desfase y lag. Plan e informes de la investigación: `/mnt/project-files/vista-previa/plan.md` e `informes/`.
+
+- **b3a92cf**: `SalidaAudio` ya no se desmonta al pausar (`pausar`/`reanudar` sin flush, `arrancarYa = false` + `arrancar()` para prellenar sin sonar, `parar` sin bloquear, buffer de 250 ms, prioridad de audio). `Previsualizador`: la pausa calla en el acto en el hilo principal; el sonido en pausa se guarda 30 s y se reutiliza si se da play en el mismo instante; al dar play se dibuja primero el cuadro (si no está ya en pantalla) y después suena. `proyecto()` agrupa los redibujos. `RelojAudio` descarta marcas viejas y usa cabezal menos latencia de respaldo.
+- **09a916c**: vigía de 250 ms: si un cuadro tarda más, se calla el sonido hasta que llega la imagen (sin desfase). El reloj en pausa se congela en el cabezal. Anticipación de video: antes de un bloque que empieza en otro punto de un archivo, otro decodificador se deja a punto en un hilo aparte (`Compositor.anticiparVideos`, `FuenteVideo.preparar`).
+- **7ab4742, b9693e3, 79b673c**: límites de la anticipación (2 a la vez, solo con sitio de sobra), el anticipado es solo para el comienzo de su bloque, se prepara 5 s antes (con claves cada ~7 s hay que leer ~200 cuadros) y el que ya no espera ningún comienzo deja su hueco.
+- **Commit siguiente**: el editor se pausa al salir de la app (antes el sonido seguía por detrás).
+
+Medido en el teléfono de Royer (Infinix X6871, app GitHub, su proyecto 9:16 1080p de 1:14.9, 3 pistas de video; 4 ciclos de 5 s de play y 3 s de pausa desde 0:00, `setprop log.tag.RoyerVista DEBUG` y `logcat -s RoyerVista`):
+
+| | primer cuadro al reanudar | cuadros por segundo | peor cuadro |
+|---|---|---|---|
+| Antes (776c6eb) | 1,6-2,8 s, luego cuadros de 0,5-2,6 s | 0,5-1,4 tras pausar | 2,6 s |
+| 79b673c | 32-68 ms (387 ms el primer play al abrir) | 27,7 / 28,8 / 28,9 / 29,3 | 65 ms |
+
+Queda: alrededor del 35-45 % de los intervalos de publicación caen fuera de 25-42 ms (p95 ~50 ms); ya pasaba antes de estos cambios y no se ha tocado.
