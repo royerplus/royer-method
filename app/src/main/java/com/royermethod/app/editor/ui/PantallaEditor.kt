@@ -336,6 +336,11 @@ private fun Herramientas(
 ) {
     val s = estado.seleccion
     val desliza = rememberScrollState()
+    var preguntarBorrar by remember { mutableStateOf(false) }
+    if (preguntarBorrar) DialogoBorrarTodo(
+        onCancelar = { preguntarBorrar = false },
+        onBorrar = { preguntarBorrar = false; borrarTodo(estado) }
+    )
     Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
     Box(Modifier.fillMaxWidth().height(76.dp)) {
         Row(
@@ -385,6 +390,10 @@ private fun Herramientas(
                     Herramienta(Glifos.animacion, "Ejemplos", onEjemplos)
                     Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
                     Herramienta(Glifos.guardar, "Guardar proyecto", onGuardarProyecto)
+                    // Para empezar otro: pregunta antes, y se puede deshacer
+                    if (estado.proyecto != proyectoVacio(estado.proyecto)) {
+                        Herramienta(Glifos.papelera, "Borrar todo", { preguntarBorrar = true })
+                    }
                 }
                 is Seleccion.Sonido -> {
                     val id = s.id
