@@ -34,7 +34,13 @@ class FuenteVideo(
     context: Context,
     val uri: Uri,
     /** Grados que trae marcados el archivo; el giro lo hace la copia. */
-    private val giro: Int
+    private val giro: Int,
+    /**
+     * Vista previa: decodificar lo mas rapido que pueda el movil y, hacia
+     * atras, dar por bueno el fotograma de casi el mismo instante (ver
+     * [TOLERANCIA_VISTA]). La exportacion va sin esto, exacta.
+     */
+    private val vista: Boolean = false
 ) {
     private val extractor = MediaExtractor()
     private val decodificador: MediaCodec
@@ -119,9 +125,30 @@ class FuenteVideo(
             st.setOnFrameAvailableListener({ hayFotograma.release() }, avisos)
             sup = Surface(st)
 
-            codec = MediaCodec.createDecoderByType(mime)
-            codec.configure(formato, sup, null, 0)
-            codec.start()
+            if (vista) {
+                // Lo mas rapido que pueda: saltar a un instante obliga a leer
+                // desde el fotograma clave, y a su ritmo normal el movil va
+                // poco mas deprisa que el video. Si no lo acepta, como siempre.
+                val f = extractor.getTrackFormat(pista)
+                if (f.containsKey(MediaFormat.KEY_ROTATION)) f.setInteger(MediaFormat.KEY_ROTATION, 0)
+                f.setInteger(MediaFormat.KEY_OPERATING_RATE, Short.MAX_VALUE.toInt())
+                f.setInteger(MediaFormat.KEY_PRIORITY, 0)
+                var c: MediaCodec? = null
+                codec = try {
+                    c = MediaCodec.createDecoderByType(mime)
+                    c.configure(f, sup, null, 0)
+                    c.start()
+                    c
+                } catch (e: Exception) {
+                    runCatching { c?.release() }
+                    null
+                }
+            }
+            if (codec == null) {
+                codec = MediaCodec.createDecoderByType(mime)
+                codec.configure(formato, sup, null, 0)
+                codec.start()
+            }
         } catch (e: Exception) {
             runCatching { codec?.release() }
             runCatching { sup?.release() }
@@ -147,13 +174,22 @@ class FuenteVideo(
      * @return false si no se pudo (el decodificador se atasco); la textura se
      *   queda con lo que tuviera.
      */
-    fun irA(objetivo: Long, esperaMaxMs: Long = 6000): Boolean {
-        if (!registrar) return irAHasta(objetivo, esperaMaxMs)
+    fun irA(objetivo: Long, esperaMaxMs: Long = 6000, seguir: (() -> Boolean)? = null): Boolean {
+        if (!registrar) return irAHasta(objetivo, esperaMaxMs, seguir)
         // Diagnostico: avisa de lo que tarda mucho, y por que
         val inicioNs = System.nanoTime()
         val antes = ptsActual
         saltos = 0; leidos = 0
-        val r = irAHasta(objetivo, esperaMaxMs)
+        val r = try {
+            irAHasta(objetivo, esperaMaxMs, seguir)
+        } catch (a: LecturaAbandonada) {
+            val ms = (System.nanoTime() - inicioNs) / 1_000_000
+            if (ms >= 40) runCatching {
+                android.util.Log.i("RoyerVista", "video abandonado a los ${ms} ms: ${uri.lastPathSegment} pide ${objetivo / 1000} ms, " +
+                    "${if (saltos > 0) "salto al clave, " else ""}$leidos cuadros")
+            }
+            throw a
+        }
         val ms = (System.nanoTime() - inicioNs) / 1_000_000
         if (ms >= 40) runCatching {
             android.util.Log.i("RoyerVista", "video lento ${ms} ms: ${uri.lastPathSegment} pide ${objetivo / 1000} ms, " +
@@ -162,8 +198,13 @@ class FuenteVideo(
         return r
     }
 
-    private fun irAHasta(objetivo: Long, esperaMaxMs: Long): Boolean {
+    private fun irAHasta(objetivo: Long, esperaMaxMs: Long, seguir: (() -> Boolean)?): Boolean {
+        if (seguir != null && !seguir()) throw LecturaAbandonada()
         ultimaPeticion = objetivo
+        // En la vista previa, un poco hacia atras se queda con el que tiene:
+        // volver de verdad obliga a saltar al fotograma clave y leer desde ahi
+        // (hasta 2 s con claves cada 4 s), y la diferencia no se ve
+        if (vista && ptsActual >= 0 && objetivo < ptsActual && objetivo + TOLERANCIA_VISTA >= ptsActual) return true
         // Hacia atras, o muy por delante, hay que saltar. Hacia delante y
         // cerca sale mas a cuenta seguir decodificando que buscar el
         // fotograma clave anterior y rehacer desde ahi.
@@ -178,6 +219,7 @@ class FuenteVideo(
 
         var candidato = -1
         var ptsCandidato = 0L
+        var abandonada = false
         val limite = System.nanoTime() + esperaMaxMs * 1_000_000
         while (true) {
             alimentar()
@@ -190,6 +232,7 @@ class FuenteVideo(
                 val r = decodificador.dequeueOutputBuffer(info, 4000)
                 if (r < 0) {
                     if (System.nanoTime() > limite) break
+                    if (seguir != null && !seguir()) { abandonada = true; break }
                     continue
                 }
                 val fin = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
@@ -208,11 +251,18 @@ class FuenteVideo(
                 if (candidato >= 0) decodificador.releaseOutputBuffer(candidato, false)
                 candidato = idx; ptsCandidato = pts
                 if (salidaAgotada) break
+                // Ya no hace falta (otra busqueda, pausa o play): se deja
+                // pintado el ultimo leido, asi la proxima sigue desde ahi
+                if (seguir != null && !seguir()) { abandonada = true; break }
             } else {
                 // Es del futuro: se guarda para la proxima vez.
                 pendiente = idx; ptsPendiente = pts
                 break
             }
+        }
+        if (abandonada) {
+            if (candidato >= 0 && pintar(candidato, ptsCandidato)) ultimaPeticion = ptsCandidato
+            throw LecturaAbandonada()
         }
 
         // Pedido antes del primer fotograma (pasa al empezar algunos clips):
@@ -493,6 +543,11 @@ class FuenteVideo(
          * mismo para cualquiera que lo mire.
          */
         const val TOLERANCIA = 1_000L
+        /**
+         * Vista previa: cuanto hacia atras vale el fotograma que ya esta
+         * pintado. Menos de un fotograma de la linea de tiempo (33 ms).
+         */
+        const val TOLERANCIA_VISTA = 30_000L
         /** Con [preparar], lo que se guarda por delante del objetivo. */
         const val MARGEN_PREPARAR = 100_000L
         /** Diagnostico de la vista previa (adb, RoyerVista): anotar lo que tarda mucho. */
@@ -516,3 +571,9 @@ class FuenteVideo(
         }
     }
 }
+
+/**
+ * Lo que se estaba leyendo ya no hace falta (vista previa: llego otra
+ * busqueda, la pausa o el play). La fuente queda bien para seguir.
+ */
+class LecturaAbandonada : RuntimeException(null, null, false, false)

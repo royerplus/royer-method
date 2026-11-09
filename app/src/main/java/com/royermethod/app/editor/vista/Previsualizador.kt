@@ -156,7 +156,7 @@ class Previsualizador(context: Context) {
                 e.activar()
                 egl = e
                 ancho = w; alto = hgt
-                compositor = Compositor(app, w, hgt)
+                compositor = Compositor(app, w, hgt, vista = true)
                 escena = null
                 ultimoDibujado = -1
                 vigilarPausa()
@@ -173,7 +173,7 @@ class Previsualizador(context: Context) {
             compositor?.soltar()
             ancho = w; alto = hgt
             e.activar()
-            compositor = Compositor(app, w, hgt)
+            compositor = Compositor(app, w, hgt, vista = true)
             escena = null
             dibujarAhora()
         }
@@ -206,6 +206,8 @@ class Previsualizador(context: Context) {
     fun proyecto(p: Proyecto) {
         proyecto = p
         val pedidoNs = if (pausaDiag != null || sesion != null) System.nanoTime() else 0L
+        val b = busquedas
+        val orden = ordenes.get()
         h.post {
             // Llega otro detras: ese hace el trabajo
             if (p !== proyecto) return@post
@@ -219,7 +221,8 @@ class Previsualizador(context: Context) {
                 val pausa = pausaDiag
                 if (pausa != null && pedidoNs != 0L) pausa.cambio(System.nanoTime() - pedidoNs)
                 ultimoDibujado = -1
-                dibujarAhora()
+                // Otro cambio, una busqueda o el play lo dejan atras
+                dibujarAhora { p === proyecto && busquedas == b && ordenes.get() == orden }
             }
         }
     }
@@ -274,7 +277,9 @@ class Previsualizador(context: Context) {
             }
             if (busqueda != busquedas) return@post
             ultimoDibujado = -1
-            dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo)
+            // Arrastrando, cada busqueda nueva deja atras la anterior: no se
+            // termina de leer un instante que ya no se va a ver
+            dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo) { busqueda == busquedas && !cerrado }
             if (reproduciendo && busqueda == busquedas && ordenes.get() == orden) sonido?.arrancar()
             programarBucle()
         }
@@ -307,7 +312,7 @@ class Previsualizador(context: Context) {
             // imagen quieta. Lo de la pausa ya esta en pantalla y no se repite:
             // pedir otra vez ese fotograma, en su instante exacto (un poco antes
             // del de la pausa), hacia volver al video al fotograma clave anterior.
-            if (ultimoDibujado != n0) dibujar(t0, n0, rapido = true)
+            if (ultimoDibujado != n0) dibujar(t0, n0, rapido = true) { ordenes.get() == orden && busquedas == b && !cerrado }
             if (ordenes.get() == orden && busquedas == b) sonido?.let { it.reanudar(); it.arrancar() }
             programarBucle()
         }
@@ -388,9 +393,10 @@ class Previsualizador(context: Context) {
             terminarSesion("pausa")
             vigilarPausa()
             if (cerrado || ordenes.get() != orden || busquedas != b) return@post
-            // El fotograma de pausa, con todas sus muestras
+            // El fotograma de pausa, con todas sus muestras. Si entretanto se da
+            // play o se mueve el cabezal, se deja: ese ya dibuja lo suyo
             ultimoDibujado = -1
-            dibujarAhora()
+            dibujarAhora { ordenes.get() == orden && busquedas == b && !cerrado }
         }
     }
 
@@ -542,7 +548,7 @@ class Previsualizador(context: Context) {
             val esperaba = esperandoImagen
             if (n != ultimoDibujado) {
                 if (!esperaba) principal.postDelayed(vigia, ESPERA_IMAGEN_MS)
-                val publicado = dibujar(Linea.tiempoDe(n), n, rapido = true)
+                val publicado = dibujar(Linea.tiempoDe(n), n, rapido = true) { ordenes.get() == orden && busquedas == b && !cerrado }
                 principal.removeCallbacks(vigia)
                 if (publicado) avisarTiempo(t, b, orden)
             }
@@ -614,12 +620,13 @@ class Previsualizador(context: Context) {
      * El instante actual tal cual, aunque no caiga en un fotograma exacto (al
      * arrastrar). No avisa a la interfaz: en pausa es ella la que manda.
      */
-    private fun dibujarAhora() {
+    private fun dibujarAhora(seguir: (() -> Boolean)? = null) {
         val t = tiempo
-        dibujar(t, Linea.fotogramaEn(t), rapido = false)
+        dibujar(t, Linea.fotogramaEn(t), rapido = false, seguir = seguir)
     }
 
-    private fun dibujar(t: Long, n: Long, rapido: Boolean): Boolean {
+    /** [seguir]: false si este dibujo ya no hace falta; se deja sin publicar (ver Compositor.dibujar). */
+    private fun dibujar(t: Long, n: Long, rapido: Boolean, seguir: (() -> Boolean)? = null): Boolean {
         val e = egl ?: return false
         val c = compositor ?: return false
         val observador = alCuadroPublicado
@@ -640,7 +647,7 @@ class Previsualizador(context: Context) {
             e.activar()
             val cuadro = escena!!.cuadroEn(t, n)
             val escenaNs = if (medida != null) System.nanoTime() else 0L
-            c.dibujar(cuadro)
+            if (!c.dibujar(cuadro, seguir = seguir)) return@runCatching false
             // Solo midiendo la GPU (VERBOSE): esperarla frena el ritmo, no es para siempre
             var gpuNs = -1L
             if (medida != null && medida.conGpu) {

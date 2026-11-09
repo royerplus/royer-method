@@ -39,7 +39,9 @@ class Compositor(
     private val context: Context,
     val ancho: Int,
     val alto: Int,
-    private val fluidez: Fluidez? = null
+    private val fluidez: Fluidez? = null,
+    /** Vista previa: videos rapidos y abandonables (ver [dibujar] y FuenteVideo.vista). */
+    private val vista: Boolean = false
 ) {
     private val reduccion = Reduccion()
     private val copiaPlana = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_PLANA)
@@ -113,24 +115,38 @@ class Compositor(
     var avisos = 0
         private set
 
+    /** Mientras se dibuja: false si el cuadro ya no hace falta (ver [dibujar]). */
+    private var seguirCuadro: (() -> Boolean)? = null
+
     /**
      * Dibuja [cuadro] en lo que este activo.
      *
      * @param destino la lamina donde dibujar, o null para la superficie
      *   (pantalla o codificador)
+     * @param seguir vista previa: se mira mientras se leen los videos; si da
+     *   false, se deja el cuadro sin tocar el destino
+     * @return false si se abandono por [seguir]: no hay nada que publicar
      */
-    fun dibujar(cuadro: Cuadro, destino: Lamina? = null) {
+    fun dibujar(cuadro: Cuadro, destino: Lamina? = null, seguir: (() -> Boolean)? = null): Boolean {
         numero++
         semilla = Math.floorMod(cuadro.numero, 64L).toFloat()
         // 1. que cada fuente tenga su fotograma, antes de tocar el destino
         val texturas = IdentityHashMap<PasoClip, Textura>()
         val preparadas = HashMap<ClaveTextura, Textura?>()
-        for (paso in cuadro.clips) {
-            if (!paso.visible) continue
-            val clave = ClaveTextura(paso.clip.id, paso.tiempoArchivoUs, paso.exposicionUs, paso.esFondo,
-                paso.anchoEnLienzo, paso.altoEnLienzo, paso.escalaTexto)
-            if (!preparadas.containsKey(clave)) preparadas[clave] = preparar(paso)
-            preparadas[clave]?.let { texturas[paso] = it }
+        seguirCuadro = seguir
+        try {
+            for (paso in cuadro.clips) {
+                if (!paso.visible) continue
+                val clave = ClaveTextura(paso.clip.id, paso.tiempoArchivoUs, paso.exposicionUs, paso.esFondo,
+                    paso.anchoEnLienzo, paso.altoEnLienzo, paso.escalaTexto)
+                if (!preparadas.containsKey(clave)) preparadas[clave] = preparar(paso)
+                preparadas[clave]?.let { texturas[paso] = it }
+            }
+        } catch (a: LecturaAbandonada) {
+            limpiar()
+            return false
+        } finally {
+            seguirCuadro = null
         }
 
         // 2. las escenas que van aparte, cada una en su lamina. Antes que el
@@ -164,6 +180,7 @@ class Compositor(
         }
         GLES20.glDisable(GLES20.GL_BLEND)
         limpiar()
+        return true
     }
 
     /**
@@ -215,7 +232,7 @@ class Compositor(
                         v.ultimaPeticion in (p.tiempoArchivoUs - CERCA_US)..p.tiempoArchivoUs
                 }) continue
             if (anticipados.any { (v, a) -> v.uri.toString() == p.uri && kotlin.math.abs(a.objetivo - p.tiempoArchivoUs) < CERCA_US }) continue
-            val v = runCatching { FuenteVideo(context, Uri.parse(p.uri), p.giro) }.getOrNull() ?: continue
+            val v = runCatching { FuenteVideo(context, Uri.parse(p.uri), p.giro, vista) }.getOrNull() ?: continue
             anotar("anticipa ${Uri.parse(p.uri).lastPathSegment} en ${p.tiempoArchivoUs / 1000} ms, ${p.fotogramasHasta} cuadros antes")
             val a = Anticipo(p.tiempoArchivoUs, numero + p.fotogramasHasta + RETENER)
             videos.add(v)
@@ -356,7 +373,7 @@ class Compositor(
             }
         }
 
-        if (!fuente.irA(paso.tiempoArchivoUs)) avisos++
+        if (!fuente.irA(paso.tiempoArchivoUs, seguir = seguirCuadro)) avisos++
         if (fuente.ptsActual < 0) return null
         val copia = fuente.copiar(w, h, reduccion)
         return if (paso.esFondo) fondo(fuente, copia.textura, copia.ancho, copia.alto, fuente.ptsActual)
@@ -379,9 +396,14 @@ class Compositor(
             ?.let { return it }
 
         val libres = videos.filter { it.uri.toString() == uri && it.usadaEn != numero && it !in anticipados }
+        // En la vista previa vale tambien uno apenas por delante (ver
+        // FuenteVideo.TOLERANCIA_VISTA): al pausar, el instante exacto cae un
+        // poco antes del ultimo fotograma pedido, y cualquier otro tendria que
+        // saltar al fotograma clave
+        val delante = if (vista) FuenteVideo.TOLERANCIA_VISTA else 0L
         val cerca = libres
-            .filter { it.ultimaPeticion in 0..tiempo && tiempo - it.ultimaPeticion < 1_500_000 }
-            .minByOrNull { tiempo - it.ultimaPeticion }
+            .filter { it.ultimaPeticion in 0..tiempo + delante && tiempo - it.ultimaPeticion < 1_500_000 }
+            .minByOrNull { kotlin.math.abs(tiempo - it.ultimaPeticion) }
         // El anticipado es para el comienzo de su bloque: si uno que ya esta
         // abierto queda mas cerca, ese (si no, se lo quedaria otro bloque del
         // mismo archivo y tendria que leer desde el suyo)
@@ -411,7 +433,7 @@ class Compositor(
         // un decodificador cuesta, y si falta el archivo fallara igual.
         fallos[uri]?.let { if (numero - it < REINTENTO_FOTOGRAMAS) { avisos++; return null } }
         anotar("abre ${Uri.parse(uri).lastPathSegment} en ${tiempo / 1000} ms (${videos.size} abiertos, ${anticipados.size} anticipados)")
-        return runCatching { FuenteVideo(context, Uri.parse(uri), giro) }
+        return runCatching { FuenteVideo(context, Uri.parse(uri), giro, vista) }
             .onFailure { avisos++; fallos[uri] = numero }
             .onSuccess { fallos.remove(uri) }
             .getOrNull()
