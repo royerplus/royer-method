@@ -37,6 +37,12 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
     private var ultimoUnderrun = -1
     private var cabezalAlCongelar = 0L
     private var marca: Marca? = null
+    /** Cuanto va el cabezal por delante de lo que suena (frames), aprendido de las marcas; -1 sin medir. */
+    private var latencia = -1L
+    /** Desde cuando esta congelado: una marca de antes es vieja (pausa, agotado). */
+    private var congeladoNs = Long.MIN_VALUE
+    /** El cabezal se paro (se agoto o se estanco): lo que suena no pasa del cabezal. */
+    private var atascado = false
 
     fun posicion(
         ahoraNs: Long,
@@ -58,7 +64,12 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
         val seAgoto = ultimoUnderrun >= 0 && underruns > ultimoUnderrun
         ultimoUnderrun = underruns
         val estancado = huboAvance && ahoraNs - ultimoAvanceNs > nanosDe(rafagaFrames) * 2L + 20_000_000L
-        if (!reproduciendo || seAgoto || estancado) {
+        if (avanzo) atascado = false
+        if (seAgoto || estancado) atascado = true
+        // Atascado, lo ya consumido sigue sonando hasta el cabezal: con marca se
+        // sigue hasta ahi y luego se espera. En pausa se queda donde sonaba.
+        if (!reproduciendo || atascado && (marca == null || ultimaPosicion >= cabezal)) {
+            if (!congelado) congeladoNs = ahoraNs
             congelado = true
             cabezalAlCongelar = cabezal
             marca = null
@@ -78,7 +89,9 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
             // Un timestamp puede estar en el futuro: el audio ya tiene una
             // presentacion comprometida. Se conserva el delta negativo.
             val distanciaNs = ahoraNs - nuevaMarca.nanoTime
-            if (distanciaNs in -5_000_000_000L..5_000_000_000L && frames in 1L..escritos) {
+            // Una marca tomada antes de congelarse (p. ej. antes de una pausa) es
+            // vieja: con ella la imagen saltaria atras o adelante al seguir.
+            if (distanciaNs in -5_000_000_000L..5_000_000_000L && frames in 1L..escritos && nuevaMarca.nanoTime >= congeladoNs) {
                 val candidata = frames + framesDe(distanciaNs)
                 if (kotlin.math.abs(candidata - cabezal) <= hz * 2L) marca = Marca(frames, nuevaMarca.nanoTime)
             }
@@ -89,9 +102,12 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
         val m = marca
         // Sin timestamp, el cabezal solo sirve de respaldo pasado el arranque.
         if (m == null && ahoraNs - primerAvanceNs < GRACIA_SIN_MARCA_NS) return ultimaPosicion
+        // Sin marca (al reanudar, tras agotarse) se sigue el cabezal menos la
+        // latencia ya aprendida: sin restarla la imagen adelantaria al sonido.
         val candidata = if (m != null) m.frames + framesDe(ahoraNs - m.nanoTime)
-        else cabezal + framesDe((ahoraNs - ultimoAvanceNs).coerceAtLeast(0L))
-        val limite = minOf(escritos.coerceAtLeast(0L), cabezal + rafagaFrames)
+        else cabezal + framesDe((ahoraNs - ultimoAvanceNs).coerceAtLeast(0L)) - latencia.coerceAtLeast(0L)
+        if (m != null && avanzo) latencia = (cabezal - candidata).coerceIn(0L, hz.toLong())
+        val limite = minOf(escritos.coerceAtLeast(0L), if (atascado) cabezal else cabezal + rafagaFrames)
         ultimaPosicion = maxOf(ultimaPosicion, candidata.coerceIn(0L, limite))
         return ultimaPosicion
     }

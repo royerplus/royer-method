@@ -17,6 +17,7 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.motor.Compositor
 import com.royermethod.app.editor.motor.Egl
+import com.royermethod.app.editor.motor.FuenteVideo
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicInteger
@@ -77,9 +78,17 @@ class Previsualizador(context: Context) {
     private var escena: Escena? = null
     private var escenaDe: Proyecto? = null
     private var escenaMuestras = 0
+    /** El hilo principal tambien la mira, para callarla en el acto al pausar. */
+    @Volatile
     private var sonido: SalidaAudio? = null
     private var segmentosSonando: List<Segmento>? = null
     private var totalSonando = -1L
+    /**
+     * Donde quedo [sonido] en pausa, o -1. Si se vuelve a dar play justo ahi
+     * y el sonido del proyecto no cambio, sigue esa misma pista: rehacerla
+     * (abrir cada archivo, llenar el bufer) era casi todo lo que tardaba.
+     */
+    private var sonidoEnUs = -1L
     /**
      * El sonido ya acabo (o no llego a sonar) y la imagen sigue con el reloj
      * del sistema desde donde iba. [sonido] se conserva para pararlo luego.
@@ -186,6 +195,8 @@ class Previsualizador(context: Context) {
         proyecto = p
         val pedidoNs = if (pausaDiag != null || sesion != null) System.nanoTime() else 0L
         h.post {
+            // Llega otro detras: ese hace el trabajo
+            if (p !== proyecto) return@post
             if (reproduciendo) {
                 val segs = PlanAudio.de(p)
                 if (segs != segmentosSonando || PlanAudio.total(p) != totalSonando) {
@@ -241,13 +252,16 @@ class Previsualizador(context: Context) {
         h.post {
             if (cerrado || busqueda != busquedas) return@post
             detenerBucle()
+            val orden = ordenes.get()
             if (reproduciendo) {
                 reempezarSesion("busqueda", pedidoNs)
-                reiniciarSonido(destino, ordenes.get(), busqueda)
+                // Calla hasta que el destino este en pantalla
+                reiniciarSonido(destino, orden, busqueda, arrancarYa = false)
             }
             if (busqueda != busquedas) return@post
             ultimoDibujado = -1
             dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo)
+            if (reproduciendo && busqueda == busquedas && ordenes.get() == orden) sonido?.arrancar()
             programarBucle()
         }
     }
@@ -268,15 +282,61 @@ class Previsualizador(context: Context) {
         h.post {
             if (cerrado || ordenes.get() != orden) return@post
             detenerBucle()
+            h.removeCallbacks(soltarPausado)
             empezarSesion("play", pedidoNs)
-            reiniciarSonido(tiempo, orden, busquedas)
-            ultimoDibujado = -1
+            val b = busquedas
+            val t0 = tiempo
+            val n0 = Linea.fotogramaEn(t0)
+            if (!seguirPausado(t0, orden, b)) reiniciarSonido(t0, orden, b, arrancarYa = false)
+            // La imagen primero y luego el sonido: que no entre el sonido con la
+            // imagen quieta. Lo de la pausa ya esta en pantalla y no se repite:
+            // pedir otra vez ese fotograma, en su instante exacto (un poco antes
+            // del de la pausa), hacia volver al video al fotograma clave anterior.
+            if (ultimoDibujado != n0) dibujar(t0, n0, rapido = true)
+            if (ordenes.get() == orden && busquedas == b) sonido?.let { it.reanudar(); it.arrancar() }
             programarBucle()
         }
     }
 
+    /**
+     * Si el sonido en pausa sirve para seguir desde [t0], lo deja como reloj
+     * de esta orden. Si no, lo suelta. Hilo de dibujo.
+     */
+    private fun seguirPausado(t0: Long, orden: Int, busqueda: Int): Boolean {
+        val s = sonido ?: return false
+        val p = proyecto
+        val sirve = s.pausada && !s.fallo && sonidoEnUs == t0 &&
+            PlanAudio.total(p) == totalSonando && PlanAudio.de(p) == segmentosSonando
+        sonidoEnUs = -1L
+        if (!sirve) {
+            soltarSonido()
+            return false
+        }
+        relojDeSistema = false
+        ordenDelReloj = orden
+        busquedaDelReloj = busqueda
+        val medida = sesion
+        medirSonido(s, medida, relativo = true)
+        medida?.sonido(0L, segmentosSonando?.size ?: 0)
+        return true
+    }
+
+    private fun soltarSonido() {
+        sonido?.parar()
+        sonido = null
+        segmentosSonando = null
+        sonidoEnUs = -1L
+    }
+
+    /** Una pausa larga no retiene la pista ni los archivos abiertos. */
+    private val soltarPausado = Runnable {
+        if (!reproduciendo && sonido?.pausada == true) soltarSonido()
+    }
+
     fun pausar() {
         if (!reproduciendo) return
+        // Calla ya: el hilo de dibujo puede estar a mitad de un fotograma
+        sonido?.pausar()
         val ordenAnterior = ordenes.get()
         reproduciendo = false
         val orden = ordenes.incrementAndGet()
@@ -285,23 +345,33 @@ class Previsualizador(context: Context) {
         h.post {
             if (cerrado || ordenes.get() != orden) return@post
             detenerBucle()
+            val s = sonido
+            s?.pausar()
             // Se queda donde iba, salvo que justo se haya llevado el cabezal a otro sitio
+            var quieto = -1L
             if (busquedas == b) {
                 val t = reloj(ordenAnterior, b)
+                // Sirve para seguir si sigue siendo el reloj y no acabo ni fallo
+                val sirve = s != null && sonido === s && relojVigente(ordenAnterior, b) && !relojDeSistema &&
+                    !s.fallo && !s.agotada
                 synchronized(controlTiempo) {
                     if (busquedas == b && ordenes.get() == orden) {
                         tiempo = t.coerceIn(0L, maxOf(0L, Linea.duracion(proyecto) - 1L))
+                        if (sirve && tiempo == t) quieto = tiempo
                         avisarTiempo(tiempo, b, orden)
                     }
                 }
             }
-            sonido?.parar()
-            sonido = null
+            // El sonido se queda en pausa para seguir sin rehacerlo (ver sonidoEnUs)
+            if (quieto >= 0L) {
+                sonidoEnUs = quieto
+                h.removeCallbacks(soltarPausado)
+                h.postDelayed(soltarPausado, RETENER_PAUSA_MS)
+            } else soltarSonido()
             invalidarReloj()
-            segmentosSonando = null
             terminarSesion("pausa")
             vigilarPausa()
-            if (cerrado || ordenes.get() != orden) return@post
+            if (cerrado || ordenes.get() != orden || busquedas != b) return@post
             // El fotograma de pausa, con todas sus muestras
             ultimoDibujado = -1
             dibujarAhora()
@@ -316,8 +386,7 @@ class Previsualizador(context: Context) {
         h.post {
             detenerBucle()
             h.removeCallbacksAndMessages(null)
-            sonido?.parar()
-            sonido = null
+            soltarSonido()
             invalidarReloj()
             terminarSesion("cerrar")
             pausaDiag?.let { if (!it.vacia) escribir(it.resumen(System.nanoTime())) }
@@ -331,11 +400,14 @@ class Previsualizador(context: Context) {
     // En el hilo de dibujo
     // ------------------------------------------------------------------
 
-    private fun reiniciarSonido(desdeUs: Long, orden: Int = ordenes.get(), busqueda: Int = busquedas) {
+    /** [arrancarYa] false: callado hasta SalidaAudio.arrancar, cuando la imagen ya este. */
+    private fun reiniciarSonido(
+        desdeUs: Long, orden: Int = ordenes.get(), busqueda: Int = busquedas, arrancarYa: Boolean = true
+    ) {
         val medida = sesion
         val desdeNs = if (medida != null) System.nanoTime() else 0L
-        sonido?.parar()
-        sonido = null
+        h.removeCallbacks(soltarPausado)
+        soltarSonido()
         val p = proyecto
         val segs = PlanAudio.de(p)
         segmentosSonando = segs
@@ -343,13 +415,24 @@ class Previsualizador(context: Context) {
         relojDeSistema = false
         inicioUs = desdeUs
         if (segs.isNotEmpty()) {
-            sonido = runCatching { SalidaAudio(app, segs, PlanAudio.total(p), Pcm.frames(desdeUs)) }.getOrNull()
-            if (medida != null) sonido?.alLeer = { l -> medida.audio(l.nanoTime, l.cabezal, l.escritos, l.marcaFrames, l.posicion) }
+            sonido = runCatching { SalidaAudio(app, segs, PlanAudio.total(p), Pcm.frames(desdeUs), arrancarYa) }.getOrNull()
+            sonido?.let { medirSonido(it, medida, relativo = false) }
         }
         inicioNanos = System.nanoTime()
         ordenDelReloj = orden
         busquedaDelReloj = busqueda
         medida?.sonido(System.nanoTime() - desdeNs, segs.size)
+    }
+
+    /** Diagnostico: el arranque del sonido. Seguir una pausa cuenta desde donde quedo. */
+    private fun medirSonido(s: SalidaAudio, medida: SesionVista?, relativo: Boolean) {
+        if (medida == null) { s.alLeer = null; return }
+        var cabezal0 = if (relativo) -1L else 0L
+        var posicion0 = 0L
+        s.alLeer = { l ->
+            if (cabezal0 < 0L) { cabezal0 = l.cabezal; posicion0 = l.posicion }
+            medida.audio(l.nanoTime, l.cabezal - cabezal0, l.escritos, l.marcaFrames, l.posicion - posicion0)
+        }
     }
 
     private fun invalidarReloj() {
@@ -428,7 +511,7 @@ class Previsualizador(context: Context) {
             if (!vigente) return
             if (t >= d) {
                 // Al final: se queda en el ultimo fotograma
-                sonido?.parar(); sonido = null
+                soltarSonido()
                 invalidarReloj()
                 terminarSesion("final")
                 vigilarPausa()
@@ -540,6 +623,7 @@ class Previsualizador(context: Context) {
 
     /** En pausa, contar lo que se dibuja si se pidio; si no, nada. Hilo de dibujo. */
     private fun vigilarPausa() {
+        FuenteVideo.registrar = registrar(Log.DEBUG)
         if (!registrar(Log.DEBUG)) { pausaDiag = null; return }
         if (pausaDiag == null) {
             pausaDiag = PausaVista(System.nanoTime())
@@ -551,6 +635,7 @@ class Previsualizador(context: Context) {
     private fun empezarSesion(motivo: String, pedidoNs: Long) {
         pausaDiag?.let { if (!it.vacia) escribir(it.resumen(System.nanoTime())) }
         pausaDiag = null
+        FuenteVideo.registrar = registrar(Log.DEBUG)
         if (!registrar(Log.DEBUG)) { sesion = null; return }
         gcAntes = gc()
         val p = proyecto
@@ -581,5 +666,7 @@ class Previsualizador(context: Context) {
         const val ETIQUETA = "RoyerVista"
         /** Cuanto antes de aparecer se empieza a leer una foto. */
         private const val ANTICIPO_US = 1_000_000L
+        /** Cuanto se guarda el sonido en pausa por si se vuelve a dar play. */
+        private const val RETENER_PAUSA_MS = 30_000L
     }
 }

@@ -65,6 +65,9 @@ class FuenteVideo(
 
     // El siguiente fotograma ya decodificado, guardado sin pintar.
     private var pendiente = -1
+    /** Diagnostico de la ultima [irA]: saltos al fotograma clave y cuadros leidos. */
+    private var saltos = 0
+    private var leidos = 0
     private var ptsPendiente = 0L
     private var entradaAgotada = false
     private var salidaAgotada = false
@@ -145,13 +148,28 @@ class FuenteVideo(
      *   queda con lo que tuviera.
      */
     fun irA(objetivo: Long, esperaMaxMs: Long = 6000): Boolean {
+        if (!registrar) return irAHasta(objetivo, esperaMaxMs)
+        // Diagnostico: avisa de lo que tarda mucho, y por que
+        val inicioNs = System.nanoTime()
+        val antes = ptsActual
+        saltos = 0; leidos = 0
+        val r = irAHasta(objetivo, esperaMaxMs)
+        val ms = (System.nanoTime() - inicioNs) / 1_000_000
+        if (ms >= 40) runCatching {
+            android.util.Log.i("RoyerVista", "video lento ${ms} ms: ${uri.lastPathSegment} pide ${objetivo / 1000} ms, " +
+                "tenia ${if (antes < 0) "nada" else "${antes / 1000} ms"}, ${if (saltos > 0) "salto al clave, " else ""}$leidos cuadros")
+        }
+        return r
+    }
+
+    private fun irAHasta(objetivo: Long, esperaMaxMs: Long): Boolean {
         ultimaPeticion = objetivo
         // Hacia atras, o muy por delante, hay que saltar. Hacia delante y
         // cerca sale mas a cuenta seguir decodificando que buscar el
         // fotograma clave anterior y rehacer desde ahi.
         val retroceso = ptsActual >= 0 && objetivo + TOLERANCIA < ptsActual
         val lejos = objetivo - maxOf(ptsActual, if (pendiente >= 0) ptsPendiente else -1) > SALTO_LARGO
-        if (retroceso || lejos || ptsActual < 0 && pendiente < 0 && entradaAgotada) saltar(objetivo)
+        if (retroceso || lejos || ptsActual < 0 && pendiente < 0 && entradaAgotada) { saltar(objetivo); saltos++ }
 
         // Si el guardado ya es el que toca o se pasa, no hay nada que leer
         if (ptsActual >= 0 && objetivo + TOLERANCIA >= ptsActual &&
@@ -182,6 +200,7 @@ class FuenteVideo(
                 }
                 if (fin) salidaAgotada = true
                 idx = r; pts = info.presentationTimeUs
+                leidos++
             }
             if (pts <= objetivo + TOLERANCIA) {
                 // Este ya ha empezado. Puede que haya otro mas tarde que
@@ -437,6 +456,10 @@ class FuenteVideo(
          * mismo para cualquiera que lo mire.
          */
         const val TOLERANCIA = 1_000L
+        /** Diagnostico de la vista previa (adb, RoyerVista): anotar lo que tarda mucho. */
+        @Volatile
+        @JvmStatic
+        var registrar = false
 
         /** Mas alla de esto por delante, saltar sale mas barato que decodificar. */
         private const val SALTO_LARGO = 3_000_000L
