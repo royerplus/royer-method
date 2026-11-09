@@ -492,3 +492,17 @@ Queja de Royer: donde entra la imagen «ELITE CRAFT» (`medios/00006.png`, capa 
   - El primer play tras hacerse las copias tardaba 336 ms (primer movimiento 671 ms): se cerraban los decodificadores del original y se reabrían al dar play. Ahora en pausa se reabren al momento con la copia.
   - Reanudar: 59 ms con el sonido guardado, ~256 ms si la pausa pasaba de 30 s. El sonido en pausa se guarda 5 min (se suelta antes si la vista sale de pantalla).
   - Arrastrar hacia delante: ~75 cuadros por segundo. Hacia atrás: ~5 (cada video leía hasta 30 cuadros desde la clave; con 3 videos, 150-270 ms por cuadro). Copias con clave cada 0,2 s (antes 0,5 s; 0,15 bits por píxel, `VERSION` 2: se rehacen) y se deja terminar un dibujo de arrastre hasta 150 ms (antes 80, y la mitad se abandonaba).
+- **ec3d497**: CI guarda en cache los zips de ncnn/RIFE/waifu2x y `traer_dependencias.sh` reintenta unos minutos (los releases de GitHub daban 504 y la compilación fallaba antes de empezar).
+
+Medido en el teléfono con ec3d497 (copias VERSION 2 rehechas en ~1 min, 101 MB):
+
+| | antes (0a090c8) | ec3d497 |
+|---|---|---|
+| Elitecraft (5,1-9,4 s), presentación | 33,5 ms salvo 58,7 / 58,7 / 16,8 al anticipar | 33,5 ms; solo los saltos de fase de 25,1 ms (la pantalla va a 119,4 Hz, no a 120) |
+| anticipar en el hilo de dibujo (máx) | 55 ms | 8,7 ms |
+| Reanudar (primer cuadro) | 59 ms; 256 ms tras más de 30 s | 59 ms siempre (también tras 35 s) |
+| Primer play al abrir el editor | 336 ms (tras hacerse las copias) | 274 ms (arranque del sonido) |
+| Arrastrar hacia delante | ~75 cuadros por segundo | igual |
+| Arrastrar hacia atrás (3 videos a la vista) | ~5 por segundo, 150-270 ms | ~11 por segundo, 67-142 ms; cada salto atrás cuesta ~35 ms fijos + ~2 ms por cuadro por video |
+
+Siguiente si hace falta más hacia atrás: preparar los videos de un cuadro en paralelo (`FuenteVideo.preparar` no toca OpenGL) en vez de uno tras otro.
