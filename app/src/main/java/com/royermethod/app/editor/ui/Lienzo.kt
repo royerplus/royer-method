@@ -220,14 +220,14 @@ fun Lienzo(
                     }
                 }
             }
-            ModoMoverLienzo(estado, Modifier.align(Alignment.TopStart).padding(6.dp))
+            ModoMoverLienzo(estado, Modifier.align(Alignment.BottomStart).padding(6.dp))
         }
     }
 }
 
 /**
- * Con un bloque con fotogramas clave elegido, arriba a la izquierda de la
- * imagen: que mueve el dedo. Tocarla pasa al siguiente modo (las elegidas
+ * Con un bloque con fotogramas clave elegido, abajo a la izquierda de la
+ * imagen (arriba la tapan los avisos): que mueve el dedo. Tocarla pasa al siguiente modo (las elegidas
  * solo si hay alguna), asi se cambia sin abrir ningun panel.
  */
 @Composable

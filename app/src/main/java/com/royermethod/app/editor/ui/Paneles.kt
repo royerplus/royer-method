@@ -600,7 +600,7 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
     Canvas(
         Modifier
             .fillMaxWidth()
-            .aspectRatio(1.4f)
+            .aspectRatio(1.6f)
             .border(1.dp, Ink.White15, esquinas(12.dp))
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -611,7 +611,13 @@ internal fun EditorBezier(b: Bezier, onCambio: (Bezier) -> Unit) {
                     fun aPx(x: Float, y: Float) = Offset(m + x * w, m + h * (1f - (y - BEZIER_MIN) / (BEZIER_MAX - BEZIER_MIN)))
                     val p1 = aPx(actual.x1, actual.y1)
                     val p2 = aPx(actual.x2, actual.y2)
-                    val primero = (abajo.position - p1).getDistance() <= (abajo.position - p2).getDistance()
+                    val d1 = (abajo.position - p1).getDistance()
+                    val d2 = (abajo.position - p2).getDistance()
+                    // Lejos de los dos puntos no se coge nada: asi el dedo sobre la
+                    // curva sigue desplazando el panel (antes la caja se lo comia)
+                    if (minOf(d1, d2) > 44.dp.toPx()) return@awaitEachGesture
+                    abajo.consume()
+                    val primero = d1 <= d2
                     gestos.empezar()
                     while (true) {
                         val ev = awaitPointerEvent()
