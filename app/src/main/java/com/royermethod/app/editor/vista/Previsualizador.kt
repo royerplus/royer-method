@@ -1,6 +1,7 @@
 package com.royermethod.app.editor.vista
 
 import android.content.Context
+import android.hardware.display.DisplayManager
 import android.opengl.GLES20
 import android.os.Debug
 import android.os.Handler
@@ -8,6 +9,7 @@ import android.os.HandlerThread
 import android.os.Looper
 import android.util.Log
 import android.view.Choreographer
+import android.view.Display
 import android.view.Surface
 import com.royermethod.app.editor.audio.Pcm
 import com.royermethod.app.editor.audio.PlanAudio
@@ -103,6 +105,10 @@ class Previsualizador(context: Context) {
     private var coreografo: Choreographer? = null
     private var buclePendiente = false
     private var busquedaDelBucle = 0
+    /** Que fotograma va en cada refresco y cuando se ensena (ver Ritmo). */
+    private val ritmo = Ritmo(Linea.FPS, periodoInicialNs = periodoPantalla(context))
+    /** La lectura anterior del reloj en el bucle: si no cambia, el sonido no avanza. */
+    private var relojAnterior = Long.MIN_VALUE
     private val ordenes = AtomicInteger(0)
     /**
      * El sonido se callo porque un fotograma tardaba (ver [vigia]): sigue
@@ -281,6 +287,7 @@ class Previsualizador(context: Context) {
             // termina de leer un instante que ya no se va a ver
             dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo) { busqueda == busquedas && !cerrado }
             if (reproduciendo && busqueda == busquedas && ordenes.get() == orden) sonido?.arrancar()
+            reiniciarRitmo(destino)
             programarBucle()
         }
     }
@@ -314,6 +321,7 @@ class Previsualizador(context: Context) {
             // del de la pausa), hacia volver al video al fotograma clave anterior.
             if (ultimoDibujado != n0) dibujar(t0, n0, rapido = true) { ordenes.get() == orden && busquedas == b && !cerrado }
             if (ordenes.get() == orden && busquedas == b) sonido?.let { it.reanudar(); it.arrancar() }
+            reiniciarRitmo(t0)
             programarBucle()
         }
     }
@@ -498,6 +506,15 @@ class Previsualizador(context: Context) {
         return inicioUs + (System.nanoTime() - inicioNanos) / 1000
     }
 
+    /**
+     * Lo que ya se ve es el punto de partida del bucle. Hasta que el reloj se
+     * mueva de [desde] (el sonido tarda en arrancar) no se adelanta nada.
+     */
+    private fun reiniciarRitmo(desde: Long) {
+        ritmo.reiniciar(ultimoDibujado.takeIf { it >= 0 })
+        relojAnterior = desde
+    }
+
     private fun programarBucle() {
         if (cerrado || !reproduciendo || egl == null || buclePendiente || !relojVigente()) return
         val c = coreografo ?: Choreographer.getInstance().also { coreografo = it }
@@ -544,13 +561,22 @@ class Previsualizador(context: Context) {
                 dibujarAhora()
                 return
             }
-            val n = Linea.fotogramaEn(t)
+            // El fotograma del refresco que llega dentro de unos 50 ms, con esa
+            // hora de presentacion: cada uno dura lo mismo en pantalla (ver Ritmo)
+            // Un microsegundo de redondeo al seguir una pausa no es avanzar
+            val avanza = t > relojAnterior + 1_000L
+            if (avanza) relojAnterior = t
+            val turno = ritmo.turno(frameTimeNanos, leidoNs, t, avanza)
             val esperaba = esperandoImagen
-            if (n != ultimoDibujado) {
-                if (!esperaba) principal.postDelayed(vigia, ESPERA_IMAGEN_MS)
-                val publicado = dibujar(Linea.tiempoDe(n), n, rapido = true) { ordenes.get() == orden && busquedas == b && !cerrado }
-                principal.removeCallbacks(vigia)
-                if (publicado) avisarTiempo(t, b, orden)
+            if (turno != null) {
+                val n = minOf(turno.fotograma, Linea.fotogramaEn(maxOf(0L, d - 1L)))
+                if (n != ultimoDibujado) {
+                    if (!esperaba) principal.postDelayed(vigia, ESPERA_IMAGEN_MS)
+                    val publicado = dibujar(Linea.tiempoDe(n), n, rapido = true, presentarNs = turno.presentarNs,
+                        limiteNs = turno.limiteNs) { ordenes.get() == orden && busquedas == b && !cerrado }
+                    principal.removeCallbacks(vigia)
+                    if (publicado) avisarTiempo(t, b, orden)
+                }
             }
             if (esperaba && b == busquedas && ordenes.get() == orden && reproduciendo) {
                 // La imagen ya llego a donde se callo el sonido: siguen juntos
@@ -625,8 +651,15 @@ class Previsualizador(context: Context) {
         dibujar(t, Linea.fotogramaEn(t), rapido = false, seguir = seguir)
     }
 
-    /** [seguir]: false si este dibujo ya no hace falta; se deja sin publicar (ver Compositor.dibujar). */
-    private fun dibujar(t: Long, n: Long, rapido: Boolean, seguir: (() -> Boolean)? = null): Boolean {
+    /**
+     * [seguir]: false si este dibujo ya no hace falta; se deja sin publicar (ver Compositor.dibujar).
+     * [presentarNs]: cuando debe verse (System.nanoTime), 0 en cuanto se pueda; [limiteNs], cuando
+     * tiene que estar publicado para llegar a esa hora (solo para el diagnostico).
+     */
+    private fun dibujar(
+        t: Long, n: Long, rapido: Boolean, presentarNs: Long = 0L, limiteNs: Long = 0L,
+        seguir: (() -> Boolean)? = null
+    ): Boolean {
         val e = egl ?: return false
         val c = compositor ?: return false
         val observador = alCuadroPublicado
@@ -655,7 +688,10 @@ class Previsualizador(context: Context) {
                 GLES20.glFinish()
                 gpuNs = System.nanoTime() - g0
             }
-            val marcaNs = System.nanoTime()
+            // La pantalla no lo ensena antes de la marca: con SurfaceView, cada
+            // fotograma sale en su refresco aunque el dibujo vaya adelantado
+            val marcaNs = if (presentarNs > 0L) presentarNs else System.nanoTime()
+            val listoNs = if (inicioCpuNs != 0L) System.nanoTime() else 0L
             e.marcarTiempo(marcaNs)
             val publicada = e.publicar()
             val publicadaNs = if (medida != null) System.nanoTime() else 0L
@@ -668,10 +704,10 @@ class Previsualizador(context: Context) {
                     val finNs = System.nanoTime()
                     // El observador es diagnostico: no puede romper el motor.
                     runCatching { observador(CuadroPublicado(t, n, marcaNs,
-                        (marcaNs - inicioCpuNs) / 1e6, (finNs - marcaNs) / 1e6, rapido)) }
+                        (listoNs - inicioCpuNs) / 1e6, (finNs - listoNs) / 1e6, rapido)) }
                 }
-                medida?.publicado(marcaNs, n, escenaNs - inicioCpuNs, marcaNs - inicioCpuNs - maxOf(gpuNs, 0L), gpuNs,
-                    publicadaNs - marcaNs, System.nanoTime() - publicadaNs)
+                medida?.publicado(marcaNs, n, escenaNs - inicioCpuNs, listoNs - inicioCpuNs - maxOf(gpuNs, 0L), gpuNs,
+                    publicadaNs - listoNs, System.nanoTime() - publicadaNs, tarde = limiteNs > 0L && publicadaNs > limiteNs)
             }
             if (pausa != null) {
                 pausa.dibujado(System.nanoTime() - inicioCpuNs,
@@ -750,6 +786,13 @@ class Previsualizador(context: Context) {
     }
 
     companion object {
+        /** Lo que dura un refresco de la pantalla ahora, para empezar a medirlo (ver Ritmo). */
+        private fun periodoPantalla(context: Context): Long = runCatching {
+            val hz = (context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager)
+                .getDisplay(Display.DEFAULT_DISPLAY).refreshRate
+            if (hz in 20f..250f) (1e9 / hz).toLong() else null
+        }.getOrNull() ?: 16_666_667L
+
         /** Etiqueta del registro del diagnostico (adb logcat -s RoyerVista). */
         const val ETIQUETA = "RoyerVista"
         /** Cuanto antes de aparecer se empieza a leer una foto. */

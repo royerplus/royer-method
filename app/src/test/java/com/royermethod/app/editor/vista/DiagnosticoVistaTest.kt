@@ -46,7 +46,7 @@ class DiagnosticoVistaTest {
         }
         // Un tiron: se salta dos fotogramas y tarda 100 ms
         t += 100; n += 3
-        s.publicado(base + t * ms, n, 1 * ms, 30 * ms, -1, 2 * ms, 0)
+        s.publicado(base + t * ms, n, 1 * ms, 30 * ms, -1, 2 * ms, 0, tarde = true)
         s.presentado(base - 5 * ms)   // de antes de pulsar play: no cuenta
         s.presentado(base + 230 * ms)
         s.presentado(base + 263 * ms)
@@ -66,8 +66,9 @@ class DiagnosticoVistaTest {
         assertTrue(todo, l[4].startsWith("peores cuadros por cpu: 44 (30.0 ms al empezar un bloque), 32 (4.0 ms), 33 (4.0 ms)"))
         // 12 intervalos: 196 ms (esperando al sonido), 10 de 33 y el tiron de 100: dos fuera de 25-42
         assertTrue(todo, l[5].contains("fuera de 25-42 ms: 2 de 12 (16.7%)"))
-        assertTrue(todo, l[6].contains("presentacion: 2 cuadros"))
-        assertEquals("gc: 1 recogidas (3 ms)", l[7])
+        assertEquals("tarde a su refresco: 1 de 13 cuadros", l[6])
+        assertTrue(todo, l[7].contains("presentacion: 2 cuadros"))
+        assertEquals("gc: 1 recogidas (3 ms)", l[8])
     }
 
     @Test
@@ -78,8 +79,9 @@ class DiagnosticoVistaTest {
         assertTrue(l[1].contains("primer movimiento -"))
         assertTrue(l[2].contains("gpu 8.00 8.00 8.00"))
         assertEquals("peores cuadros por cpu: 10 (2.0 ms)", l[3])
-        assertTrue(l[5].contains("sin datos"))
-        assertEquals(6, l.size)
+        assertEquals("tarde a su refresco: 0 de 1 cuadros", l[5])
+        assertTrue(l[6].contains("sin datos"))
+        assertEquals(7, l.size)
     }
 
     @Test

@@ -104,6 +104,8 @@ internal class SesionVista(
     private var saltos = 0
     private var saltados = 0L
     private var publicados = 0
+    /** Publicados despues de su limite: la pantalla los ensena un refresco tarde. */
+    private var tardes = 0
     private val escena = Serie()
     private val cpu = Serie()
     private val gpu = Serie()
@@ -138,11 +140,17 @@ internal class SesionVista(
     }
 
     /**
-     * Un cuadro publicado (swap correcto). [marcaNs] es su marca de buffer;
-     * las duraciones, en ns ([gpuNs] < 0 si no se midio).
+     * Un cuadro publicado (swap correcto). [marcaNs] es su marca de buffer: la
+     * hora a la que se pidio ensenarlo (ver Ritmo), o la del swap si se pidio
+     * en cuanto se pudiera. Las duraciones, en ns ([gpuNs] < 0 si no se midio).
+     * [tarde]: se publico despues del limite para llegar a su refresco.
      */
     @Synchronized
-    fun publicado(marcaNs: Long, fotograma: Long, escenaNs: Long, cpuNs: Long, gpuNs: Long, swapNs: Long, anticiparNs: Long) {
+    fun publicado(
+        marcaNs: Long, fotograma: Long, escenaNs: Long, cpuNs: Long, gpuNs: Long, swapNs: Long, anticiparNs: Long,
+        tarde: Boolean = false
+    ) {
+        if (tarde) tardes++
         if (publicados == 0) {
             primeroNs = marcaNs - pedidoNs
             fotogramaInicial = fotograma
@@ -206,7 +214,8 @@ internal class SesionVista(
         }
         if (peores.isNotEmpty()) l += "peores cuadros por cpu: $peores"
         l += "publicacion: ${intervalos.ritmo()}"
-        l += if (presentados == 0) "presentacion: sin datos (la TextureView no llama a Previsualizador.presentado)"
+        l += "tarde a su refresco: $tardes de $publicados cuadros"
+        l += if (presentados == 0) "presentacion: sin datos (SurfaceView: dumpsys SurfaceFlinger --latency)"
             else "presentacion: $presentados cuadros, ${presentaciones.ritmo()}"
         if (gc != null) l += "gc: $gc"
         return l

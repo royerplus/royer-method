@@ -8,12 +8,13 @@ import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
-import android.graphics.SurfaceTexture
 import android.graphics.Typeface
 import android.net.Uri
 import android.provider.DocumentsContract
+import android.os.Build
 import android.view.Surface
-import android.view.TextureView
+import android.view.SurfaceHolder
+import android.view.SurfaceView
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -296,7 +297,7 @@ fun EditorScreen(onVolver: () -> Unit) {
         }
     ) { modificador ->
         AndroidView(
-            factory = { ctx -> TextureView(ctx).apply { surfaceTextureListener = Superficie(prev) } },
+            factory = { ctx -> SurfaceView(ctx).apply { holder.addCallback(Superficie(prev)) } },
             modifier = modificador
         )
     }
@@ -322,27 +323,40 @@ private fun estadoExportar(): EstadoExportar {
     )
 }
 
-/** Pasa la superficie de la pantalla a la vista previa y se la quita antes de que se destruya. */
-private class Superficie(private val prev: Previsualizador) : TextureView.SurfaceTextureListener {
-    private var superficie: Surface? = null
+/**
+ * Pasa la superficie de la pantalla a la vista previa y se la quita antes de
+ * que se destruya.
+ *
+ * Es una SurfaceView y no una TextureView: lo que dibuja la vista previa va
+ * derecho a la pantalla, sin esperar al hilo de la interfaz (que mueve la
+ * linea de tiempo en cada refresco), y la pantalla respeta la hora de
+ * presentacion de cada fotograma (ver Ritmo). Con la TextureView la mitad de
+ * los cuadros salian uno o tres refrescos en vez de dos, y los movimientos
+ * rapidos iban a tirones. Lo que se pinta encima (el marco de lo elegido, las
+ * guias) se sigue viendo: la superficie va por debajo de la ventana.
+ */
+private class Superficie(private val prev: Previsualizador) : SurfaceHolder.Callback {
+    private var adjuntada = false
 
-    override fun onSurfaceTextureAvailable(st: SurfaceTexture, w: Int, h: Int) {
-        val s = Surface(st)
-        superficie = s
-        prev.adjuntar(s, w, h)
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        // 30 por segundo: que la pantalla vaya a un multiplo (60, 120) y cada
+        // fotograma dure los mismos refrescos. Es solo una preferencia.
+        if (Build.VERSION.SDK_INT >= 30) runCatching {
+            holder.surface.setFrameRate(30f, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+        }
     }
 
-    override fun onSurfaceTextureSizeChanged(st: SurfaceTexture, w: Int, h: Int) = prev.cambiarTamano(w, h)
+    override fun surfaceChanged(holder: SurfaceHolder, format: Int, w: Int, h: Int) {
+        if (!adjuntada) {
+            adjuntada = true
+            prev.adjuntar(holder.surface, w, h)
+        } else prev.cambiarTamano(w, h)
+    }
 
-    override fun onSurfaceTextureDestroyed(st: SurfaceTexture): Boolean {
+    override fun surfaceDestroyed(holder: SurfaceHolder) {
+        adjuntada = false
         prev.soltarSuperficie()
-        superficie?.release()
-        superficie = null
-        return true
     }
-
-    // Solo mide (diagnostico RoyerVista encendido con adb); apagado no hace nada
-    override fun onSurfaceTextureUpdated(st: SurfaceTexture) = prev.presentado()
 }
 
 private fun archivo(context: Context) = File(context.filesDir, "editor/proyecto.json")
