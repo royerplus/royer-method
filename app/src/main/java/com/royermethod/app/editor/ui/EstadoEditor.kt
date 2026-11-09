@@ -45,7 +45,7 @@ enum class Panel(val titulo: String) {
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
     FORMATO("Formato"),
-    CURVA("Fotogramas clave"),
+    CURVA("Curvas"),
     FLUIDEZ("Fluidez"),
     COMPRESION("Compresion"),
     RESOLUCION("Resolucion")

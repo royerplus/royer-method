@@ -416,6 +416,8 @@ class Escena(
         val margen = 1e-4f
         val esquinas = floatArrayOf(0f, 0f, ancho.toFloat(), 0f, 0f, alto.toFloat(), ancho.toFloat(), alto.toFloat())
         for (m in p.matrices) {
+            // Con perspectiva no se mira: se dibuja lo de debajo por si acaso
+            if (m[2] != 0f || m[5] != 0f) return false
             for (j in 0 until 4) {
                 val x = esquinas[j * 2]
                 val y = esquinas[j * 2 + 1]
@@ -1259,6 +1261,7 @@ class Escena(
         val r = Math.toRadians(e.rotacion.toDouble())
         val c = cos(r).toFloat()
         val sn = sin(r).toFloat()
+        if (e.conPerspectiva) return matrizPerspectiva(e, w, h, cx, cy, c, sn)
         // p -> q = p - centro -> girar al reves -> dividir por el tamano -> +0.5
         // Girar al reves en coordenadas con la y hacia abajo: [c s; -s c]
         var a = c / w; var b = sn / w
@@ -1273,6 +1276,31 @@ class Escena(
         a *= rc.ancho; b *= rc.ancho; tx = tx * rc.ancho + rc.izquierda
         d *= rc.alto; f *= rc.alto; ty = ty * rc.alto + rc.arriba
         return floatArrayOf(a, d, 0f, b, f, 0f, tx, ty, 1f)
+    }
+
+    /**
+     * [matriz] con perspectiva: la colocacion es una homografia (ver
+     * [Perspectiva]) y su inversa ya no es afin; el sombreador divide por la
+     * tercera coordenada.
+     */
+    private fun matrizPerspectiva(e: Encuadre, w: Float, h: Float, cx: Float, cy: Float, c: Float, sn: Float): FloatArray {
+        // Del bloque (0..1) al lienzo: centrar y medir, inclinar, girar, llevar al sitio
+        val medir = floatArrayOf(w, 0f, -0.5f * w, 0f, h, -0.5f * h, 0f, 0f, 1f)
+        val inclinar = Perspectiva.proyeccion(e.inclinacionX, e.inclinacionY, w, h)
+        val girar = floatArrayOf(c, -sn, 0f, sn, c, 0f, 0f, 0f, 1f)
+        val llevar = floatArrayOf(1f, 0f, cx, 0f, 1f, cy, 0f, 0f, 1f)
+        val colocar = Perspectiva.por(llevar, Perspectiva.por(girar, Perspectiva.por(inclinar, medir)))
+        var n = Perspectiva.inversa(colocar) ?: return FUERA.copyOf()
+        // Espejo y recorte, igual que sin perspectiva
+        if (e.espejo) n = Perspectiva.por(floatArrayOf(-1f, 0f, 1f, 0f, 1f, 0f, 0f, 0f, 1f), n)
+        val rc = e.recorte
+        n = Perspectiva.por(floatArrayOf(rc.ancho, 0f, rc.izquierda, 0f, rc.alto, rc.arriba, 0f, 0f, 1f), n)
+        // Que la tercera fila valga 1 en el centro: el sombreador espera z > 0
+        val z = n[6] * cx + n[7] * cy + n[8]
+        if (!z.isFinite() || kotlin.math.abs(z) < 1e-12f) return FUERA.copyOf()
+        val k = 1f / z
+        // Por columnas, para OpenGL
+        return floatArrayOf(n[0] * k, n[3] * k, n[6] * k, n[1] * k, n[4] * k, n[7] * k, n[2] * k, n[5] * k, n[8] * k)
     }
 
     companion object {

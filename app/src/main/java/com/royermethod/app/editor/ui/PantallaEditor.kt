@@ -152,6 +152,7 @@ fun PantallaEditor(
                                 when (p) {
                                     Panel.ANIMACION -> HojaAnimacion(estado, cerrar)
                                     Panel.EFECTOS -> HojaEfectos(estado, cerrar)
+                                    Panel.TEXTO -> HojaTexto(estado, cerrar)
                                     else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
                                 }
                             }
@@ -183,7 +184,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.TRANSICION -> PanelTransicion(estado)
         Panel.COLOR -> PanelColor(estado)
         Panel.ENCUADRE -> PanelEncuadre(estado)
-        Panel.TEXTO -> PanelTexto(estado)
+        Panel.TEXTO -> Unit
         Panel.FORMATO -> PanelFormato(estado)
         Panel.CURVA -> PanelCurva(estado)
         Panel.FLUIDEZ -> PanelFluidez(estado)
@@ -404,17 +405,18 @@ private fun Herramientas(
                         val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
                         if (r == null) estado.avisar("Pon el cabezal dentro del bloque, lejos de sus bordes") else estado.hacer { r.first }
                     })
-                    // Mover el bloque entero (o las claves elegidas) sin cambiar ni crear claves
+                    // Interruptor: encendido, arrastrar en la imagen mueve el bloque entero
+                    // con todas sus claves (o solo las elegidas); otro toque lo apaga
                     if (c.claves.isNotEmpty()) {
-                        val elegidas = estado.elegidasDe(c).size
-                        Herramienta(Glifos.moverTodo, if (elegidas > 0) "Mover elegidas" else "Mover todo", {
+                        Herramienta(Glifos.moverTodo, "Mover todo", {
                             estado.moverTodo = !estado.moverTodo
+                            val elegidas = estado.elegidasDe(c).size
                             estado.avisar(
-                                if (!estado.moverTodo) "Arrastrar cambia la clave de bajo el cabezal"
-                                else if (elegidas > 0) "Arrastrar mueve las $elegidas claves elegidas juntas"
-                                else "Arrastrar mueve el bloque entero con sus claves"
+                                if (!estado.moverTodo) "Mover todo apagado: arrastrar cambia solo la clave de aqui"
+                                else if (elegidas > 0) "Mover todo encendido: arrastrar mueve tus $elegidas claves elegidas. Toca otra vez para apagarlo"
+                                else "Mover todo encendido: arrastrar mueve el clip entero con sus claves. Toca otra vez para apagarlo"
                             )
-                        }, resaltada = estado.moverTodo)
+                        }, encendida = estado.moverTodo)
                     }
                     if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
                     if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
@@ -431,7 +433,7 @@ private fun Herramientas(
                     // Otra version del mismo video: se cambia en todos los bloques que lo usan
                     c.origen?.let { o -> Herramienta(Glifos.reemplazar, "Reemplazar", { onReemplazar(o) }) }
                     Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
-                    Herramienta(Glifos.curva, "Claves", { estado.panel = Panel.CURVA }, resaltada = c.claves.isNotEmpty())
+                    Herramienta(Glifos.curva, "Curvas", { estado.panel = Panel.CURVA }, resaltada = c.claves.size >= 2)
                     if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
                     if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
                     else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
@@ -507,7 +509,7 @@ private fun HerramientasZoom(estado: EstadoEditor) {
             else if (estado.zoomVista.puesto) "El zoom se queda: ya puedes editar con el"
             else "Zoom apagado"
         )
-    }, resaltada = estado.modoZoom)
+    }, encendida = estado.modoZoom)
     if (estado.zoomVista.puesto) Herramienta(Glifos.sinZoom, "Sin zoom", {
         estado.zoomVista = com.royermethod.app.editor.modelo.ZoomVista.NINGUNO
         estado.modoZoom = false

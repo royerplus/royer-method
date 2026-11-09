@@ -197,7 +197,14 @@ data class Encuadre(
     val rotacion: Float = 0f,
     val opacidad: Float = 1f,
     val espejo: Boolean = false,
-    val recorte: Recorte = Recorte()
+    val recorte: Recorte = Recorte(),
+    /**
+     * Perspectiva, en grados: [inclinacionX] tumba el bloque hacia atras o
+     * hacia delante (gira sobre su eje horizontal) e [inclinacionY] lo gira
+     * a los lados (eje vertical). Ver [Perspectiva].
+     */
+    val inclinacionX: Float = 0f,
+    val inclinacionY: Float = 0f
 ) {
     /** Lo animable, mezclado con [otro] en [t] de 0 a 1. */
     fun hacia(otro: Encuadre, t: Float): Encuadre = copy(
@@ -205,8 +212,12 @@ data class Encuadre(
         x = x + (otro.x - x) * t,
         y = y + (otro.y - y) * t,
         rotacion = rotacion + (otro.rotacion - rotacion) * t,
-        opacidad = opacidad + (otro.opacidad - opacidad) * t
+        opacidad = opacidad + (otro.opacidad - opacidad) * t,
+        inclinacionX = inclinacionX + (otro.inclinacionX - inclinacionX) * t,
+        inclinacionY = inclinacionY + (otro.inclinacionY - inclinacionY) * t
     )
+
+    val conPerspectiva: Boolean get() = inclinacionX != 0f || inclinacionY != 0f
 }
 
 enum class Ajuste(val nombre: String) {
@@ -555,8 +566,24 @@ data class Texto(
     /** 0 sin caja de fondo. */
     val fondo: Int = 0,
     val alineacion: Alineacion = Alineacion.CENTRO,
-    val espaciado: Float = 0f
-)
+    val espaciado: Float = 0f,
+    /** Color de la sombra (RGB; su alfa no cuenta, lo da [sombraOpacidad]). */
+    val sombraColor: Int = 0xFF000000.toInt(),
+    val sombraOpacidad: Float = 150f / 255f,
+    /** Desenfoque y distancia de la sombra, en fraccion del tamano de letra. */
+    val sombraDesenfoque: Float = 0.12f,
+    val sombraDistancia: Float = 0.05f,
+    /** Hacia donde cae la sombra, en grados: 0 derecha, 90 abajo. */
+    val sombraAngulo: Float = 90f,
+    val cursiva: Boolean = false,
+    /** Alto de linea: 1 el normal de la letra. */
+    val interlineado: Float = 1f
+) {
+    companion object {
+        /** Lo mas lejos que llega la sombra (distancia + desenfoque), para el margen. */
+        const val SOMBRA_MAXIMA = 0.6f
+    }
+}
 
 enum class Fuente(val nombre: String) {
     SANS("Clasica"),

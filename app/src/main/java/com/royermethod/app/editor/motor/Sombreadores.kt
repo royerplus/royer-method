@@ -544,7 +544,9 @@ void main() {
     for (int i = 0; i < 8; i++) {
         if (float(i) >= uN) break;
         mat3 m = uInv[i];
-        vec2 uv = (m * vec3(p, 1.0)).xy;
+        // Con perspectiva la matriz no es afin: se divide por z (sin ella z es 1)
+        vec3 hq = m * vec3(p, 1.0);
+        vec2 uv = hq.z > 1e-6 ? hq.xy / hq.z : vec2(-1.0);
         if (i == 0) uvPrimero = uv;
         float pu = max(length(vec2(m[0][0], m[1][0])), 1e-6);
         float pv = max(length(vec2(m[0][1], m[1][1])), 1e-6);

@@ -83,8 +83,16 @@ object MaquetaTexto {
         }
         pintura.style = Paint.Style.FILL
         pintura.color = texto.color
-        if (texto.sombra && texto.fondo == 0) {
-            pintura.setShadowLayer(tam * 0.12f, 0f, tam * 0.05f, Color.argb(150, 0, 0, 0))
+        if (texto.sombra && texto.fondo == 0 && texto.sombraOpacidad > 0f) {
+            val ang = Math.toRadians(texto.sombraAngulo.toDouble())
+            val d = texto.sombraDistancia * tam
+            val sc = texto.sombraColor
+            val alfa = (texto.sombraOpacidad.coerceIn(0f, 1f) * 255f + 0.5f).toInt()
+            // Un radio 0 apaga la sombra en Android: lo minimo es medio pixel
+            pintura.setShadowLayer(
+                maxOf(texto.sombraDesenfoque * tam, 0.5f), (kotlin.math.cos(ang) * d).toFloat(), (kotlin.math.sin(ang) * d).toFloat(),
+                Color.argb(alfa, Color.red(sc), Color.green(sc), Color.blue(sc))
+            )
         } else {
             pintura.clearShadowLayer()
         }
@@ -97,7 +105,7 @@ object MaquetaTexto {
         val tam = texto.tamano * altoLienzo
         val pintura = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = tam
-            typeface = tipo(texto.fuente, texto.negrita)
+            typeface = tipo(texto.fuente, texto.negrita, texto.cursiva)
             letterSpacing = texto.espaciado
             color = texto.color
         }
@@ -118,14 +126,22 @@ object MaquetaTexto {
         val layout = StaticLayout.Builder.obtain(contenido, 0, contenido.length, pintura, anchoLayout)
             .setAlignment(alinea)
             .setIncludePad(true)
+            .setLineSpacing(0f, texto.interlineado.coerceIn(0.6f, 2.5f))
             .build()
-        // Margen para el contorno, la sombra y la caja de fondo
-        val margen = tam * (if (texto.fondo != 0) 0.45f else 0.2f) + texto.contorno * tam
+        // Margen para el contorno, la sombra y la caja de fondo (con los
+        // valores de siempre la sombra cabe en el 0.2 de antes)
+        val sombra = if (texto.sombra && texto.fondo == 0) (texto.sombraDistancia + texto.sombraDesenfoque) * 1.1f else 0f
+        val margen = tam * maxOf(if (texto.fondo != 0) 0.45f else 0.2f, sombra) + texto.contorno * tam
         Maqueta(layout, anchoLayout + margen * 2, layout.height + margen * 2, margen)
     }
 
-    fun tipo(f: Fuente, negrita: Boolean): Typeface {
-        val estilo = if (negrita) Typeface.BOLD else Typeface.NORMAL
+    fun tipo(f: Fuente, negrita: Boolean, cursiva: Boolean = false): Typeface {
+        val estilo = when {
+            negrita && cursiva -> Typeface.BOLD_ITALIC
+            negrita -> Typeface.BOLD
+            cursiva -> Typeface.ITALIC
+            else -> Typeface.NORMAL
+        }
         return when (f) {
             Fuente.SANS -> Typeface.create(Typeface.SANS_SERIF, estilo)
             Fuente.CONDENSADA -> Typeface.create("sans-serif-condensed", estilo)

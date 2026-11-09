@@ -20,6 +20,7 @@ import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Continuo
 import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.Encuadre
+import com.royermethod.app.editor.modelo.Perspectiva
 import com.royermethod.app.editor.modelo.EfectoVideo
 import com.royermethod.app.editor.modelo.Filtro
 import com.royermethod.app.editor.modelo.Fondo
@@ -294,6 +295,13 @@ object Persistencia {
         put("fondo", t.fondo)
         put("alineacion", t.alineacion.name)
         put("espaciado", t.espaciado.toDouble())
+        put("sombraColor", t.sombraColor)
+        put("sombraOpacidad", t.sombraOpacidad.toDouble())
+        put("sombraDesenfoque", t.sombraDesenfoque.toDouble())
+        put("sombraDistancia", t.sombraDistancia.toDouble())
+        put("sombraAngulo", t.sombraAngulo.toDouble())
+        put("cursiva", t.cursiva)
+        put("interlineado", t.interlineado.toDouble())
     }
 
     private fun encuadre(e: Encuadre) = JSONObject().apply {
@@ -304,6 +312,8 @@ object Persistencia {
         put("rotacion", e.rotacion.toDouble())
         put("opacidad", e.opacidad.toDouble())
         put("espejo", e.espejo)
+        if (e.inclinacionX != 0f) put("inclinacionX", e.inclinacionX.toDouble())
+        if (e.inclinacionY != 0f) put("inclinacionY", e.inclinacionY.toDouble())
         put("recorte", JSONArray().apply {
             put(e.recorte.izquierda.toDouble()); put(e.recorte.arriba.toDouble())
             put(e.recorte.derecha.toDouble()); put(e.recorte.abajo.toDouble())
@@ -619,7 +629,14 @@ object Persistencia {
             sombra = o.optBoolean("sombra", d.sombra),
             fondo = o.optInt("fondo", 0),
             alineacion = o.enumeracion("alineacion", Alineacion.CENTRO),
-            espaciado = o.f("espaciado", 0f)
+            espaciado = o.f("espaciado", 0f),
+            sombraColor = o.optInt("sombraColor", d.sombraColor),
+            sombraOpacidad = o.f("sombraOpacidad", d.sombraOpacidad).coerceIn(0f, 1f),
+            sombraDesenfoque = o.f("sombraDesenfoque", d.sombraDesenfoque).coerceIn(0f, 0.4f),
+            sombraDistancia = o.f("sombraDistancia", d.sombraDistancia).coerceIn(0f, 0.2f),
+            sombraAngulo = o.f("sombraAngulo", d.sombraAngulo),
+            cursiva = o.optBoolean("cursiva", false),
+            interlineado = o.f("interlineado", 1f).coerceIn(0.6f, 2.5f)
         )
     }
 
@@ -634,7 +651,9 @@ object Persistencia {
             rotacion = o.f("rotacion", 0f),
             opacidad = o.f("opacidad", 1f),
             espejo = o.optBoolean("espejo"),
-            recorte = Recorte(rc(0), rc(1), rc(2), rc(3))
+            recorte = Recorte(rc(0), rc(1), rc(2), rc(3)),
+            inclinacionX = o.f("inclinacionX", 0f).coerceIn(-Perspectiva.MAXIMA, Perspectiva.MAXIMA),
+            inclinacionY = o.f("inclinacionY", 0f).coerceIn(-Perspectiva.MAXIMA, Perspectiva.MAXIMA)
         )
     }
 

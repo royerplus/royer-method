@@ -104,14 +104,19 @@ fun BotonIcono(
     }
 }
 
-/** Una herramienta de la barra de abajo: icono y nombre debajo. */
+/**
+ * Una herramienta de la barra de abajo: icono y nombre debajo. [encendida]
+ * es para las que se prenden y se apagan (Zoom, Mover todo): fondo claro y
+ * un punto, que se vea de lejos.
+ */
 @Composable
-fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolean = true, resaltada: Boolean = false) {
+fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolean = true, resaltada: Boolean = false, encendida: Boolean = false) {
     Column(
         Modifier
             // Un nombre largo ("Compresion") ensancha la suya en vez de partirse
             .widthIn(min = 64.dp)
             .clip(esquinas(12.dp))
+            .background(if (encendida) Ink.White15 else Color.Transparent)
             .clickable(enabled = activa, onClick = onClick)
             .alpha(if (activa) 1f else 0.3f)
             .padding(horizontal = 4.dp, vertical = 8.dp),
@@ -127,6 +132,10 @@ fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolea
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
+        if (encendida) {
+            Spacer(Modifier.height(3.dp))
+            Box(Modifier.size(4.dp).clip(CircleShape).background(Ink.White))
+        }
     }
 }
 

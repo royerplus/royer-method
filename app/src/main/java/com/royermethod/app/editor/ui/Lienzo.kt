@@ -44,6 +44,7 @@ import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Escena
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
+import com.royermethod.app.editor.modelo.Perspectiva
 import com.royermethod.app.editor.modelo.ZoomVista
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
@@ -142,9 +143,15 @@ fun Lienzo(
                             val enLienzo = Offset(lx / escala, ly / escala)
                             val tocado = bloqueEn(estado, escenaActual, enLienzo.x, enLienzo.y, t)
 
-                            // El bloque que se mueve: el elegido si se toco dentro de el
-                            // (o si se usan dos dedos), si no, el que hay debajo.
+                            // El bloque que se mueve: el elegido, toque donde toque (solo un
+                            // toque sin arrastrar elige otro); sin nada elegido, el de debajo.
                             val elegido = (estado.seleccion as? Seleccion.Bloque)?.id
+                            // Una esquina del elegido: arrastrarla cambia su tamano
+                            val esquina = elegido?.takeIf { visible(estado, it, t) }?.let { id ->
+                                esquinasEnPantalla(estado, escenaActual, id, t, escala, vw, vh)
+                            }?.takeIf { esq -> esq.any { (it - abajo.position).getDistance() < 30.dp.toPx() } }
+                            val centroEsquina = esquina?.let { e -> Offset(e.sumOf { it.x.toDouble() }.toFloat() / 4f, e.sumOf { it.y.toDouble() }.toFloat() / 4f) }
+                            val dist0 = centroEsquina?.let { (abajo.position - it).getDistance().coerceAtLeast(1f) } ?: 1f
                             var objetivo: Long? = null
                             var movido = false
                             var e0: Encuadre? = null
@@ -166,7 +173,7 @@ fun Lienzo(
                                     if (!movido && (recorrido > umbral || dedos >= 2)) {
                                         movido = true
                                         objetivo = when {
-                                            elegido != null && (dedos >= 2 || tocado == elegido) && visible(estado, elegido, t) -> elegido
+                                            elegido != null && visible(estado, elegido, t) -> elegido
                                             tocado != null -> tocado
                                             else -> null
                                         }
@@ -182,7 +189,18 @@ fun Lienzo(
                                     }
                                     val id = objetivo
                                     val inicial = e0
-                                    if (movido && id != null && inicial != null) {
+                                    if (movido && id != null && inicial != null && centroEsquina != null && dedos == 1) {
+                                        // Esquina: el tamano sigue a la distancia del dedo al centro
+                                        val dedo = ev.changes.first { it.pressed }.position
+                                        val s = (inicial.escala * (dedo - centroEsquina).getDistance() / dist0).coerceIn(0.05f, 20f)
+                                        val g = grupo
+                                        if (g != null) estado.ajustar {
+                                            Edicion.desplazarClaves(base, id, g, 0f, 0f, s / inicial.escala, 0f)
+                                        } else estado.ajustar { q ->
+                                            Edicion.ajustarEncuadre(q, id, t, toleranciaClaves()) { it.copy(escala = s) }
+                                        }
+                                        ev.changes.forEach { it.consume() }
+                                    } else if (movido && id != null && inicial != null) {
                                         pan += ev.calculatePan()
                                         zoom *= ev.calculateZoom()
                                         giro += ev.calculateRotation()
@@ -254,9 +272,7 @@ fun Lienzo(
                 val ini = Edicion.inicio(pr, id) ?: return@Canvas
                 val local = estado.tiempo - ini
                 if (local < 0 || local >= c.duracionUs) return@Canvas
-                val m = escena.marco(c, escena.encuadreEn(c, local))
-                val cen = ap(m.cx * escala, m.cy * escala)
-                marcoElegido(cen, m.ancho * escala * z.escala, m.alto * escala * z.escala, m.rotacion)
+                marcoElegido(esquinasEnPantalla(estado, escena, id, estado.tiempo, escala, size.width, size.height) ?: return@Canvas)
             }
             val z = estado.zoomVista
             if (z.puesto || estado.modoZoom) {
@@ -277,27 +293,54 @@ fun Lienzo(
 }
 
 /**
- * El marco del bloque elegido: una linea fina y escuadras cortas en las
- * esquinas, que crecen con el bloque pero nunca lo tapan (en uno chico son
- * apenas una marca). Lleva una sombra fina para verse sobre fondo blanco.
+ * Las 4 esquinas del bloque [id] en la pantalla (arriba izq, arriba der,
+ * abajo der, abajo izq), con su giro, su perspectiva y el zoom de la vista.
+ * [vw] x [vh] es la vista en pixeles y [escala] de lienzo a vista.
  */
-private fun DrawScope.marcoElegido(c: Offset, w: Float, h: Float, giro: Float) {
+private fun esquinasEnPantalla(estado: EstadoEditor, escena: Escena, id: Long, t: Long, escala: Float, vw: Float, vh: Float): List<Offset>? {
+    val p = estado.proyecto
+    val c = Edicion.clip(p, id) ?: return null
+    val ini = Edicion.inicio(p, id) ?: return null
+    val local = t - ini
+    if (local < 0 || local >= c.duracionUs) return null
+    val en = escena.encuadreEn(c, local)
+    val m = escena.marco(c, en)
+    val r = Math.toRadians(m.rotacion.toDouble())
+    val co = kotlin.math.cos(r).toFloat()
+    val si = kotlin.math.sin(r).toFloat()
+    val z = estado.zoomVista
+    return Perspectiva.esquinas(en.inclinacionX, en.inclinacionY, m.ancho, m.alto).map { (dx, dy) ->
+        val px = (m.cx + dx * co - dy * si) * escala
+        val py = (m.cy + dx * si + dy * co) * escala
+        val (sx, sy) = z.aPantalla(px, py, vw, vh)
+        Offset(sx, sy)
+    }
+}
+
+/**
+ * El marco del bloque elegido: una linea fina y escuadras en las esquinas,
+ * que crecen con el bloque pero nunca lo tapan (en uno chico son apenas
+ * una marca); se cogen para cambiar el tamano. Lleva una sombra fina para
+ * verse sobre fondo blanco.
+ */
+private fun DrawScope.marcoElegido(esq: List<Offset>) {
     val linea = 1.dp.toPx()
     val trazo = 2.5.dp.toPx()
     val sombra = Color.Black.copy(alpha = 0.45f)
-    val brazo = minOf(14.dp.toPx(), minOf(w, h) * 0.3f).coerceAtLeast(3.dp.toPx())
-    rotate(giro, c) {
-        val a = Offset(c.x - w / 2, c.y - h / 2)
-        drawRect(sombra, a, Size(w, h), style = Stroke(linea + 1.5.dp.toPx()))
-        drawRect(Color.White.copy(alpha = 0.9f), a, Size(w, h), style = Stroke(linea))
-        for (sx in listOf(-1f, 1f)) for (sy in listOf(-1f, 1f)) {
-            val e = Offset(c.x + sx * w / 2, c.y + sy * h / 2)
-            val hx = Offset(e.x - sx * brazo, e.y)
-            val hy = Offset(e.x, e.y - sy * brazo)
-            for ((color, g) in listOf(sombra to trazo + 1.5.dp.toPx(), Color.White to trazo)) {
-                drawLine(color, e, hx, g, cap = StrokeCap.Round)
-                drawLine(color, e, hy, g, cap = StrokeCap.Round)
-            }
+    val lado = minOf((esq[1] - esq[0]).getDistance(), (esq[3] - esq[0]).getDistance())
+    val brazo = minOf(14.dp.toPx(), lado * 0.3f).coerceAtLeast(3.dp.toPx())
+    for ((color, g) in listOf(sombra to linea + 1.5.dp.toPx(), Color.White.copy(alpha = 0.9f) to linea)) {
+        for (i in 0 until 4) drawLine(color, esq[i], esq[(i + 1) % 4], g)
+    }
+    for (i in 0 until 4) {
+        val e = esq[i]
+        val brazos = listOf(esq[(i + 1) % 4], esq[(i + 3) % 4]).map { o ->
+            val d = o - e
+            val l = d.getDistance().coerceAtLeast(1e-3f)
+            e + d * (brazo / l)
+        }
+        for ((color, g) in listOf(sombra to trazo + 1.5.dp.toPx(), Color.White to trazo)) {
+            for (b in brazos) drawLine(color, e, b, g, cap = StrokeCap.Round)
         }
     }
 }

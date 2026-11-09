@@ -365,56 +365,6 @@ val COLORES_TEXTO = listOf(
 /** Lo que lleva un texto recien puesto, hasta que se escribe encima. */
 internal const val TEXTO_NUEVO = "Tu texto"
 
-@Composable
-fun PanelTexto(estado: EstadoEditor) {
-    val c = estado.clipElegido ?: return
-    val t = c.texto ?: return
-    fun cambiar(arrastre: Boolean = false, f: (Texto) -> Texto) = estado.cambiarClip(arrastre) { it.copy(texto = f(it.texto!!)) }
-    // Un texto recien puesto llega con el cursor dentro y todo elegido:
-    // se escribe encima sin tener que borrar nada.
-    val nuevo = t.contenido == TEXTO_NUEVO
-    val foco = remember { FocusRequester() }
-    var valor by remember(c.id) {
-        mutableStateOf(TextFieldValue(t.contenido, if (nuevo) TextRange(0, t.contenido.length) else TextRange(t.contenido.length)))
-    }
-    // Si cambio por fuera (deshacer), se sigue al proyecto
-    if (valor.text != t.contenido) valor = TextFieldValue(t.contenido, TextRange(t.contenido.length))
-    LaunchedEffect(c.id) { if (nuevo) runCatching { foco.requestFocus() } }
-    BasicTextField(
-        value = valor,
-        onValueChange = { v ->
-            valor = v
-            if (v.text != t.contenido) cambiar(true) { it.copy(contenido = v.text) }
-        },
-        textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink.White),
-        cursorBrush = SolidColor(Ink.White),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .border(1.dp, Ink.White30, esquinas(12.dp))
-            .padding(12.dp)
-            .focusRequester(foco)
-            .onFocusChanged { if (it.isFocused) estado.empezarGesto() else estado.terminarGesto() }
-    )
-    Hueco(8)
-    Opciones(Fuente.values().toList(), t.fuente, { it.nombre }, { f -> cambiar { it.copy(fuente = f) } })
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(vertical = 4.dp)) {
-        Chip("Negrita", t.negrita, { cambiar { it.copy(negrita = !it.negrita) } })
-        Chip("Sombra", t.sombra, { cambiar { it.copy(sombra = !it.sombra) } })
-        Alineacion.values().forEach { a ->
-            Chip(when (a) { Alineacion.IZQUIERDA -> "Izq"; Alineacion.CENTRO -> "Centro"; Alineacion.DERECHA -> "Der" }, t.alineacion == a, { cambiar { it.copy(alineacion = a) } })
-        }
-    }
-    Deslizador("Tamano", t.tamano, 0.02f, 0.2f, { v -> cambiar(true) { it.copy(tamano = v) } }, neutro = 0.055f, texto = { "${(it * 1000).toInt()}" })
-    Etiqueta("Color")
-    Muestras(COLORES_TEXTO, t.color, { v -> cambiar { it.copy(color = v) } })
-    Deslizador("Contorno", t.contorno, 0f, 0.3f, { v -> cambiar(true) { it.copy(contorno = v) } }, texto = { "${(it * 100).toInt()}" })
-    if (t.contorno > 0f) Muestras(COLORES_TEXTO, t.colorContorno, { v -> cambiar { it.copy(colorContorno = v) } })
-    Etiqueta("Caja de fondo")
-    Muestras(COLORES_TEXTO.map { (it and 0x00FFFFFF) or (0xB0 shl 24) }, t.fondo, { v -> cambiar { it.copy(fondo = v) } }, conNinguno = true)
-    Deslizador("Espacio entre letras", t.espaciado, -0.1f, 0.5f, { v -> cambiar(true) { it.copy(espaciado = v) } }, neutro = 0f, texto = { "%+d".format((it * 100).toInt()) })
-}
-
 // ----------------------------------------------------------------------
 // Formato
 // ----------------------------------------------------------------------
@@ -479,121 +429,56 @@ fun DrawScope.dibujoCurva(f: (Float) -> Float, color: Color) {
 }
 
 /**
- * Fotogramas clave del bloque elegido: recorrerlos uno a uno, el momento
- * exacto de cada uno (0,001 s o 0,005 s sin el ajuste a fotogramas), la
- * curva hasta el siguiente y, con muchas claves, simplificarlas.
- *
- * La clave bajo el cabezal sale de un estado derivado: el panel no se
- * recompone a cada cuadro mientras se reproduce, solo al pasar de una
- * clave a otra.
+ * Curvas: como se mueve el bloque entre un fotograma clave y el siguiente.
+ * Se abre directo en las curvas del tramo que hay bajo el cabezal (el
+ * tramo sale de un estado derivado: al reproducir solo se recompone al
+ * pasar de un tramo a otro).
  */
 @Composable
 fun PanelCurva(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
     val ini = estado.inicioElegido ?: return
-    // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s
     val tolerancia = toleranciaClaves()
-    val clave by remember(c, tolerancia) {
-        derivedStateOf { estado.localElegido?.let { l -> Edicion.claveCercana(c.claves, l, tolerancia) } }
-    }
-    val dentro by remember(c) { derivedStateOf { estado.localElegido != null } }
     val tiempos = remember(c.claves) { c.claves.map { it.tiempoUs }.distinct().sorted() }
-    NavegadorClaves(tiempos, tolerancia, { estado.localElegido }) { t -> estado.pausarEn(ini + t) }
-    val k = clave
-    if (k == null) {
+    if (tiempos.size < 2) {
         Hueco(4)
         Text(
-            "Pon el cabezal sobre un fotograma clave (los rombos del bloque) para cambiar como se mueve hasta el siguiente.",
+            "Pon al menos dos fotogramas clave (el rombo de arriba, en dos momentos distintos) y aqui eliges como se mueve de uno a otro.",
             style = MaterialTheme.typography.bodyMedium, color = Ink.White70
-        )
-        Hueco(8)
-        InstanteCurva(estado, ini, c.duracionUs)
-        Hueco(4)
-        BotonLleno("Poner uno aqui", {
-            val t = estado.tiempo
-            estado.hacer { Edicion.ponerClave(it, c.id, t, c.encuadreEn(t - ini), tolerancia) }
-        }, activo = dentro)
-    } else {
-        ClaveElegida(estado, c, ini, k, tolerancia)
-    }
-    if (c.claves.isNotEmpty()) VariasClaves(estado, c, ini, k, tolerancia)
-    // Con muchas claves (una replica trae una por fotograma), simplificarlas
-    if (c.claves.size >= 3 || c.clavesOriginales != null) {
-        Hueco(14)
-        SimplificadorClaves(estado, DuenoClaves.Bloque(c.id))
-    }
-}
-
-/**
- * Donde poner la clave nueva, escrito o con -/+: mueve el cabezal (en pausa)
- * a ese instante del bloque, pegado al fotograma de la linea si el ajuste esta
- * puesto (el interruptor, a la vista: asi se sabe antes de poner la primera).
- * Lee el cabezal, por eso va aparte: al reproducir solo se recompone esto.
- */
-@Composable
-private fun InstanteCurva(estado: EstadoEditor, ini: Long, duracionUs: Long) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Etiqueta("Instante", Modifier.weight(1f))
-        InterruptorFotogramas()
-    }
-    val local = (estado.tiempo - ini).coerceIn(0L, duracionUs.coerceAtLeast(0L))
-    CampoTiempo("Cabezal", local, 0L, duracionUs, { us, _ -> estado.pausarEn(ini + us) }, deslizador = false, origenUs = ini)
-}
-
-/** Lo de la clave que hay bajo el cabezal: su momento, la curva y quitarla. */
-@Composable
-private fun ClaveElegida(estado: EstadoEditor, c: com.royermethod.app.editor.modelo.Clip, ini: Long, k: com.royermethod.app.editor.modelo.Clave, tolerancia: Long) {
-    // Todo va a esta clave por su tiempo exacto, no por donde este el cabezal
-    val tk = ini + k.tiempoUs
-    fun poner(f: (com.royermethod.app.editor.modelo.Clave) -> com.royermethod.app.editor.modelo.Clave, arrastre: Boolean = false) {
-        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.cambiarClave(it, c.id, tk, tolerancia, f) }
-        if (arrastre) estado.ajustar(g) else estado.hacer(g)
-    }
-
-    Etiqueta("Momento de esta clave")
-    MomentoClave(estado, c.id, ini, k.tiempoUs, ClavesLinea.limites(c.claves, k.tiempoUs, c.duracionUs, tolerancia), tolerancia)
-    Hueco(4)
-    InterruptorFotogramas()
-
-    val ultima = c.claves.maxOf { it.tiempoUs } == k.tiempoUs
-    Hueco(6)
-    Nota(if (ultima) "Es el ultimo fotograma clave: la curva se usa si pones otro despues." else "Como se llega desde aqui al siguiente fotograma clave", color = Ink.White50)
-    Hueco(4)
-    SelectorCurva(k.curva, k.bezier, k.velocidad) { cu, b, v, arrastre -> poner({ it.copy(curva = cu, bezier = b, velocidad = v) }, arrastre) }
-    Hueco(10)
-    AplicarCurva(estado, c, k)
-    Hueco(10)
-    BotonBorde("Quitar este fotograma clave", { estado.hacer { Edicion.quitarClave(it, c.id, tk, tolerancia) } }, glifo = Glifos.papelera)
-}
-
-/**
- * "Momento de esta clave" del bloque: su tiempo exacto con [CampoTiempo]
- * (pegado a los fotogramas de la linea si el ajuste esta puesto), entre sus
- * vecinas ([limites]). El cabezal la acompana, asi el panel sigue en ella.
- * Escribir o -/+ es un paso de deshacer; un arrastre del deslizador, otro.
- */
-@Composable
-private fun MomentoClave(estado: EstadoEditor, id: Long, ini: Long, tUs: Long, limites: LongRange?, tolerancia: Long) {
-    if (limites == null || tUs !in limites) {
-        Text(TiempoPreciso.texto(tUs), style = MaterialTheme.typography.bodyMedium, color = Ink.White, modifier = Modifier.padding(vertical = 6.dp))
-        Nota(
-            if (AjustesEditor.ajustarFotogramas) "Hay otra clave a menos de medio fotograma: sin Ajustar a fotogramas se puede mover"
-            else "No hay sitio para moverla entre las de al lado",
-            color = Ink.White50
         )
         return
     }
-    // Donde esta la clave ahora: un arrastre puede mandar varios cambios
-    // antes de recomponer, y cada uno parte del anterior
-    val donde = remember(id) { longArrayOf(tUs) }
-    SideEffect { donde[0] = tUs }
-    CampoTiempo("Tiempo en el bloque", tUs, limites.first, limites.last, { us, arrastre ->
-        val desde = donde[0]
-        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.moverClave(it, id, ini + desde, ini + us, tolerancia) }
+    // El tramo que empieza en la ultima clave antes del cabezal (nunca la ultima de todas)
+    val tramo by remember(tiempos) {
+        derivedStateOf {
+            val l = estado.localElegido ?: 0L
+            (tiempos.indexOfLast { it <= l + tolerancia }).coerceIn(0, tiempos.size - 2)
+        }
+    }
+    val i = tramo
+    val tk = tiempos[i]
+    val k = c.claves.lastOrNull { it.tiempoUs == tk } ?: return
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        BotonIcono(Glifos.atras, { estado.pausarEn(ini + tiempos[i - 1]) }, activo = i > 0)
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Tramo ${i + 1} de ${tiempos.size - 1}", style = MaterialTheme.typography.bodyMedium, color = Ink.White)
+            Text("%.2f s a %.2f s".format(tk / 1e6, tiempos[i + 1] / 1e6), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp), color = Ink.White50)
+        }
+        BotonIcono(Glifos.siguiente, { estado.pausarEn(ini + tiempos[i + 1]) }, activo = i < tiempos.size - 2)
+    }
+    Hueco(6)
+    SelectorCurva(k.curva, k.bezier, k.velocidad) { cu, b, v, arrastre ->
+        val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto =
+            { Edicion.cambiarClave(it, c.id, ini + tk, tolerancia) { x -> x.copy(curva = cu, bezier = b, velocidad = v) } }
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
-        if (Edicion.clip(estado.proyecto, id)?.claves?.any { it.tiempoUs == us } == true) donde[0] = us
-        estado.pausarEn(ini + donde[0])
-    }, origenUs = ini)
+    }
+    if (tiempos.size >= 3) {
+        Hueco(10)
+        BotonBorde("Usar esta curva en todos los tramos", {
+            estado.hacer { Edicion.curvaEnClaves(it, c.id, null, k.curva, k.bezier, k.velocidad) }
+            estado.avisar("Curva puesta en los ${tiempos.size - 1} tramos")
+        })
+    }
 }
 
 /**
@@ -981,86 +866,6 @@ private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boole
             elegido = -1
         }, glifo = Glifos.reiniciar)
     }
-}
-
-/** Llevar la curva de esta clave a todas, o a las elegidas. */
-@Composable
-private fun AplicarCurva(estado: EstadoEditor, c: Clip, k: com.royermethod.app.editor.modelo.Clave) {
-    if (c.claves.size < 3) return
-    val elegidas = estado.elegidasDe(c)
-    BotonBorde("Usar esta curva en todas las claves", {
-        estado.hacer { Edicion.curvaEnClaves(it, c.id, null, k.curva, k.bezier, k.velocidad) }
-        estado.avisar("Curva puesta en las ${c.claves.size} claves")
-    })
-    if (elegidas.size >= 2) {
-        Hueco(6)
-        BotonBorde("Usarla en las ${elegidas.size} elegidas", {
-            estado.hacer { Edicion.curvaEnClaves(it, c.id, elegidas, k.curva, k.bezier, k.velocidad) }
-            estado.avisar("Curva puesta en las ${elegidas.size} elegidas")
-        })
-    }
-}
-
-/**
- * Elegir varias claves para moverlas juntas: en el tiempo (botones o
- * arrastrando una elegida en la linea de tiempo) y en la imagen (con
- * [EstadoEditor.moverTodo], la herramienta Mover todo de la barra).
- */
-@Composable
-private fun VariasClaves(estado: EstadoEditor, c: Clip, ini: Long, k: com.royermethod.app.editor.modelo.Clave?, tolerancia: Long) {
-    val elegidas = estado.elegidasDe(c)
-    val todas = c.claves.map { it.tiempoUs }.toSet()
-    Hueco(14)
-    Etiqueta("Varias claves a la vez")
-    Nota(
-        if (elegidas.isEmpty()) "En la linea de tiempo, manten pulsado un rombo para elegirlo. Arrastrar uno elegido mueve todos los elegidos."
-        else "${elegidas.size} de ${todas.size} elegidas. Arrastra una en la linea de tiempo o muevelas aqui.",
-        color = Ink.White50
-    )
-    Hueco(6)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (k != null) Chip(if (k.tiempoUs in elegidas) "Elegida" else "Elegir esta", k.tiempoUs in elegidas, { estado.alternarClave(c.id, k.tiempoUs) })
-        Chip("Todas", elegidas.size == todas.size, { estado.clavesElegidas = ClavesElegidas(c.id, todas) })
-        if (elegidas.isNotEmpty()) Chip("Ninguna", false, { estado.clavesElegidas = ClavesElegidas.NINGUNA })
-    }
-    if (elegidas.isNotEmpty()) {
-        Hueco(6)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            val paso = if (AjustesEditor.ajustarFotogramas) "1 fotograma" else "0,001 s"
-            BotonBorde("- $paso", { moverElegidas(estado, c, ini, elegidas, -1, tolerancia) })
-            BotonBorde("+ $paso", { moverElegidas(estado, c, ini, elegidas, 1, tolerancia) })
-        }
-    }
-    Hueco(8)
-    Interruptor(
-        if (elegidas.isEmpty()) "Mover todo el bloque en la imagen" else "Mover las elegidas en la imagen",
-        estado.moverTodo, { estado.moverTodo = it }
-    )
-    Nota("Tambien en la barra de abajo (Mover todo). Encendido, arrastrar no cambia ni crea claves.", color = Ink.White50)
-}
-
-/**
- * Corre las claves [elegidas] un fotograma de la linea (o 1 ms sin el iman)
- * hacia [sentido]. El paso se mide en la primera elegida: con el iman cae en
- * el fotograma de al lado. El cabezal, si estaba en una elegida, la sigue.
- */
-private fun moverElegidas(estado: EstadoEditor, c: Clip, ini: Long, elegidas: Set<Long>, sentido: Int, tolerancia: Long) {
-    val margen = Edicion.margenGrupo(c.claves, elegidas, c.duracionUs, tolerancia)
-    val t0 = elegidas.min()
-    val delta = if (AjustesEditor.ajustarFotogramas) {
-        val en = ini + t0
-        val f = if (sentido > 0) com.royermethod.app.editor.modelo.Linea.fotogramaEn(en) + 1 else com.royermethod.app.editor.modelo.Linea.fotogramaDe(en) - 1
-        com.royermethod.app.editor.modelo.Linea.tiempoDe(f.coerceAtLeast(0)) - en
-    } else sentido * 1_000L
-    val d = if (margen == null) 0L else delta.coerceIn(margen.first, margen.last)
-    if (d == 0L || (sentido > 0) != (d > 0)) {
-        estado.avisar("No hay sitio: chocarian con otra clave o con el borde del bloque")
-        return
-    }
-    val enUna = estado.localElegido?.let { l -> Edicion.claveCercana(c.claves, l, tolerancia)?.tiempoUs?.takeIf { it in elegidas } }
-    estado.hacer { Edicion.moverClaves(it, c.id, elegidas, d, tolerancia) }
-    estado.clavesElegidas = ClavesElegidas(c.id, elegidas.mapTo(HashSet()) { it + d })
-    if (enUna != null) estado.pausarEn(ini + enUna + d)
 }
 
 /** Para los paneles que no tienen nada que ensenar con lo elegido. */
