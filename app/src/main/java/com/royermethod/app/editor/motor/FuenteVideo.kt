@@ -224,6 +224,43 @@ class FuenteVideo(
         return pintar(candidato, ptsCandidato)
     }
 
+    /**
+     * Solo la vista previa, en otro hilo y antes de que haga falta: deja el
+     * decodificador justo antes de [objetivo] sin pintar nada (salta al
+     * fotograma clave y tira lo de antes). Mientras tanto nadie mas la usa.
+     * Despues, [irA] en [objetivo] solo lee un par de cuadros. false si se
+     * abandono ([seguir]) o no se pudo: entonces no sirve y hay que cerrarla.
+     */
+    fun preparar(objetivo: Long, seguir: () -> Boolean): Boolean {
+        saltar(objetivo)
+        val limite = System.nanoTime() + 6_000_000_000L
+        while (seguir()) {
+            alimentar()
+            val r = decodificador.dequeueOutputBuffer(info, 4000)
+            if (r < 0) {
+                if (System.nanoTime() > limite) return false
+                continue
+            }
+            val fin = info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM != 0
+            if (info.size <= 0) {
+                decodificador.releaseOutputBuffer(r, false)
+                if (fin) { salidaAgotada = true; return false }
+                continue
+            }
+            if (fin) salidaAgotada = true
+            // Se guarda el primero que puede ser el del objetivo (o el de justo
+            // antes, si el video va a menos de 10 fps no importa: es la vista previa)
+            if (info.presentationTimeUs >= objetivo - MARGEN_PREPARAR || salidaAgotada) {
+                pendiente = r
+                ptsPendiente = info.presentationTimeUs
+                ultimaPeticion = objetivo - MARGEN_PREPARAR
+                return true
+            }
+            decodificador.releaseOutputBuffer(r, false)
+        }
+        return false
+    }
+
     /** Ya no quedan fotogramas por delante. */
     val agotada: Boolean get() = salidaAgotada && pendiente < 0
 
@@ -456,6 +493,8 @@ class FuenteVideo(
          * mismo para cualquiera que lo mire.
          */
         const val TOLERANCIA = 1_000L
+        /** Con [preparar], lo que se guarda por delante del objetivo. */
+        const val MARGEN_PREPARAR = 100_000L
         /** Diagnostico de la vista previa (adb, RoyerVista): anotar lo que tarda mucho. */
         @Volatile
         @JvmStatic

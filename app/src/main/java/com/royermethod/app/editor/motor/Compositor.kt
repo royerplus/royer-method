@@ -68,6 +68,22 @@ class Compositor(
      */
     private val cerrando = ArrayList<FuenteVideo>()
     private var cerrador: ExecutorService? = null
+    /**
+     * Solo vista previa: videos que se dejan a punto en otro hilo para un
+     * bloque que empieza pronto (ver [anticiparVideos]). Estan en [videos],
+     * pero nadie los toca hasta que se piden en su instante o se cierran.
+     */
+    private val anticipados = HashMap<FuenteVideo, Anticipo>()
+    private var anticipador: ExecutorService? = null
+
+    private class Anticipo(val objetivo: Long, val hasta: Long) {
+        @Volatile
+        var abandonar = false
+        var futuro: java.util.concurrent.Future<Boolean>? = null
+    }
+
+    /** Un bloque de video que empieza pronto: su archivo y el instante del archivo en que empieza. */
+    data class VideoProximo(val uri: String, val giro: Int, val tiempoArchivoUs: Long, val fotogramasHasta: Long)
     @Volatile
     private var soltado = false
     /** Hasta 1.5 veces el lienzo: deja hacer zoom sin que se pixele. */
@@ -169,6 +185,67 @@ class Compositor(
                 if (bmp != null && (soltado || o.uri !in pedidas)) bmp.recycle()
                 else if (bmp != null) precargadas[o.uri] = bmp
             }
+        }
+    }
+
+    /**
+     * Solo vista previa. Un bloque que empieza en otro punto de un archivo que
+     * ya se esta viendo obligaba, en el cuadro del corte, a saltar al
+     * fotograma clave anterior y decodificar desde ahi en el hilo de dibujo:
+     * con archivos de claves muy separadas, hasta 2 s con la imagen parada.
+     * Ahora se abre otro decodificador y se deja a punto en otro hilo antes de
+     * llegar. Lo que no llegue a tiempo se espera en el corte, que es menos
+     * de lo que costaria entonces.
+     */
+    fun anticiparVideos(proximos: List<VideoProximo>) {
+        if (soltado) return
+        for (p in proximos) {
+            if (videos.size >= MAX_VIDEOS) return
+            if (fallos.containsKey(p.uri)) continue
+            // Uno libre que ya llega seguido, o uno que ya se esta preparando para ahi
+            if (videos.any { v ->
+                    v.uri.toString() == p.uri && v.usadaEn < numero - 1 && v !in anticipados &&
+                        v.ultimaPeticion in (p.tiempoArchivoUs - CERCA_US)..p.tiempoArchivoUs
+                }) continue
+            if (anticipados.any { (v, a) -> v.uri.toString() == p.uri && kotlin.math.abs(a.objetivo - p.tiempoArchivoUs) < CERCA_US }) continue
+            val v = runCatching { FuenteVideo(context, Uri.parse(p.uri), p.giro) }.getOrNull() ?: continue
+            val a = Anticipo(p.tiempoArchivoUs, numero + p.fotogramasHasta + RETENER)
+            videos.add(v)
+            anticipados[v] = a
+            val hilo = anticipador ?: Executors.newFixedThreadPool(2) { r ->
+                Thread(r, "anticipar-video").apply { priority = Thread.NORM_PRIORITY - 1 }
+            }.also { anticipador = it }
+            a.futuro = hilo.submit<Boolean> { runCatching { v.preparar(a.objetivo) { !a.abandonar } }.getOrDefault(false) }
+            // Abrir un decodificador cuesta unos ms en este hilo: uno por cuadro
+            return
+        }
+    }
+
+    /** El anticipado para [uri] en [tiempo], ya listo (se espera si le falta). null si no hay. */
+    private fun anticipado(uri: String, tiempo: Long): FuenteVideo? {
+        val (v, a) = anticipados.entries.firstOrNull { (v, a) ->
+            v.uri.toString() == uri && tiempo >= a.objetivo - FuenteVideo.MARGEN_PREPARAR && tiempo - a.objetivo < CERCA_US
+        }?.toPair() ?: return null
+        val listo = runCatching { a.futuro?.get(6, TimeUnit.SECONDS) == true }.getOrDefault(false)
+        if (listo) {
+            anticipados.remove(v)
+            return v
+        }
+        // Fallo o sigue sin acabar: se cierra cuando acabe (ver soltarAnticipados)
+        a.abandonar = true
+        return null
+    }
+
+    /** Cierra los anticipados que ya no se van a usar, en cuanto su hilo los suelta. */
+    private fun soltarAnticipados() {
+        if (anticipados.isEmpty()) return
+        val fuera = anticipados.filter { (_, a) ->
+            if (numero > a.hasta) a.abandonar = true
+            a.abandonar && a.futuro?.isDone != false
+        }
+        for (v in fuera.keys) {
+            anticipados.remove(v)
+            cerrar(v)
         }
     }
 
@@ -285,10 +362,11 @@ class Compositor(
     private fun video(uri: String, giro: Int, tiempo: Long): FuenteVideo? {
         // Ya pedida en este mismo cuadro para el mismo instante (el fondo y el
         // clip de delante, por ejemplo): la misma.
-        videos.firstOrNull { it.usadaEn == numero && it.uri.toString() == uri && it.ultimaPeticion == tiempo }
+        videos.firstOrNull { it.usadaEn == numero && it.uri.toString() == uri && it.ultimaPeticion == tiempo && it !in anticipados }
             ?.let { return it }
+        if (anticipados.isNotEmpty()) anticipado(uri, tiempo)?.let { return it }
 
-        val libres = videos.filter { it.uri.toString() == uri && it.usadaEn != numero }
+        val libres = videos.filter { it.uri.toString() == uri && it.usadaEn != numero && it !in anticipados }
         val cerca = libres
             .filter { it.ultimaPeticion in 0..tiempo && tiempo - it.ultimaPeticion < 1_500_000 }
             .minByOrNull { tiempo - it.ultimaPeticion }
@@ -298,7 +376,7 @@ class Compositor(
         // Los moviles tienen pocos decodificadores por hardware. Si ya hay
         // muchos abiertos, se cierra el que lleve mas tiempo sin usarse.
         if (videos.size >= MAX_VIDEOS) {
-            videos.filter { it.usadaEn != numero }.minByOrNull { it.usadaEn }?.let {
+            videos.filter { it.usadaEn != numero && it !in anticipados }.minByOrNull { it.usadaEn }?.let {
                 cerrar(it)
             }
         }
@@ -409,7 +487,8 @@ class Compositor(
     /** Cierra lo que ya no se usa, para no acumular decodificadores abiertos. */
     private fun limpiar() {
         terminarCierres()
-        val viejos = videos.filter { numero - it.usadaEn > RETENER }
+        soltarAnticipados()
+        val viejos = videos.filter { numero - it.usadaEn > RETENER && it !in anticipados }
         for (v in viejos) cerrar(v)
         val imgViejas = imagenes.filterValues { numero - it.usadaEn > RETENER }
         for ((k, v) in imgViejas) {
@@ -563,6 +642,11 @@ class Compositor(
 
     fun soltar() {
         soltado = true
+        // Los que se estan preparando: que su hilo los deje antes de soltarlos
+        anticipados.values.forEach { it.abandonar = true }
+        anticipador?.let { it.shutdown(); runCatching { it.awaitTermination(2, TimeUnit.SECONDS) } }
+        anticipador = null
+        anticipados.clear()
         precargador?.shutdownNow()
         precargador = null
         pedidas.clear()
@@ -598,6 +682,9 @@ class Compositor(
 
         /** Cuadros que se mantiene abierta una fuente sin usarse. */
         const val RETENER = 45L
+
+        /** Un decodificador que va hasta 1.5 s por detras llega antes leyendo que saltando. */
+        const val CERCA_US = 1_500_000L
 
         val IDENTIDAD = floatArrayOf(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)
     }

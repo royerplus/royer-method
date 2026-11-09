@@ -73,6 +73,12 @@ internal class RelojAudio(private val hz: Int, rafagaInicialFrames: Long = 2048L
             congelado = true
             cabezalAlCongelar = cabezal
             marca = null
+            // En pausa la pista para con lo consumido ya sonando (lo que iba de
+            // camino al altavoz termina de sonar) y al seguir empieza ahi: se
+            // queda en el cabezal. La ultima lectura podia ser de mucho antes si
+            // el hilo de dibujo estuvo parado en un fotograma lento, y al seguir
+            // la imagen saltaba ese trozo de golpe.
+            if (!reproduciendo && huboAvance) ultimaPosicion = maxOf(ultimaPosicion, minOf(cabezal, escritos.coerceAtLeast(0L)))
             return ultimaPosicion
         }
         if (congelado) {

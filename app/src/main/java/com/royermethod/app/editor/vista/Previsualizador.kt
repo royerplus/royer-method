@@ -104,6 +104,18 @@ class Previsualizador(context: Context) {
     private var buclePendiente = false
     private var busquedaDelBucle = 0
     private val ordenes = AtomicInteger(0)
+    /**
+     * El sonido se callo porque un fotograma tardaba (ver [vigia]): sigue
+     * cuando la imagen llegue a donde se callo.
+     */
+    @Volatile
+    private var esperandoImagen = false
+    @Volatile
+    private var esperaDesdeNs = 0L
+    /** Bloques de video que empiezan pronto y que conviene tener a punto (ver Compositor.anticiparVideos). */
+    private val videosProximos = ArrayList<Pair<Long, Compositor.VideoProximo>>()
+    private var videosMiradosHasta = Long.MIN_VALUE
+    private var videosMiradosDe: Escena? = null
     private val controlTiempo = Any()
     /** Lo que ensena la interfaz en cada refresco mientras suena. Con [controlTiempo]. */
     private val instante = InstanteSonando()
@@ -252,6 +264,8 @@ class Previsualizador(context: Context) {
         h.post {
             if (cerrado || busqueda != busquedas) return@post
             detenerBucle()
+            esperandoImagen = false
+            videosMiradosDe = null
             val orden = ordenes.get()
             if (reproduciendo) {
                 reempezarSesion("busqueda", pedidoNs)
@@ -283,6 +297,7 @@ class Previsualizador(context: Context) {
             if (cerrado || ordenes.get() != orden) return@post
             detenerBucle()
             h.removeCallbacks(soltarPausado)
+            esperandoImagen = false
             empezarSesion("play", pedidoNs)
             val b = busquedas
             val t0 = tiempo
@@ -345,6 +360,7 @@ class Previsualizador(context: Context) {
         h.post {
             if (cerrado || ordenes.get() != orden) return@post
             detenerBucle()
+            esperandoImagen = false
             val s = sonido
             s?.pausar()
             // Se queda donde iba, salvo que justo se haya llevado el cabezal a otro sitio
@@ -523,12 +539,77 @@ class Previsualizador(context: Context) {
                 return
             }
             val n = Linea.fotogramaEn(t)
+            val esperaba = esperandoImagen
             if (n != ultimoDibujado) {
-                if (dibujar(Linea.tiempoDe(n), n, rapido = true)) avisarTiempo(t, b, orden)
+                if (!esperaba) principal.postDelayed(vigia, ESPERA_IMAGEN_MS)
+                val publicado = dibujar(Linea.tiempoDe(n), n, rapido = true)
+                principal.removeCallbacks(vigia)
+                if (publicado) avisarTiempo(t, b, orden)
+            }
+            if (esperaba && b == busquedas && ordenes.get() == orden && reproduciendo) {
+                // La imagen ya llego a donde se callo el sonido: siguen juntos
+                esperandoImagen = false
+                sonido?.reanudar()
+                if (sesion != null) escribir(listOf("espera: sonido callado ${(System.nanoTime() - esperaDesdeNs) / 1_000_000} ms hasta que llego la imagen"))
             }
             if (b == busquedas) programarBucle()
         }
     }
+
+    /**
+     * Un fotograma tarda mas de [ESPERA_IMAGEN_MS] (un corte que obliga a
+     * leer mucho video, por ejemplo): se calla el sonido, en vez de dejarlo
+     * sonar con la imagen parada y que despues la imagen vaya a saltos
+     * persiguiendolo. En el hilo principal, mientras el de dibujo trabaja.
+     */
+    private val vigia = Runnable {
+        val s = sonido
+        if (reproduciendo && s != null && !s.pausada) {
+            esperaDesdeNs = System.nanoTime()
+            esperandoImagen = true
+            s.pausar()
+        }
+    }
+
+    /**
+     * Sonando: mira que bloques de video empiezan en los proximos
+     * [ANTICIPO_VIDEO_US] y pide tener a punto los que no llegan leyendo
+     * seguido desde lo que ya se ve. Cada comienzo se mira una sola vez.
+     */
+    private fun anticiparVideos(p: Proyecto, t: Long, c: Compositor) {
+        val esc = escena ?: return
+        val unCuadro = Linea.tiempoDe(1)
+        if (videosMiradosDe !== esc || t > videosMiradosHasta || t < videosMiradosHasta - ANTICIPO_VIDEO_US - unCuadro) {
+            videosMiradosDe = esc
+            videosMiradosHasta = t
+            videosProximos.clear()
+        }
+        val hasta = t + ANTICIPO_VIDEO_US
+        if (hasta > videosMiradosHasta) {
+            val desde = videosMiradosHasta
+            val comienzos = (Linea.inicios(p.principal).asList() + p.capas.map { it.inicioUs })
+                .filter { it > desde && it <= hasta }.distinct().sorted()
+            videosMiradosHasta = hasta
+            for (inicio in comienzos) {
+                val antes = videosDe(esc.cuadroEn(maxOf(0L, inicio - unCuadro)))
+                for (v in videosDe(esc.cuadroEn(inicio))) {
+                    // El que ya se ve justo antes y llega leyendo seguido no hace falta
+                    val sigue = antes.firstOrNull { it.uri == v.uri && it.tiempoArchivoUs in (v.tiempoArchivoUs - 1_500_000L)..v.tiempoArchivoUs }
+                    if (sigue != null) antes.remove(sigue) else videosProximos.add(inicio to v)
+                }
+            }
+        }
+        videosProximos.removeAll { it.first <= t }
+        if (videosProximos.isEmpty()) return
+        c.anticiparVideos(videosProximos.map { (inicio, v) -> v.copy(fotogramasHasta = (inicio - t) / unCuadro + 1) })
+    }
+
+    private fun videosDe(cuadro: com.royermethod.app.editor.modelo.Cuadro): MutableList<Compositor.VideoProximo> =
+        cuadro.clips.mapNotNullTo(ArrayList()) { paso ->
+            val o = paso.clip.origen
+            if (!paso.visible || paso.clip.texto != null || o == null || o.esImagen) null
+            else Compositor.VideoProximo(o.uri, o.giro, paso.tiempoArchivoUs, 0L)
+        }
 
     /**
      * El instante actual tal cual, aunque no caiga en un fotograma exacto (al
@@ -574,6 +655,7 @@ class Previsualizador(context: Context) {
             val publicadaNs = if (medida != null) System.nanoTime() else 0L
             // Despues de publicar, para no retrasar este fotograma
             c.anticipar(Linea.origenesEntre(p, t, t + ANTICIPO_US))
+            if (rapido && reproduciendo) runCatching { anticiparVideos(p, t, c) }
             if (publicada) {
                 ultimoDibujado = n
                 if (observador != null) {
@@ -666,6 +748,10 @@ class Previsualizador(context: Context) {
         const val ETIQUETA = "RoyerVista"
         /** Cuanto antes de aparecer se empieza a leer una foto. */
         private const val ANTICIPO_US = 1_000_000L
+        /** Cuanto antes de empezar un bloque de video se deja a punto su decodificador. */
+        private const val ANTICIPO_VIDEO_US = 2_500_000L
+        /** Un fotograma que tarda mas que esto calla el sonido hasta que llegue (ver vigia). */
+        private const val ESPERA_IMAGEN_MS = 250L
         /** Cuanto se guarda el sonido en pausa por si se vuelve a dar play. */
         private const val RETENER_PAUSA_MS = 30_000L
     }
