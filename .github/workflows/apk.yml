@@ -56,6 +56,18 @@ jobs:
               -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
 
+      # Los zips de ncnn, RIFE y waifu2x (unos 100 MB de releases de GitHub)
+      # se guardan: el 2026-11-09 esas descargas daban 504 y la compilacion
+      # fallaba antes de empezar. El script no baja lo que ya esta.
+      - name: Cache de dependencias nativas
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/royer-deps/ncnn.zip
+            /tmp/royer-deps/rife.zip
+            /tmp/royer-deps/w2x.zip
+          key: deps-nativas-${{ hashFiles('tools/traer_dependencias.sh') }}
+
       - name: Dependencias nativas
         run: bash tools/traer_dependencias.sh
 

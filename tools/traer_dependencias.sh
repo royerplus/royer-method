@@ -19,7 +19,9 @@ W2X=20250915
 descargar() {
     if [ -f "$2" ]; then echo "ya esta: $(basename "$2")"; return; fi
     echo "descargando $(basename "$2")..."
-    curl -fsSL --retry 3 --max-time 900 -o "$2.parte" "$1"
+    # GitHub a ratos da 504 en la redireccion de los releases: se reintenta
+    # durante unos minutos en vez de 7 s
+    curl -fsSL --retry 8 --retry-delay 20 --retry-all-errors --max-time 900 -o "$2.parte" "$1"
     mv "$2.parte" "$2"
 }
 
