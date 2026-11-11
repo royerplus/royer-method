@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.opengl.GLES20
+import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Cuadro
 import com.royermethod.app.editor.modelo.BordesPieza
 import com.royermethod.app.editor.modelo.Mascara
@@ -99,6 +100,7 @@ class Compositor(
     /** Dos destinos reutilizados para cualquier numero de muestras o partes. */
     private var muestraPartes: Lamina? = null
     private var promedioPartes: Lamina? = null
+    private val laminasAjuste = ArrayList<Lamina>()
 
     /** Lo que se mide para la escena: videos e imagenes por sus metadatos, textos maquetados. */
     val medidor = MaquetaTexto.medidor
@@ -168,17 +170,44 @@ class Compositor(
             montadas[paso] = l
         }
 
+        // Con capas de ajuste el montaje se compone una vez y luego pasa por
+        // dos laminas alternadas. Nunca se lee de la textura que se esta escribiendo.
+        fun laminaAjuste(i: Int): Lamina = laminasAjuste.getOrNull(i)
+            ?: Lamina(ancho, alto).also { laminasAjuste.add(it) }
+        val conAjustes = cuadro.ajustes.isNotEmpty()
+        val destinoMontaje = if (conAjustes) laminaAjuste(0) else destino
         // 3. dibujar de abajo arriba
-        if (destino != null) destino.activar() else {
+        if (destinoMontaje != null) destinoMontaje.activar() else {
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
             ponerVistaPantalla()
         }
-        val voltear = destino != null
+        val voltear = destinoMontaje != null
         GLES20.glClearColor(0f, 0f, 0f, 1f)
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
         for (paso in cuadro.pasos) {
             if (paso is PasoGrupo) montadas[paso]?.let { dibujarGrupo(paso, it, voltear) }
             else dibujarPaso(paso, texturas, voltear)
+        }
+        if (conAjustes) {
+            GLES20.glDisable(GLES20.GL_BLEND)
+            var fuente = laminaAjuste(0)
+            cuadro.ajustes.forEachIndexed { i, color ->
+                val ultimo = i == cuadro.ajustes.lastIndex
+                val salida = if (ultimo) destino else laminaAjuste((i + 1) % 2)
+                if (salida != null) salida.activar() else {
+                    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+                    ponerVistaPantalla()
+                }
+                val paso = PasoClip(
+                    clip = Clip(0, esAjuste = true), tiempoArchivoUs = 0, exposicionUs = 0,
+                    matrices = listOf(floatArrayOf(1f / ancho, 0f, 0f, 0f, 1f / alto, 0f, 0f, 0f, 1f)),
+                    opacidades = floatArrayOf(1f), mascara = null, bordes = floatArrayOf(0f), color = color,
+                    mezcla = Mezcla.NORMAL, desenfoque = 0f, esFondo = false,
+                    anchoEnLienzo = ancho.toFloat(), altoEnLienzo = alto.toFloat(), escalaTexto = 1f
+                )
+                dibujarClip(paso, Textura(fuente.textura, ancho, alto), salida != null)
+                if (!ultimo) fuente = salida!!
+            }
         }
         GLES20.glDisable(GLES20.GL_BLEND)
         limpiar()
@@ -608,7 +637,12 @@ class Compositor(
             v.soltar(); imagenes.remove(k)
             fondos.remove(v)?.second?.forEach { it.soltar() }
         }
-        val txtViejos = textos.filterValues { numero - it.usadaEn > RETENER }
+        // Un texto con color/sombra animados puede generar una textura por cuadro.
+        val txtViejos = textos.filterValues { numero - it.usadaEn > 6 }
+            .toMutableMap().apply {
+                textos.entries.sortedBy { it.value.usadaEn }.take((textos.size - 12).coerceAtLeast(0))
+                    .filter { it.value.usadaEn != numero }.forEach { put(it.key, it.value) }
+            }
         for ((k, v) in txtViejos) { v.soltar(); textos.remove(k) }
     }
 
@@ -671,6 +705,21 @@ class Compositor(
             if (compartidos.izquierda) 1f else 0f, if (compartidos.arriba) 1f else 0f,
             if (compartidos.derecha) 1f else 0f, if (compartidos.abajo) 1f else 0f)
 
+        val marco = p.clip.marco
+        GLES20.glUniform1f(capa.u("uConMarco"), if (!p.esFondo && marco.activo) 1f else 0f)
+        val rw = (1f - (r?.izquierda ?: 0f) - (r?.derecha ?: 0f)).coerceAtLeast(.05f)
+        val rh = (1f - (r?.arriba ?: 0f) - (r?.abajo ?: 0f)).coerceAtLeast(.05f)
+        val fw = t.ancho * rw; val fh = t.alto * rh; val corto = minOf(fw, fh).coerceAtLeast(1f)
+        GLES20.glUniform2f(capa.u("uFormaTam"), fw / corto, fh / corto)
+        GLES20.glUniform4f(capa.u("uMarco"), marco.ancho, marco.radio, marco.neon, marco.sombra)
+        fun colorMarco(nombre: String, valor: Int) = GLES20.glUniform4f(capa.u(nombre),
+            ((valor ushr 16) and 255) / 255f, ((valor ushr 8) and 255) / 255f,
+            (valor and 255) / 255f, ((valor ushr 24) and 255) / 255f)
+        colorMarco("uColorMarco", marco.color); colorMarco("uColorSombra", marco.colorSombra)
+        val ang = Math.toRadians(marco.angulo.toDouble())
+        GLES20.glUniform4f(capa.u("uSombraMarco"), marco.suavidad,
+            (kotlin.math.cos(ang) * marco.distancia).toFloat(), (kotlin.math.sin(ang) * marco.distancia).toFloat(), 0f)
+
         val c = p.color
         GLES20.glUniform1f(capa.u("uNitidez"), if (p.esFondo) 0f else c.nitidez)
         GLES20.glUniform1f(capa.u("uBrillo"), c.brillo)
@@ -708,6 +757,7 @@ class Compositor(
     /** Una escena montada aparte, puesta encima con su movimiento y su mascara. */
     private fun dibujarGrupo(p: PasoGrupo, l: Lamina, voltear: Boolean) {
         capa.usar()
+        GLES20.glUniform1f(capa.u("uConMarco"), 0f)
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, l.textura)
@@ -767,6 +817,7 @@ class Compositor(
         precargadas.clear()
         grupos.forEach { it.soltar() }
         grupos.clear()
+        laminasAjuste.forEach { it.soltar() }; laminasAjuste.clear()
         muestraPartes?.soltar(); muestraPartes = null
         promedioPartes?.soltar(); promedioPartes = null
         videos.forEach { it.soltar() }

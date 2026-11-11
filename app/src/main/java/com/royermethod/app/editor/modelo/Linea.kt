@@ -70,7 +70,7 @@ object Linea {
      */
     fun duracion(p: Proyecto): Long {
         var fin = duracionPrincipal(p.principal)
-        for (c in p.capas) fin = maxOf(fin, c.finUs)
+        for (c in p.capas) if (!c.clip.esAjuste) fin = maxOf(fin, c.finUs)
         return fin
     }
 
@@ -233,18 +233,21 @@ object Linea {
         // caro para el codificador: con los bits de una foto quieta lo borraba
         // casi entero y el video exportado no se parecia a la vista previa
         if (en != null) {
-            val g = maxOf(en.primero.colorFinal().grano, en.segundo?.colorFinal()?.grano ?: 0f)
+            val g = maxOf(en.primero.propiedadesEn(en.localPrimero).colorFinal().grano, en.segundo?.propiedadesEn(en.localSegundo)?.colorFinal()?.grano ?: 0f)
             if (g > 0f) f = maxOf(f, 1f) * (1f + 0.8f * g)
         }
         // Lo que el usuario le pidio a ese bloque: en una transicion, la media de los dos
         if (en != null) f *= en.segundo?.let { (en.primero.calidad + it.calidad) / 2f } ?: en.primero.calidad
         // Lo que va encima tambien hay que pagarlo
         val encima = capasEn(p.capas, t)
-        for (c in encima) f += c.clip.calidad * (when {
+        for (c in encima.filterNot { it.clip.esAjuste }) f += c.clip.calidad * (when {
             c.clip.esVideo -> 0.35f
             seMueve(c.clip, t - c.inicioUs) -> 0.25f
             else -> 0.1f
-        } + c.clip.colorFinal().grano * 0.5f)
+        } + c.clip.propiedadesEn(t - c.inicioUs).colorFinal().grano * 0.5f)
+        val granoGlobal = encima.filter { it.clip.esAjuste }
+            .maxOfOrNull { it.clip.propiedadesEn(t - it.inicioUs).colorFinal().grano } ?: 0f
+        if (granoGlobal > 0f) f = maxOf(f, 1f) * (1f + .8f * granoGlobal)
         if (encima.any { golpea(it.clip, t - it.inicioUs) }) f *= 1.15f
         return f.coerceIn(0.2f, 3.3f)
     }
@@ -267,6 +270,7 @@ object Linea {
             r.add(c.claves.minOf { it.tiempoUs })
             r.add(c.claves.maxOf { it.tiempoUs })
         }
+        c.propiedades.values.forEach { ks -> ks.forEach { r.add((it.tiempoUs - c.desfasePropiedadesUs).coerceIn(0, c.duracionUs)) } }
         for (pieza in c.piezas) if (pieza.claves.size >= 2) {
             r.add(pieza.claves.minOf { it.tiempoUs }.coerceAtLeast(0))
             r.add(pieza.claves.maxOf { it.tiempoUs }.coerceAtMost(c.duracionUs))

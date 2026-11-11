@@ -58,6 +58,8 @@ import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Encuadre
 import com.royermethod.app.editor.modelo.Fuente
 import com.royermethod.app.editor.modelo.Perspectiva
+import com.royermethod.app.editor.modelo.propiedadesEn
+import com.royermethod.app.editor.modelo.GrupoPropiedad
 import com.royermethod.app.editor.modelo.Texto
 import com.royermethod.app.editor.motor.MaquetaTexto
 import com.royermethod.app.ui.components.BotonBorde
@@ -82,14 +84,16 @@ import kotlin.math.sin
 @Composable
 fun HojaTexto(estado: EstadoEditor, onCerrar: () -> Unit) {
     val c = estado.clipElegido ?: return
-    val t = c.texto ?: return
+    val t = c.propiedadesEn(estado.localElegido ?: 0L).texto ?: return
     var pestana by rememberSaveable { mutableStateOf(0) }
     HojaPanel("Texto", onCerrar = onCerrar, fijo = {
-        CampoTexto(estado, c.id, t)
+        TiempoPropiedades(estado, GrupoPropiedad.TEXTO, true)
         Spacer(Modifier.height(8.dp))
         PestanasTexto(pestana, t) { pestana = it }
         Spacer(Modifier.height(4.dp))
     }) {
+        CampoTexto(estado, c.id, t)
+        OpcionesPropiedades(estado, GrupoPropiedad.TEXTO, true)
         Spacer(Modifier.height(6.dp))
         when (pestana) {
             0 -> TextoFuente(estado, t)
@@ -103,7 +107,7 @@ fun HojaTexto(estado: EstadoEditor, onCerrar: () -> Unit) {
 }
 
 private fun cambiar(estado: EstadoEditor, arrastre: Boolean = false, f: (Texto) -> Texto) =
-    estado.cambiarClip(arrastre) { it.copy(texto = f(it.texto!!)) }
+    estado.cambiarAspecto(arrastre) { it.copy(texto = f(it.texto!!)) }
 
 @Composable
 private fun CampoTexto(estado: EstadoEditor, id: Long, t: Texto) {
@@ -267,6 +271,7 @@ private fun TextoFuente(estado: EstadoEditor, t: Texto) {
             }
         }
     }
+    Interruptor("Subrayado", t.subrayado, { v -> cambiar(estado) { it.copy(subrayado = v) } })
     Spacer(Modifier.height(8.dp))
     Deslizador("Tamano", t.tamano, 0.02f, 0.2f, { v -> cambiar(estado, true) { it.copy(tamano = v) } }, neutro = 0.055f, texto = { "${(it * 1000).toInt()}" })
     Deslizador("Espacio entre letras", t.espaciado, -0.1f, 0.5f, { v -> cambiar(estado, true) { it.copy(espaciado = v) } }, neutro = 0f, texto = { "%+d".format((it * 100).toInt()) })
@@ -426,7 +431,7 @@ private val PERSPECTIVAS = listOf(
  * la clave de bajo el cabezal y se anima como la posicion.
  */
 @Composable
-private fun TextoPerspectiva(estado: EstadoEditor, id: Long) {
+internal fun TextoPerspectiva(estado: EstadoEditor, id: Long) {
     val c = estado.clipElegido ?: return
     val local = estado.localElegido ?: 0L
     val e = c.encuadreEn(local.coerceIn(0L, c.duracionUs))

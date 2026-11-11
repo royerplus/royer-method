@@ -55,6 +55,7 @@ import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.royermethod.app.editor.modelo.propiedadesEn
 import com.royermethod.app.editor.modelo.Ajuste
 import com.royermethod.app.editor.modelo.AjustesColor
 import com.royermethod.app.editor.modelo.Alineacion
@@ -254,7 +255,7 @@ private fun muestraDe(f: Filtro): List<Color> = when (f) {
  */
 @Composable
 fun PanelColor(estado: EstadoEditor) {
-    val c = estado.clipElegido ?: return
+    val c = estado.clipElegido?.propiedadesEn(estado.localElegido ?: 0L) ?: return
     var pestana by rememberSaveable { mutableIntStateOf(0) }
     var elegido by rememberSaveable { mutableIntStateOf(0) }
     Pestanas(listOf("Ajustes", "Filtros"), pestana, { pestana = it })
@@ -263,7 +264,7 @@ fun PanelColor(estado: EstadoEditor) {
         val a = AJUSTES[elegido]
         // key: cada ajuste su deslizador, que el gesto guarda el rango y el neutro con que empezo
         key(elegido) {
-            Deslizador(a.nombre, a.leer(c.color), a.desde, 1f, { v -> estado.cambiarClip(true) { it.copy(color = a.poner(it.color, v)) } },
+            Deslizador(a.nombre, a.leer(c.color), a.desde, 1f, { v -> estado.cambiarAspecto(true) { it.copy(color = a.poner(it.color, v)) } },
                 neutro = 0f, texto = { if (a.desde < 0) "%+d".format((it * 100).toInt()) else "${(it * 100).toInt()}" })
         }
         Nota(a.nota ?: "", color = Ink.White50)
@@ -278,22 +279,22 @@ fun PanelColor(estado: EstadoEditor) {
     } else {
         Cuadricula(Filtro.values().toList()) { f, m ->
             val colores = muestraDe(f)
-            Mosaico(f.nombre, c.filtro == f, { estado.cambiarClip { it.copy(filtro = f) } }, m) { _ ->
+            Mosaico(f.nombre, c.filtro == f, { estado.cambiarAspecto { it.copy(filtro = f) } }, m) { _ ->
                 drawCircle(colores[0], size.minDimension * 0.34f, Offset(size.width * 0.38f, size.height * 0.5f))
                 drawCircle(colores[1].copy(alpha = 0.85f), size.minDimension * 0.34f, Offset(size.width * 0.62f, size.height * 0.5f))
             }
         }
         if (c.filtro != Filtro.NINGUNO) {
             Hueco(6)
-            Deslizador("Intensidad", c.intensidadFiltro, 0f, 1f, { v -> estado.cambiarClip(true) { it.copy(intensidadFiltro = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+            Deslizador("Intensidad", c.intensidadFiltro, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(intensidadFiltro = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
         }
     }
     Hueco(10)
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         // Cada pestana quita lo suyo: quitar los ajustes no se lleva el filtro
         BotonBorde("Restablecer", {
-            if (pestana == 0) estado.cambiarClip { it.copy(color = AjustesColor()) }
-            else estado.cambiarClip { it.copy(filtro = Filtro.NINGUNO, intensidadFiltro = 1f) }
+            if (pestana == 0) estado.cambiarAspecto { it.copy(color = AjustesColor()) }
+            else estado.cambiarAspecto { it.copy(filtro = Filtro.NINGUNO, intensidadFiltro = 1f) }
         }, glifo = Glifos.reiniciar)
         BotonBorde("Aplicar a todos", {
             estado.hacer { p ->
@@ -569,7 +570,7 @@ private const val BEZIER_MAX = 1.7f
  * Bezier, los puntos de velocidad y si es parte de un arrastre.
  */
 @Composable
-private fun SelectorCurva(
+internal fun SelectorCurva(
     curva: Curva,
     bezier: Bezier?,
     velocidad: CurvaVelocidad?,

@@ -894,8 +894,8 @@ private fun DrawScope.bloque(
         val fxAparte = alto >= 48.dp.toPx()
         val rotuloFx = TramosEfecto.rotuloBloque(c.efectos)
         val fxDetras = if (!fxAparte && c.efectos.isNotEmpty()) "  ·  $rotuloFx" else ""
-        if (c.esTexto) {
-            texto(medidor, "T  " + c.nombre() + fxDetras, Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
+        if (c.esTexto || c.esAjuste) {
+            texto(medidor, (if (c.esAjuste) "◈  " else "T  ") + c.nombre() + fxDetras, Offset(x0 + 10.dp.toPx(), y0 + alto / 2), Ink.White90, 11.5f, maxAncho = min(ancho, size.width) - 14.dp.toPx())
         } else if (ancho > 44.dp.toPx()) {
             var etiqueta = segundos(c.duracionUs)
             if (c.esVideo && c.velocidad != 1f) etiqueta += "  ·  ${"%.2g".format(c.velocidad)}x"

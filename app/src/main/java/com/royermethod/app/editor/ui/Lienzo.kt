@@ -38,6 +38,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import com.royermethod.app.editor.modelo.propiedadesEn
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Encuadre
@@ -299,7 +300,9 @@ fun Lienzo(
  */
 private fun esquinasEnPantalla(estado: EstadoEditor, escena: Escena, id: Long, t: Long, escala: Float, vw: Float, vh: Float): List<Offset>? {
     val p = estado.proyecto
-    val c = Edicion.clip(p, id) ?: return null
+    val original = Edicion.clip(p, id) ?: return null
+    if (original.esAjuste) return null
+    val c = original.propiedadesEn(t - (Edicion.inicio(p, id) ?: 0L))
     val ini = Edicion.inicio(p, id) ?: return null
     val local = t - ini
     if (local < 0 || local >= c.duracionUs) return null
@@ -356,7 +359,7 @@ private fun bloqueEn(estado: EstadoEditor, escena: Escena, x: Float, y: Float, t
     val p = estado.proyecto
     val margen = 12f
     for (capa in Linea.capasEn(p.capas, t).asReversed()) {
-        if (dentro(escena, capa.clip, t - capa.inicioUs, x, y, margen)) return capa.id
+        if (!capa.clip.esAjuste && dentro(escena, capa.clip, t - capa.inicioUs, x, y, margen)) return capa.id
     }
     val en = Linea.principalEn(p.principal, Linea.inicios(p.principal), t) ?: return null
     val c = en.segundo ?: en.primero
@@ -365,4 +368,4 @@ private fun bloqueEn(estado: EstadoEditor, escena: Escena, x: Float, y: Float, t
 }
 
 private fun dentro(escena: Escena, c: Clip, local: Long, x: Float, y: Float, margen: Float): Boolean =
-    escena.marco(c, escena.encuadreEn(c, local)).contiene(x, y, margen)
+    escena.marco(c.propiedadesEn(local), escena.encuadreEn(c, local)).contiene(x, y, margen)

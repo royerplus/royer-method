@@ -62,7 +62,7 @@ class Escena(
         }
 
         // 3. capas, de abajo arriba
-        for (c in Linea.capasEn(proyecto.capas, t)) {
+        for (c in Linea.capasEn(proyecto.capas, t).filterNot { it.clip.esAjuste }) {
             pasos.addAll(dibujos(c.clip, t, c.inicioUs, k, c.mezcla))
         }
 
@@ -75,7 +75,9 @@ class Escena(
         // encima, todo en el momento negro de un fundido a negro...).
         val tapa = planos.indexOfLast { it is PasoSolido && it.opacidadMedia >= 0.9999f }
         val pasosFinales = if (tapa > 0) planos.subList(tapa, planos.size) else planos
-        return Cuadro(n, t, pasosFinales)
+        val ajustes = Linea.capasEn(proyecto.capas, t).filter { it.clip.esAjuste }
+            .map { it.clip.propiedadesEn(t - it.inicioUs).colorFinal() }.filterNot { it.neutro }
+        return Cuadro(n, t, pasosFinales, ajustes)
     }
 
     private fun colorFondo(): Int = when (proyecto.fondo) {
@@ -224,7 +226,7 @@ class Escena(
             (a.radial || (a.dirX == b.dirX && a.dirY == b.dirY))
 
     private fun dibujo(
-        clip: Clip,
+        original: Clip,
         t: Long,
         inicio: Long,
         k: Int,
@@ -234,6 +236,7 @@ class Escena(
         /** Pose de la pieza en cada muestra, si no sale de sus claves (las mitades de un efecto). */
         pose: ((Long) -> Encuadre)? = null
     ): PasoClip {
+        val clip = original.propiedadesEn(t - inicio)
         val ts = instantes(t, k)
         val matrices = ArrayList<FloatArray>(ts.size)
         val opacidades = FloatArray(ts.size)
@@ -1501,7 +1504,7 @@ data class Mascara(
 )
 
 /** Un fotograma descrito: que dibujar, en orden de abajo arriba. */
-data class Cuadro(val numero: Long, val tiempoUs: Long, val pasos: List<Paso>) {
+data class Cuadro(val numero: Long, val tiempoUs: Long, val pasos: List<Paso>, val ajustes: List<AjustesColor> = emptyList()) {
     /** Bloques que tienen que tener su fotograma listo para dibujar este. */
     val clips: List<PasoClip> get() = pasos.flatMap { clipsDe(it) }
 

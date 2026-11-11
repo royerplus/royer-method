@@ -107,6 +107,7 @@ object MaquetaTexto {
             textSize = tam
             typeface = tipo(texto.fuente, texto.negrita, texto.cursiva)
             letterSpacing = texto.espaciado
+            isUnderlineText = texto.subrayado
             color = texto.color
         }
         // Ancho maximo: el lienzo en vertical menos margenes. Se mide con el

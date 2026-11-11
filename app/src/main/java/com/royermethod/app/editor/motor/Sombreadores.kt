@@ -235,6 +235,19 @@ uniform float uDesvanecer;
 uniform float uGrano;
 // Numero de fotograma de la linea de tiempo (0..63): el grano cambia en cada uno
 uniform float uSemilla;
+uniform float uConMarco;
+uniform vec2 uFormaTam;
+uniform vec4 uMarco; // ancho, radio, neon, sombra
+uniform vec4 uColorMarco;
+uniform vec4 uColorSombra;
+uniform vec4 uSombraMarco; // suavidad, desplazamiento x/y, reservado
+
+float cajaRedonda(vec2 p, vec2 medio, float r) {
+    vec2 q = abs(p) - medio + vec2(r);
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+vec4 colorAlfa(vec4 c, float a) { return vec4(c.rgb * c.a * a, c.a * a); }
+
 
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
@@ -540,6 +553,7 @@ vec3 ajustar(vec3 c, vec2 uv, vec2 p, float lEntorno) {
 void main() {
     vec2 p = vPos * uLienzo;
     vec4 suma = vec4(0.0);
+    vec4 marcoSuma = vec4(0.0);
     vec2 uvPrimero = vec2(0.5);
     for (int i = 0; i < 8; i++) {
         if (float(i) >= uN) break;
@@ -555,6 +569,32 @@ void main() {
                   * clamp((uv.y - uRecorte.y) / pv + 0.5, 0.0, 1.0)
                   * clamp((uRecorte.w - uv.y) / pv + 0.5, 0.0, 1.0);
         cob = mix(cob, 1.0, clamp(uEspejoBordes, 0.0, 1.0));
+        vec4 decoracion = vec4(0.0);
+        float corteFx = 1.0;
+        if (uConMarco > 0.5 && hq.z > 0.000001) {
+            vec2 centro = (uRecorte.xy + uRecorte.zw) * 0.5;
+            vec2 q = (uv - centro) / max(uRecorte.zw - uRecorte.xy, vec2(0.0001)) * uFormaTam;
+            vec2 medio = uFormaTam * 0.5;
+            float radio = min(uMarco.y, min(medio.x, medio.y));
+            float d = cajaRedonda(q, medio, radio);
+            // Derivada de la homografia: ancho de un pixel incluso con perspectiva.
+            vec2 dx = (m[0].xy - uv * m[0].z) / hq.z;
+            vec2 dy = (m[1].xy - uv * m[1].z) / hq.z;
+            vec2 unidad = uFormaTam / max(uRecorte.zw - uRecorte.xy, vec2(0.0001));
+            float aa = max(max(length(dx * unidad), length(dy * unidad)), 0.00001);
+            cob = clamp(0.5 - d / aa, 0.0, 1.0);
+            float exterior = clamp(0.5 - (d - uMarco.x) / aa, 0.0, 1.0);
+            float anillo = max(exterior - cob, 0.0);
+            float sd = cajaRedonda(q - uSombraMarco.yz, medio, radio) - uMarco.x;
+            float sigma = max(uSombraMarco.x, aa);
+            float sombra = uMarco.w * exp(-0.5 * pow(max(sd, 0.0) / sigma, 2.0));
+            decoracion = colorAlfa(uColorSombra, sombra);
+            float halo = uMarco.z * exp(-max(d - uMarco.x, 0.0) / max(0.006 + uMarco.z * 0.045, aa));
+            vec4 brillo = colorAlfa(uColorMarco, halo);
+            decoracion = brillo + decoracion * (1.0 - brillo.a);
+            vec4 borde = colorAlfa(uColorMarco, anillo);
+            decoracion = borde + decoracion * (1.0 - borde.a);
+        }
         // Las partes conservan la geometria de la foto completa. Este corte
         // viaja con la textura; no vuelve a encajar cada mitad en el lienzo.
         // Cada corte expuesto ocupa un pixel del lienzo, tambien al girarlo.
@@ -567,11 +607,12 @@ void main() {
             vec4 duro = vec4(step(uRegionFuente.x, uv.x), step(uRegionFuente.y, uv.y),
                              1.0 - step(uRegionFuente.z, uv.x), 1.0 - step(uRegionFuente.w, uv.y));
             vec4 lados = mix(suave, duro, uBordesCompartidos);
-            cob *= (uRegionFuente.x <= 0.0 ? 1.0 : lados.x)
+            corteFx *= (uRegionFuente.x <= 0.0 ? 1.0 : lados.x)
                  * (uRegionFuente.y <= 0.0 ? 1.0 : lados.y)
                  * (uRegionFuente.z >= 1.0 ? 1.0 : lados.z)
                  * (uRegionFuente.w >= 1.0 ? 1.0 : lados.w);
         }
+        cob *= corteFx;
         if (uConMascara > 0.5) {
             vec2 q = p - (0.5 * uLienzo + uMascCentro);
             float d = uMascRadial > 0.5 ? length(q) : dot(q, uMascDir);
@@ -580,8 +621,11 @@ void main() {
             // Un borde de SIN_BORDE es una muestra sin mascara y se ve entera.
             if (uMascGrosor > 0.0 && abs(uBorde[i]) < 15000.0)
                 mascara *= clamp((d - (uBorde[i] - uMascGrosor)) / uMascSuave + 0.5, 0.0, 1.0);
-            cob *= uMascInvertida > 0.5 ? 1.0 - mascara : mascara;
+            float msk = uMascInvertida > 0.5 ? 1.0 - mascara : mascara;
+            cob *= msk;
+            corteFx *= msk;
         }
+        marcoSuma += decoracion * (uOpac[i] * corteFx);
         float a = cob * uOpac[i];
         // Un pixel del lienzo hacia la derecha, en la textura: la separacion del RGB
         vec2 desp = uRgb * vec2(m[0][0], m[0][1]);
@@ -605,7 +649,8 @@ void main() {
         recto = uLuz > 0.0 ? mix(recto, vec3(1.0), uLuz) : recto * (1.0 + uLuz);
         suma.rgb = recto * suma.a;
     }
-    gl_FragColor = suma;
+    marcoSuma /= uN;
+    gl_FragColor = suma + marcoSuma * (1.0 - suma.a);
 }
 """
 

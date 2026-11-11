@@ -153,6 +153,8 @@ fun PantallaEditor(
                                     Panel.ANIMACION -> HojaAnimacion(estado, cerrar)
                                     Panel.EFECTOS -> HojaEfectos(estado, cerrar)
                                     Panel.TEXTO -> HojaTexto(estado, cerrar)
+                                    Panel.MARCO -> HojaMarco(estado, cerrar)
+                                    Panel.COLOR -> HojaColor(estado, cerrar)
                                     else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
                                 }
                             }
@@ -182,7 +184,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.ANIMACION, Panel.EFECTOS -> Unit
         Panel.PIEZAS -> PanelPiezas(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
-        Panel.COLOR -> PanelColor(estado)
+        Panel.COLOR, Panel.MARCO -> Unit
         Panel.ENCUADRE -> PanelEncuadre(estado)
         Panel.TEXTO -> Unit
         Panel.FORMATO -> PanelFormato(estado)
@@ -287,6 +289,15 @@ private fun Transporte(estado: EstadoEditor) {
 private fun BotonClave(estado: EstadoEditor) {
     val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
     // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s: claves a una milesima son distintas
+    if (c != null && (c.esTexto || c.esAjuste || estado.panel == Panel.MARCO || estado.panel == Panel.COLOR)) {
+        val grupo = when {
+            c.esAjuste || estado.panel == Panel.COLOR -> com.royermethod.app.editor.modelo.GrupoPropiedad.AJUSTES
+            estado.panel == Panel.MARCO -> com.royermethod.app.editor.modelo.GrupoPropiedad.MARCO
+            else -> com.royermethod.app.editor.modelo.GrupoPropiedad.TEXTO
+        }
+        BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, c.esTexto, false) }, activo = estado.localElegido != null)
+        return
+    }
     val tolerancia = toleranciaClaves()
     // El cabezal se lee en derivedStateOf: al reproducir solo se recompone si cambia lo que se ve
     val activo by remember(c) { derivedStateOf { c != null && estado.localElegido != null } }
@@ -318,7 +329,7 @@ private fun bloqueBajoCabezal(estado: EstadoEditor, sinTextos: Boolean = false):
     val p = estado.proyecto
     val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
     return com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo)
-        .lastOrNull { !sinTextos || !it.clip.esTexto }?.clip
+        .lastOrNull { !it.clip.esAjuste && (!sinTextos || !it.clip.esTexto) }?.clip
         ?: en?.segundo ?: en?.primero
 }
 
@@ -369,14 +380,7 @@ private fun Herramientas(
                             estado.panel = Panel.EFECTOS
                         } else estado.avisar("Selecciona una foto, un video o una capa para agregar efectos")
                     })
-                    Herramienta(Glifos.color, "Ajustes", {
-                        // Brillo, nitidez, claridad... del bloque bajo el cabezal (un texto no tiene)
-                        val c = bloqueBajoCabezal(estado, sinTextos = true)?.takeUnless { it.esTexto }
-                        if (c != null) {
-                            estado.elegir(Seleccion.Bloque(c.id))
-                            estado.panel = Panel.COLOR
-                        } else estado.avisar("Pon el cabezal sobre una foto o un video para ajustar la imagen")
-                    })
+                    Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado) })
                     Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
                     Herramienta(Glifos.texto, "Texto", {
                         var nuevo = 0L
@@ -408,6 +412,14 @@ private fun Herramientas(
                 else -> {
                     val c = estado.clipElegido ?: return@Row
                     val id = c.id
+                    if (c.esAjuste) {
+                        Herramienta(Glifos.color, "Ajustes", { estado.panel = Panel.COLOR })
+                        Herramienta(Glifos.dividir, "Dividir", { Edicion.dividir(estado.proyecto, id, estado.tiempo)?.let { r -> estado.hacer { r.first } } })
+                        Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                        Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                        return@Row
+                    }
+                    Herramienta(Glifos.encuadre, "Borde / 3D", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
                     val principal = estado.proyecto.principal
                     val i = principal.indexOfFirst { it.id == id }
                     Herramienta(Glifos.dividir, "Dividir", {

@@ -506,3 +506,34 @@ Medido en el teléfono con ec3d497 (copias VERSION 2 rehechas en ~1 min, 101 MB)
 | Arrastrar hacia atrás (3 videos a la vista) | ~5 por segundo, 150-270 ms | ~11 por segundo, 67-142 ms; cada salto atrás cuesta ~35 ms fijos + ~2 ms por cuadro por video |
 
 Siguiente si hace falta más hacia atrás: preparar los videos de un cuadro en paralelo (`FuenteVideo.preparar` no toca OpenGL) en vez de uno tras otro.
+
+## Bordes, perspectiva y ajustes animables (2026-11-11, Codex)
+
+Pedido de Royer: tarjetas como la referencia `Ch21 #manhwa #webtoon #reels.mp4`, controles organizados, bordes de color/anchura/esquinas, halo neón y sombra de color independiente; perspectiva en fotos/videos; ajustes en la línea de tiempo con keyframes. También se implementa lo acordado para el estilo del texto.
+
+### Uso
+
+- Elegir un clip > **Borde / 3D**. Pestañas **Borde**, **Sombra** y **Perspectiva**. Presets Limpio/Fino/Blanco/Suave/Neón. Anchura, redondeo, color RGB libre, resplandor; opacidad, color, difusión, distancia y dirección de sombra independientes. Distancia cero + sombra de color difusa produce otro halo independiente del borde.
+- **Ajustes**, sin selección, crea una **capa de ajuste** en la línea. El botón «+ Capa de ajuste en la línea» también aparece en los ajustes de un clip. Su tramo inicialmente cubre el montaje. Se mueve, recorta, divide, duplica y elimina como las demás capas; no alarga la exportación. Actúa sobre el montaje completo, incluyendo textos y otras capas, independientemente de su fila. Varias capas de ajuste se aplican en orden de fila. Los ajustes individuales del clip siguen disponibles.
+- Texto, Borde/3D y Ajustes tienen una minilínea de tiempo fija: tocar/arrastrar busca en pausa; rombos, anterior/siguiente, **poner** y **quitar** clave separados. Curva despliega el editor en el cuerpo desplazable, sin quitar espacio al transporte.
+- En texto, **Todo** crea movimiento y estilo en un solo paso de deshacer. **Movimiento** y **Estilo** permiten separarlos. **En conjunto** comparte claves/curva por defecto; **Por propiedad** permite elegir un canal, con tiempos y curva propios. El selector de curvas existente admite presets, Bézier y curvas de velocidad personalizadas. Fuente, negrita, cursiva, alineación, subrayado, activación de sombra y selección de filtro son cambios discretos al llegar a la clave; colores y magnitudes se interpolan. El contenido escrito permanece común a todo el clip.
+- Se añadió **Subrayado** en Texto > Fuente. Para una sombra de texto que aparece gradualmente, animar su **opacidad** y dejar Sombra activada.
+
+### Implementación
+
+- `MarcoVisual.kt` y `Propiedades.kt`: canales tipados, ARGB conservado como Double entero (sin pérdida de bytes), claves con curva/Bézier/velocidad por intervalo; reloj de apariencia conservado al dividir/recortar y escalado con la velocidad. Listas ordenadas por versión del clip; los canales constantes no crean copias por fotograma.
+- `Escena` evalúa apariencia al instante del cuadro. El shader CAPA recorta esquinas con distancia a rectángulo redondeado y compone borde/halo/sombra detrás del contenido, con alfa premultiplicado. Todo se transforma con la misma homografía del elemento. Sin marco se conserva el camino anterior.
+- Capas de ajuste: tercer tipo explícito de Clip (`esAjuste`, sin origen ni texto), persistencia compatible con archivos antiguos; `Cuadro.ajustes` y dos FBO alternados del compositor, reutilizados y liberados al cerrar. Vista previa y exportación usan ese mismo camino. No se permite pasar una capa de ajuste a principal ni moverla desde el lienzo.
+- Se corrigió `Edicion.ajustarEncuadre`: su comparación de valores animables omitía inclinación X/Y, así que editar únicamente perspectiva no guardaba una clave nueva.
+- Caché de texturas de textos animados acotada a 6 cuadros de antigüedad y 12 entradas antiguas como máximo, sin eliminar las usadas en el cuadro actual. Grano animado/global entra en el reparto de bitrate.
+
+### Validación
+
+- JVM: **461 pruebas, 459 pasan, 2 del banco omitidas, 0 fallos**. Las 18 nuevas prueban movimiento+sombra simultáneos, curvas independientes, cambios discretos, ARGB exacto, recorte/división con Bézier, velocidad, persistencia, proyectos viejos, límites temporales de capas de ajuste, claves conjuntas y por canal, deshacer y perspectiva.
+- Shader real en WebGL/SwiftShader, highp y fallback mediump: compila y dibuja. Comparado con el CAPA de e3ccefa sin marco: diferencia máxima **0/255**. Halo fuera del rectángulo: **56.735 píxeles** del patrón de prueba. Componer en FBO y volver al lienzo: diferencia máxima **1/255**, sin volteo. Ajuste global de saturación -1: diferencia máxima entre canales RGB **0/255**.
+- Artefactos de esta sesión fuera de git: `/workspace/validation/marco-preview.png`, `shader-check.cjs`, `shader-results.json`; logs `/tmp/royer-verification.log`. Patrón sintético, no captura de la interfaz.
+- Para las pruebas JVM en este entorno se instaló un JDK completo y se usó un init script local que añade las clases `java.management` y `jdk.management` al classpath de compilación de tests. El banco preexistente no compilaba con el bootclasspath Android limitado de este entorno. No se modificaron ni eliminaron sus pruebas. Comando local: `JAVA_HOME=/workspace/jdk21 PATH=/workspace/jdk21/bin:$PATH bash gradlew -I /workspace/test-jdk-modules/init.gradle -Djavax.net.ssl.trustStore=/etc/ssl/certs/java/cacerts :app:testDebugUnitTest :app:assemblePrueba :app:assembleDebugAndroidTest --no-daemon`.
+
+No hay teléfono conectado: no se afirma validación táctil, rendimiento en Infinix ni exportación real en hardware. Las capturas de prueba del shader son patrones sintéticos, no capturas de la app ni una réplica de la referencia.
+
+**Compilación local definitiva: BUILD SUCCESSFUL (3m22s)** con `testDebugUnitTest assemblePrueba assembleDebugAndroidTest`. APK `.prueba`: SHA256 `699141380881478073b31e0ef4f982656e97270b5f34d3e7ba577e4220933753`. Es la variante local de pruebas; para instalar desde GitHub usar el APK `.github` que publica Actions con su firma habitual, no sustituir la app original con el release normal.

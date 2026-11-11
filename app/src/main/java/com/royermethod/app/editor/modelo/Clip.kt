@@ -7,7 +7,7 @@ package com.royermethod.app.editor.modelo
  * cada bloque se edita con las mismas herramientas (encuadre, color,
  * animaciones, fotogramas clave) y lo que se aprende en uno sirve en todos.
  *
- * Exactamente uno de [origen] y [texto] viene relleno.
+ * Un archivo, un texto o una capa de ajuste global.
  */
 data class Clip(
     val id: Long,
@@ -80,8 +80,18 @@ data class Clip(
      * mas (para el plano que tiene que verse perfecto). Se suma a lo que ya
      * decide el reparto por tramos, no lo sustituye.
      */
-    val calidad: Float = 1f
+    val calidad: Float = 1f,
+    val marco: MarcoVisual = MarcoVisual(),
+    /** Capa de ajuste: no tiene archivo ni texto y actúa sobre el montaje. */
+    val esAjuste: Boolean = false,
+    val propiedades: Map<Propiedad, List<ClaveValor>> = emptyMap(),
+    /** Reloj conservado al cortar, incluso en mitad de una curva personalizada. */
+    val desfasePropiedadesUs: Long = 0
 ) {
+    internal val propiedadesOrdenadas: Map<Propiedad, List<ClaveValor>> by lazy {
+        propiedades.mapValues { (_, ks) -> ks.sortedBy { it.tiempoUs }.distinctBy { it.tiempoUs } }
+    }
+
     /** Se calcula una vez por version del clip; permite fusionar partes reunidas. */
     internal val piezasCubrenFuente: Boolean by lazy {
         if (piezas.isEmpty()) false else {
@@ -94,7 +104,7 @@ data class Clip(
     }
 
     init {
-        require((origen == null) != (texto == null)) { "un clip es archivo o texto" }
+        require((if (origen != null) 1 else 0) + (if (texto != null) 1 else 0) + (if (esAjuste) 1 else 0) == 1) { "un clip es archivo, texto o ajuste" }
     }
 
     val esTexto: Boolean get() = texto != null
@@ -155,7 +165,9 @@ data class Clip(
             claves = claves.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
             clavesOriginales = clavesOriginales?.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
             efectos = efectos.map { it.tiempoEscalado(f) },
-            piezas = piezas.map { it.tiempoEscalado(f) }
+            piezas = piezas.map { it.tiempoEscalado(f) },
+            propiedades = propiedades.mapValues { (_, ks) -> ks.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) } },
+            desfasePropiedadesUs = (desfasePropiedadesUs * f).toLong()
         )
         val dur = nuevo.duracionUs
         return nuevo.copy(
@@ -169,7 +181,7 @@ data class Clip(
     fun colorFinal(): AjustesColor = color.mas(filtro.ajustes, intensidadFiltro)
 
     fun nombre(): String = texto?.contenido?.lineSequence()?.firstOrNull()?.take(24)
-        ?: origen?.nombre ?: ""
+        ?: origen?.nombre ?: if (esAjuste) "Ajustes" else ""
 
     companion object {
         /** Lo que dura una imagen o un texto recien puesto. */
@@ -577,7 +589,8 @@ data class Texto(
     val sombraAngulo: Float = 90f,
     val cursiva: Boolean = false,
     /** Alto de linea: 1 el normal de la letra. */
-    val interlineado: Float = 1f
+    val interlineado: Float = 1f,
+    val subrayado: Boolean = false
 ) {
     companion object {
         /** Lo mas lejos que llega la sombra (distancia + desenfoque), para el margen. */

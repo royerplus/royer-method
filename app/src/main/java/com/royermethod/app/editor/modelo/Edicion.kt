@@ -191,6 +191,7 @@ object Edicion {
         val b = c.copy(
             id = nid,
             desdeUs = corte,
+            desfasePropiedadesUs = c.desfasePropiedadesUs + local,
             claves = clavesB,
             clavesOriginales = originales?.second,
             efectos = c.efectos.mapNotNull { it.recortado(local, c.duracionUs) },
@@ -233,6 +234,7 @@ object Edicion {
             it.copy(
                 desdeUs = d,
                 hastaUs = h,
+                desfasePropiedadesUs = it.desfasePropiedadesUs + corrimiento,
                 claves = clavesDesde(it, it.claves, corrimiento),
                 clavesOriginales = it.clavesOriginales?.let { o -> clavesDesde(it, o, corrimiento) },
                 efectos = it.efectos.mapNotNull { ef ->
@@ -309,7 +311,7 @@ object Edicion {
      */
     fun aPrincipal(p: Proyecto, id: Long): Proyecto {
         val capa = p.capas.firstOrNull { it.id == id } ?: return p
-        if (capa.clip.esTexto) return p
+        if (capa.clip.esTexto || capa.clip.esAjuste) return p
         val donde = puntoDeInsercion(p, capa.inicioUs)
         // Abajo ocupa toda la pantalla: fuera el encuadre de capa y sus claves
         // (tambien las de antes de simplificar), que lo dejarian pequeno o movido
@@ -646,7 +648,7 @@ object Edicion {
         val q = cambiar(p, id) {
             it.copy(encuadre = it.encuadre.copy(ajuste = nuevo.ajuste, recorte = nuevo.recorte, espejo = nuevo.espejo))
         }
-        val animado = { e: Encuadre -> listOf(e.escala, e.x, e.y, e.rotacion, e.opacidad) }
+        val animado = { e: Encuadre -> listOf(e.escala, e.x, e.y, e.rotacion, e.opacidad, e.inclinacionX, e.inclinacionY) }
         return if (animado(ahora) == animado(nuevo)) q else ponerClave(q, id, ini + local, nuevo, tolerancia)
     }
 

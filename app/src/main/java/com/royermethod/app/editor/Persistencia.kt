@@ -1,5 +1,6 @@
 package com.royermethod.app.editor
 
+import com.royermethod.app.editor.modelo.*
 import com.royermethod.app.editor.modelo.CurvaVelocidad
 import com.royermethod.app.editor.modelo.PuntoVelocidad
 import com.royermethod.app.editor.modelo.Ajuste
@@ -110,6 +111,23 @@ object Persistencia {
 
     private fun clip(c: Clip): JSONObject = JSONObject().apply {
         put("id", c.id)
+        put("esAjuste", c.esAjuste)
+        put("relojPropiedades", c.desfasePropiedadesUs)
+        put("marco", JSONObject().apply {
+            put("ancho", c.marco.ancho.toDouble()); put("radio", c.marco.radio.toDouble())
+            put("color", c.marco.color); put("neon", c.marco.neon.toDouble())
+            put("sombra", c.marco.sombra.toDouble()); put("colorSombra", c.marco.colorSombra)
+            put("suavidad", c.marco.suavidad.toDouble()); put("distancia", c.marco.distancia.toDouble()); put("angulo", c.marco.angulo.toDouble())
+        })
+        put("propiedades", JSONObject().apply {
+            c.propiedades.forEach { (p, ks) -> put(p.name, JSONArray().apply {
+                ks.forEach { k -> put(JSONObject().apply {
+                    put("t", k.tiempoUs); put("v", k.valor); put("curva", k.curva.name)
+                    k.bezier?.let { put("bezier", JSONArray(listOf(it.x1, it.y1, it.x2, it.y2))) }
+                    k.velocidad?.let { put("velocidad", velocidad(it)) }
+                }) }
+            }) }
+        })
         c.origen?.let { put("origen", origen(it)) }
         c.texto?.let { put("texto", texto(it)) }
         put("desde", c.desdeUs)
@@ -301,6 +319,7 @@ object Persistencia {
         put("sombraDistancia", t.sombraDistancia.toDouble())
         put("sombraAngulo", t.sombraAngulo.toDouble())
         put("cursiva", t.cursiva)
+        put("subrayado", t.subrayado)
         put("interlineado", t.interlineado.toDouble())
     }
 
@@ -410,10 +429,19 @@ object Persistencia {
     private fun clipDe(o: JSONObject): Clip? {
         val origen = o.optJSONObject("origen")?.let { origenDe(it) }
         val texto = o.optJSONObject("texto")?.let { textoDe(it) }
-        if ((origen == null) == (texto == null)) return null
-        val d = Clip(id = 0, origen = origen, texto = texto)
+        val esAjuste = o.optBoolean("esAjuste")
+        if (listOf(origen != null, texto != null, esAjuste).count { it } != 1) return null
+        val d = Clip(id = 0, origen = origen, texto = texto, esAjuste = esAjuste)
         return Clip(
             id = o.optLong("id"),
+            esAjuste = esAjuste,
+            desfasePropiedadesUs = o.optLong("relojPropiedades"),
+            marco = o.optJSONObject("marco")?.let { m -> MarcoVisual(
+                m.f("ancho", 0f).coerceIn(0f, .15f), m.f("radio", 0f).coerceIn(0f, .5f), m.optInt("color", -1),
+                m.f("neon", 0f).coerceIn(0f, 1f), m.f("sombra", 0f).coerceIn(0f, 1f), m.optInt("colorSombra", 0xFF000000.toInt()),
+                m.f("suavidad", .04f).coerceIn(0f, .2f), m.f("distancia", .02f).coerceIn(0f, .3f), m.f("angulo", 90f)
+            ) } ?: MarcoVisual(),
+            propiedades = propiedadesDe(o.optJSONObject("propiedades")),
             origen = origen,
             texto = texto,
             desdeUs = o.optLong("desde", d.desdeUs),
@@ -463,6 +491,23 @@ object Persistencia {
             desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
             muestras = s.optInt("muestras", d.muestras)
         )
+    }
+
+    private fun propiedadesDe(o: JSONObject?): Map<Propiedad, List<ClaveValor>> {
+        if (o == null) return emptyMap()
+        return Propiedad.values().mapNotNull { p ->
+            val a = o.optJSONArray(p.name) ?: return@mapNotNull null
+            val ks = (0 until a.length()).mapNotNull { i ->
+                val k = a.optJSONObject(i) ?: return@mapNotNull null
+                val v = k.optDouble("v", Double.NaN)
+                if (!v.isFinite()) return@mapNotNull null
+                val b = k.optJSONArray("bezier")?.takeIf { it.length() == 4 }?.let {
+                    Bezier(it.optDouble(0).toFloat(), it.optDouble(1).toFloat(), it.optDouble(2).toFloat(), it.optDouble(3).toFloat())
+                }
+                ClaveValor(k.optLong("t"), p.acotar(v), k.enumeracion("curva", Curva.SUAVE), b, velocidadDe(k.optJSONArray("velocidad")))
+            }.sortedBy { it.tiempoUs }.distinctBy { it.tiempoUs }
+            p to ks
+        }.toMap()
     }
 
     private fun clavesDe(a: JSONArray?): List<Clave> {
@@ -636,6 +681,7 @@ object Persistencia {
             sombraDistancia = o.f("sombraDistancia", d.sombraDistancia).coerceIn(0f, 0.2f),
             sombraAngulo = o.f("sombraAngulo", d.sombraAngulo),
             cursiva = o.optBoolean("cursiva", false),
+            subrayado = o.optBoolean("subrayado", false),
             interlineado = o.f("interlineado", 1f).coerceIn(0.6f, 2.5f)
         )
     }

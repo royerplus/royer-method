@@ -42,6 +42,7 @@ enum class Panel(val titulo: String) {
     EFECTOS("Efectos de video"),
     TRANSICION("Transicion"),
     COLOR("Ajustes"),
+    MARCO("Bordes y perspectiva"),
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
     FORMATO("Formato"),
@@ -115,6 +116,9 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
      * panel de efectos y lo vuelve a poner en null.
      */
     var efectoAElegir by mutableStateOf<Long?>(null)
+    var canalPropiedad by mutableStateOf<com.royermethod.app.editor.modelo.Propiedad?>(null)
+    var modoClaveTexto by mutableIntStateOf(0)
+    var verCurvasPropiedades by mutableStateOf(false)
     /**
      * Las claves elegidas para moverlas juntas: tiempos (del bloque) de las
      * claves del bloque [ClavesElegidas.id]. Leerlas con [elegidasDe], que
