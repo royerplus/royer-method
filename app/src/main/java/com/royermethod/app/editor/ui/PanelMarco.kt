@@ -31,15 +31,19 @@ internal fun EstadoEditor.cambiarAspecto(arrastre: Boolean = false, f: (Clip) ->
     cambiarClip(arrastre) { it.editarPropiedades(local, f) }
 }
 
-internal fun crearCapaAjuste(estado: EstadoEditor) {
+internal fun crearCapaAjuste(estado: EstadoEditor, efectos: Boolean = false, desdeElegido: Boolean = false) {
+    val referencia = if (desdeElegido) estado.clipElegido?.takeUnless { it.esAjuste } else null
+    val inicio = if (referencia != null) estado.inicioElegido ?: 0L else 0L
     var id = 0L
     estado.hacer { p ->
         val (nuevo, q) = p.conId(); id = nuevo
-        val dur = Linea.duracion(p).takeIf { it > 0 } ?: Clip.IMAGEN_POR_DEFECTO_US
-        q.copy(capas = q.capas + Capa(0, (p.capas.maxOfOrNull { it.fila } ?: -1) + 1,
+        val dur = referencia?.duracionUs ?: (Linea.duracion(p).takeIf { it > 0 } ?: Clip.IMAGEN_POR_DEFECTO_US)
+        q.copy(capas = q.capas + Capa(inicio, (p.capas.maxOfOrNull { it.fila } ?: -1) + 1,
             Clip(nuevo, esAjuste = true, hastaUs = dur)))
     }
-    estado.elegir(Seleccion.Bloque(id)); estado.panel = Panel.COLOR
+    estado.elegir(Seleccion.Bloque(id)); estado.panel = if (efectos) Panel.EFECTOS else Panel.COLOR
+    val fin = inicio + (estado.clipElegido?.duracionUs ?: 1L) - 1
+    if (estado.tiempo !in inicio..fin) estado.pausarEn(estado.tiempo.coerceIn(inicio, fin))
 }
 
 internal fun cambiarClavePropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, movimiento: Boolean, quitar: Boolean) {
@@ -95,12 +99,13 @@ internal fun TiempoPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, movi
         Canvas(Modifier.fillMaxWidth().height(36.dp)
             .pointerInput(c.id) { detectTapGestures { buscar(it.x, size.width.toFloat()) } }
             .pointerInput(c.id) { detectDragGestures(onDragStart = { buscar(it.x, size.width.toFloat()) }) { ch, _ -> ch.consume(); buscar(ch.position.x, size.width.toFloat()) } }) {
-            val cy = size.height / 2
+            val cy = size.height * .75f
+            val yClave = size.height * .22f
             drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 4.dp.toPx())
             for (t in tiempos) {
                 val x = t.toFloat() / c.duracionUs * size.width
                 val r = 4.dp.toPx()
-                val path = Path().apply { moveTo(x, cy-r); lineTo(x+r, cy); lineTo(x, cy+r); lineTo(x-r, cy); close() }
+                val path = Path().apply { moveTo(x, yClave-r); lineTo(x+r, yClave); lineTo(x, yClave+r); lineTo(x-r, yClave); close() }
                 drawPath(path, Ink.White70)
             }
             val x = local.toFloat() / c.duracionUs * size.width
@@ -233,9 +238,8 @@ internal fun HojaColor(estado: EstadoEditor, cerrar: () -> Unit) {
         TiempoPropiedades(estado, GrupoPropiedad.AJUSTES)
     }) {
         OpcionesPropiedades(estado, GrupoPropiedad.AJUSTES)
-        if (estado.clipElegido?.esAjuste == true) {
-            Nota("Afecta a todo el montaje durante este tramo. Muévela o recórtala en la línea de tiempo.")
-        } else BotonBorde("+ Capa de ajuste en la línea", { crearCapaAjuste(estado) })
+        DestinosCapa(estado)
+        Nota("El valor base se aplica en todo el tramo. Los keyframes animan ese valor dentro de su duración.")
         PanelColor(estado)
     }
 }

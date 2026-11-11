@@ -257,7 +257,7 @@ fun Lienzo(
                 val grosor = 1.5.dp.toPx()
                 val esquina = radio(6.dp).toPx()
                 val o = ap(0f, 0f)
-                drawRoundRect(
+                if (AjustesEditor.mostrarMarcos) drawRoundRect(
                     Color.White, Offset(o.x + grosor / 2, o.y + grosor / 2),
                     Size(size.width * z.escala - grosor, size.height * z.escala - grosor),
                     CornerRadius(esquina, esquina), style = Stroke(grosor)
@@ -267,7 +267,7 @@ fun Lienzo(
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
                 if (guiaY) drawLine(Ink.White70, Offset(0f, centro.y), Offset(size.width, centro.y), 1.dp.toPx(),
                     pathEffect = PathEffect.dashPathEffect(floatArrayOf(8f, 8f)))
-                if (estado.modoZoom) return@Canvas
+                if (estado.modoZoom || !AjustesEditor.mostrarMarcos) return@Canvas
                 val id = (estado.seleccion as? Seleccion.Bloque)?.id ?: return@Canvas
                 val c = Edicion.clip(pr, id) ?: return@Canvas
                 val ini = Edicion.inicio(pr, id) ?: return@Canvas

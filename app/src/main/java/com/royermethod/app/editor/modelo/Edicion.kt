@@ -134,7 +134,10 @@ object Edicion {
      *
      * @return null si el corte deja un trozo demasiado corto
      */
-    fun dividir(p: Proyecto, id: Long, tUs: Long): Pair<Proyecto, Long>? {
+    fun dividir(p: Proyecto, id: Long, tUs: Long): Pair<Proyecto, Long>? =
+        dividirInterno(p, id, tUs)?.let { (q, nuevo) -> AlcanceCapas.heredarDestino(q, id, nuevo) to nuevo }
+
+    private fun dividirInterno(p: Proyecto, id: Long, tUs: Long): Pair<Proyecto, Long>? {
         val ini = inicio(p, id) ?: return null
         val local = tUs - ini
         return when (val l = lugar(p, id)) {
@@ -342,12 +345,18 @@ object Edicion {
 
     fun eliminar(p: Proyecto, id: Long): Proyecto = p.copy(
         principal = p.principal.filter { it.id != id },
-        capas = p.capas.filter { it.id != id },
+        capas = p.capas.filter { it.id != id }.map { capa ->
+            val ids = capa.clip.afectaA
+            if (capa.clip.esAjuste && ids != null && id in ids) capa.copy(clip = capa.clip.copy(afectaA = ids - id)) else capa
+        },
         audios = p.audios.filter { it.id != id }
     )
 
     /** Una copia justo detras del original. */
-    fun duplicar(p: Proyecto, id: Long): Pair<Proyecto, Long>? {
+    fun duplicar(p: Proyecto, id: Long): Pair<Proyecto, Long>? =
+        duplicarInterno(p, id)?.let { (q, nuevo) -> AlcanceCapas.heredarDestino(q, id, nuevo) to nuevo }
+
+    private fun duplicarInterno(p: Proyecto, id: Long): Pair<Proyecto, Long>? {
         val (nid, q) = p.conId()
         return when (val l = lugar(p, id)) {
             is Lugar.Principal -> q.copy(principal = q.principal.toMutableList().also {

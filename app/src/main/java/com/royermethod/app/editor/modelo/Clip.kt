@@ -86,7 +86,9 @@ data class Clip(
     val esAjuste: Boolean = false,
     val propiedades: Map<Propiedad, List<ClaveValor>> = emptyMap(),
     /** Reloj conservado al cortar, incluso en mitad de una curva personalizada. */
-    val desfasePropiedadesUs: Long = 0
+    val desfasePropiedadesUs: Long = 0,
+    /** Solo en capas de ajuste/efectos: null = todas, incluso las futuras. */
+    val afectaA: Set<Long>? = null
 ) {
     internal val propiedadesOrdenadas: Map<Propiedad, List<ClaveValor>> by lazy {
         propiedades.mapValues { (_, ks) -> ks.sortedBy { it.tiempoUs }.distinctBy { it.tiempoUs } }
@@ -181,7 +183,7 @@ data class Clip(
     fun colorFinal(): AjustesColor = color.mas(filtro.ajustes, intensidadFiltro)
 
     fun nombre(): String = texto?.contenido?.lineSequence()?.firstOrNull()?.take(24)
-        ?: origen?.nombre ?: if (esAjuste) "Ajustes" else ""
+        ?: origen?.nombre ?: if (esAjuste) (if (efectos.isNotEmpty() && color.neutro && filtro == Filtro.NINGUNO) "Efectos" else "Ajustes") else ""
 
     companion object {
         /** Lo que dura una imagen o un texto recien puesto. */

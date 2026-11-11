@@ -102,9 +102,9 @@ import kotlinx.coroutines.launch
 private const val REGLA = 24f
 private const val PRINCIPAL_Y = 30f
 private const val PRINCIPAL_H = 56f
-private const val FILAS_Y = PRINCIPAL_Y + PRINCIPAL_H + 10f
+private const val FILAS_Y = PRINCIPAL_Y + PRINCIPAL_H + 20f
 private const val CAPA_H = 34f
-private const val CAPA_PASO = 40f
+private const val CAPA_PASO = 54f
 private const val AUDIO_H = 30f
 private const val AUDIO_PASO = 36f
 private const val ASA = 16f
@@ -916,6 +916,22 @@ private fun DrawScope.bloque(
                 medidor, rotuloFx, Offset(x0 + dx, y0 + 23.dp.toPx()),
                 Ink.White90, 8.5f, maxAncho = min(ancho, size.width) - dx - 7.dp.toPx(), fondo = Color.Black.copy(alpha = 0.55f)
             )
+        }
+    }
+    if (c.esAjuste && c.propiedades.isNotEmpty()) {
+        // Los rombos de apariencia tienen su carril encima del tramo, sin tapar su nombre.
+        val xb = x0 - (pz.desde - pz.inicio) * pxUs
+        val cy = y0 - 8.dp.toPx()
+        val r = 3.5.dp.toPx()
+        drawLine(Ink.White15, Offset(xa, cy), Offset(xz, cy), 1.dp.toPx())
+        val tiempos = c.propiedades.values.flatMap { ks -> ks.map { it.tiempoUs - c.desfasePropiedadesUs } }
+            .filter { it in 0..c.duracionUs }.distinct()
+        for (t in tiempos) {
+            val xk = xb + t * pxUs
+            if (xk < xa - r || xk > xz + r) continue
+            rotate(45f, Offset(xk, cy)) {
+                drawRect(if (elegido) Ink.White else Ink.White70, Offset(xk - r, cy - r), Size(r * 2, r * 2))
+            }
         }
     }
     if (elegido) {

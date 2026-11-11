@@ -185,6 +185,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.PIEZAS -> PanelPiezas(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
         Panel.COLOR, Panel.MARCO -> Unit
+        Panel.CAPAS -> PanelCapas(estado)
         Panel.ENCUADRE -> PanelEncuadre(estado)
         Panel.TEXTO -> Unit
         Panel.FORMATO -> PanelFormato(estado)
@@ -365,6 +366,11 @@ private fun Herramientas(
                 Herramienta(Glifos.atras, "Volver", { estado.elegir(null) })
                 Box(Modifier.width(1.dp).height(36.dp).background(Ink.White15))
             }
+            Herramienta(Glifos.superponer, "Orden", { estado.panel = Panel.CAPAS })
+            Herramienta(Glifos.encuadre, "Marcos", {
+                AjustesEditor.mostrarMarcos = !AjustesEditor.mostrarMarcos
+                AjustesEditor.alCambiar()
+            }, encendida = AjustesEditor.mostrarMarcos)
             when (s) {
                 null -> {
                     Herramienta(Glifos.editar, "Editar", {
@@ -373,13 +379,7 @@ private fun Herramientas(
                     })
                     Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
                     HerramientasZoom(estado)
-                    Herramienta(Glifos.ajustes, "Efectos", {
-                        val c = bloqueBajoCabezal(estado)
-                        if (c != null) {
-                            estado.elegir(Seleccion.Bloque(c.id))
-                            estado.panel = Panel.EFECTOS
-                        } else estado.avisar("Selecciona una foto, un video o una capa para agregar efectos")
-                    })
+                    Herramienta(Glifos.ajustes, "Efectos", { crearCapaAjuste(estado, efectos = true) })
                     Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado) })
                     Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
                     Herramienta(Glifos.texto, "Texto", {
@@ -413,6 +413,7 @@ private fun Herramientas(
                     val c = estado.clipElegido ?: return@Row
                     val id = c.id
                     if (c.esAjuste) {
+                        Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
                         Herramienta(Glifos.color, "Ajustes", { estado.panel = Panel.COLOR })
                         Herramienta(Glifos.dividir, "Dividir", { Edicion.dividir(estado.proyecto, id, estado.tiempo)?.let { r -> estado.hacer { r.first } } })
                         Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
@@ -444,9 +445,15 @@ private fun Herramientas(
                     Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
                     HerramientasZoom(estado)
                     // Cerca del principio: al final de la fila nadie lo encontraba
-                    if (!c.esTexto) Herramienta(Glifos.color, "Ajustes", { estado.panel = Panel.COLOR },
-                        resaltada = !c.color.neutro || c.filtro != com.royermethod.app.editor.modelo.Filtro.NINGUNO)
-                    Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
+                    if (!c.esTexto) {
+                        Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado, desdeElegido = true) })
+                        if (!c.color.neutro || c.filtro != com.royermethod.app.editor.modelo.Filtro.NINGUNO || c.propiedades.keys.any { it.grupo == com.royermethod.app.editor.modelo.GrupoPropiedad.AJUSTES })
+                            Herramienta(Glifos.color, "Ajuste local", { estado.panel = Panel.COLOR }, resaltada = true)
+                    }
+                    Herramienta(Glifos.ajustes, "Efectos", {
+                        if (c.efectos.isNotEmpty()) estado.panel = Panel.EFECTOS
+                        else crearCapaAjuste(estado, efectos = true, desdeElegido = true)
+                    }, resaltada = c.efectos.isNotEmpty())
                     Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
                     if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
                     Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })

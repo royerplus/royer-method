@@ -7,6 +7,8 @@ import android.net.Uri
 import android.opengl.GLES20
 import android.test.InstrumentationTestCase
 import android.util.Log
+import com.royermethod.app.editor.modelo.AjustesColor
+import com.royermethod.app.editor.modelo.Capa
 import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Encuadre
@@ -125,6 +127,37 @@ class SombreadoresIntegrationTest : InstrumentationTestCase() {
         assertTrue("Se endurecio tambien el tramo expuesto", expuestosSuaves > 10)
     }
 
+    fun testAjusteSelectivoNoTocaLaCapaVecinaYConservaAlfa() = conFuenteColor(0xFF4280E0.toInt()) { compositor, destino, original ->
+        val izquierda = original.copy(id = 1, encuadre = Encuadre(escala = .35f, x = -.25f, opacidad = .6f))
+        val derecha = original.copy(id = 2, encuadre = Encuadre(escala = .35f, x = .25f))
+        val ajuste = Clip(3, esAjuste = true, hastaUs = 1_000_000,
+            color = AjustesColor(saturacion = -1f), afectaA = setOf(1))
+        val p = Proyecto(formato = Formato.CUADRADO, fondo = Fondo.NEGRO,
+            salida = AjustesSalida(desenfoqueMovimiento = false),
+            capas = listOf(Capa(0, 0, izquierda), Capa(0, 1, derecha), Capa(0, 2, ajuste)))
+        val imagen = dibujarProyecto(compositor, destino, p)
+        fun canal(x: Int, c: Int) = imagen[((LADO / 2) * LADO + x) * 4 + c].toInt() and 255
+        val rgb = (0..2).map { canal(LADO / 4, it) }
+        assertTrue("La selección no quedó gris", rgb.maxOrNull()!! - rgb.minOrNull()!! <= 2)
+        assertTrue("Se perdió la opacidad o la textura", rgb.first() in 40..110)
+        assertTrue("El ajuste tocó también la capa vecina", canal(3 * LADO / 4, 2) - canal(3 * LADO / 4, 0) > 100)
+        assertEquals(255, canal(LADO / 4, 3))
+        assertEquals(0, imagen[0].toInt() and 255)
+    }
+
+    fun testAjusteDePartesSeAplicaUnaSolaVezAlConjunto() = conFuenteColor(0xFF4280E0.toInt()) { compositor, destino, original ->
+        val clip = original.copy(encuadre = Encuadre(escala = .8f, opacidad = .6f))
+        val ajuste = Clip(3, esAjuste = true, hastaUs = 1_000_000,
+            color = AjustesColor(saturacion = -1f, exposicion = -.3f), afectaA = setOf(1))
+        fun p(c: Clip) = Proyecto(formato = Formato.CUADRADO, fondo = Fondo.NEGRO,
+            salida = AjustesSalida(desenfoqueMovimiento = false), capas = listOf(Capa(0, 0, c), Capa(0, 1, ajuste)))
+        val entero = dibujarProyecto(compositor, destino, p(clip))
+        val partes = clip.copy(piezas = listOf(PiezaVideo("Arriba", RegionUv(abajo = .5f)),
+            PiezaVideo("Abajo", RegionUv(arriba = .5f), Encuadre(opacidad = .999f))))
+        val dividido = dibujarProyecto(compositor, destino, p(partes))
+        assertTrue("Ajustar cada parte por separado alteró el conjunto", diferenciaMaxima(entero, dividido) <= 3)
+    }
+
     private fun conGl(ancho: Int, alto: Int, accion: () -> Unit) {
         assertTrue("Solo .prueba", instrumentation.targetContext.packageName.endsWith(".prueba"))
         val egl = Egl(null, ancho, alto)
@@ -135,11 +168,13 @@ class SombreadoresIntegrationTest : InstrumentationTestCase() {
         } finally { egl.soltar() }
     }
 
-    private fun conFuenteBlanca(accion: (Compositor, Lamina, Clip) -> Unit) = conGl(LADO, LADO) {
+    private fun conFuenteBlanca(accion: (Compositor, Lamina, Clip) -> Unit) = conFuenteColor(android.graphics.Color.WHITE, accion)
+
+    private fun conFuenteColor(color: Int, accion: (Compositor, Lamina, Clip) -> Unit) = conGl(LADO, LADO) {
         val context = instrumentation.targetContext
         val archivo = File.createTempFile("shader-blanco-", ".png", context.cacheDir)
         val bitmap = Bitmap.createBitmap(LADO, LADO, Bitmap.Config.ARGB_8888)
-        bitmap.eraseColor(android.graphics.Color.WHITE)
+        bitmap.eraseColor(color)
         try { archivo.outputStream().use { bitmap.compress(Bitmap.CompressFormat.PNG, 100, it) } }
         finally { bitmap.recycle() }
         val compositor = Compositor(context, LADO, LADO)
@@ -161,6 +196,13 @@ class SombreadoresIntegrationTest : InstrumentationTestCase() {
 
     private fun dibujar(compositor: Compositor, destino: Lamina, c: Clip): ByteArray {
         compositor.dibujar(Escena(proyecto(c), LADO, LADO, compositor.medidor).cuadroEn(0), destino)
+        val datos = ByteBuffer.allocateDirect(LADO * LADO * 4)
+        destino.leer(datos)
+        return ByteArray(datos.capacity()).also { datos.get(it) }
+    }
+
+    private fun dibujarProyecto(compositor: Compositor, destino: Lamina, p: Proyecto): ByteArray {
+        compositor.dibujar(Escena(p, LADO, LADO, compositor.medidor).cuadroEn(0), destino)
         val datos = ByteBuffer.allocateDirect(LADO * LADO * 4)
         destino.leer(datos)
         return ByteArray(datos.capacity()).also { datos.get(it) }

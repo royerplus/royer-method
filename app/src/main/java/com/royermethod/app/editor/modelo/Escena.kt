@@ -34,6 +34,8 @@ class Escena(
     private val medidor: Medidor
 ) {
     private val inicios = Linea.inicios(proyecto.principal)
+    private val efectosCompartidos = proyecto.capas.filter { it.clip.esAjuste && it.clip.efectos.isNotEmpty() }.sortedBy { it.fila }
+    private val ajustesSelectivos = proyecto.capas.filter { it.clip.esAjuste && it.clip.afectaA != null }.sortedBy { it.fila }
     private val duracionFotograma = 1_000_000.0 / Linea.FPS
 
     /**
@@ -75,7 +77,7 @@ class Escena(
         // encima, todo en el momento negro de un fundido a negro...).
         val tapa = planos.indexOfLast { it is PasoSolido && it.opacidadMedia >= 0.9999f }
         val pasosFinales = if (tapa > 0) planos.subList(tapa, planos.size) else planos
-        val ajustes = Linea.capasEn(proyecto.capas, t).filter { it.clip.esAjuste }
+        val ajustes = Linea.capasEn(proyecto.capas, t).filter { it.clip.esAjuste && it.clip.afectaA == null }
             .map { it.clip.propiedadesEn(t - it.inicioUs).colorFinal() }.filterNot { it.neutro }
         return Cuadro(n, t, pasosFinales, ajustes)
     }
@@ -98,13 +100,14 @@ class Escena(
      * @param inicio donde empieza el bloque en la linea de tiempo
      */
     private fun dibujos(
-        clip: Clip,
+        original: Clip,
         t: Long,
         inicio: Long,
         k: Int,
         mezcla: Mezcla,
         transicion: ((Int) -> Efecto)? = null
     ): List<Paso> {
+        val clip = AlcanceCapas.conEfectos(efectosCompartidos, original, inicio)
         // Las mitades de un efecto se dibujan como dos piezas, por el mismo
         // camino que las partes hechas a mano. Si ya hay partes, mandan ellas.
         val mitades = if (clip.piezas.isEmpty()) mitadesEn(clip, t, inicio, k) else null
@@ -335,7 +338,8 @@ class Escena(
             espejoBordes = if (contraido) 0f else luces.espejoBordes.coerceIn(0f, 1f),
             desenfoqueX = desenfoqueX,
             desenfoqueY = desenfoqueY,
-            recorteFuente = pieza?.region?.acotada()
+            recorteFuente = pieza?.region?.acotada(),
+            ajustesCapa = AlcanceCapas.ajustesPara(ajustesSelectivos, clip.id, t)
         )
     }
 
@@ -399,6 +403,7 @@ class Escena(
             mascara = null,
             bordes = FloatArray(1),
             color = clip.colorFinal().mas(AjustesColor(brillo = -0.12f, saturacion = 0.1f), 1f),
+            ajustesCapa = delante.ajustesCapa,
             mezcla = Mezcla.NORMAL,
             desenfoque = 0f,
             esFondo = true,
@@ -627,7 +632,7 @@ class Escena(
             // solo dibujo, es el bloque de siempre.
             val unico = delante.singleOrNull() as? PasoClip
             val fondo = if (unico != null) fondoDe(unico, t - inicio)
-            else fondoDe(dibujo(clip, t, inicio, k, Mezcla.NORMAL, lado.alClip), t - inicio, forzar = true)
+            else fondoDe(dibujo(AlcanceCapas.conEfectos(efectosCompartidos, clip, inicio), t, inicio, k, Mezcla.NORMAL, lado.alClip), t - inicio, forzar = true)
             fondo?.let { dentro.add(it) }
         }
         dentro.addAll(delante)
@@ -1578,7 +1583,8 @@ data class PasoClip(
     val desenfoqueX: Float = 0f,
     val desenfoqueY: Float = 0f,
     /** Mascara en UV de la fuente completa, sin cambiar su geometria. */
-    val recorteFuente: RegionUv? = null
+    val recorteFuente: RegionUv? = null,
+    val ajustesCapa: List<AjustesColor> = emptyList()
 ) : Paso() {
 
     val muestras: Int get() = matrices.size

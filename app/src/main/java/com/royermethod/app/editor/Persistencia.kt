@@ -112,6 +112,7 @@ object Persistencia {
     private fun clip(c: Clip): JSONObject = JSONObject().apply {
         put("id", c.id)
         put("esAjuste", c.esAjuste)
+        c.afectaA?.let { put("afectaA", JSONArray(it.sorted())) }
         put("relojPropiedades", c.desfasePropiedadesUs)
         put("marco", JSONObject().apply {
             put("ancho", c.marco.ancho.toDouble()); put("radio", c.marco.radio.toDouble())
@@ -434,6 +435,7 @@ object Persistencia {
         val d = Clip(id = 0, origen = origen, texto = texto, esAjuste = esAjuste)
         return Clip(
             id = o.optLong("id"),
+            afectaA = o.optJSONArray("afectaA")?.let { a -> (0 until a.length()).map { a.optLong(it) }.filter { it > 0 }.toSet() },
             esAjuste = esAjuste,
             desfasePropiedadesUs = o.optLong("relojPropiedades"),
             marco = o.optJSONObject("marco")?.let { m -> MarcoVisual(

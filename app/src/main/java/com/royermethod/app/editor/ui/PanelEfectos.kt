@@ -341,6 +341,8 @@ private fun Franja(p: PanelFx) {
 @Composable
 private fun Contenido(p: PanelFx) {
     val e = p.elegido
+    DestinosCapa(p.estado, e?.id)
+    Spacer(Modifier.height(8.dp))
     when {
         p.enCatalogo -> Catalogo(p)
         e != null -> Elegido(p, e)

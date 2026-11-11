@@ -245,10 +245,16 @@ object Linea {
             seMueve(c.clip, t - c.inicioUs) -> 0.25f
             else -> 0.1f
         } + c.clip.propiedadesEn(t - c.inicioUs).colorFinal().grano * 0.5f)
-        val granoGlobal = encima.filter { it.clip.esAjuste }
+        val visibles = encima.filterNot { it.clip.esAjuste }.map { it.id }.toMutableSet()
+        en?.let { visibles.add(it.primero.id); it.segundo?.let { segundo -> visibles.add(segundo.id) } }
+        val compartidas = encima.filter { it.clip.esAjuste && (it.clip.afectaA == null || visibles.any { id -> AlcanceCapas.acepta(it.clip, id) }) }
+        // Una foto movida por un tramo compartido necesita los mismos bits que con un efecto local.
+        if (compartidas.any { capa -> visibles.any { AlcanceCapas.acepta(capa.clip, it) } &&
+                capa.clip.efectos.any { it.activoEn(t - capa.inicioUs) } }) f = maxOf(f, .8f)
+        val granoGlobal = compartidas
             .maxOfOrNull { it.clip.propiedadesEn(t - it.inicioUs).colorFinal().grano } ?: 0f
         if (granoGlobal > 0f) f = maxOf(f, 1f) * (1f + .8f * granoGlobal)
-        if (encima.any { golpea(it.clip, t - it.inicioUs) }) f *= 1.15f
+        if ((encima.filterNot { it.clip.esAjuste } + compartidas).any { golpea(it.clip, t - it.inicioUs) }) f *= 1.15f
         return f.coerceIn(0.2f, 3.3f)
     }
 

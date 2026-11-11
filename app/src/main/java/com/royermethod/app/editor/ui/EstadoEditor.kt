@@ -43,6 +43,7 @@ enum class Panel(val titulo: String) {
     TRANSICION("Transicion"),
     COLOR("Ajustes"),
     MARCO("Bordes y perspectiva"),
+    CAPAS("Orden de capas"),
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
     FORMATO("Formato"),

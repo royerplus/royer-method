@@ -161,6 +161,8 @@ private fun ColumnScope.Editor() {
     // La duracion de una animacion nueva la pone Animar segun su tipo y el largo del bloque
     // (Animaciones.duracionSugeridaUs); AjustesEditor.duracionAnimacionUs ya no se usa
     Nota("Cada animacion nueva empieza con una duracion segun su tipo y el largo del bloque. Se cambia en Animar, arriba del catalogo.")
+    Interruptor("Marcos de edición", AjustesEditor.mostrarMarcos, { v -> guardar { AjustesEditor.mostrarMarcos = v } },
+        "Mostrar contornos blancos y esquinas de selección en el editor")
     Interruptor("Imanes", AjustesEditor.imanes, { v -> guardar { AjustesEditor.imanes = v } },
         "Al mover o recortar, los bloques se pegan al cabezal y a los cortes")
     Interruptor("Ajustar a fotogramas", AjustesEditor.ajustarFotogramas, { v -> guardar { AjustesEditor.ajustarFotogramas = v } },

@@ -7,6 +7,7 @@ import android.graphics.Bitmap
 import android.graphics.Color
 import android.net.Uri
 import android.opengl.GLES20
+import com.royermethod.app.editor.modelo.AjustesColor
 import com.royermethod.app.editor.modelo.Clip
 import com.royermethod.app.editor.modelo.Cuadro
 import com.royermethod.app.editor.modelo.BordesPieza
@@ -101,6 +102,7 @@ class Compositor(
     private var muestraPartes: Lamina? = null
     private var promedioPartes: Lamina? = null
     private val laminasAjuste = ArrayList<Lamina>()
+    private val laminasSelectivas = ArrayList<Lamina>()
 
     /** Lo que se mide para la escena: videos e imagenes por sus metadatos, textos maquetados. */
     val medidor = MaquetaTexto.medidor
@@ -347,11 +349,61 @@ class Compositor(
         when (paso) {
             is PasoSolido -> dibujarSolido(paso, voltear)
             is PasoLinea -> dibujarLinea(paso, voltear)
-            is PasoClip -> texturas[paso]?.let { dibujarClip(paso, it, voltear) }
-            is PasoPartes -> dibujarPartes(paso, texturas, voltear)
+            is PasoClip -> texturas[paso]?.let { textura ->
+                if (paso.ajustesCapa.isEmpty()) dibujarClip(paso, textura, voltear)
+                else ajustarElemento(paso.ajustesCapa, paso.mezcla, voltear) {
+                    dibujarClip(paso.copy(mezcla = Mezcla.NORMAL), textura, true)
+                }
+            }
+            is PasoPartes -> {
+                val ajustes = paso.partes.firstOrNull()?.ajustesCapa.orEmpty()
+                if (ajustes.isEmpty()) dibujarPartes(paso, texturas, voltear)
+                else ajustarElemento(ajustes, paso.mezcla, voltear) {
+                    dibujarPartes(paso.copy(mezcla = Mezcla.NORMAL), texturas, true)
+                }
+            }
             // No hay grupos dentro de grupos
             is PasoGrupo -> Unit
         }
+    }
+
+    /** Aislar primero conserva alfa, máscaras, piezas y la mezcla con las otras capas. */
+    private fun ajustarElemento(ajustes: List<AjustesColor>, mezcla: Mezcla, voltear: Boolean, dibujar: () -> Unit) {
+        val anterior = IntArray(1)
+        val viewport = IntArray(4)
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, anterior, 0)
+        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewport, 0)
+        val mezclando = GLES20.glIsEnabled(GLES20.GL_BLEND)
+        fun lamina(i: Int): Lamina = laminasSelectivas.getOrNull(i)
+            ?: Lamina(ancho, alto).also { laminasSelectivas.add(it) }
+        var fuente = lamina(0)
+        fuente.activar()
+        GLES20.glClearColor(0f, 0f, 0f, 0f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glEnable(GLES20.GL_BLEND)
+        dibujar()
+        ajustes.forEachIndexed { i, color ->
+            val ultimo = i == ajustes.lastIndex
+            val salida = if (ultimo) null else lamina((i + 1) % 2)
+            if (ultimo) {
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, anterior[0])
+                GLES20.glViewport(viewport[0], viewport[1], viewport[2], viewport[3])
+                GLES20.glEnable(GLES20.GL_BLEND)
+            } else {
+                salida!!.activar()
+                GLES20.glDisable(GLES20.GL_BLEND)
+            }
+            val paso = PasoClip(
+                clip = Clip(0, esAjuste = true), tiempoArchivoUs = 0, exposicionUs = 0,
+                matrices = listOf(floatArrayOf(1f / ancho, 0f, 0f, 0f, 1f / alto, 0f, 0f, 0f, 1f)),
+                opacidades = floatArrayOf(1f), mascara = null, bordes = floatArrayOf(0f), color = color,
+                mezcla = if (ultimo) mezcla else Mezcla.NORMAL, desenfoque = 0f, esFondo = false,
+                anchoEnLienzo = ancho.toFloat(), altoEnLienzo = alto.toFloat(), escalaTexto = 1f
+            )
+            dibujarClip(paso, Textura(fuente.textura, ancho, alto), if (ultimo) voltear else true)
+            if (!ultimo) fuente = salida!!
+        }
+        if (!mezclando) GLES20.glDisable(GLES20.GL_BLEND)
     }
 
     private class Textura(val id: Int, val ancho: Int, val alto: Int)
@@ -818,6 +870,7 @@ class Compositor(
         grupos.forEach { it.soltar() }
         grupos.clear()
         laminasAjuste.forEach { it.soltar() }; laminasAjuste.clear()
+        laminasSelectivas.forEach { it.soltar() }; laminasSelectivas.clear()
         muestraPartes?.soltar(); muestraPartes = null
         promedioPartes?.soltar(); promedioPartes = null
         videos.forEach { it.soltar() }
