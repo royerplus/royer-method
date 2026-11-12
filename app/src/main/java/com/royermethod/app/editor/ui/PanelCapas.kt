@@ -1,19 +1,37 @@
 package com.royermethod.app.editor.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.*
 import com.royermethod.app.ui.components.*
 import com.royermethod.app.ui.theme.Ink
@@ -48,31 +66,81 @@ internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null) {
     BotonBorde("${resumenDestino(c)}  ▾", { abierto = !abierto })
     if (!abierto) return
     Spacer(Modifier.height(8.dp))
+    val p = estado.proyecto
+    val candidatos = p.capas.filterNot { it.clip.esAjuste }.sortedByDescending { it.fila }.map { it.clip } + p.principal
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Chip("Todas", c.afectaA == null, { estado.cambiarClip { it.copy(afectaA = null) } })
-        Chip("Elegir", c.afectaA != null, {
-            estado.cambiarClip { it.copy(afectaA = it.afectaA ?: emptySet()) }
-        })
-    }
-    if (c.afectaA == null) {
-        Nota("Incluye fotos, videos y textos que coincidan con este tramo, también los que agregues después.")
-    } else {
-        val p = estado.proyecto
-        val candidatos = p.capas.filterNot { it.clip.esAjuste }.sortedByDescending { it.fila }.map { it.clip } + p.principal
-        if (candidatos.isEmpty()) Nota("Agrega una foto, un video o un texto para elegir su capa.")
-        candidatos.forEach { destino ->
-            val capa = p.capas.firstOrNull { it.id == destino.id }
-            val zona = if (capa == null) "Principal" else "Capa ${capa.fila + 1}"
-            Interruptor("$zona · ${destino.nombre()}", destino.id in c.afectaA, { activo ->
-                estado.cambiarClip { actual ->
-                    val ids = actual.afectaA.orEmpty()
-                    actual.copy(afectaA = if (activo) ids + destino.id else ids - destino.id)
-                }
-            }, "${TiempoPreciso.texto(Edicion.inicio(p, destino.id) ?: 0)} · ${TiempoPreciso.texto(destino.duracionUs)}")
-        }
-        if (c.afectaA.isEmpty()) Nota("Este tramo no afecta a nada hasta que selecciones un elemento.")
+        Chip("Ninguna", c.afectaA?.isEmpty() == true, { estado.cambiarClip { it.copy(afectaA = emptySet()) } })
     }
     Spacer(Modifier.height(8.dp))
+    if (candidatos.isEmpty()) Nota("Agrega una foto, un video o un texto.")
+    else {
+        Nota("Toca para activar · desliza para ver más")
+        Spacer(Modifier.height(6.dp))
+        val ids = candidatos.map { it.id }.toSet()
+        LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(vertical = 4.dp)) {
+            items(candidatos, key = { it.id }) { destino ->
+                MiniaturaDestino(destino, AlcanceCapas.acepta(c, destino.id), Modifier.width(76.dp)) {
+                    alternarDestino(estado, destino.id, ids)
+                }
+            }
+        }
+    }
+    Spacer(Modifier.height(8.dp))
+}
+
+/** Desde Todas, quitar una conserva activas las demás; cada toque es reversible. */
+internal fun alternarDestino(estado: EstadoEditor, id: Long, disponibles: Set<Long>) {
+    estado.cambiarClip { actual ->
+        val ids = actual.afectaA ?: disponibles
+        actual.copy(afectaA = if (id in ids) ids - id else ids + id)
+    }
+}
+
+@Composable
+private fun MiniaturaDestino(c: Clip, activa: Boolean, modifier: Modifier, cambiar: () -> Unit) {
+    val borde by animateColorAsState(if (activa) Ink.White else Ink.White30, tween(150), label = "destino")
+    val origen = c.origen
+    // El centro del segmento diferencia recortes del mismo video; se reutiliza la caché de la línea.
+    val instante = if (c.esVideo) c.tiempoArchivo(c.duracionUs / 2) / 250_000L * 250_000L else 0L
+    val miniatura = origen?.let { LocalRecursosEditor.current.miniatura(it, instante) }
+    val forma = esquinas(10.dp)
+    Box(modifier.aspectRatio(1f).clip(forma).background(Ink.White08)
+        .toggleable(value = activa, role = Role.Checkbox, onValueChange = { cambiar() })
+        .semantics { contentDescription = "${if (c.esTexto) "Texto" else if (c.esVideo) "Video" else "Imagen"}: ${c.nombre()}" }
+        .border(if (activa) 2.5.dp else 1.dp, borde, forma)) {
+        val opacidad = if (activa) 1f else .5f
+        when {
+            miniatura != null -> Image(miniatura, null, Modifier.fillMaxSize().padding(3.dp).clip(esquinas(7.dp)).alpha(opacidad), contentScale = ContentScale.Crop)
+            c.texto != null -> {
+                val t = c.texto
+                val fuente = when (t.fuente) { Fuente.SERIF -> FontFamily.Serif; Fuente.MONO -> FontFamily.Monospace; else -> FontFamily.SansSerif }
+                Box(Modifier.fillMaxSize().padding(3.dp).clip(esquinas(7.dp)).background(Color(0xFF727780)).alpha(opacidad), contentAlignment = Alignment.Center) {
+                    Text(t.contenido.ifBlank { "Aa" }, color = Color(t.color), fontFamily = fuente,
+                        fontWeight = if (t.negrita) FontWeight.Bold else FontWeight.Normal,
+                        fontStyle = if (t.cursiva) FontStyle.Italic else FontStyle.Normal,
+                        fontSize = 15.sp, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 12.dp))
+                }
+            }
+            else -> Icono(if (c.esVideo) Glifos.play else Glifos.superponer,
+                Modifier.align(Alignment.Center).alpha(opacidad), tam = 28.dp)
+        }
+        Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(18.dp).clip(CircleShape)
+            .background(if (activa) Ink.White else Color.Black.copy(alpha = .65f))
+            .border(1.dp, borde, CircleShape), contentAlignment = Alignment.Center) {
+            if (activa) Icono(Glifos.listo, color = Ink.Black, tam = 12.dp)
+        }
+        Box(Modifier.align(Alignment.BottomStart).padding(6.dp).size(18.dp).clip(esquinas(4.dp))
+            .background(Color.Black.copy(alpha = .65f)), contentAlignment = Alignment.Center) {
+            if (c.esTexto) Text("T", color = Ink.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            else Icono(if (c.esVideo) Glifos.play else Glifos.superponer, tam = 11.dp)
+        }
+        if (c.esVideo) Text(segundos(c.duracionUs), color = Ink.White, fontSize = 9.sp,
+            modifier = Modifier.align(Alignment.BottomEnd).padding(6.dp).clip(esquinas(4.dp))
+                .background(Color.Black.copy(alpha = .65f)).padding(horizontal = 3.dp))
+    }
 }
 
 /** Las filas superiores de esta lista son las que se ven delante en el lienzo. */

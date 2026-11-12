@@ -75,6 +75,8 @@ interface Recursos {
     }
 }
 
+val LocalRecursosEditor = androidx.compose.runtime.staticCompositionLocalOf<Recursos> { Recursos.NINGUNO }
+
 /**
  * Todo lo que la pantalla del editor tiene entre manos.
  *

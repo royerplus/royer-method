@@ -109,7 +109,7 @@ fun PantallaEditor(
         if (exportar.corriendo || exportar.resultado != null || exportar.fallo != null) exportando = true
     }
 
-    CompositionLocalProvider(LocalGestos provides estado) {
+    CompositionLocalProvider(LocalGestos provides estado, LocalRecursosEditor provides recursos) {
         BoxWithConstraints(modifier.fillMaxSize().background(Ink.Black)) {
             val abajo = min(maxHeight * 0.42f, 330.dp)
             Column(Modifier.fillMaxSize()) {
