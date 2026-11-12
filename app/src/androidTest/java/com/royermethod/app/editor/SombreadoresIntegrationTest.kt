@@ -7,6 +7,7 @@ import android.net.Uri
 import android.opengl.GLES20
 import android.test.InstrumentationTestCase
 import android.util.Log
+import com.royermethod.app.editor.modelo.*
 import com.royermethod.app.editor.modelo.AjustesColor
 import com.royermethod.app.editor.modelo.Capa
 import com.royermethod.app.editor.modelo.AjustesSalida
@@ -156,6 +157,28 @@ class SombreadoresIntegrationTest : InstrumentationTestCase() {
             PiezaVideo("Abajo", RegionUv(arriba = .5f), Encuadre(opacidad = .999f))))
         val dividido = dibujarProyecto(compositor, destino, p(partes))
         assertTrue("Ajustar cada parte por separado alteró el conjunto", diferenciaMaxima(entero, dividido) <= 3)
+    }
+
+    fun testCromaDeUnaCapaNoBorraElVerdeDeLaSiguiente() = conFuenteColor(android.graphics.Color.GREEN) { compositor, destino, original ->
+        val izquierda = original.copy(id=1,encuadre=Encuadre(escala=.35f,x=-.25f),recorteVisual=RecorteVisual(croma=Croma(activo=true)))
+        val derecha = original.copy(id=2,encuadre=Encuadre(escala=.35f,x=.25f))
+        val p = Proyecto(formato=Formato.CUADRADO,fondo=Fondo.NEGRO,salida=AjustesSalida(desenfoqueMovimiento=false),
+            capas=listOf(Capa(0,0,izquierda),Capa(0,1,derecha)))
+        val imagen = dibujarProyecto(compositor,destino,p)
+        fun verde(x:Int)=imagen[((LADO/2)*LADO+x)*4+1].toInt() and 255
+        assertEquals(0,verde(LADO/4))
+        assertTrue(verde(3*LADO/4)>=254)
+    }
+
+    fun testGrupoDespuesDelRecorteNoHeredaCromaNiMascara() = conFuenteColor(android.graphics.Color.GREEN) { compositor, destino, original ->
+        val c=original.copy(recorteVisual=RecorteVisual(Croma(activo=true),MascaraForma(tipo=FormaRecorte.CIRCULO)))
+        val paso=Escena(proyecto(c),LADO,LADO,compositor.medidor).cuadroEn(0).clips.single()
+        val grupo=PasoGrupo(listOf(PasoSolido(android.graphics.Color.GREEN,floatArrayOf(1f))),
+            listOf(floatArrayOf(1f/LADO,0f,0f,0f,1f/LADO,0f,0f,0f,1f)),floatArrayOf(1f),null,floatArrayOf(0f),false)
+        compositor.dibujar(Cuadro(0,0,listOf(paso,grupo)),destino)
+        val imagen=ByteBuffer.allocateDirect(LADO*LADO*4);destino.leer(imagen)
+        assertTrue((imagen.get(1).toInt() and 255)>=254)
+        assertTrue((imagen.get(((LADO/2)*LADO+LADO/2)*4+1).toInt() and 255)>=254)
     }
 
     private fun conGl(ancho: Int, alto: Int, accion: () -> Unit) {

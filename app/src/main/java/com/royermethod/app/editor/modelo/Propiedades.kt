@@ -2,7 +2,7 @@ package com.royermethod.app.editor.modelo
 
 import kotlin.math.roundToInt
 
-enum class GrupoPropiedad { AJUSTES, MARCO, TEXTO }
+enum class GrupoPropiedad { AJUSTES, MARCO, TEXTO, RECORTE }
 enum class TipoValor { NUMERO, COLOR, PASO }
 
 /** Canales independientes. Cada intervalo conserva su curva propia. */
@@ -10,6 +10,22 @@ enum class Propiedad(
     val titulo: String, val grupo: GrupoPropiedad, val minimo: Double, val maximo: Double,
     val tipo: TipoValor, val leer: (Clip) -> Double, val poner: (Clip, Double) -> Clip
 ) {
+    CROMA_ACTIVO("Croma", GrupoPropiedad.RECORTE, 0.0, 1.0, TipoValor.PASO, { if (it.recorteVisual.croma.activo) 1.0 else 0.0 }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(activo = v >= .5))) }),
+    CROMA_COLOR("Color a quitar", GrupoPropiedad.RECORTE, -2147483648.0, 2147483647.0, TipoValor.COLOR, { it.recorteVisual.croma.color.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(color = v.toLong().toInt()))) }),
+    CROMA_INTENSIDAD("Intensidad", GrupoPropiedad.RECORTE, 0.0, 1.0, TipoValor.NUMERO, { it.recorteVisual.croma.intensidad.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(intensidad = v.toFloat()))) }),
+    CROMA_TOLERANCIA("Tolerancia", GrupoPropiedad.RECORTE, 0.0, 0.8, TipoValor.NUMERO, { it.recorteVisual.croma.tolerancia.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(tolerancia = v.toFloat()))) }),
+    CROMA_SUAVIDAD("Suavidad de croma", GrupoPropiedad.RECORTE, 0.0, 0.3, TipoValor.NUMERO, { it.recorteVisual.croma.suavidad.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(suavidad = v.toFloat()))) }),
+    CROMA_LIMPIAR("Limpiar halo", GrupoPropiedad.RECORTE, 0.0, 1.0, TipoValor.NUMERO, { it.recorteVisual.croma.limpiar.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(limpiar = v.toFloat()))) }),
+    CROMA_INVERTIR("Invertir croma", GrupoPropiedad.RECORTE, 0.0, 1.0, TipoValor.PASO, { if (it.recorteVisual.croma.invertir) 1.0 else 0.0 }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(croma = it.recorteVisual.croma.copy(invertir = v >= .5))) }),
+    MASCARA_X("Posición X", GrupoPropiedad.RECORTE, -0.5, 1.5, TipoValor.NUMERO, { it.recorteVisual.mascara.x.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(x = v.toFloat()))) }),
+    MASCARA_Y("Posición Y", GrupoPropiedad.RECORTE, -0.5, 1.5, TipoValor.NUMERO, { it.recorteVisual.mascara.y.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(y = v.toFloat()))) }),
+    MASCARA_ANCHO("Anchura", GrupoPropiedad.RECORTE, 0.02, 2.0, TipoValor.NUMERO, { it.recorteVisual.mascara.ancho.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(ancho = v.toFloat()))) }),
+    MASCARA_ALTO("Altura", GrupoPropiedad.RECORTE, 0.02, 2.0, TipoValor.NUMERO, { it.recorteVisual.mascara.alto.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(alto = v.toFloat()))) }),
+    MASCARA_GIRO("Giro", GrupoPropiedad.RECORTE, -180.0, 180.0, TipoValor.NUMERO, { it.recorteVisual.mascara.giro.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(giro = v.toFloat()))) }),
+    MASCARA_PLUMA("Borde suave", GrupoPropiedad.RECORTE, 0.0, 0.3, TipoValor.NUMERO, { it.recorteVisual.mascara.pluma.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(pluma = v.toFloat()))) }),
+    MASCARA_RADIO("Redondeo", GrupoPropiedad.RECORTE, 0.0, 0.5, TipoValor.NUMERO, { it.recorteVisual.mascara.radio.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(radio = v.toFloat()))) }),
+    MASCARA_INVERTIR("Invertir máscara", GrupoPropiedad.RECORTE, 0.0, 1.0, TipoValor.PASO, { if (it.recorteVisual.mascara.invertir) 1.0 else 0.0 }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(invertir = v >= .5))) }),
+    MASCARA_FORMA("Forma", GrupoPropiedad.RECORTE, 0.0, FormaRecorte.values().lastIndex.toDouble(), TipoValor.PASO, { it.recorteVisual.mascara.tipo.ordinal.toDouble() }, { it, v -> it.copy(recorteVisual = it.recorteVisual.copy(mascara = it.recorteVisual.mascara.copy(tipo = FormaRecorte.values()[v.toInt().coerceIn(0, FormaRecorte.values().lastIndex)]))) }),
     BRILLO("Brillo", GrupoPropiedad.AJUSTES, -1.0, 1.0, TipoValor.NUMERO, { (it.color.brillo).toDouble() }, { it, v -> it.copy(color = it.color.copy(brillo = v.toFloat())) }),
     CONTRASTE("Contraste", GrupoPropiedad.AJUSTES, -1.0, 1.0, TipoValor.NUMERO, { (it.color.contraste).toDouble() }, { it, v -> it.copy(color = it.color.copy(contraste = v.toFloat())) }),
     SATURACION("Saturación", GrupoPropiedad.AJUSTES, -1.0, 1.0, TipoValor.NUMERO, { (it.color.saturacion).toDouble() }, { it, v -> it.copy(color = it.color.copy(saturacion = v.toFloat())) }),

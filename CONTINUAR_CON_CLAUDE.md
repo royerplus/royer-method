@@ -562,3 +562,32 @@ Base remota `c038513`, que ya incluye el parche anterior. «Afecta a» muestra a
 `LocalRecursosEditor` comparte la caché asíncrona de miniaturas de la línea con los paneles. La tira usa LazyRow, para pedir solo las miniaturas visibles/preparadas y evitar saturar esa caché con proyectos largos. El fotograma es el centro del segmento, redondeado a 250 ms; mientras llega hay un icono del tipo. Desde Todas, desactivar una conserva activas las demás; cada toque se puede deshacer. Todas mantiene el alcance automático para elementos futuros; la selección manual queda explícita como antes. Dos pruebas nuevas cubren estos toques y deshacer. Sin cambios en el motor, los efectos ni los proyectos guardados. Validación final al pie.
 
 **Validación: BUILD SUCCESSFUL (2m59s)** con `testDebugUnitTest assemblePrueba`. **477 pruebas: 475 pasan, 2 del banco omitidas, 0 fallos.** APK local `.prueba` SHA256 `5dfaebd274618dac402098594e06b8ebcf46c0b9da3502fbf33d094285789f55`. Pendiente revisión visual/táctil en el teléfono; no se afirma haber probado la interfaz en hardware.
+
+## Recorte: croma y máscaras (2026-11-12, Codex)
+
+Base remota `c038513`; esta entrega incluye también la selección por miniaturas pendiente (`4791303`). Se actualizó desde el remoto antes de trabajar. No se hizo force push.
+
+### Uso
+
+Seleccionar foto, video o texto > **Recorte**. Dos pestañas: **Croma** y **Máscaras**. Los controles de keyframes están recogidos en **Claves** para dejar espacio al selector visual; se abren automáticamente al añadir una clave. Comparten el transporte y las curvas ya existentes, con opción de canales independientes.
+
+- **Croma:** activar «Quitar un color», usar las muestras rápidas o «Elegir del clip». El selector permite tocar/arrastrar sobre una imagen del propio elemento, con mirilla; RGB opcional para precisar. Intensidad, tolerancia, suavidad del borde y limpieza del halo de color por separado. «Conservar solo ese color» invierte la selección. Restablecer solo cambia el croma.
+- **Máscaras:** tira de tarjetas con dibujos de círculo, cuadrado, rectángulo, rectángulo redondeado, óvalo, rombo, estrella, corazón y división lineal, además de Sin máscara. Vista de edición con tablero de transparencia y contorno. Arrastrar mueve, las esquinas cambian el tamaño y el círculo superior gira. Dos dedos permiten desplazar, ampliar y girar. Controles de tamaño/giro/borde suave; redondeo en la figura correspondiente. Invertir, centrar y restablecer. Círculo y cuadrado conservan su proporción real en clips panorámicos o verticales.
+- Croma y máscara se combinan y se animan sin cambiar los keyframes del movimiento del elemento. Sus magnitudes y colores se interpolan; forma, activación e inversión cambian al llegar a su clave. Se conservan relojes/curvas al dividir, recortar o cambiar velocidad como las demás propiedades.
+- Los huecos muestran las capas de detrás tanto en vista previa como al exportar. Al haber recorte activo se omite la copia automática del fondo desenfocado, para que no vuelva a rellenar los huecos. El fondo del proyecto y las capas inferiores siguen visibles. No es segmentación automática de personas: se elimina el color elegido o se aplica una figura.
+
+### Implementación y compatibilidad
+
+`RecorteVisual.kt` contiene croma, formas y geometría compartida con las guías. `PanelRecorte.kt` reutiliza la caché de miniaturas existente, sin abrir otro decodificador; el selector de color muestra la fuente original y la vista de máscara sirve de guía. La vista principal usa el resultado completo del shader, incluyendo el borde suave y la combinación con croma.
+
+Persistencia opcional compatible con proyectos antiguos, límites y valores no finitos normalizados, forma desconocida pasa a Sin máscara. Grupo de propiedades RECORTE separado. El shader CAPA quita el color antes de los ajustes RGB, conserva alfa premultiplicado y transparencia previa, y aplica la distancia de la figura con antialias y pluma. Se limpian los indicadores de recorte al dibujar grupos/FBO para no afectar al elemento siguiente. No se añaden pasos FBO por activar estas herramientas.
+
+Referencia de controles consultada en la ayuda oficial: https://www.capcut.com/help/chroma-key-feature y https://www.capcut.com/tools/mask-video-online . Se implementó una interfaz propia integrada en la app.
+
+### Validación
+
+- **487 pruebas JVM: 485 pasan, 2 del banco omitidas, 0 fallos.** Diez nuevas cubren valores neutros/proyectos viejos, proporción real, geometría/giro, guardado de todos los controles y curvas, valores inválidos, animación independiente, claves discretas y continuidad al recortar/dividir. Dos regresiones Android verifican el aislamiento entre clips y el reinicio al dibujar grupos: compiladas, pendientes de ejecutar en un teléfono.
+- Shader real con Chromium/WebGL/SwiftShader: verde eliminado con alfa 0, sujeto alfa 255, intensidad 40 % deja alfa 153, alfa anterior 128 conservado. Quitar negro conserva blanco y viceversa. Nueve figuras dibujadas; círculo 144 × 144 píxeles sobre fuente panorámica. Inversión complementaria con error máximo 0; suavizar pasa de 424 a 9728 píxeles parciales. Limpieza completa deja exceso verde máximo 0,5/255 en el patrón. También se comprobó compilación highp/mediump y ausencia de diferencias con el shader anterior al desactivar el recorte.
+- Artefactos externos a git: `/workspace/validation/croma-mascaras.cjs`, `croma-mascaras.png` y `croma-mascaras.json`. Son patrones sintéticos del shader, no capturas de la interfaz Android. No hay teléfono conectado: queda comprobar los gestos, aspecto final de los paneles y rendimiento real en el dispositivo.
+
+**Compilación final: BUILD SUCCESSFUL (3m36s)** con `testDebugUnitTest assemblePrueba assembleDebugAndroidTest`. APK local `.prueba` SHA256 `55a65200253b6901707d3b64c7f47abb52b6a94fba5fab5183921b32ae24131e`. El init script local para el banco JVM sigue fuera del repositorio; no se cambió la configuración de Gradle del proyecto.

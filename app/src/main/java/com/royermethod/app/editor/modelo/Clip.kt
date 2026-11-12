@@ -88,7 +88,8 @@ data class Clip(
     /** Reloj conservado al cortar, incluso en mitad de una curva personalizada. */
     val desfasePropiedadesUs: Long = 0,
     /** Solo en capas de ajuste/efectos: null = todas, incluso las futuras. */
-    val afectaA: Set<Long>? = null
+    val afectaA: Set<Long>? = null,
+    val recorteVisual: RecorteVisual = RecorteVisual()
 ) {
     internal val propiedadesOrdenadas: Map<Propiedad, List<ClaveValor>> by lazy {
         propiedades.mapValues { (_, ks) -> ks.sortedBy { it.tiempoUs }.distinctBy { it.tiempoUs } }

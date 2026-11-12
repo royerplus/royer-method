@@ -249,6 +249,81 @@ float cajaRedonda(vec2 p, vec2 medio, float r) {
 vec4 colorAlfa(vec4 c, float a) { return vec4(c.rgb * c.a * a, c.a * a); }
 
 
+uniform float uCromaActivo;
+uniform vec3 uCromaColor;
+uniform vec4 uCroma; // intensidad, tolerancia, suavidad, limpiar halo
+uniform float uCromaInvertir;
+uniform float uFormaTipo;
+uniform vec2 uFormaCentro;
+uniform vec4 uFormaDatos; // ancho, alto, giro, pluma
+uniform float uFormaRadio;
+uniform float uFormaInvertir;
+uniform vec2 uPoligono[24];
+uniform float uPoligonoN;
+
+vec3 claveYcc(vec3 c) {
+    return vec3(dot(c, vec3(0.299,0.587,0.114)) * 0.3,
+        dot(c, vec3(-0.168736,-0.331264,0.5)), dot(c, vec3(0.5,-0.418688,-0.081312)));
+}
+vec4 quitarColor(vec4 c) {
+    if (uCromaActivo < 0.5 || c.a < 0.00001) return c;
+    vec3 rgb = c.rgb / c.a;
+    float d = length(claveYcc(rgb) - claveYcc(uCromaColor));
+    float suave = max(uCroma.z, 0.0001);
+    float conservar = smoothstep(uCroma.y, uCroma.y + suave, d);
+    if (uCromaInvertir > 0.5) conservar = 1.0 - conservar;
+    // Suprimir el exceso del componente de fondo antes de filtrar o desenfocar.
+    vec3 otros = vec3((rgb.g+rgb.b)*0.5,(rgb.r+rgb.b)*0.5,(rgb.r+rgb.g)*0.5);
+    vec3 otrosClave = vec3(max(uCromaColor.g,uCromaColor.b),max(uCromaColor.r,uCromaColor.b),max(uCromaColor.r,uCromaColor.g));
+    vec3 dominante = step(otrosClave + vec3(0.01), uCromaColor);
+    float limpieza = uCromaInvertir > 0.5 ? 0.0 : uCroma.w * uCroma.x;
+    rgb = mix(rgb, min(rgb, otros), dominante * limpieza);
+    float alfa = c.a * mix(1.0, conservar, uCroma.x);
+    return vec4(rgb * alfa, alfa);
+}
+
+float distanciaPoligono(vec2 p, vec2 escala) {
+    vec2 a = uPoligono[0] * escala;
+    // El borde de cierre se toma desde el último vértice, sin índices dinámicos de ES2.
+    for (int j=0; j<24; j++) { if (float(j) < uPoligonoN) a = uPoligono[j] * escala; }
+    float distancia = 100.0;
+    float signo = 1.0;
+    for (int j=0; j<24; j++) {
+        if (float(j) >= uPoligonoN) break;
+        vec2 b = uPoligono[j] * escala;
+        vec2 arista = b - a;
+        vec2 v = p - a;
+        vec2 cerca = v - arista * clamp(dot(v,arista) / max(dot(arista,arista),0.000001),0.0,1.0);
+        distancia = min(distancia, length(cerca));
+        if ((a.y > p.y) != (b.y > p.y)) {
+            float cruce = (b.x-a.x) * (p.y-a.y) / (b.y-a.y) + a.x;
+            if (p.x < cruce) signo = -signo;
+        }
+        a = b;
+    }
+    return distancia * signo;
+}
+
+float formaEn(vec2 uv, vec2 pixel) {
+    if (uFormaTipo < 0.5) return 1.0;
+    vec2 tam = max(uRecorte.zw - uRecorte.xy,vec2(0.0001));
+    vec2 q = ((uv - uRecorte.xy) / tam - uFormaCentro) * uFormaTam;
+    float co = cos(uFormaDatos.z); float si = sin(uFormaDatos.z);
+    q = mat2(co,-si,si,co) * q;
+    vec2 medio = max(uFormaDatos.xy * uFormaTam * 0.5,vec2(0.0001));
+    if (uFormaTipo < 2.5) medio = vec2(max(uFormaDatos.x * 0.5,0.0001));
+    float d;
+    if (uFormaTipo < 1.5) d = length(q) - medio.x;
+    else if (uFormaTipo < 4.5) d = cajaRedonda(q,medio,uFormaTipo > 3.5 ? min(uFormaRadio,min(medio.x,medio.y)) : 0.0);
+    else if (uFormaTipo < 5.5) d = (length(q / medio) - 1.0) * min(medio.x,medio.y);
+    else if (uFormaTipo < 6.5) d = (abs(q.x)/medio.x + abs(q.y)/medio.y - 1.0) * min(medio.x,medio.y) * 0.7071;
+    else if (uFormaTipo < 8.5) d = distanciaPoligono(q,medio);
+    else d = -q.y;
+    float aa = max(max(pixel.x * uFormaTam.x / tam.x,pixel.y * uFormaTam.y / tam.y),0.00001);
+    float alfa = clamp(0.5 - d / max(uFormaDatos.w,aa),0.0,1.0);
+    return uFormaInvertir > 0.5 ? 1.0 - alfa : alfa;
+}
+
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
 vec4 tomar(vec2 uv) {
@@ -259,7 +334,7 @@ vec4 tomar(vec2 uv) {
         q = vec2(1.0) - abs(mod(q, 2.0) - vec2(1.0));
         uv = lo + q * (hi - lo);
     }
-    return texture2D(sTex, clamp(uv, lo, hi));
+    return quitarColor(texture2D(sTex, clamp(uv, lo, hi)));
 }
 
 vec4 tomarRgb(vec2 uv, vec2 desp) {
@@ -611,6 +686,14 @@ void main() {
                  * (uRegionFuente.y <= 0.0 ? 1.0 : lados.y)
                  * (uRegionFuente.z >= 1.0 ? 1.0 : lados.z)
                  * (uRegionFuente.w >= 1.0 ? 1.0 : lados.w);
+        }
+        // No rellenar el hueco del croma con el resplandor de la tarjeta.
+        if (uCromaActivo > 0.5) decoracion *= 1.0 - cob;
+        if (uFormaTipo > 0.5) {
+            float z = max(hq.z,0.000001);
+            vec2 dx = (m[0].xy - uv*m[0].z) / z;
+            vec2 dy = (m[1].xy - uv*m[1].z) / z;
+            corteFx *= formaEn(uv,vec2(length(vec2(dx.x,dy.x)),length(vec2(dx.y,dy.y))));
         }
         cob *= corteFx;
         if (uConMascara > 0.5) {

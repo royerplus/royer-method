@@ -112,6 +112,19 @@ object Persistencia {
     private fun clip(c: Clip): JSONObject = JSONObject().apply {
         put("id", c.id)
         put("esAjuste", c.esAjuste)
+        put("recorteVisual", JSONObject().apply {
+            val k = c.recorteVisual.croma; val m = c.recorteVisual.mascara
+            put("croma", JSONObject().apply {
+                put("activo", k.activo); put("color", k.color); put("intensidad", k.intensidad.toDouble())
+                put("tolerancia", k.tolerancia.toDouble()); put("suavidad", k.suavidad.toDouble())
+                put("limpiar", k.limpiar.toDouble()); put("invertir", k.invertir)
+            })
+            put("mascara", JSONObject().apply {
+                put("tipo", m.tipo.name); put("x", m.x.toDouble()); put("y", m.y.toDouble())
+                put("ancho", m.ancho.toDouble()); put("alto", m.alto.toDouble()); put("giro", m.giro.toDouble())
+                put("pluma", m.pluma.toDouble()); put("radio", m.radio.toDouble()); put("invertir", m.invertir)
+            })
+        })
         c.afectaA?.let { put("afectaA", JSONArray(it.sorted())) }
         put("relojPropiedades", c.desfasePropiedadesUs)
         put("marco", JSONObject().apply {
@@ -435,6 +448,7 @@ object Persistencia {
         val d = Clip(id = 0, origen = origen, texto = texto, esAjuste = esAjuste)
         return Clip(
             id = o.optLong("id"),
+            recorteVisual = recorteVisualDe(o.optJSONObject("recorteVisual")),
             afectaA = o.optJSONArray("afectaA")?.let { a -> (0 until a.length()).map { a.optLong(it) }.filter { it > 0 }.toSet() },
             esAjuste = esAjuste,
             desfasePropiedadesUs = o.optLong("relojPropiedades"),
@@ -492,6 +506,21 @@ object Persistencia {
             hevc = s.optBoolean("hevc", d.hevc),
             desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
             muestras = s.optInt("muestras", d.muestras)
+        )
+    }
+
+    private fun recorteVisualDe(o: JSONObject?): RecorteVisual {
+        val k = o?.optJSONObject("croma"); val m = o?.optJSONObject("mascara")
+        val c = Croma(); val f = MascaraForma()
+        return RecorteVisual(
+            if (k == null) c else Croma(k.optBoolean("activo"), k.optInt("color", c.color),
+                k.f("intensidad", c.intensidad).coerceIn(0f,1f), k.f("tolerancia", c.tolerancia).coerceIn(0f,.8f),
+                k.f("suavidad", c.suavidad).coerceIn(0f,.3f), k.f("limpiar", c.limpiar).coerceIn(0f,1f), k.optBoolean("invertir")),
+            if (m == null) f else MascaraForma(m.enumeracion("tipo", FormaRecorte.NINGUNA),
+                m.f("x", .5f).coerceIn(-.5f,1.5f), m.f("y", .5f).coerceIn(-.5f,1.5f),
+                m.f("ancho", .8f).coerceIn(.02f,2f), m.f("alto", .8f).coerceIn(.02f,2f),
+                m.f("giro", 0f).coerceIn(-180f,180f), m.f("pluma", .015f).coerceIn(0f,.3f),
+                m.f("radio", .12f).coerceIn(0f,.5f), m.optBoolean("invertir"))
         )
     }
 

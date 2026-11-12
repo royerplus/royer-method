@@ -155,6 +155,7 @@ fun PantallaEditor(
                                     Panel.TEXTO -> HojaTexto(estado, cerrar)
                                     Panel.MARCO -> HojaMarco(estado, cerrar)
                                     Panel.COLOR -> HojaColor(estado, cerrar)
+                                    Panel.RECORTE -> HojaRecorte(estado, cerrar)
                                     else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
                                 }
                             }
@@ -184,7 +185,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.ANIMACION, Panel.EFECTOS -> Unit
         Panel.PIEZAS -> PanelPiezas(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
-        Panel.COLOR, Panel.MARCO -> Unit
+        Panel.COLOR, Panel.MARCO, Panel.RECORTE -> Unit
         Panel.CAPAS -> PanelCapas(estado)
         Panel.ENCUADRE -> PanelEncuadre(estado)
         Panel.TEXTO -> Unit
@@ -290,13 +291,14 @@ private fun Transporte(estado: EstadoEditor) {
 private fun BotonClave(estado: EstadoEditor) {
     val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
     // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s: claves a una milesima son distintas
-    if (c != null && (c.esTexto || c.esAjuste || estado.panel == Panel.MARCO || estado.panel == Panel.COLOR)) {
+    if (c != null && (c.esTexto || c.esAjuste || estado.panel == Panel.MARCO || estado.panel == Panel.COLOR || estado.panel == Panel.RECORTE)) {
         val grupo = when {
+            estado.panel == Panel.RECORTE -> com.royermethod.app.editor.modelo.GrupoPropiedad.RECORTE
             c.esAjuste || estado.panel == Panel.COLOR -> com.royermethod.app.editor.modelo.GrupoPropiedad.AJUSTES
             estado.panel == Panel.MARCO -> com.royermethod.app.editor.modelo.GrupoPropiedad.MARCO
             else -> com.royermethod.app.editor.modelo.GrupoPropiedad.TEXTO
         }
-        BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, c.esTexto, false) }, activo = estado.localElegido != null)
+        BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, c.esTexto && estado.panel != Panel.RECORTE, false) }, activo = estado.localElegido != null)
         return
     }
     val tolerancia = toleranciaClaves()
@@ -420,6 +422,11 @@ private fun Herramientas(
                         Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
                         return@Row
                     }
+                    Herramienta(Glifos.recorte, "Recorte", {
+                        val inicio = estado.inicioElegido ?: 0L
+                        estado.pausarEn(estado.tiempo.coerceIn(inicio,inicio+c.duracionUs-1))
+                        estado.panel = Panel.RECORTE
+                    }, resaltada = c.recorteVisual.activo)
                     Herramienta(Glifos.encuadre, "Borde / 3D", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
                     val principal = estado.proyecto.principal
                     val i = principal.indexOfFirst { it.id == id }

@@ -386,7 +386,7 @@ class Escena(
      */
     private fun fondoDe(delante: PasoClip, local: Long, forzar: Boolean = false): PasoClip? {
         val clip = delante.clip
-        if (clip.esTexto) return null
+        if (clip.esTexto || clip.recorteVisual.activo) return null
         if (!forzar && cubre(delante)) return null
         val (cw, ch) = medidor.medidas(clip, alto)
         if (cw <= 0f || ch <= 0f) return null

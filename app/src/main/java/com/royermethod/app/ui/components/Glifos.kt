@@ -117,6 +117,11 @@ object Glifos {
     }
     val transicion: Glifo = { c -> camino(c, true, false, 4f, 6f, 12f, 12f, 4f, 18f); camino(c, true, false, 20f, 6f, 12f, 12f, 20f, 18f) }
     val corte: Glifo = { c -> linea(c, 12f, 5f, 12f, 19f) }
+    val recorte: Glifo = { c ->
+        linea(c, 7f, 3f, 7f, 17f); linea(c, 7f, 17f, 21f, 17f)
+        linea(c, 3f, 7f, 17f, 7f); linea(c, 17f, 7f, 17f, 21f)
+    }
+
     val color: Glifo = { c ->
         circulo(c, 9f, 9.5f, 5f)
         circulo(c, 15f, 9.5f, 5f)

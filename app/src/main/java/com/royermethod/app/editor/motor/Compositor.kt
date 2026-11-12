@@ -772,6 +772,31 @@ class Compositor(
         GLES20.glUniform4f(capa.u("uSombraMarco"), marco.suavidad,
             (kotlin.math.cos(ang) * marco.distancia).toFloat(), (kotlin.math.sin(ang) * marco.distancia).toFloat(), 0f)
 
+        val recorteVisual = p.clip.recorteVisual
+        val claveColor = recorteVisual.croma
+        val forma = recorteVisual.mascara
+        GLES20.glUniform1f(capa.u("uCromaActivo"), if (!p.esFondo && claveColor.efectivo) 1f else 0f)
+        if (!p.esFondo && claveColor.efectivo) {
+            GLES20.glUniform3f(capa.u("uCromaColor"), ((claveColor.color ushr 16) and 255)/255f,
+                ((claveColor.color ushr 8) and 255)/255f, (claveColor.color and 255)/255f)
+            GLES20.glUniform4f(capa.u("uCroma"), claveColor.intensidad, claveColor.tolerancia, claveColor.suavidad, claveColor.limpiar)
+            GLES20.glUniform1f(capa.u("uCromaInvertir"), if (claveColor.invertir) 1f else 0f)
+        }
+        GLES20.glUniform1f(capa.u("uFormaTipo"), if (p.esFondo) 0f else forma.tipo.ordinal.toFloat())
+        if (!p.esFondo && forma.tipo != com.royermethod.app.editor.modelo.FormaRecorte.NINGUNA) {
+            GLES20.glUniform2f(capa.u("uFormaCentro"), forma.x, forma.y)
+            GLES20.glUniform4f(capa.u("uFormaDatos"), forma.ancho, forma.alto, Math.toRadians(forma.giro.toDouble()).toFloat(), forma.pluma)
+            GLES20.glUniform1f(capa.u("uFormaRadio"), forma.radio)
+            GLES20.glUniform1f(capa.u("uFormaInvertir"), if (forma.invertir) 1f else 0f)
+            val vertices = forma.poligono()
+            GLES20.glUniform1f(capa.u("uPoligonoN"), vertices.size.toFloat())
+            if (vertices.isNotEmpty()) {
+                val puntos = FloatArray(vertices.size*2)
+                vertices.forEachIndexed { i, v -> puntos[i*2] = v.first; puntos[i*2+1] = v.second }
+                GLES20.glUniform2fv(capa.u("uPoligono[0]"), vertices.size, puntos, 0)
+            }
+        }
+
         val c = p.color
         GLES20.glUniform1f(capa.u("uNitidez"), if (p.esFondo) 0f else c.nitidez)
         GLES20.glUniform1f(capa.u("uBrillo"), c.brillo)
@@ -810,6 +835,8 @@ class Compositor(
     private fun dibujarGrupo(p: PasoGrupo, l: Lamina, voltear: Boolean) {
         capa.usar()
         GLES20.glUniform1f(capa.u("uConMarco"), 0f)
+        GLES20.glUniform1f(capa.u("uCromaActivo"), 0f)
+        GLES20.glUniform1f(capa.u("uFormaTipo"), 0f)
         GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
         GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, l.textura)
