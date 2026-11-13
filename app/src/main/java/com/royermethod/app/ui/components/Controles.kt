@@ -2,10 +2,14 @@ package com.royermethod.app.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -33,10 +37,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -45,6 +53,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,11 +99,13 @@ fun BotonIcono(
     modifier: Modifier = Modifier,
     activo: Boolean = true,
     color: Color = Ink.White90,
-    tam: Dp = 40.dp
+    tam: Dp = 40.dp,
+    descripcion: String? = null
 ) {
     Box(
         modifier
             .size(tam)
+            .then(if (descripcion != null) Modifier.semantics { contentDescription = descripcion } else Modifier)
             .clip(CircleShape)
             .clickable(enabled = activo, onClick = onClick)
             .alpha(if (activo) 1f else 0.28f),
@@ -162,8 +173,9 @@ enum class Escala { LINEAL, LOGARITMICA }
 
 /**
  * Deslizador propio: barra fina con el tramo desde el valor neutro
- * iluminado, y el valor escrito al lado. Tocar el valor lo devuelve al
- * neutro. Un arrastre entero es un solo paso de deshacer.
+ * iluminado, valor con unidades legibles y botón explícito de restablecer.
+ * Un arrastre horizontal es un solo paso de deshacer; el vertical deja
+ * desplazar la página sin tocar el valor.
  *
  * [iman] = false quita el salto al neutro cerca de el (para tiempos finos);
  * [cabecera] = false dibuja solo la barra, para quien pone su propia fila
@@ -180,7 +192,7 @@ fun Deslizador(
     neutro: Float = desde,
     escala: Escala = Escala.LINEAL,
     paso: Float = 0f,
-    texto: (Float) -> String = { "%.0f".format(it) },
+    texto: (Float) -> String = { valorDeControl(it, desde, hasta) },
     iman: Boolean = true,
     cabecera: Boolean = true
 ) {
@@ -202,46 +214,40 @@ fun Deslizador(
     }
 
     Column(modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        if (cabecera) Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(etiqueta, style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.weight(1f))
-            Text(
-                texto(valor),
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = if (valor == neutro) Ink.White50 else Ink.White,
-                modifier = Modifier
-                    .clip(esquinas(6.dp))
-                    .clickable {
-                        gestos.empezar(); cambio(neutro); gestos.terminar()
-                    }
-                    .padding(horizontal = 10.dp, vertical = 8.dp)
-            )
+        if (cabecera) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 40.dp)) {
+            Text(etiqueta, style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 2)
+            Text(texto(valor), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                color = if (valor == neutro) Ink.White50 else Ink.White, modifier = Modifier.padding(horizontal = 8.dp))
+            BotonIcono(Glifos.reiniciar, {
+                gestos.empezar(); cambio(neutro); gestos.terminar()
+            }, activo = valor != neutro, tam = 32.dp, descripcion = "Restablecer $etiqueta")
         }
         Canvas(
             Modifier
                 .fillMaxWidth()
-                .height(30.dp)
-                .pointerInput(desde, hasta, escala) {
-                    awaitEachGesture {
-                        val abajo = awaitFirstDown()
-                        gestos.empezar()
-                        val margen = 10.dp.toPx()
-                        fun valorEn(x: Float) = dePos(((x - margen) / (size.width - 2 * margen)).coerceIn(0f, 1f))
-                        try {
-                            cambio(valorEn(abajo.position.x))
-                            abajo.consume()
-                            while (true) {
-                                val ev = awaitPointerEvent()
-                                val c = ev.changes.firstOrNull { it.id == abajo.id } ?: break
-                                if (!c.pressed) break
-                                if (c.positionChange() != Offset.Zero) {
-                                    cambio(valorEn(c.position.x))
-                                    c.consume()
-                                }
-                            }
-                        } finally {
-                            gestos.terminar()
-                        }
+                .height(36.dp)
+                .semantics {
+                    contentDescription = etiqueta
+                    progressBarRangeInfo = ProgressBarRangeInfo(valor.coerceIn(desde,hasta),desde..hasta)
+                    setProgress { v ->
+                        gestos.empezar(); cambio(v.coerceIn(desde,hasta)); gestos.terminar();true
                     }
+                }
+                .pointerInput(desde,hasta,escala,paso,iman,neutro) {
+                    detectTapGestures { p ->
+                        val margen=10.dp.toPx()
+                        gestos.empezar()
+                        cambio(dePos(((p.x-margen)/(size.width-2*margen)).coerceIn(0f,1f)))
+                        gestos.terminar()
+                    }
+                }
+                .pointerInput(desde,hasta,escala,paso,iman,neutro) {
+                    val margen=10.dp.toPx()
+                    fun poner(x:Float) = cambio(dePos(((x-margen)/(size.width-2*margen)).coerceIn(0f,1f)))
+                    detectHorizontalDragGestures(
+                        onDragStart={ gestos.empezar();poner(it.x) },
+                        onDragEnd={ gestos.terminar() },onDragCancel={ gestos.terminar() }
+                    ) { ch,_ -> poner(ch.position.x) }
                 }
         ) {
             val margen = 10.dp.toPx()
@@ -272,6 +278,7 @@ fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifie
             .heightIn(min = 40.dp)
             .clip(esquinas(20.dp))
             .background(fondo)
+            .semantics { selected = elegido }
             .clickable(onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.Center,
@@ -311,6 +318,7 @@ fun Interruptor(texto: String, activo: Boolean, onCambio: (Boolean) -> Unit, det
         Modifier
             .fillMaxWidth()
             .clip(esquinas(10.dp))
+            .semantics { stateDescription = if(activo) "Activado" else "Desactivado"; role = Role.Switch }
             .clickable { onCambio(!activo) }
             .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -374,12 +382,15 @@ fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifie
 /** Pestanas con una raya debajo de la elegida. */
 @Composable
 fun Pestanas(nombres: List<String>, elegida: Int, onElegir: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         nombres.forEachIndexed { i, n ->
             val sel = i == elegida
             Column(
                 Modifier
+                    .heightIn(min = 48.dp)
                     .clip(esquinas(8.dp))
+                    .background(if(sel)Ink.White08 else Color.Transparent)
+                    .semantics { selected = sel; role = Role.Tab }
                     .clickable { onElegir(i) }
                     .padding(horizontal = 12.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
@@ -387,7 +398,8 @@ fun Pestanas(nombres: List<String>, elegida: Int, onElegir: (Int) -> Unit, modif
                 Text(
                     n,
                     style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
-                    color = if (sel) Ink.White else Ink.White50
+                    color = if (sel) Ink.White else Ink.White50,
+                    maxLines = 1, softWrap = false
                 )
                 Spacer(Modifier.height(5.dp))
                 Box(Modifier.size(if (sel) 18.dp else 0.dp, 2.dp).clip(CircleShape).background(Ink.White))
@@ -488,20 +500,23 @@ fun BotonLleno(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier
 
 /** Boton de texto solo con borde. */
 @Composable
-fun BotonBorde(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier, glifo: Glifo? = null) {
+fun BotonBorde(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier, glifo: Glifo? = null, peligro: Boolean = false, activo: Boolean = true) {
+    val color = if(peligro)Ink.Peligro else Ink.White90
     Row(
         modifier
             .clip(esquinas(22.dp))
-            .border(1.dp, Ink.White30, esquinas(22.dp))
-            .clickable(onClick = onClick)
+            .heightIn(min = 42.dp)
+            .border(1.dp, if(peligro)Ink.Peligro.copy(alpha=.5f) else Ink.White30, esquinas(22.dp))
+            .alpha(if(activo)1f else .35f)
+            .clickable(enabled = activo, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (glifo != null) {
-            Icono(glifo, color = Ink.White90, tam = 16.dp)
+            Icono(glifo, color = color, tam = 16.dp)
             Spacer(Modifier.width(6.dp))
         }
-        Text(texto, style = MaterialTheme.typography.bodyMedium, color = Ink.White90, maxLines = 1)
+        Text(texto, style = MaterialTheme.typography.bodyMedium, color = color, maxLines = 1, softWrap = false)
     }
 }
 
@@ -524,4 +539,28 @@ fun reloj(us: Long, milesimas: Boolean = false): String {
     val decimas = us / 100_000
     val s = decimas / 10
     return "%02d:%02d.%d".format(s / 60, s % 60, decimas % 10)
+}
+
+/** Unidades legibles también para magnitudes pequeñas: .006 equivale a 0,6 %. */
+internal fun valorDeControl(v:Float,desde:Float,hasta:Float):String {
+    val porcentaje = desde >= -1f && hasta <= 1f
+    val n=if(porcentaje)v*100f else v
+    val decimales=if(porcentaje)1 else if(hasta-desde<=10f)2 else 0
+    val f=java.text.NumberFormat.getNumberInstance().apply { minimumFractionDigits=0;maximumFractionDigits=decimales;isGroupingUsed=false }
+    return f.format(n.toDouble()) + if(porcentaje) "%" else ""
+}
+
+/** Agrupa ajustes secundarios; su cabecera conserva un objetivo táctil y un estado claro. */
+@Composable
+fun SeccionAjustes(titulo:String,inicialmenteAbierta:Boolean=false,contenido:@Composable androidx.compose.foundation.layout.ColumnScope.()->Unit) {
+    var abierta by rememberSaveable(titulo) { mutableStateOf(inicialmenteAbierta) }
+    Column(Modifier.fillMaxWidth().padding(vertical=6.dp).clip(esquinas(12.dp)).background(Ink.White04)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=48.dp)
+            .semantics { stateDescription=if(abierta) "Expandido" else "Contraído" }
+            .clickable { abierta=!abierta }.padding(horizontal=12.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text(titulo,style=MaterialTheme.typography.bodyMedium,color=Ink.White90,modifier=Modifier.weight(1f))
+            Icono(Glifos.siguiente,Modifier.rotate(if(abierta)90f else 0f),color=Ink.White50,tam=18.dp)
+        }
+        AnimatedVisibility(abierta) { Column(Modifier.fillMaxWidth().padding(horizontal=12.dp).padding(bottom=12.dp),content=contenido) }
+    }
 }

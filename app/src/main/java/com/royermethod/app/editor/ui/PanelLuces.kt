@@ -7,6 +7,7 @@ import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
@@ -21,11 +22,14 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.*
 import com.royermethod.app.ui.components.*
 import com.royermethod.app.ui.theme.Ink
@@ -62,10 +66,11 @@ internal fun ponerClaveLuz(e: EstadoEditor, quitar: Boolean) {
 internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
     val c = e.clipElegido ?: return
     val luz = luzElegida(e)
-    var dibujar by rememberSaveable(c.id) { mutableStateOf(c.luces.isEmpty()) }
-    var claves by rememberSaveable(c.id) { mutableStateOf(false) }
+    var dibujar by rememberSaveable(c.id) { mutableStateOf(false) }
+    var agregarAbierto by rememberSaveable(c.id) { mutableStateOf(false) }
+    var tab by rememberSaveable(c.id) { mutableIntStateOf(0) }
     var curvas by rememberSaveable(c.id) { mutableStateOf(false) }
-    LaunchedEffect(luz?.claves?.isNotEmpty()) { if(luz?.claves?.isNotEmpty() == true) claves = true }
+    val catalogo = !dibujar && (agregarAbierto || c.luces.isEmpty())
     fun agregar(tipo: TipoLuz, puntos: List<PuntoLuz>? = null) {
         var nuevo = 0L
         e.cambiarClip { actual ->
@@ -75,76 +80,144 @@ internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
         }
         e.luzElegida = nuevo
         dibujar = false
+        agregarAbierto = false
+        tab = 0
     }
-    HojaPanel("Luces y trazos",cerrar,acciones = {
-        BotonBorde(if(claves) "Claves ✓" else "Claves", { claves = !claves },glifo=Glifos.rombo)
+    HojaPanel("Luces",cerrar,claveDesplazamiento=listOf(c.id,luz?.id,tab,catalogo,dibujar),acciones = {
+        if(c.luces.isNotEmpty() || dibujar) BotonBorde(
+            if(agregarAbierto || dibujar) "Cancelar" else "Añadir",
+            { if(agregarAbierto || dibujar) { agregarAbierto=false;dibujar=false } else agregarAbierto=true },
+            glifo=if(agregarAbierto || dibujar) Glifos.cerrar else Glifos.mas)
     },fijo = {
-        if(claves && luz != null) TiempoLuces(e,luz) { curvas = !curvas }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            for(l in c.luces) Chip(l.nombre,l.id == luz?.id, { e.luzElegida=l.id; dibujar=false },marca=l.claves.isNotEmpty())
-        }
-        Spacer(Modifier.height(8.dp))
-    }) {
-        Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            for(tipo in TipoLuz.values()) Mosaico(tipo.titulo, tipo == TipoLuz.TRAZO && dibujar, {
-                if(tipo == TipoLuz.TRAZO) dibujar=true else agregar(tipo)
-            },Modifier.width(76.dp)) { color -> iconoLuz(tipo,color) }
-        }
-        Spacer(Modifier.height(10.dp))
-        val imagen=fuenteRecorte(e,c,preciso=true)
-        if(imagen==null) Nota("Preparando fotograma…")
-        LienzoLuces(e,c,luz,dibujar,imagen, { agregar(TipoLuz.TRAZO,it) })
-        Nota(if(dibujar) "Dibuja sobre la zona que quieras iluminar." else "Arrastra para mover · dos dedos para ampliar y girar")
-        if(dibujar) BotonBorde("Terminar de dibujar", { dibujar=false })
-        if(luz != null) {
-            val v=luz.estiloEn(relojLuz(e))
-            Row(Modifier.horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                if(luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO) {
-                    BotonBorde("Revelar", { animacionLuz(e,0) })
-                    BotonBorde("Recorrer", { animacionLuz(e,1) })
-                    BotonBorde("Borrar", { animacionLuz(e,2) })
-                } else BotonBorde("Encender", { animacionLuz(e,3) })
-            }
-            if(curvas) {
-                val orden=luz.claves.sortedBy { it.tiempoUs }
-                val k=if(orden.size < 2)null else orden[orden.indexOfLast { it.tiempoUs<=relojLuz(e) }.coerceIn(0,orden.size-2)]
-                if(k==null) Nota("Añade dos claves para elegir una curva.") else SelectorCurva(k.curva,k.bezier,k.velocidad) { cu,b,vel,arr ->
-                    cambiarLuz(e,arr) { l -> l.copy(claves=l.claves.map { if(it.tiempoUs==k.tiempoUs)it.copy(curva=cu,bezier=b,velocidad=vel)else it }) }
+        if(c.luces.isNotEmpty()) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                for(l in c.luces) TarjetaLuz(l,l.id==luz?.id,l.estiloEn(relojLuz(e)).color) {
+                    e.luzElegida=l.id;dibujar=false;agregarAbierto=false
                 }
             }
-            Spacer(Modifier.height(10.dp))
-            Muestras(listOf(0xFF70E8FF,0xFFBD7BFF,0xFFFF61CB,0xFFFFE37A,0xFF91FF9E,0xFFFFFFFF).map { it.toInt() },v.color,
-                { color -> estiloLuz(e) { it.copy(color=color) } })
-            var rgb by rememberSaveable(c.id,luz.id) { mutableStateOf(false) }
-            BotonBorde("Color personalizado", { rgb=!rgb })
-            if(rgb) for((nombre,shift) in listOf("Rojo" to 16,"Verde" to 8,"Azul" to 0))
-                Deslizador(nombre,((v.color ushr shift)and 255).toFloat(),0f,255f, { x ->
-                    estiloLuz(e,true) { it.copy(color=(it.color and (255 shl shift).inv()) or (x.roundToInt() shl shift)) }
-                },texto={ it.roundToInt().toString() })
-            Deslizador("Intensidad",v.opacidad,0f,1f,{ x -> estiloLuz(e,true) { it.copy(opacidad=x) } },neutro=1f)
-            Deslizador(if(luz.tipo==TipoLuz.FOCO) "Núcleo" else "Grosor",v.grosor,.001f,.06f,{ x -> estiloLuz(e,true) { it.copy(grosor=x) } },neutro=.006f)
-            Deslizador("Resplandor",v.halo,0f,.15f,{ x -> estiloLuz(e,true) { it.copy(halo=x) } },neutro=.025f)
-            if(luz.tipo != TipoLuz.TRAZO && luz.puntos.size>=2) {
-                val ancho=luz.puntos.maxOf { it.x }-luz.puntos.minOf { it.x }
-                val alto=luz.puntos.maxOf { it.y }-luz.puntos.minOf { it.y }
-                Deslizador("Anchura del foco",ancho,.01f,1f,{ x -> cajaLuz(e,x,null) })
-                Deslizador("Altura del foco",alto,.01f,1f,{ y -> cajaLuz(e,null,y) })
+            Spacer(Modifier.height(6.dp))
+        }
+        if(luz!=null && !catalogo && !dibujar)
+            Pestanas(listOf("Colocar","Estilo","Animar"),tab,{ tab=it })
+    }) {
+        if(catalogo) {
+            Etiqueta("Añadir una luz")
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                for(tipo in TipoLuz.values()) Mosaico(tipo.titulo,false,{
+                    if(tipo==TipoLuz.TRAZO) { dibujar=true;agregarAbierto=false } else agregar(tipo)
+                },Modifier.weight(1f)) { color -> iconoLuz(tipo,color) }
             }
-            Deslizador("Tamaño",v.escala,.1f,4f,{ x -> estiloLuz(e,true) { it.copy(escala=x) } },neutro=1f)
-            Deslizador("Giro",v.giro,-180f,180f,{ x -> estiloLuz(e,true) { it.copy(giro=x) } },neutro=0f,texto={ "${it.roundToInt()}°" })
-            if(luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO) {
-                Deslizador("Desde",v.inicio,0f,1f,{ x -> estiloLuz(e,true) { it.copy(inicio=x.coerceAtMost(it.fin)) } },neutro=0f)
-                Deslizador("Hasta",v.fin,0f,1f,{ x -> estiloLuz(e,true) { it.copy(fin=x.coerceAtLeast(it.inicio)) } },neutro=1f)
+            Spacer(Modifier.height(12.dp))
+            Nota("Traza una zona a mano o coloca un foco, destello o anillo.")
+        } else if(dibujar || tab==0) {
+            val imagen=fuenteRecorte(e,c,preciso=true)
+            if(imagen==null) Nota("Preparando fotograma…")
+            if(dibujar) Nota("Nuevo trazo · dibuja sobre la zona que quieres iluminar.")
+            LienzoLuces(e,c,luz,dibujar,imagen,{ agregar(TipoLuz.TRAZO,it) })
+            if(!dibujar) {
+                Nota("Arrastra para mover · dos dedos para ampliar y girar")
+                if(luz!=null) ControlesColocarLuz(e,luz)
             }
-            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                BotonBorde("Duplicar", {
-                    e.cambiarClip { a -> val id=(a.luces.maxOfOrNull { it.id }?:0L)+1L
-                        e.luzElegida=id; a.copy(luces=a.luces+luz.copy(id=id,nombre="${luz.nombre} copia")) }
-                },glifo=Glifos.duplicar)
-                BotonBorde("Eliminar", { e.cambiarClip { a -> a.copy(luces=a.luces.filter { it.id!=luz.id }) } },glifo=Glifos.papelera)
+        } else if(luz!=null) {
+            if(tab==1) ControlesEstiloLuz(e,luz) else {
+                TiempoLuces(e,luz) { curvas=!curvas }
+                Spacer(Modifier.height(8.dp))
+                Etiqueta("Animación rápida")
+                AnimacionesRapidasLuz(e,luz)
+                if(curvas) {
+                    val orden=luz.claves.sortedBy { it.tiempoUs }
+                    val k=if(orden.size<2)null else orden[orden.indexOfLast { it.tiempoUs<=relojLuz(e) }.coerceIn(0,orden.size-2)]
+                    if(k==null) Nota("Añade dos claves para elegir una curva.") else
+                        SelectorCurva(k.curva,k.bezier,k.velocidad) { cu,b,vel,arr ->
+                            cambiarLuz(e,arr) { l -> l.copy(claves=l.claves.map { if(it.tiempoUs==k.tiempoUs)it.copy(curva=cu,bezier=b,velocidad=vel)else it }) }
+                        }
+                }
+                if(luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO) {
+                    val v=luz.estiloEn(relojLuz(e))
+                    SeccionAjustes("Tramo visible") {
+                        Deslizador("Desde",v.inicio,0f,1f,{ x -> estiloLuz(e,true) { it.copy(inicio=x.coerceAtMost(it.fin)) } },neutro=0f)
+                        Deslizador("Hasta",v.fin,0f,1f,{ x -> estiloLuz(e,true) { it.copy(fin=x.coerceAtLeast(it.inicio)) } },neutro=1f)
+                    }
+                }
+                Nota("Pon una clave, avanza el tiempo y recoloca la luz para seguir al personaje.")
             }
-            Nota("Cada luz tiene sus propias claves. Mueve el tiempo y ajusta su posición para seguir al personaje.")
-        } else Nota("Dibuja un trazo o añade un foco para los ojos, un destello o un anillo.")
+        }
+    }
+}
+
+@Composable
+private fun TarjetaLuz(l:LuzTrazo,elegida:Boolean,color:Int,onElegir:()->Unit) {
+    Column(Modifier.width(80.dp).clip(esquinas(10.dp))
+        .background(if(elegida)Ink.White15 else Ink.White04)
+        .border(1.dp,if(elegida)Ink.White else Ink.White15,esquinas(10.dp))
+        .selectable(elegida,role=Role.RadioButton,onClick=onElegir)
+        .padding(horizontal=5.dp,vertical=7.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+        Box(Modifier.size(26.dp)) {
+            Canvas(Modifier.fillMaxSize()) { iconoLuz(l.tipo,Color(color)) }
+            if(l.claves.isNotEmpty()) Icono(Glifos.romboLleno,Modifier.align(Alignment.TopEnd),tam=8.dp)
+        }
+        Spacer(Modifier.height(3.dp))
+        Text(l.nombre,style=MaterialTheme.typography.labelSmall.copy(letterSpacing=0.sp),color=if(elegida)Ink.White else Ink.White70,
+            maxLines=1,overflow=TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+private fun ControlesColocarLuz(e:EstadoEditor,luz:LuzTrazo) {
+    val v=luz.estiloEn(relojLuz(e))
+    SeccionAjustes("Tamaño y giro") {
+        if(luz.tipo!=TipoLuz.TRAZO && luz.puntos.size>=2) {
+            val ancho=luz.puntos.maxOf { it.x }-luz.puntos.minOf { it.x }
+            val alto=luz.puntos.maxOf { it.y }-luz.puntos.minOf { it.y }
+            Deslizador("Anchura",ancho,.01f,1f,{ x -> cajaLuz(e,x,null) })
+            Deslizador("Altura",alto,.01f,1f,{ y -> cajaLuz(e,null,y) })
+        }
+        Deslizador("Tamaño",v.escala,.1f,4f,{ x -> estiloLuz(e,true) { it.copy(escala=x) } },neutro=1f,texto={ "%.2f×".format(it) })
+        Deslizador("Giro",v.giro,-180f,180f,{ x -> estiloLuz(e,true) { it.copy(giro=x) } },neutro=0f,texto={ "${it.roundToInt()}°" })
+    }
+}
+
+@Composable
+private fun ControlesEstiloLuz(e:EstadoEditor,luz:LuzTrazo) {
+    val v=luz.estiloEn(relojLuz(e))
+    Etiqueta("Color de la luz")
+    Muestras(listOf(0xFF70E8FF,0xFFBD7BFF,0xFFFF61CB,0xFFFFE37A,0xFF91FF9E,0xFFFFFFFF).map { it.toInt() },v.color,
+        { color -> estiloLuz(e) { it.copy(color=color) } })
+    Deslizador("Intensidad",v.opacidad,0f,1f,{ x -> estiloLuz(e,true) { it.copy(opacidad=x) } },neutro=1f)
+    Deslizador(if(luz.tipo==TipoLuz.FOCO) "Núcleo" else "Grosor",v.grosor,.001f,.06f,{ x -> estiloLuz(e,true) { it.copy(grosor=x) } },neutro=.006f)
+    Deslizador("Resplandor",v.halo,0f,.15f,{ x -> estiloLuz(e,true) { it.copy(halo=x) } },neutro=.025f)
+    SeccionAjustes("Color personalizado") {
+        for((nombre,shift) in listOf("Rojo" to 16,"Verde" to 8,"Azul" to 0))
+            Deslizador(nombre,((v.color ushr shift)and 255).toFloat(),0f,255f,{ x ->
+                estiloLuz(e,true) { it.copy(color=(it.color and (255 shl shift).inv()) or (x.roundToInt() shl shift)) }
+            },texto={ it.roundToInt().toString() })
+    }
+    SeccionAjustes("Gestionar luz") {
+        AccionesGestionLuz(e,luz)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AccionesGestionLuz(e:EstadoEditor,luz:LuzTrazo) {
+    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        BotonBorde("Duplicar",{
+            e.cambiarClip { a -> val id=(a.luces.maxOfOrNull { it.id }?:0L)+1L
+                e.luzElegida=id;a.copy(luces=a.luces+luz.copy(id=id,nombre="${luz.nombre} copia")) }
+        },glifo=Glifos.duplicar)
+        BotonBorde("Eliminar luz",{ e.cambiarClip { a -> a.copy(luces=a.luces.filter { it.id!=luz.id }) } },glifo=Glifos.papelera,peligro=true)
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun AnimacionesRapidasLuz(e:EstadoEditor,luz:LuzTrazo) {
+    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
+        if(luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO) {
+            BotonBorde("Revelar",{ animacionLuz(e,0) },activo=e.localElegido!=null)
+            BotonBorde("Recorrer",{ animacionLuz(e,1) },activo=e.localElegido!=null)
+            BotonBorde("Desvanecer",{ animacionLuz(e,2) },activo=e.localElegido!=null)
+        } else BotonBorde("Encender",{ animacionLuz(e,3) },activo=e.localElegido!=null)
     }
 }
 
@@ -192,11 +265,11 @@ private fun TiempoLuces(e:EstadoEditor,l:LuzTrazo,curvas:()->Unit) {
             drawLine(Ink.White,Offset(x,0f),Offset(x,size.height),2.dp.toPx())
         }
         Row(horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-            BotonIcono(Glifos.atras,{ ts.lastOrNull { it<local-tol }?.let { e.pausarEn(ini+it) } },activo=ts.any { it<local-tol })
+            BotonIcono(Glifos.atras,{ ts.lastOrNull { it<local-tol }?.let { e.pausarEn(ini+it) } },Modifier.semantics { contentDescription="Clave anterior de la luz" },activo=ts.any { it<local-tol })
             BotonIcono(Glifos.rombo,{ ponerClaveLuz(e,false) },Modifier.semantics { contentDescription="Poner clave de luz" },activo=e.localElegido!=null)
             BotonIcono(Glifos.romboQuitar,{ ponerClaveLuz(e,true) },Modifier.semantics { contentDescription="Quitar clave de luz" },activo=e.localElegido!=null && ts.any { abs(it-local)<=tol })
-            BotonIcono(Glifos.siguiente,{ ts.firstOrNull { it>local+tol }?.let { e.pausarEn(ini+it) } },activo=ts.any { it>local+tol })
-            BotonBorde("Curva",curvas)
+            BotonIcono(Glifos.siguiente,{ ts.firstOrNull { it>local+tol }?.let { e.pausarEn(ini+it) } },Modifier.semantics { contentDescription="Clave siguiente de la luz" },activo=ts.any { it>local+tol })
+            BotonIcono(Glifos.curva,curvas,Modifier.semantics { contentDescription="Editar curva de la luz" })
         }
     }
 }
@@ -225,7 +298,7 @@ private fun LienzoLuces(e:EstadoEditor,c:Clip,luz:LuzTrazo?,dibujar:Boolean,imag
     var borrador by remember(c.id) { mutableStateOf<List<PuntoLuz>>(emptyList()) }
     val añadir by rememberUpdatedState(agregar)
     val actual by rememberUpdatedState(luz)
-    Canvas(Modifier.fillMaxWidth().height(220.dp).clip(esquinas(12.dp)).background(Ink.White04)
+    Canvas(Modifier.fillMaxWidth().height(190.dp).clip(esquinas(12.dp)).background(Ink.White04)
         .pointerInput(c.id,dibujar,razon,luz?.id,imagen) {
             if(imagen==null)return@pointerInput
             if(dibujar) detectDragGestures(onDragStart={ p ->

@@ -86,14 +86,17 @@ fun HojaTexto(estado: EstadoEditor, onCerrar: () -> Unit) {
     val c = estado.clipElegido ?: return
     val t = c.propiedadesEn(estado.localElegido ?: 0L).texto ?: return
     var pestana by rememberSaveable { mutableStateOf(0) }
-    HojaPanel("Texto", onCerrar = onCerrar, fijo = {
-        TiempoPropiedades(estado, GrupoPropiedad.TEXTO, true)
+    var animar by rememberSaveable(c.id) { mutableStateOf(false) }
+    HojaPanel("Texto", onCerrar = onCerrar, acciones={
+        com.royermethod.app.ui.components.Chip("Animar",animar,{ animar=!animar },marca=c.claves.isNotEmpty() || c.propiedades.keys.any { it.grupo==GrupoPropiedad.TEXTO })
+    }, claveDesplazamiento=pestana, fijo = {
+        if(animar) TiempoPropiedades(estado, GrupoPropiedad.TEXTO, true)
         Spacer(Modifier.height(8.dp))
         PestanasTexto(pestana, t) { pestana = it }
         Spacer(Modifier.height(4.dp))
     }) {
         CampoTexto(estado, c.id, t)
-        OpcionesPropiedades(estado, GrupoPropiedad.TEXTO, true)
+        if(animar) OpcionesPropiedades(estado, GrupoPropiedad.TEXTO, true)
         Spacer(Modifier.height(6.dp))
         when (pestana) {
             0 -> TextoFuente(estado, t)
@@ -144,13 +147,13 @@ private val NOMBRES_PESTANAS = listOf("Fuente", "Color", "Borde", "Sombra", "Fon
 /** Las pestanas: un dibujo que dice que hay dentro y el nombre. */
 @Composable
 private fun PestanasTexto(elegida: Int, t: Texto, onElegir: (Int) -> Unit) {
-    // Las seis a lo ancho, sin desplazar: todas a la vista
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+    // Cada opción conserva ancho legible; la tira se desplaza en pantallas pequeñas.
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         NOMBRES_PESTANAS.forEachIndexed { i, n ->
             val sel = i == elegida
             Column(
                 Modifier
-                    .weight(1f)
+                    .width(64.dp)
                     .clip(esquinas(10.dp))
                     .background(if (sel) Ink.White15 else Color.Transparent)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { onElegir(i) }

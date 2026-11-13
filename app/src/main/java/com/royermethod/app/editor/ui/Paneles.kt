@@ -6,6 +6,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -37,6 +38,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -106,8 +109,8 @@ import kotlin.math.min
 
 /**
  * Hoja de abajo con un panel. Ocupa el sitio de la linea de tiempo y la
- * barra de herramientas: la imagen sigue a la vista y del mismo tamano, asi
- * que cada cambio se ve mientras se hace.
+ * barra de herramientas. El panel puede ampliarse conservando el lienzo
+ * visible para comprobar los cambios mientras se editan.
  *
  * [acciones] va en la fila del titulo, entre el titulo y el boton de cerrar
  * (p. ej. "Animaciones (2) ▾  +"). [fijo] queda debajo del titulo sin
@@ -122,29 +125,44 @@ fun HojaPanel(
     modifier: Modifier = Modifier,
     acciones: (@Composable RowScope.() -> Unit)? = null,
     fijo: (@Composable ColumnScope.() -> Unit)? = null,
+    claveDesplazamiento: Any? = null,
     contenido: @Composable ColumnScope.() -> Unit
 ) {
+    val desplazamiento=rememberScrollState()
+    LaunchedEffect(claveDesplazamiento) { desplazamiento.scrollTo(0) }
+    val tamano=LocalTamanoPanelEditor.current
     Column(
         modifier
             .fillMaxSize()
             .background(Ink.Black)
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
+        if(tamano!=null) Box(Modifier.fillMaxWidth().height(32.dp)
+            .pointerInput(tamano.ampliado) {
+                var distancia=0f
+                detectVerticalDragGestures(onDragStart={distancia=0f},onDragEnd={
+                    if((distancia < -16.dp.toPx() && !tamano.ampliado) || (distancia > 16.dp.toPx() && tamano.ampliado))tamano.cambiar()
+                }) { ch,dy -> distancia+=dy;ch.consume() }
+            }
+            .semantics { contentDescription=if(tamano.ampliado) "Reducir panel" else "Ampliar panel" }
+            .clickable { tamano.cambiar() },contentAlignment=Alignment.Center) {
+            Box(Modifier.width(36.dp).height(4.dp).clip(esquinas(2.dp)).background(Ink.White30))
+        }
         Row(
-            Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 6.dp),
+            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(titulo, style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.2.sp), color = Ink.White, modifier = Modifier.weight(1f))
+            Text(titulo, style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 0.2.sp), color = Ink.White, modifier = Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
             acciones?.invoke(this)
-            BotonIcono(Glifos.listo, onCerrar)
+            BotonIcono(Glifos.listo, onCerrar, descripcion = "Cerrar panel")
         }
-        if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp), content = fijo)
+        if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), content = fijo)
         Column(
             Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
+                .verticalScroll(desplazamiento)
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 16.dp),
             content = contenido
         )
@@ -254,6 +272,7 @@ private fun muestraDe(f: Filtro): List<Color> = when (f) {
  * tienen algo puesto. Asi caben todos sin una columna de catorce barras.
  */
 @Composable
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 fun PanelColor(estado: EstadoEditor) {
     val c = estado.clipElegido?.propiedadesEn(estado.localElegido ?: 0L) ?: return
     var pestana by rememberSaveable { mutableIntStateOf(0) }
@@ -290,13 +309,13 @@ fun PanelColor(estado: EstadoEditor) {
         }
     }
     Hueco(10)
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
         // Cada pestana quita lo suyo: quitar los ajustes no se lleva el filtro
         BotonBorde("Restablecer", {
             if (pestana == 0) estado.cambiarAspecto { it.copy(color = AjustesColor()) }
             else estado.cambiarAspecto { it.copy(filtro = Filtro.NINGUNO, intensidadFiltro = 1f) }
         }, glifo = Glifos.reiniciar)
-        BotonBorde("Aplicar a todos", {
+        if(!c.esAjuste) BotonBorde("Copiar a pista principal", {
             estado.hacer { p ->
                 // Los textos no tienen ajustes de imagen
                 p.copy(principal = p.principal.map { if (it.esTexto) it else it.copy(color = c.color, filtro = c.filtro, intensidadFiltro = c.intensidadFiltro) })

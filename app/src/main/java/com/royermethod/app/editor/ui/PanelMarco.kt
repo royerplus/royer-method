@@ -20,6 +20,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import com.royermethod.app.editor.modelo.*
 import com.royermethod.app.ui.components.*
 import com.royermethod.app.ui.theme.Ink
@@ -119,7 +120,8 @@ internal fun TiempoPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, movi
             BotonIcono(Glifos.romboQuitar, { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, true) }, activo = cercano != null,
                 modifier = Modifier.semantics { contentDescription = "Quitar keyframe" })
             BotonIcono(Glifos.siguiente, { tiempos.firstOrNull { it > local + tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it > local + tolerancia })
-            BotonBorde("Curva", { estado.verCurvasPropiedades = !estado.verCurvasPropiedades })
+            BotonIcono(Glifos.curva, { estado.verCurvasPropiedades = !estado.verCurvasPropiedades },
+                modifier=Modifier.semantics { selected=estado.verCurvasPropiedades },descripcion="Editar curva de keyframes")
         }
     }
 }
@@ -138,7 +140,7 @@ internal fun OpcionesPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, mo
     if (movimiento) Opciones(listOf(0, 1, 2), estado.modoClaveTexto, { listOf("Todo", "Movimiento", "Estilo")[it] }, { estado.modoClaveTexto = it })
     if (conEstilo) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("En conjunto", canal == null, { estado.canalPropiedad = null })
+            Chip("Juntas", canal == null, { estado.canalPropiedad = null })
             Chip("Por propiedad", canal != null, { estado.canalPropiedad = disponibles.first() })
         }
         if (canal != null) {
@@ -179,13 +181,17 @@ internal fun OpcionesPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, mo
 
 @Composable
 internal fun HojaMarco(estado: EstadoEditor, cerrar: () -> Unit) {
+    val original=estado.clipElegido ?: return
     var tab by rememberSaveable { mutableIntStateOf(0) }
-    HojaPanel("Bordes y perspectiva", cerrar, fijo = {
-        TiempoPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
+    var animar by rememberSaveable(original.id) { mutableStateOf(false) }
+    HojaPanel("Borde y 3D", cerrar, acciones={
+        Chip("Animar",animar,{ animar=!animar },marca=original.propiedades.keys.any { it.grupo==GrupoPropiedad.MARCO })
+    }, claveDesplazamiento=tab, fijo = {
+        if(animar) TiempoPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
         Spacer(Modifier.height(8.dp))
         Pestanas(listOf("Borde", "Sombra", "Perspectiva"), tab, { tab = it })
     }) {
-        OpcionesPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
+        if(animar) OpcionesPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
         if (tab == 2) {
             TextoPerspectiva(estado, estado.clipElegido?.id ?: return@HojaPanel)
         } else {
@@ -225,21 +231,26 @@ internal fun HojaMarco(estado: EstadoEditor, cerrar: () -> Unit) {
 @Composable
 private fun ColorMarco(color: Int, cambiar: (Int) -> Unit) {
     Muestras(COLORES_TEXTO, color, cambiar)
-    // Tonos libres, además de las muestras rápidas.
-    for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
-        Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
-            { v -> cambiar((color and (255 shl shift).inv()) or (v.toInt() shl shift)) }, texto = { it.toInt().toString() })
+    SeccionAjustes("Color personalizado") {
+        for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
+            Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
+                { v -> cambiar((color and (255 shl shift).inv()) or (v.toInt() shl shift)) }, texto = { it.toInt().toString() })
+        }
     }
 }
 
 @Composable
 internal fun HojaColor(estado: EstadoEditor, cerrar: () -> Unit) {
-    HojaPanel(if (estado.clipElegido?.esAjuste == true) "Capa de ajuste" else "Ajustes del clip", cerrar, fijo = {
-        TiempoPropiedades(estado, GrupoPropiedad.AJUSTES)
+    val c=estado.clipElegido ?: return
+    var animar by rememberSaveable(c.id) { mutableStateOf(false) }
+    HojaPanel(if (c.esAjuste) "Ajustes" else "Ajuste local", cerrar, acciones={
+        Chip("Animar",animar,{ animar=!animar },marca=c.propiedades.keys.any { it.grupo==GrupoPropiedad.AJUSTES })
+    }, fijo = {
+        if(animar) TiempoPropiedades(estado, GrupoPropiedad.AJUSTES)
     }) {
-        OpcionesPropiedades(estado, GrupoPropiedad.AJUSTES)
+        if(animar) OpcionesPropiedades(estado, GrupoPropiedad.AJUSTES)
         DestinosCapa(estado)
-        Nota("El valor base se aplica en todo el tramo. Los keyframes animan ese valor dentro de su duración.")
+        if(animar) Nota("Los keyframes cambian los valores durante el tramo.")
         PanelColor(estado)
     }
 }

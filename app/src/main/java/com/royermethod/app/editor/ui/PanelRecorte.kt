@@ -34,24 +34,21 @@ import kotlin.math.*
 @Composable
 internal fun HojaRecorte(estado: EstadoEditor, cerrar: () -> Unit) {
     val seleccionado = estado.clipElegido ?: return
-    val hayClaves = seleccionado.propiedades.any { it.key.grupo == GrupoPropiedad.RECORTE && it.value.isNotEmpty() }
-    var tab by rememberSaveable { mutableIntStateOf(0) }
-    var animar by rememberSaveable(seleccionado.id) { mutableStateOf(hayClaves) }
-    LaunchedEffect(hayClaves) { if(hayClaves) animar = true }
-    HojaPanel("Recorte", cerrar, acciones = {
-        BotonBorde(if(animar) "Claves ✓" else "Claves", { animar = !animar }, glifo = Glifos.rombo)
-    }, fijo = {
-        if(animar) TiempoPropiedades(estado, GrupoPropiedad.RECORTE)
-        Spacer(Modifier.height(6.dp))
-        Pestanas(listOf("Croma", "Máscaras"), tab, { tab = it })
+    var tab by rememberSaveable(seleccionado.id) { mutableIntStateOf(0) }
+    HojaPanel("Recorte", cerrar, claveDesplazamiento=seleccionado.id to tab, fijo = {
+        Pestanas(listOf("Croma", "Máscaras", "Animar"), tab, { tab = it })
     }) {
-        if(animar) OpcionesPropiedades(estado, GrupoPropiedad.RECORTE)
-        Spacer(Modifier.height(8.dp))
         val original = estado.clipElegido ?: return@HojaPanel
         val c = original.propiedadesEn(estado.localElegido ?: 0)
-        if (tab == 0) ControlesCroma(estado, c) else ControlesMascara(estado, c)
-        Spacer(Modifier.height(8.dp))
-        Nota("Las zonas recortadas dejan ver lo que está detrás.")
+        when(tab) {
+            0 -> ControlesCroma(estado,c)
+            1 -> ControlesMascara(estado,c)
+            else -> {
+                TiempoPropiedades(estado,GrupoPropiedad.RECORTE)
+                OpcionesPropiedades(estado,GrupoPropiedad.RECORTE)
+                Nota("Pon una clave, avanza el tiempo y cambia el croma o la máscara.")
+            }
+        }
     }
 }
 
@@ -81,35 +78,35 @@ internal fun fuenteRecorte(e: EstadoEditor, c: Clip, preciso: Boolean = false): 
 private fun ControlesCroma(e: EstadoEditor, c: Clip) {
     val k = c.recorteVisual.croma
     var elegir by rememberSaveable(c.id) { mutableStateOf(false) }
-    var rgb by rememberSaveable(c.id) { mutableStateOf(false) }
-    Interruptor("Quitar un color", k.activo, { v -> cambiarCroma(e) { it.copy(activo = v) } })
-    if (!k.activo) {
-        Nota("Actívalo, elige el color del fondo y ajusta sus bordes.")
-        return
+    Interruptor("Eliminar un color", k.activo, { v -> cambiarCroma(e) { it.copy(activo = v) } },
+        detalle=if(k.activo)null else "Elige el color del fondo para dejarlo transparente.")
+    if(!k.activo)return
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.size(38.dp).clip(CircleShape).background(Color(k.color)).border(2.dp,Ink.White70,CircleShape))
+        BotonBorde(if(elegir) "Ocultar selector" else "Elegir del clip",{ elegir=!elegir },glifo=Glifos.color)
     }
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(38.dp).clip(CircleShape).background(Color(k.color)).border(2.dp, Ink.White70, CircleShape))
-        BotonBorde(if (elegir) "Cerrar selector" else "Elegir del clip", { elegir = !elegir })
-        BotonBorde("RGB", { rgb = !rgb })
+    Muestras(listOf(0xFF00FF00,0xFF0000FF,0xFFFFFFFF,0xFF000000,0xFFFF00FF,0xFFFF0000).map { it.toInt() },k.color,
+        { v -> cambiarCroma(e) { it.copy(color=v) } })
+    if(elegir) {
+        val imagen=fuenteRecorte(e,c,preciso=true)
+        if(imagen==null)Nota("Preparando fotograma…")else SelectorColor(e,imagen)
     }
-    Spacer(Modifier.height(10.dp))
-    Muestras(listOf(0xFF00FF00,0xFF0000FF,0xFFFFFFFF,0xFF000000,0xFFFF00FF,0xFFFF0000).map { it.toInt() }, k.color,
-        { v -> cambiarCroma(e) { it.copy(color = v) } })
-    if (elegir) {
-        val imagen = fuenteRecorte(e, c)
-        if (imagen == null) Nota("Preparando imagen…") else SelectorColor(e, imagen)
+    Deslizador("Intensidad",k.intensidad,0f,1f,{ v -> cambiarCroma(e,true) { it.copy(intensidad=v) } },neutro=1f)
+    Deslizador("Tolerancia al color",k.tolerancia,0f,.8f,{ v -> cambiarCroma(e,true) { it.copy(tolerancia=v) } },neutro=.14f)
+    SeccionAjustes("Bordes y limpieza") {
+        Deslizador("Bordes suaves",k.suavidad,0f,.3f,{ v -> cambiarCroma(e,true) { it.copy(suavidad=v) } },neutro=.05f)
+        Deslizador("Limpiar halo de color",k.limpiar,0f,1f,{ v -> cambiarCroma(e,true) { it.copy(limpiar=v) } },neutro=.5f)
     }
-    if (rgb) for ((nombre, shift) in listOf("Rojo" to 16,"Verde" to 8,"Azul" to 0)) {
-        Deslizador(nombre, ((k.color ushr shift) and 255).toFloat(),0f,255f, { v ->
-            cambiarCroma(e,true) { it.copy(color = (it.color and (255 shl shift).inv()) or (v.roundToInt() shl shift)) }
-        }, texto = { it.roundToInt().toString() })
+    SeccionAjustes("Color personalizado") {
+        for((nombre,shift) in listOf("Rojo" to 16,"Verde" to 8,"Azul" to 0))
+            Deslizador(nombre,((k.color ushr shift)and 255).toFloat(),0f,255f,{ v ->
+                cambiarCroma(e,true) { it.copy(color=(it.color and (255 shl shift).inv()) or (v.roundToInt() shl shift)) }
+            },texto={ it.roundToInt().toString() })
     }
-    Deslizador("Intensidad", k.intensidad,0f,1f, { v -> cambiarCroma(e,true) { it.copy(intensidad = v) } }, neutro = 1f)
-    Deslizador("Tolerancia al color", k.tolerancia,0f,.8f, { v -> cambiarCroma(e,true) { it.copy(tolerancia = v) } }, neutro = .14f)
-    Deslizador("Bordes suaves", k.suavidad,0f,.3f, { v -> cambiarCroma(e,true) { it.copy(suavidad = v) } }, neutro = .05f)
-    Deslizador("Limpiar halo de color", k.limpiar,0f,1f, { v -> cambiarCroma(e,true) { it.copy(limpiar = v) } }, neutro = .5f)
-    Interruptor("Conservar solo ese color", k.invertir, { v -> cambiarCroma(e) { it.copy(invertir = v) } })
-    BotonBorde("Restablecer croma", { cambiarCroma(e) { Croma() } }, glifo = Glifos.reiniciar)
+    SeccionAjustes("Opciones de croma") {
+        Interruptor("Conservar solo ese color",k.invertir,{ v -> cambiarCroma(e) { it.copy(invertir=v) } })
+        BotonBorde("Restablecer croma",{ cambiarCroma(e) { Croma() } },glifo=Glifos.reiniciar)
+    }
 }
 
 private fun rectanguloFuente(w: Float, h: Float, aspecto: Float): Rect {
@@ -154,36 +151,44 @@ private fun SelectorColor(e: EstadoEditor, imagen: ImageBitmap) {
 @Composable
 private fun ControlesMascara(e: EstadoEditor, c: Clip) {
     val m = c.recorteVisual.mascara
-    LazyRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(FormaRecorte.values().toList(), key = { it.name }) { tipo ->
-        Mosaico(tipo.titulo, m.tipo == tipo, { cambiarMascara(e) { it.copy(tipo = tipo) } }, Modifier.width(76.dp)) {
-            if (tipo == FormaRecorte.NINGUNA) {
-                drawLine(Ink.White70,Offset(size.width*.2f,size.height*.2f),Offset(size.width*.8f,size.height*.8f),2.dp.toPx())
-                drawLine(Ink.White70,Offset(size.width*.8f,size.height*.2f),Offset(size.width*.2f,size.height*.8f),2.dp.toPx())
-            } else {
-                val puntos = MascaraForma(tipo = tipo, ancho = .75f, alto = .75f).contorno(1f to 1f)
-                val p = Path().apply { puntos.forEachIndexed { i,v -> val x=v.first*size.width; val y=v.second*size.height; if(i==0)moveTo(x,y)else lineTo(x,y) }; close() }
-                clipRect { drawPath(p,Ink.White70) }
+    LazyRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        items(FormaRecorte.values().toList(),key={ it.name }) { tipo ->
+            Mosaico(tipo.titulo,m.tipo==tipo,{ cambiarMascara(e) { it.copy(tipo=tipo) } },Modifier.width(76.dp)) {
+                if(tipo==FormaRecorte.NINGUNA) {
+                    drawLine(Ink.White70,Offset(size.width*.2f,size.height*.2f),Offset(size.width*.8f,size.height*.8f),2.dp.toPx())
+                    drawLine(Ink.White70,Offset(size.width*.8f,size.height*.2f),Offset(size.width*.2f,size.height*.8f),2.dp.toPx())
+                } else {
+                    val puntos=MascaraForma(tipo=tipo,ancho=.75f,alto=.75f).contorno(1f to 1f)
+                    val p=Path().apply { puntos.forEachIndexed { i,v -> val x=v.first*size.width;val y=v.second*size.height;if(i==0)moveTo(x,y)else lineTo(x,y) };close() }
+                    clipRect { drawPath(p,Ink.White70) }
+                }
             }
         }
     }
+    if(m.tipo==FormaRecorte.NINGUNA) {
+        Spacer(Modifier.height(12.dp))
+        Nota("Elige una figura. Lo que quede fuera dejará ver las capas de detrás.")
+        return
     }
-    if (m.tipo == FormaRecorte.NINGUNA) return
-    Spacer(Modifier.height(10.dp))
-    PreviewMascara(e,c,fuenteRecorte(e,c))
+    Spacer(Modifier.height(8.dp))
+    val imagen=fuenteRecorte(e,c,preciso=true)
+    if(imagen==null)Nota("Preparando fotograma…")
+    PreviewMascara(e,c,imagen)
     Nota("Arrastra para mover · esquinas para tamaño · círculo para girar")
-    val fijo = m.tipo == FormaRecorte.CIRCULO || m.tipo == FormaRecorte.CUADRADO
-    if (m.tipo != FormaRecorte.LINEAL) {
-        Deslizador(if(fijo) "Tamaño" else "Anchura",m.ancho,.02f,2f, { v -> cambiarMascara(e,true) { it.copy(ancho = v) } }, neutro = .8f)
-        if (!fijo) Deslizador("Altura",m.alto,.02f,2f, { v -> cambiarMascara(e,true) { it.copy(alto = v) } }, neutro = .8f)
+    Deslizador("Borde suave",m.pluma,0f,.3f,{ v -> cambiarMascara(e,true) { it.copy(pluma=v) } },neutro=.015f)
+    SeccionAjustes("Tamaño y giro") {
+        val fijo=m.tipo==FormaRecorte.CIRCULO || m.tipo==FormaRecorte.CUADRADO
+        if(m.tipo!=FormaRecorte.LINEAL) {
+            Deslizador(if(fijo) "Tamaño" else "Anchura",m.ancho,.02f,2f,{ v -> cambiarMascara(e,true) { it.copy(ancho=v) } },neutro=.8f)
+            if(!fijo)Deslizador("Altura",m.alto,.02f,2f,{ v -> cambiarMascara(e,true) { it.copy(alto=v) } },neutro=.8f)
+        }
+        Deslizador("Giro",m.giro,-180f,180f,{ v -> cambiarMascara(e,true) { it.copy(giro=v) } },neutro=0f,texto={ "${it.roundToInt()}°" })
+        if(m.tipo==FormaRecorte.REDONDEADO)Deslizador("Esquinas",m.radio,0f,.5f,{ v -> cambiarMascara(e,true) { it.copy(radio=v) } },neutro=.12f)
+        BotonBorde("Centrar máscara",{ cambiarMascara(e) { it.copy(x=.5f,y=.5f) } })
     }
-    Deslizador("Giro",m.giro,-180f,180f, { v -> cambiarMascara(e,true) { it.copy(giro = v) } }, neutro = 0f, texto = { "${it.roundToInt()}°" })
-    Deslizador("Borde suave",m.pluma,0f,.3f, { v -> cambiarMascara(e,true) { it.copy(pluma = v) } }, neutro = .015f)
-    if(m.tipo == FormaRecorte.REDONDEADO) Deslizador("Esquinas",m.radio,0f,.5f,{ v -> cambiarMascara(e,true) { it.copy(radio = v) } },neutro = .12f)
-    Interruptor("Invertir máscara",m.invertir, { v -> cambiarMascara(e) { it.copy(invertir = v) } })
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        BotonBorde("Centrar", { cambiarMascara(e) { it.copy(x=.5f,y=.5f) } })
-        BotonBorde("Restablecer", { cambiarMascara(e) { MascaraForma() } },glifo=Glifos.reiniciar)
+    SeccionAjustes("Opciones de máscara") {
+        Interruptor("Invertir máscara",m.invertir,{ v -> cambiarMascara(e) { it.copy(invertir=v) } })
+        BotonBorde("Quitar máscara",{ cambiarMascara(e) { MascaraForma() } },glifo=Glifos.reiniciar)
     }
 }
 

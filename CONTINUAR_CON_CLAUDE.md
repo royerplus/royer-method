@@ -624,3 +624,29 @@ Royer pidió analizar detalladamente la referencia `Mem-Cho is so cute___ - Oshi
 La colocación de Luces usa ahora un fotograma próximo al tiempo real del cabezal con `OPTION_CLOSEST`, hasta 640 px, en vez de la miniatura de keyframe de la línea. Caché de seis cuadros y una única búsqueda pendiente reemplazable: el arrastre no acumula pedidos antiguos. Retrievers separados, en serie y liberados al cerrar. Mientras carga no se muestra un cuadro anterior como si fuera el actual ni se admite dibujar sobre una guía vacía. Durante reproducción se mantienen miniaturas ligeras. La línea de tiempo conserva su caché y su ruta anteriores.
 
 **Compilación final: BUILD SUCCESSFUL (3m26s)** con `testDebugUnitTest assemblePrueba assembleDebugAndroidTest`. **519 pruebas, 517 pasan, 2 omitidas, cero fallos.** APK local `.prueba` SHA256 `f43a6092b36037cf4cdbc44b0bdc01b42eb16ca400a3a1e538d564d8ccd8c841`. Las dos regresiones Android compilaron; no se ejecutaron en hardware. No se inició una compilación de CI desde este entorno si la subida sigue rechazada.
+
+## Revisión visual y de experiencia del editor (2026-11-13, Codex)
+
+Pedido de Royer: comprobar la app visualmente y mejorar el orden y la experiencia, que seguían resultando toscos. Base local `1e5603f` (Luces/VFX, pendiente de subir sobre el remoto `b0ede83` al empezar). Se hizo fetch antes de editar; sin force push.
+
+### Hallazgos comprobados y cambios
+
+- Se renderizó **la interfaz Compose de producción** con Robolectric 4.14.1 y gráficos nativos: 14 capturas antes y 18 después. Se confirmó que Luces cortaba la zona de colocación y que las barras de claves ocupaban casi todo el panel de 330 dp; también Exportar en dos líneas y el reloj invadiendo Play con texto grande.
+- `PanelEditorLayout.kt` y `PantallaEditor.kt`: panel ampliado por defecto, con límite para conservar la vista previa. El asa admite toque y arrastre arriba/abajo para ampliar/reducir. Contexto de tamaño solo dentro de los paneles; la línea mantiene su espacio habitual. Transporte de 56 dp con reloj en dos líneas y botones con nombre accesible; Exportar tiene ancho reservado y una línea. Formato/resolución adaptan su ancho.
+- Barra de herramientas: edición y creación primero; Orden y «Guías» después. Reset al cambiar selección y desplazamiento por páginas en vez de saltar al final. No se quitaron herramientas.
+- Luces: **Añadir** separado de elegir una existente; tarjetas con icono/color, nombre legible y selección. Pestañas **Colocar / Estilo / Animar**; la barra de claves no tapa el dibujo. Controles de tamaño/giro, RGB y gestión plegables. **Desvanecer** anima la salida; **Eliminar luz** borra el objeto. Cancelar se limita al modo de añadir/dibujar, sin borrar las luces existentes.
+- Recorte: **Croma / Máscaras / Animar**, selector de color claro, avanzados plegables. La edición de la máscara y la colocación conservan la vista del elemento. Texto/Borde/Ajustes muestran los controles directamente y sus claves se abren con **Animar**. RGB del marco es opcional, pestañas de texto desplazables.
+- Controles compartidos: fracciones con porcentaje/decimales (grosor .006 = 0.6 %, halo .025 = 2.5 %), botón de restablecer explícito, arrastre horizontal del deslizador y scroll vertical sin cambiar el valor. `SeccionAjustes` organiza controles secundarios; tabs/acciones soportan anchuras pequeñas. `HojaPanel` vuelve arriba al cambiar su clave de sección/objeto. Barras de claves con icono de curva compacto y descripción.
+- Alcance de capas compacto, conserva miniaturas y semántica null/todas, vacío/ninguna. Compartir un efecto/crear ajuste compartido siguen bajo ese apartado. Copiar los ajustes locales se llama **Copiar a pista principal**; no se ofrece encima de una capa de ajuste compartida para no sumar ambas aplicaciones por accidente.
+
+Detalles de uso/revisión: `docs/REVISION_UX_EDITOR.md`. No se cambió el modelo, la persistencia ni los shaders en esta tanda.
+
+### Validación visual e interacción
+
+Tres pruebas externas con Compose real pasaron (última ejecución de harness: BUILD SUCCESSFUL, 48 s): crear/seleccionar sin duplicados, pestañas y scroll, lectura de valores, reset/gestos/deshacer, teclas visibles y Exportar en una línea a **320×640 con texto 1.3**, y toque/arrastre del asa sin modificar el proyecto. También se capturó **360×800**. Las pruebas se inyectan por init script externo: no se añadió Robolectric ni Activity de prueba al Gradle publicado.
+
+Artefactos fuera de git: `/workspace/validation/ux-render/{before,after}/`, README de reproducción, tres tests y su init script. La vista de video del harness usa un fotograma fijo de referencia, no el compositor nativo. Algunas capturas offscreen del recurso tuvieron una región sin pintar por caché del harness, sin afectar a los controles; no se atribuyó al motor de la app. Se eligieron capturas completas para la comparación interactiva `/workspace/validation/ux-render/comparacion-editor.html`, verificada en Chromium a 320/736 px, con selector funcional y sin errores de script/desborde. No se afirma FPS ni validación táctil en teléfono.
+
+Se diagnosticó el escritorio con la guía cloud-desktop: entorno `ccarenv_b64_Y2NhcmVudl81OGY4Y2FiNWM4YTg4MTkxODMxYjM1ZTNmY2I2MzFmNA`, remote_desktop enabled=true/state=unknown, sin herramienta cua_repl/js ofrecida; tampoco había teléfono en adb ni /dev/kvm. Se usó el render nativo de Compose para la revisión visual, sin crear una imitación HTML de la app. El HTML de comparación muestra las capturas reales del harness.
+
+**Compilación final de UX: BUILD SUCCESSFUL (3m35s)** con `testDebugUnitTest assemblePrueba assembleDebugAndroidTest`. **519 pruebas JVM: 517 pasan, 2 omitidas, cero fallos**, además de las 3 de interfaz antes descritas. APK local `.prueba` SHA256 `68684ec55e42a27c2562dfa4668bfd60bbbc32b4218d83c7f30440dfc4610f1f`. Comparación visual y archivos de prueba permanecen fuera del repositorio.

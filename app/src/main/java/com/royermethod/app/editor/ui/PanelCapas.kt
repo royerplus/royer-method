@@ -48,10 +48,20 @@ internal fun resumenDestino(c: Clip): String = when {
 internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null) {
     val c = estado.clipElegido ?: return
     var abierto by rememberSaveable(c.id) { mutableStateOf(false) }
-    Etiqueta("Afecta a")
+    val resumen=when {
+        !c.esAjuste -> "Este elemento"
+        c.afectaA==null -> "Todas las capas"
+        c.afectaA.isEmpty() -> "Ninguna"
+        else -> "${c.afectaA.size} seleccionadas"
+    }
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text("Afecta a",style=MaterialTheme.typography.labelMedium,color=Ink.White50,modifier=Modifier.weight(1f))
+        BotonBorde(resumen, { abierto=!abierto },glifo=Glifos.superponer)
+    }
+    if (!abierto) return
     if (!c.esAjuste) {
-        Nota(resumenDestino(c))
-        BotonBorde(if (efectoId == null) "+ Tramo para todas las capas" else "Aplicar también a otras capas", {
+        Nota(c.nombre())
+        BotonBorde(if (efectoId == null) "Crear ajuste compartido" else "Compartir efecto", {
             if (efectoId == null) crearCapaAjuste(estado, efectos = estado.panel == Panel.EFECTOS, desdeElegido = true)
             else {
                 val r = compartirEfecto(estado.proyecto, c.id, efectoId) ?: return@BotonBorde
@@ -63,8 +73,6 @@ internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null) {
         })
         return
     }
-    BotonBorde("${resumenDestino(c)}  ▾", { abierto = !abierto })
-    if (!abierto) return
     Spacer(Modifier.height(8.dp))
     val p = estado.proyecto
     val candidatos = p.capas.filterNot { it.clip.esAjuste }.sortedByDescending { it.fila }.map { it.clip } + p.principal

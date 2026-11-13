@@ -45,6 +45,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
@@ -111,7 +116,17 @@ fun PantallaEditor(
 
     CompositionLocalProvider(LocalGestos provides estado, LocalRecursosEditor provides recursos) {
         BoxWithConstraints(modifier.fillMaxSize().background(Ink.Black)) {
-            val abajo = min(maxHeight * 0.42f, 330.dp)
+            val panel = estado.panel
+            var ampliado by remember { mutableStateOf(true) }
+            LaunchedEffect(panel, exportando) { if (panel != null || exportando) ampliado = true }
+            // El panel puede crecer para editar sin perder la vista del resultado.
+            val vistaMinima = if (maxHeight < 560.dp) 96.dp else 160.dp
+            val maximoPanel = (maxHeight - 52.dp - 56.dp - vistaMinima).coerceAtLeast(80.dp)
+            val compacto = min(maxHeight * 0.42f, 330.dp).coerceAtMost(maximoPanel)
+            val amplio = (maxHeight * 0.60f).coerceAtMost(maximoPanel).coerceAtLeast(compacto)
+            val abajo = if ((panel != null || exportando) && ampliado) amplio else compacto
+            val tamanoPanel = if (amplio > compacto + 4.dp)
+                TamanoPanelEditor(ampliado) { ampliado = !ampliado } else null
             Column(Modifier.fillMaxSize()) {
                 BarraArriba(estado, onVolver, onExportar = { exportando = true })
                 Box(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp, vertical = 6.dp)) {
@@ -120,7 +135,6 @@ fun PantallaEditor(
                 }
                 Transporte(estado)
                 Box(Modifier.fillMaxWidth().height(abajo)) {
-                    val panel = estado.panel
                     AnimatedContent(
                         targetState = when {
                             exportando -> "exportar"
@@ -149,15 +163,17 @@ fun PantallaEditor(
                                 }
                                 // Animar y Efectos montan su propia hoja (acciones en la
                                 // fila del titulo y zona fija); el resto, la de siempre
-                                when (p) {
-                                    Panel.ANIMACION -> HojaAnimacion(estado, cerrar)
-                                    Panel.EFECTOS -> HojaEfectos(estado, cerrar)
-                                    Panel.TEXTO -> HojaTexto(estado, cerrar)
-                                    Panel.MARCO -> HojaMarco(estado, cerrar)
-                                    Panel.COLOR -> HojaColor(estado, cerrar)
-                                    Panel.RECORTE -> HojaRecorte(estado, cerrar)
-                                    Panel.LUCES -> HojaLuces(estado, cerrar)
-                                    else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
+                                CompositionLocalProvider(LocalTamanoPanelEditor provides tamanoPanel) {
+                                    when (p) {
+                                        Panel.ANIMACION -> HojaAnimacion(estado, cerrar)
+                                        Panel.EFECTOS -> HojaEfectos(estado, cerrar)
+                                        Panel.TEXTO -> HojaTexto(estado, cerrar)
+                                        Panel.MARCO -> HojaMarco(estado, cerrar)
+                                        Panel.COLOR -> HojaColor(estado, cerrar)
+                                        Panel.RECORTE -> HojaRecorte(estado, cerrar)
+                                        Panel.LUCES -> HojaLuces(estado, cerrar)
+                                        else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
+                                    }
                                 }
                             }
                             else -> Column(Modifier.fillMaxSize()) {
@@ -200,87 +216,84 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
 
 @Composable
 private fun BarraArriba(estado: EstadoEditor, onVolver: () -> Unit, onExportar: () -> Unit) {
+    val anchoExportar = if (LocalDensity.current.fontScale > 1.1f) 132.dp else 116.dp
     Row(
         Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
     ) {
-        BotonIcono(Glifos.atras, onVolver)
-        Spacer(Modifier.width(4.dp))
-        // La proporcion y la resolucion a la vista; tocandolas se cambian
-        Pastilla(estado.proyecto.formato.nombre) { estado.elegir(null); estado.panel = Panel.FORMATO }
-        Pastilla("${estado.proyecto.salida.ladoCorto}p") { estado.elegir(null); estado.panel = Panel.RESOLUCION }
-        Spacer(Modifier.weight(1f))
+        BotonIcono(Glifos.atras, onVolver, tam = 44.dp, descripcion = "Volver")
+        Row(Modifier.weight(1f), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+            Pastilla(estado.proyecto.formato.nombre, Modifier.weight(1f), "Formato ${estado.proyecto.formato.nombre}") {
+                estado.elegir(null); estado.panel = Panel.FORMATO
+            }
+            Pastilla("${estado.proyecto.salida.ladoCorto}p", Modifier.weight(1f), "Resolución ${estado.proyecto.salida.ladoCorto}p") {
+                estado.elegir(null); estado.panel = Panel.RESOLUCION
+            }
+        }
         Row(
             Modifier
-                .heightIn(min = 40.dp)
-                .clip(esquinas(20.dp))
+                .width(anchoExportar)
+                .heightIn(min = 44.dp)
+                .clip(esquinas(22.dp))
                 .background(Ink.White)
                 .clickable(onClick = onExportar)
-                .padding(start = 14.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .semantics { contentDescription = "Exportar video" }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
         ) {
             Icono(Glifos.exportar, color = Ink.Black, tam = 16.dp)
             Spacer(Modifier.width(6.dp))
-            Text("Exportar", style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp, fontWeight = FontWeight.Medium), color = Ink.Black)
+            Text("Exportar", style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.sp, fontWeight = FontWeight.Medium),
+                color = Ink.Black, maxLines = 1, softWrap = false)
         }
-        Spacer(Modifier.width(6.dp))
     }
 }
 
-/** Un dato del proyecto en la barra de arriba que se toca para cambiarlo. */
+/** Un dato del proyecto con su propia área táctil, sin desplazar Exportar. */
 @Composable
-private fun Pastilla(texto: String, onClick: () -> Unit) {
+private fun Pastilla(texto: String, modifier: Modifier = Modifier, descripcion: String = texto, onClick: () -> Unit) {
     Box(
-        Modifier
+        modifier
             .heightIn(min = 44.dp)
-            .clip(esquinas(8.dp))
+            .clip(esquinas(10.dp))
+            .background(Ink.White04)
             .clickable(onClick = onClick)
+            .semantics { contentDescription = descripcion }
             .padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            texto,
-            style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.sp),
-            color = Ink.White70,
-            modifier = Modifier
-                .border(1.dp, Ink.White15, esquinas(8.dp))
-                .padding(horizontal = 10.dp, vertical = 5.dp)
-        )
+        Text(texto, style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.sp),
+            color = Ink.White70, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
     }
 }
 
-/** Reloj, play, fotograma clave, deshacer y rehacer. */
+/** El reloj tiene su espacio: los botones nunca se dibujan encima del tiempo. */
 @Composable
 private fun Transporte(estado: EstadoEditor) {
+    val cabezal by remember(estado) { derivedStateOf { reloj(estado.tiempo, milesimas = estado.zoomFino && !estado.reproduciendo) } }
+    val duracion = reloj(estado.duracion)
     Row(
-        Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 12.dp),
+        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            // El cabezal, con milesimas solo en pausa y con el zoom fino puesto
-            // (para ver si una clave esta en 0,005 s o en 0,001 s); si no,
-            // decimas. La duracion siempre en decimas: con las
-            // dos en milesimas no cabe en 360 dp. Por derivedStateOf: sonando,
-            // el tiempo cambia en cada refresco y el texto solo 10 veces por segundo
-            val cabezal by remember(estado) { derivedStateOf { reloj(estado.tiempo, milesimas = estado.zoomFino && !estado.reproduciendo) } }
-            Text(cabezal, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.5.sp), color = Ink.White, maxLines = 1, softWrap = false)
-            Text(" / " + reloj(estado.duracion), style = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.5.sp), color = Ink.White50, maxLines = 1, softWrap = false)
+        Column(Modifier.weight(1f).padding(horizontal = 4.dp).clearAndSetSemantics {
+            contentDescription = "Tiempo $cabezal, duración $duracion"
+        }) {
+            Text(cabezal, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.sp, lineHeight = 18.sp),
+                color = Ink.White, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+            Text("/ $duracion", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp, lineHeight = 14.sp),
+                color = Ink.White50, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
         }
-        Box(
-            Modifier
-                .size(42.dp)
-                .clip(CircleShape)
-                .background(Ink.White08)
-                .clickable(enabled = estado.duracion > 0) { estado.reproduciendo = !estado.reproduciendo },
-            contentAlignment = Alignment.Center
-        ) {
-            Icono(if (estado.reproduciendo) Glifos.pausa else Glifos.play, tam = 20.dp)
-        }
-        Row(Modifier.weight(1f), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.End) {
-            BotonClave(estado)
-            BotonIcono(Glifos.deshacer, { estado.deshacer() }, activo = estado.puedeDeshacer)
-            BotonIcono(Glifos.rehacer, { estado.rehacer() }, activo = estado.puedeRehacer)
-        }
+        BotonIcono(if (estado.reproduciendo) Glifos.pausa else Glifos.play,
+            { estado.reproduciendo = !estado.reproduciendo }, activo = estado.duracion > 0,
+            tam = 44.dp, descripcion = if (estado.reproduciendo) "Pausar" else "Reproducir")
+        BotonClave(estado)
+        BotonIcono(Glifos.deshacer, { estado.deshacer() }, activo = estado.puedeDeshacer,
+            tam = 44.dp, descripcion = "Deshacer")
+        BotonIcono(Glifos.rehacer, { estado.rehacer() }, activo = estado.puedeRehacer,
+            tam = 44.dp, descripcion = "Rehacer")
     }
 }
 
@@ -291,7 +304,8 @@ private fun Transporte(estado: EstadoEditor) {
 @Composable
 private fun BotonClave(estado: EstadoEditor) {
     if (estado.panel == Panel.LUCES) {
-        BotonIcono(Glifos.rombo, { ponerClaveLuz(estado, false) }, activo = estado.localElegido != null && estado.clipElegido?.luces?.isNotEmpty() == true)
+        BotonIcono(Glifos.rombo, { ponerClaveLuz(estado, false) }, activo = estado.localElegido != null && estado.clipElegido?.luces?.isNotEmpty() == true,
+            tam = 44.dp, descripcion = "Añadir clave de luz")
         return
     }
     val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
@@ -303,7 +317,8 @@ private fun BotonClave(estado: EstadoEditor) {
             estado.panel == Panel.MARCO -> com.royermethod.app.editor.modelo.GrupoPropiedad.MARCO
             else -> com.royermethod.app.editor.modelo.GrupoPropiedad.TEXTO
         }
-        BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, c.esTexto && estado.panel != Panel.RECORTE, false) }, activo = estado.localElegido != null)
+        BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, c.esTexto && estado.panel != Panel.RECORTE, false) }, activo = estado.localElegido != null,
+            tam = 44.dp, descripcion = "Añadir fotograma clave")
         return
     }
     val tolerancia = toleranciaClaves()
@@ -324,7 +339,8 @@ private fun BotonClave(estado: EstadoEditor) {
                 if (clip.claves.isEmpty()) estado.avisar("Mueve el cabezal y cambia el bloque: se crea otro fotograma clave")
             }
         },
-        activo = activo
+        activo = activo, tam = 44.dp,
+        descripcion = if (hay) "Quitar clave de movimiento" else "Añadir clave de movimiento"
     )
 }
 
@@ -355,6 +371,7 @@ private fun Herramientas(
 ) {
     val s = estado.seleccion
     val desliza = rememberScrollState()
+    LaunchedEffect(s) { desliza.scrollTo(0) }
     var preguntarBorrar by remember { mutableStateOf(false) }
     if (preguntarBorrar) DialogoBorrarTodo(
         onCancelar = { preguntarBorrar = false },
@@ -373,21 +390,12 @@ private fun Herramientas(
                 Herramienta(Glifos.atras, "Volver", { estado.elegir(null) })
                 Box(Modifier.width(1.dp).height(36.dp).background(Ink.White15))
             }
-            Herramienta(Glifos.superponer, "Orden", { estado.panel = Panel.CAPAS })
-            Herramienta(Glifos.encuadre, "Marcos", {
-                AjustesEditor.mostrarMarcos = !AjustesEditor.mostrarMarcos
-                AjustesEditor.alCambiar()
-            }, encendida = AjustesEditor.mostrarMarcos)
             when (s) {
                 null -> {
-                    Herramienta(Glifos.editar, "Editar", {
-                        val c = bloqueBajoCabezal(estado)
-                        if (c != null) estado.elegir(Seleccion.Bloque(c.id)) else estado.avisar("Agrega un video o una foto primero")
-                    })
                     Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
-                    HerramientasZoom(estado)
-                    Herramienta(Glifos.ajustes, "Efectos", { crearCapaAjuste(estado, efectos = true) })
-                    Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado) })
+                    if (bloqueBajoCabezal(estado) != null) Herramienta(Glifos.editar, "Editar", {
+                        bloqueBajoCabezal(estado)?.let { estado.elegir(Seleccion.Bloque(it.id)) }
+                    })
                     Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
                     Herramienta(Glifos.texto, "Texto", {
                         var nuevo = 0L
@@ -396,7 +404,10 @@ private fun Herramientas(
                         estado.panel = Panel.TEXTO
                     })
                     Herramienta(Glifos.audio, "Sonido", onAgregarSonido)
+                    Herramienta(Glifos.ajustes, "Efectos", { crearCapaAjuste(estado, efectos = true) })
+                    Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado) })
                     Herramienta(Glifos.formato, "Formato", { estado.panel = Panel.FORMATO })
+                    HerramientasZoom(estado)
                     // Bloques hechos con las herramientas de movimiento, para verlas y cambiarlas
                     Herramienta(Glifos.animacion, "Ejemplos", onEjemplos)
                     Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
@@ -425,19 +436,9 @@ private fun Herramientas(
                         Herramienta(Glifos.dividir, "Dividir", { Edicion.dividir(estado.proyecto, id, estado.tiempo)?.let { r -> estado.hacer { r.first } } })
                         Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
                         Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                        HerramientasVista(estado)
                         return@Row
                     }
-                    Herramienta(Glifos.recorte, "Recorte", {
-                        val inicio = estado.inicioElegido ?: 0L
-                        estado.pausarEn(estado.tiempo.coerceIn(inicio,inicio+c.duracionUs-1))
-                        estado.panel = Panel.RECORTE
-                    }, resaltada = c.recorteVisual.activo)
-                    Herramienta(Glifos.estrella, "Luces", {
-                        val inicio = estado.inicioElegido ?: 0L
-                        estado.pausarEn(estado.tiempo.coerceIn(inicio, inicio + c.duracionUs - 1))
-                        estado.panel = Panel.LUCES
-                    }, resaltada = c.luces.isNotEmpty())
-                    Herramienta(Glifos.encuadre, "Borde / 3D", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
                     val principal = estado.proyecto.principal
                     val i = principal.indexOfFirst { it.id == id }
                     Herramienta(Glifos.dividir, "Dividir", {
@@ -460,7 +461,6 @@ private fun Herramientas(
                     if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
                     if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
                     Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
-                    HerramientasZoom(estado)
                     // Cerca del principio: al final de la fila nadie lo encontraba
                     if (!c.esTexto) {
                         Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado, desdeElegido = true) })
@@ -471,6 +471,17 @@ private fun Herramientas(
                         if (c.efectos.isNotEmpty()) estado.panel = Panel.EFECTOS
                         else crearCapaAjuste(estado, efectos = true, desdeElegido = true)
                     }, resaltada = c.efectos.isNotEmpty())
+                    Herramienta(Glifos.recorte, "Recorte", {
+                        val inicio = estado.inicioElegido ?: 0L
+                        estado.pausarEn(estado.tiempo.coerceIn(inicio,inicio+c.duracionUs-1))
+                        estado.panel = Panel.RECORTE
+                    }, resaltada = c.recorteVisual.activo)
+                    Herramienta(Glifos.estrella, "Luces", {
+                        val inicio = estado.inicioElegido ?: 0L
+                        estado.pausarEn(estado.tiempo.coerceIn(inicio, inicio + c.duracionUs - 1))
+                        estado.panel = Panel.LUCES
+                    }, resaltada = c.luces.isNotEmpty())
+                    Herramienta(Glifos.encuadre, "Borde / 3D", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
                     Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
                     if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
                     Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
@@ -482,21 +493,33 @@ private fun Herramientas(
                     if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
                     if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
                     else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
+                    HerramientasZoom(estado)
                     // Lo de la pantalla de Mejorar, al final: fotogramas y peso de este bloque
                     if (c.esVideo) Herramienta(Glifos.fluidez, "Fluidez", { estado.panel = Panel.FLUIDEZ }, resaltada = c.fluido)
                     Herramienta(Glifos.compresion, "Compresion", { estado.panel = Panel.COMPRESION }, resaltada = c.calidad != 1f)
                 }
             }
+            HerramientasVista(estado)
         }
         MasALaDerecha(desliza, Modifier.align(Alignment.CenterEnd))
     }
 }
 
+/** Utilidades de vista al final: no desplazan las acciones para editar el clip. */
+@Composable
+private fun HerramientasVista(estado: EstadoEditor) {
+    Herramienta(Glifos.superponer, "Orden", { estado.panel = Panel.CAPAS })
+    Herramienta(Glifos.encuadre, "Guías", {
+        AjustesEditor.mostrarMarcos = !AjustesEditor.mostrarMarcos
+        AjustesEditor.alCambiar()
+    }, encendida = AjustesEditor.mostrarMarcos)
+}
+
 /**
  * Pista de que la fila de herramientas sigue a la derecha: en 360-393 dp
  * "Ejemplos", "Abrir proyecto" y "Guardar proyecto" quedaban fuera sin que
- * nada lo dijera. Un fundido con una flecha; tocarla lleva al final. Se va
- * al llegar.
+ * nada lo dijera. La flecha avanza una página para no saltarse herramientas.
+ * Se oculta al llegar al final.
  */
 @Composable
 internal fun MasALaDerecha(desliza: ScrollState, modifier: Modifier) {
@@ -508,7 +531,13 @@ internal fun MasALaDerecha(desliza: ScrollState, modifier: Modifier) {
             .width(36.dp)
             .fillMaxHeight()
             .background(Brush.horizontalGradient(listOf(Color.Transparent, Ink.Black.copy(alpha = 0.92f))))
-            .clickable { alcance.launch { desliza.animateScrollTo(desliza.maxValue) } },
+            .clickable {
+                alcance.launch {
+                    val pagina = (desliza.viewportSize * .8f).toInt().coerceAtLeast(120)
+                    desliza.animateScrollTo((desliza.value + pagina).coerceAtMost(desliza.maxValue))
+                }
+            }
+            .semantics { contentDescription = "Ver más herramientas" },
         contentAlignment = Alignment.CenterEnd
     ) {
         Icono(Glifos.siguiente, Modifier.padding(end = 4.dp), color = Ink.White70, tam = 18.dp)

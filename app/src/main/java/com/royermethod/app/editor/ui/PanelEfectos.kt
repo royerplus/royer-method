@@ -354,27 +354,16 @@ private fun Contenido(p: PanelFx) {
 // Catalogo
 // ----------------------------------------------------------------------
 
-/** Que hay en cada grupo del catalogo, en una frase. */
-private fun descripcionGrupo(nombre: String): String? = when (nombre) {
-    "Movimiento" -> "Mover, acercar, girar, partir en mitades o sacudir la imagen."
-    "Mascaras y cortes" -> "Circulos, anillos y barridos que descubren u ocultan."
-    "Desenfoque y bordes" -> "Rastro en cualquier direccion, desenfoques y bordes espejo."
-    "Luz" -> "Destellos blancos u oscuros."
-    "Imagen" -> "Color separado, negativo y fallos digitales."
-    else -> null
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Catalogo(p: PanelFx) {
     var pestana by rememberSaveable { mutableIntStateOf(0) }
-    Pestanas(listOf("Efectos", "Combinaciones rapidas"), pestana, { pestana = it })
-    Nota("Se pone donde esta el cabezal (si esta fuera del bloque, en su borde).", Modifier.padding(bottom = 2.dp))
+    Pestanas(listOf("Efectos", "Combinaciones"), pestana, { pestana = it })
+    Nota("Elige un efecto para añadirlo.", Modifier.padding(bottom = 2.dp))
     if (pestana == 0) {
         val cuantos = remember(p.vista.efectos) { TramosEfecto.cuantosPorTipo(p.vista.efectos) }
         CatalogoEfectos.grupos.forEach { (nombre, tipos) ->
             Etiqueta(nombre)
-            descripcionGrupo(nombre)?.let { Nota(it) }
             FlowRow(
                 Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
