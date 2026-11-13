@@ -28,6 +28,7 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.Motion
+import com.royermethod.app.ui.theme.radio
 import kotlinx.coroutines.delay
 
 /**
@@ -75,21 +76,21 @@ fun AvisoFlotante(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(radio(16.dp)))
                 .drawBehind {
                     drawRoundRect(
                         color = Ink.Black,
-                        cornerRadius = CornerRadius(16.dp.toPx())
+                        cornerRadius = CornerRadius(radio(16.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White,
                         alpha = 0.08f,
-                        cornerRadius = CornerRadius(16.dp.toPx())
+                        cornerRadius = CornerRadius(radio(16.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White,
                         alpha = 0.22f,
-                        cornerRadius = CornerRadius(16.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(16.dp).toPx()),
                         style = Stroke(width = 1.dp.toPx())
                     )
                 }

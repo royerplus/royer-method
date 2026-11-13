@@ -1,0 +1,949 @@
+package com.royermethod.app.editor.motor
+
+import com.royermethod.app.editor.modelo.ZoomVista
+import kotlin.math.roundToInt
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.net.Uri
+import android.opengl.GLES20
+import com.royermethod.app.editor.modelo.AjustesColor
+import com.royermethod.app.editor.modelo.Clip
+import com.royermethod.app.editor.modelo.Cuadro
+import com.royermethod.app.editor.modelo.BordesPieza
+import com.royermethod.app.editor.modelo.Mascara
+import com.royermethod.app.editor.modelo.Mezcla
+import com.royermethod.app.editor.modelo.Origen
+import com.royermethod.app.editor.modelo.Paso
+import com.royermethod.app.editor.modelo.PasoClip
+import com.royermethod.app.editor.modelo.PasoGrupo
+import com.royermethod.app.editor.modelo.PasoLinea
+import com.royermethod.app.editor.modelo.PasoPartes
+import com.royermethod.app.editor.modelo.PasoSolido
+import com.royermethod.app.editor.modelo.Texto
+import com.royermethod.app.editor.modelo.cortesEn
+import java.util.IdentityHashMap
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
+import kotlin.math.ceil
+
+/**
+ * Dibuja un [Cuadro] en la superficie activa.
+ *
+ * Abre y cierra las fuentes (videos, imagenes, textos) segun se van
+ * necesitando, y es el mismo para la vista previa y para exportar.
+ *
+ * @param ancho,alto pixeles del lienzo
+ * @param fluidez el modelo de interpolacion, o null si no se usa (la vista
+ *   previa no lo usa: no da tiempo a generar fotogramas en directo)
+ */
+class Compositor(
+    private val context: Context,
+    val ancho: Int,
+    val alto: Int,
+    private val fluidez: Fluidez? = null,
+    /** Vista previa: videos rapidos y abandonables (ver [dibujar] y FuenteVideo.vista). */
+    private val vista: Boolean = false
+) {
+    private val reduccion = Reduccion()
+    private val copiaPlana = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_PLANA)
+    private val capa = Programa(Sombreadores.VERTICE, Sombreadores.CAPA)
+    private val solido = Programa(Sombreadores.VERTICE, Sombreadores.SOLIDO)
+    private val linea = Programa(Sombreadores.VERTICE, Sombreadores.LINEA)
+    private val pintorLuces by lazy { PintorLuces() }
+    private var usoLuces = false
+    private val copiaExacta = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_EXACTA)
+
+    private val videos = ArrayList<FuenteVideo>()
+    /** Archivos que no se pudieron abrir, con el cuadro en que fallaron. */
+    private val fallos = HashMap<String, Long>()
+    private val imagenes = HashMap<String, FuenteImagen>()
+    /**
+     * Fotos ya decodificadas en otro hilo, esperando a subirse a la GPU. Leer
+     * un JPEG grande cuesta decenas de milisegundos: hecho en el hilo de
+     * dibujo, el fotograma en que entra la foto se retrasaba.
+     */
+    private val precargadas = ConcurrentHashMap<String, Bitmap>()
+    /** Lo pedido al hilo de precarga y todavia no subido a la GPU. */
+    private val pedidas = ConcurrentHashMap.newKeySet<String>()
+    private var precargador: ExecutorService? = null
+    /**
+     * Videos que se estan cerrando: el decodificador se suelta en otro hilo
+     * (parar un MediaCodec costaba 25-50 ms en el fotograma en que tocaba
+     * cerrarlo) y lo de OpenGL despues, aqui, cuando ya termino.
+     */
+    private val cerrando = ArrayList<FuenteVideo>()
+    private var cerrador: ExecutorService? = null
+    /**
+     * Solo vista previa: videos que se dejan a punto en otro hilo para un
+     * bloque que empieza pronto (ver [anticiparVideos]). Estan en [videos],
+     * pero nadie los toca hasta que se piden en su instante o se cierran.
+     */
+    private val anticipados = HashMap<FuenteVideo, Anticipo>()
+    private var anticipador: ExecutorService? = null
+
+    private class Anticipo(val objetivo: Long, val hasta: Long) {
+        @Volatile
+        var abandonar = false
+        var futuro: java.util.concurrent.Future<Boolean>? = null
+    }
+
+    /** Un bloque de video que empieza pronto: su archivo y el instante del archivo en que empieza. */
+    data class VideoProximo(val uri: String, val giro: Int, val tiempoArchivoUs: Long, val fotogramasHasta: Long)
+    @Volatile
+    private var soltado = false
+    /** Hasta 1.5 veces el lienzo: deja hacer zoom sin que se pixele. */
+    private val ladoImagen = (maxOf(ancho, alto) * 1.5f).toInt()
+    private val textos = HashMap<Triple<Texto, Int, Float>, FuenteImagen>()
+    private val fondos = HashMap<Any, Pair<Long, List<Lamina>>>()
+    /** Laminas del tamano del lienzo para montar escenas aparte. */
+    private val grupos = ArrayList<Lamina>()
+    /** Dos destinos reutilizados para cualquier numero de muestras o partes. */
+    private var muestraPartes: Lamina? = null
+    private var promedioPartes: Lamina? = null
+    private val laminasAjuste = ArrayList<Lamina>()
+    private val laminasSelectivas = ArrayList<Lamina>()
+
+    /** Lo que se mide para la escena: videos e imagenes por sus metadatos, textos maquetados. */
+    val medidor = MaquetaTexto.medidor
+
+    private var numero = 0L
+
+    /**
+     * El fotograma de la linea de tiempo que se esta dibujando (0..63), para
+     * el grano. Sale de Cuadro.numero y no de [numero], que cuenta tambien
+     * los redibujos en pausa: asi un fotograma da el mismo grano en la vista
+     * previa y en el video.
+     */
+    private var semilla = 0f
+
+    /** Algo fallo al leer una fuente en el ultimo cuadro (se dibuja lo que hay). */
+    var avisos = 0
+        private set
+
+    /** Mientras se dibuja: false si el cuadro ya no hace falta (ver [dibujar]). */
+    private var seguirCuadro: (() -> Boolean)? = null
+
+    /**
+     * Dibuja [cuadro] en lo que este activo.
+     *
+     * @param destino la lamina donde dibujar, o null para la superficie
+     *   (pantalla o codificador)
+     * @param seguir vista previa: se mira mientras se leen los videos; si da
+     *   false, se deja el cuadro sin tocar el destino
+     * @return false si se abandono por [seguir]: no hay nada que publicar
+     */
+    fun dibujar(cuadro: Cuadro, destino: Lamina? = null, seguir: (() -> Boolean)? = null): Boolean {
+        numero++
+        semilla = Math.floorMod(cuadro.numero, 64L).toFloat()
+        // 1. que cada fuente tenga su fotograma, antes de tocar el destino
+        val texturas = IdentityHashMap<PasoClip, Textura>()
+        val preparadas = HashMap<ClaveTextura, Textura?>()
+        seguirCuadro = seguir
+        try {
+            for (paso in cuadro.clips) {
+                if (!paso.visible) continue
+                val clave = ClaveTextura(paso.clip.id, paso.tiempoArchivoUs, paso.exposicionUs, paso.esFondo,
+                    paso.anchoEnLienzo, paso.altoEnLienzo, paso.escalaTexto)
+                if (!preparadas.containsKey(clave)) preparadas[clave] = preparar(paso)
+                preparadas[clave]?.let { texturas[paso] = it }
+            }
+        } catch (a: LecturaAbandonada) {
+            limpiar()
+            return false
+        } finally {
+            seguirCuadro = null
+        }
+
+        // 2. las escenas que van aparte, cada una en su lamina. Antes que el
+        // destino: en los moviles cambiar de destino a medio dibujar obliga a
+        // guardar y recargar lo que ya habia.
+        GLES20.glEnable(GLES20.GL_BLEND)
+        val montadas = IdentityHashMap<PasoGrupo, Lamina>()
+        var g = 0
+        for (paso in cuadro.pasos) {
+            if (paso !is PasoGrupo || !paso.visible) continue
+            val l = grupos.getOrNull(g) ?: Lamina(ancho, alto).also { grupos.add(it) }
+            g++
+            l.activar()
+            GLES20.glClearColor(0f, 0f, 0f, 0f)
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            for (q in paso.pasos) dibujarPaso(q, texturas, voltear = true)
+            montadas[paso] = l
+        }
+
+        // Con capas de ajuste el montaje se compone una vez y luego pasa por
+        // dos laminas alternadas. Nunca se lee de la textura que se esta escribiendo.
+        fun laminaAjuste(i: Int): Lamina = laminasAjuste.getOrNull(i)
+            ?: Lamina(ancho, alto).also { laminasAjuste.add(it) }
+        val conAjustes = cuadro.ajustes.isNotEmpty()
+        val destinoMontaje = if (conAjustes) laminaAjuste(0) else destino
+        // 3. dibujar de abajo arriba
+        if (destinoMontaje != null) destinoMontaje.activar() else {
+            GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+            ponerVistaPantalla()
+        }
+        val voltear = destinoMontaje != null
+        GLES20.glClearColor(0f, 0f, 0f, 1f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        for (paso in cuadro.pasos) {
+            if (paso is PasoGrupo) montadas[paso]?.let { dibujarGrupo(paso, it, voltear) }
+            else dibujarPaso(paso, texturas, voltear)
+        }
+        if (conAjustes) {
+            GLES20.glDisable(GLES20.GL_BLEND)
+            var fuente = laminaAjuste(0)
+            cuadro.ajustes.forEachIndexed { i, color ->
+                val ultimo = i == cuadro.ajustes.lastIndex
+                val salida = if (ultimo) destino else laminaAjuste((i + 1) % 2)
+                if (salida != null) salida.activar() else {
+                    GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
+                    ponerVistaPantalla()
+                }
+                val paso = PasoClip(
+                    clip = Clip(0, esAjuste = true), tiempoArchivoUs = 0, exposicionUs = 0,
+                    matrices = listOf(floatArrayOf(1f / ancho, 0f, 0f, 0f, 1f / alto, 0f, 0f, 0f, 1f)),
+                    opacidades = floatArrayOf(1f), mascara = null, bordes = floatArrayOf(0f), color = color,
+                    mezcla = Mezcla.NORMAL, desenfoque = 0f, esFondo = false,
+                    anchoEnLienzo = ancho.toFloat(), altoEnLienzo = alto.toFloat(), escalaTexto = 1f
+                )
+                dibujarClip(paso, Textura(fuente.textura, ancho, alto), salida != null)
+                if (!ultimo) fuente = salida!!
+            }
+        }
+        GLES20.glDisable(GLES20.GL_BLEND)
+        limpiar()
+        return true
+    }
+
+    /**
+     * Empieza a leer en segundo plano las fotos de [origenes] que aun no estan
+     * en la GPU, para que el fotograma en que aparecen no espere al archivo.
+     * Se llama desde el hilo de dibujo; lo que no llegue a tiempo se lee
+     * igual que siempre al necesitarlo.
+     */
+    fun anticipar(origenes: Collection<Origen>) {
+        if (soltado) return
+        for (o in origenes) {
+            if (!o.esImagen || o.uri in imagenes || !pedidas.add(o.uri)) continue
+            val hilo = precargador ?: Executors.newSingleThreadExecutor { r ->
+                Thread(r, "precarga").apply { priority = Thread.MIN_PRIORITY }
+            }.also { precargador = it }
+            hilo.execute {
+                val bmp = if (soltado) null else FuenteImagen.decodificar(context, Uri.parse(o.uri), ladoImagen)
+                // Si mientras tanto ya se leyo en el hilo de dibujo, sobra.
+                if (bmp != null && (soltado || o.uri !in pedidas)) bmp.recycle()
+                else if (bmp != null) precargadas[o.uri] = bmp
+            }
+        }
+    }
+
+    /**
+     * Solo vista previa. Un bloque que empieza en otro punto de un archivo que
+     * ya se esta viendo obligaba, en el cuadro del corte, a saltar al
+     * fotograma clave anterior y decodificar desde ahi en el hilo de dibujo:
+     * con archivos de claves muy separadas, hasta 2 s con la imagen parada.
+     * Ahora se abre otro decodificador y se deja a punto en otro hilo antes de
+     * llegar. Lo que no llegue a tiempo se espera en el corte, que es menos
+     * de lo que costaria entonces.
+     */
+    fun anticiparVideos(proximos: List<VideoProximo>) {
+        if (soltado) return
+        // Los que ya no espera ningun comienzo (se paso sin usarlos o se salto a
+        // otro sitio) dejan su hueco: se cierran en cuanto su hilo los suelta
+        for ((v, a) in anticipados) {
+            if (proximos.none { it.uri == v.uri.toString() && kotlin.math.abs(it.tiempoArchivoUs - a.objetivo) < CERCA_US }) a.abandonar = true
+        }
+        for (p in proximos) {
+            // Solo con sitio de sobra: si no, el cuadro siguiente tendria que
+            // cerrar uno que se esta viendo y abrirlo otra vez desde su clave
+            if (anticipados.size >= MAX_ANTICIPADOS || videos.size >= MAX_VIDEOS - 1) return
+            if (fallos.containsKey(p.uri)) continue
+            // Uno libre que ya llega seguido, o uno que ya se esta preparando para ahi
+            if (videos.any { v ->
+                    v.uri.toString() == p.uri && v.usadaEn < numero - 1 && v !in anticipados &&
+                        v.ultimaPeticion in (p.tiempoArchivoUs - CERCA_US)..p.tiempoArchivoUs
+                }) continue
+            if (anticipados.any { (v, a) -> v.uri.toString() == p.uri && kotlin.math.abs(a.objetivo - p.tiempoArchivoUs) < CERCA_US }) continue
+            // Aqui solo la textura: el archivo y el decodificador se abren en su
+            // hilo (abrirlos aqui atascaba el dibujo 20-60 ms y se veia un tiron)
+            val v = runCatching { abrirVideo(p.uri, p.giro, diferida = true) }.getOrNull() ?: continue
+            anotar("anticipa ${Uri.parse(p.uri).lastPathSegment} en ${p.tiempoArchivoUs / 1000} ms, ${p.fotogramasHasta} cuadros antes")
+            val a = Anticipo(p.tiempoArchivoUs, numero + p.fotogramasHasta + RETENER)
+            videos.add(v)
+            anticipados[v] = a
+            val hilo = anticipador ?: Executors.newFixedThreadPool(2) { r ->
+                Thread(r, "anticipar-video").apply { priority = Thread.NORM_PRIORITY - 1 }
+            }.also { anticipador = it }
+            a.futuro = hilo.submit<Boolean> { runCatching { v.preparar(a.objetivo) { !a.abandonar } }.getOrDefault(false) }
+            // Uno por cuadro
+            return
+        }
+    }
+
+    /** El anticipado para [uri] en [tiempo], ya listo (se espera si le falta). null si no hay. */
+    private fun anticipado(uri: String, tiempo: Long): FuenteVideo? {
+        val (v, a) = anticipados.entries.firstOrNull { (v, a) ->
+            v.uri.toString() == uri && tiempo >= a.objetivo - FuenteVideo.MARGEN_PREPARAR && tiempo - a.objetivo <= 300_000L
+        }?.toPair() ?: return null
+        val listo = runCatching { a.futuro?.get(6, TimeUnit.SECONDS) == true }.getOrDefault(false)
+        if (listo) {
+            anticipados.remove(v)
+            return v
+        }
+        // Fallo o sigue sin acabar: se cierra cuando acabe (ver soltarAnticipados)
+        a.abandonar = true
+        return null
+    }
+
+    /** Diagnostico de la vista previa (RoyerVista, ver FuenteVideo.registrar). */
+    private fun anotar(texto: String) {
+        if (FuenteVideo.registrar) runCatching { android.util.Log.i("RoyerVista", texto) }
+    }
+
+    /** Cierra los anticipados que ya no se van a usar, en cuanto su hilo los suelta. */
+    private fun soltarAnticipados() {
+        if (anticipados.isEmpty()) return
+        val fuera = anticipados.filter { (_, a) ->
+            if (numero > a.hasta) a.abandonar = true
+            a.abandonar && a.futuro?.isDone != false
+        }
+        for (v in fuera.keys) {
+            anticipados.remove(v)
+            cerrar(v)
+        }
+    }
+
+    /**
+     * Zoom de la vista previa (herramienta Zoom): solo la pantalla, nunca lo
+     * que se exporta (eso dibuja en una [Lamina]). Se aplica agrandando el
+     * viewport de la pantalla: lo que cae fuera no se dibuja, asi que acercar
+     * no cuesta mas que sin zoom.
+     */
+    @Volatile
+    var zoom: ZoomVista = ZoomVista.NINGUNO
+
+    private var maxViewport = 0
+
+    private fun ponerVistaPantalla() {
+        val z = zoom
+        if (!vista || !z.puesto) {
+            GLES20.glViewport(0, 0, ancho, alto)
+            return
+        }
+        if (maxViewport == 0) {
+            val m = IntArray(2)
+            GLES20.glGetIntegerv(GLES20.GL_MAX_VIEWPORT_DIMS, m, 0)
+            maxViewport = minOf(m[0], m[1]).coerceAtLeast(2048)
+        }
+        val e = minOf(z.escala, maxViewport.toFloat() / maxOf(ancho, alto))
+        val w = (ancho * e).roundToInt()
+        val h = (alto * e).roundToInt()
+        val x0 = (ancho / 2f - z.x * w).roundToInt()
+        // GL cuenta desde abajo; y del zoom, desde arriba
+        val y0 = (alto / 2f - (1f - z.y) * h).roundToInt()
+        GLES20.glViewport(x0, y0, w, h)
+    }
+
+    private fun dibujarPaso(paso: Paso, texturas: Map<PasoClip, Textura>, voltear: Boolean) {
+        when (paso) {
+            is PasoSolido -> dibujarSolido(paso, voltear)
+            is PasoLinea -> dibujarLinea(paso, voltear)
+            is PasoClip -> texturas[paso]?.let { textura ->
+                if (paso.ajustesCapa.isEmpty()) dibujarClip(paso, textura, voltear)
+                else ajustarElemento(paso.ajustesCapa, paso.mezcla, voltear) {
+                    dibujarClip(paso.copy(mezcla = Mezcla.NORMAL), textura, true)
+                }
+            }
+            is PasoPartes -> {
+                val ajustes = paso.partes.firstOrNull()?.ajustesCapa.orEmpty()
+                if (ajustes.isEmpty()) dibujarPartes(paso, texturas, voltear)
+                else ajustarElemento(ajustes, paso.mezcla, voltear) {
+                    dibujarPartes(paso.copy(mezcla = Mezcla.NORMAL), texturas, true)
+                }
+            }
+            // No hay grupos dentro de grupos
+            is PasoGrupo -> Unit
+        }
+    }
+
+    /** Aislar primero conserva alfa, máscaras, piezas y la mezcla con las otras capas. */
+    private fun ajustarElemento(ajustes: List<AjustesColor>, mezcla: Mezcla, voltear: Boolean, dibujar: () -> Unit) {
+        val anterior = IntArray(1)
+        val viewport = IntArray(4)
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, anterior, 0)
+        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, viewport, 0)
+        val mezclando = GLES20.glIsEnabled(GLES20.GL_BLEND)
+        fun lamina(i: Int): Lamina = laminasSelectivas.getOrNull(i)
+            ?: Lamina(ancho, alto).also { laminasSelectivas.add(it) }
+        var fuente = lamina(0)
+        fuente.activar()
+        GLES20.glClearColor(0f, 0f, 0f, 0f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        GLES20.glEnable(GLES20.GL_BLEND)
+        dibujar()
+        ajustes.forEachIndexed { i, color ->
+            val ultimo = i == ajustes.lastIndex
+            val salida = if (ultimo) null else lamina((i + 1) % 2)
+            if (ultimo) {
+                GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, anterior[0])
+                GLES20.glViewport(viewport[0], viewport[1], viewport[2], viewport[3])
+                GLES20.glEnable(GLES20.GL_BLEND)
+            } else {
+                salida!!.activar()
+                GLES20.glDisable(GLES20.GL_BLEND)
+            }
+            val paso = PasoClip(
+                clip = Clip(0, esAjuste = true), tiempoArchivoUs = 0, exposicionUs = 0,
+                matrices = listOf(floatArrayOf(1f / ancho, 0f, 0f, 0f, 1f / alto, 0f, 0f, 0f, 1f)),
+                opacidades = floatArrayOf(1f), mascara = null, bordes = floatArrayOf(0f), color = color,
+                mezcla = if (ultimo) mezcla else Mezcla.NORMAL, desenfoque = 0f, esFondo = false,
+                anchoEnLienzo = ancho.toFloat(), altoEnLienzo = alto.toFloat(), escalaTexto = 1f
+            )
+            dibujarClip(paso, Textura(fuente.textura, ancho, alto), if (ultimo) voltear else true)
+            if (!ultimo) fuente = salida!!
+        }
+        if (!mezclando) GLES20.glDisable(GLES20.GL_BLEND)
+    }
+
+    private class Textura(val id: Int, val ancho: Int, val alto: Int)
+    private data class ClaveTextura(val clip: Long, val tiempo: Long, val exposicion: Long,
+        val fondo: Boolean, val ancho: Float, val alto: Float, val escalaTexto: Float)
+
+    /** Compone por instante antes de promediar, para conservar alfa y oclusion. */
+    private fun dibujarPartes(p: PasoPartes, texturas: Map<PasoClip, Textura>, voltear: Boolean) {
+        if (!p.visible) return
+        val anterior = IntArray(1)
+        val vista = IntArray(4)
+        GLES20.glGetIntegerv(GLES20.GL_FRAMEBUFFER_BINDING, anterior, 0)
+        GLES20.glGetIntegerv(GLES20.GL_VIEWPORT, vista, 0)
+        val muestra = muestraPartes ?: Lamina(ancho, alto).also { muestraPartes = it }
+        val promedio = promedioPartes ?: Lamina(ancho, alto).also { promedioPartes = it }
+        promedio.activar()
+        GLES20.glClearColor(0f, 0f, 0f, 0f)
+        GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+        for (i in 0 until p.muestras) {
+            muestra.activar()
+            GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+            for (corte in p.cortesEn(i)) {
+                val parte = p.partes[corte.parte]
+                val textura = texturas[parte] ?: continue
+                dibujarClip(parte.muestra(i).copy(recorteFuente = corte.region), textura,
+                    voltear = true, compartidos = corte.compartidos)
+            }
+            promedio.activar()
+            // Media incremental equivalente a sumar cada muestra con peso1/N.
+            // El alfa constante1 queda exactamente1 tambien en destinos RGBA8.
+            val peso = 1f / (i + 1)
+            GLES20.glBlendColor(0f, 0f, 0f, peso)
+            GLES20.glBlendFunc(GLES20.GL_CONSTANT_ALPHA, GLES20.GL_ONE_MINUS_CONSTANT_ALPHA)
+            copiarExacto(muestra.textura, voltear = true)
+        }
+        GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, anterior[0])
+        GLES20.glViewport(vista[0], vista[1], vista[2], vista[3])
+        aplicarMezcla(p.mezcla)
+        copiarExacto(promedio.textura, voltear)
+    }
+
+    private fun copiarExacto(textura: Int, voltear: Boolean) {
+        copiaExacta.usar()
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, textura)
+        GLES20.glUniform1i(copiaExacta.u("sTex"), 0)
+        copiaExacta.dibujar(voltear)
+    }
+
+    // ------------------------------------------------------------------
+    // Fuentes
+    // ------------------------------------------------------------------
+
+    private fun preparar(paso: PasoClip): Textura? {
+        val clip = paso.clip
+        val texto = clip.texto
+        if (texto != null) return textoDe(texto, paso.escalaTexto)
+        val o = clip.origen ?: return null
+
+        if (o.esImagen) {
+            val img = imagenes.getOrPut(o.uri) {
+                pedidas.remove(o.uri)
+                precargadas.remove(o.uri)?.let { bmp -> FuenteImagen.subir(bmp).also { bmp.recycle() } }
+                    ?: FuenteImagen.abrir(context, Uri.parse(o.uri), ladoImagen)
+                    ?: return null
+            }
+            img.usadaEn = numero
+            return if (paso.esFondo) fondo(img, img.textura, img.ancho, img.alto, 0L)
+            else Textura(img.textura, img.ancho, img.alto)
+        }
+
+        val fuente = video(o.uri, o.giro, paso.tiempoArchivoUs) ?: return null
+        fuente.usadaEn = numero
+        val (w, h) = tamanoCopia(fuente, paso)
+
+        // Modo fluido: los fotogramas que faltan los pone el modelo. Si no esta
+        // disponible, sigue por el camino normal en vez de fallar.
+        if (clip.fluido && fluidez != null) {
+            val l = fluidez.fotograma(fuente, paso, w, h, reduccion)
+            if (l != null) {
+                return if (paso.esFondo) fondo(fuente, l.textura, l.ancho, l.alto, paso.tiempoArchivoUs)
+                else Textura(l.textura, l.ancho, l.alto)
+            }
+        }
+
+        if (!fuente.irA(paso.tiempoArchivoUs, seguir = seguirCuadro)) avisos++
+        if (fuente.ptsActual < 0) return null
+        val copia = fuente.copiar(w, h, reduccion)
+        return if (paso.esFondo) fondo(fuente, copia.textura, copia.ancho, copia.alto, fuente.ptsActual)
+        else Textura(copia.textura, copia.ancho, copia.alto)
+    }
+
+    /**
+     * El decodificador que mejor sirve para [uri] en [tiempo].
+     *
+     * Dos bloques del mismo archivo (lo normal despues de dividir) pueden
+     * compartir decodificador si el segundo empieza donde acaba el primero:
+     * sigue decodificando sin saltar. Pero si los dos se ven a la vez, como
+     * en una transicion entre dos trozos del mismo clip, cada uno necesita el
+     * suyo.
+     */
+    /**
+     * En la vista previa, la copia ligera si ya esta hecha (ver Ligeras); si
+     * no, o al exportar, el original. Si la copia no abre, se olvida y se
+     * sigue con el original.
+     */
+    private fun abrirVideo(uri: String, giro: Int, diferida: Boolean = false): FuenteVideo {
+        val ligera = if (vista) Ligeras.de(uri) else null
+        if (ligera != null) {
+            try {
+                return FuenteVideo(context, Uri.parse(uri), giro, vista, Uri.fromFile(ligera.archivo), ligera.corrimientoUs, diferida)
+            } catch (e: Exception) {
+                Ligeras.descartar(uri)
+            }
+        }
+        return FuenteVideo(context, Uri.parse(uri), giro, vista, diferida = diferida)
+    }
+
+    /**
+     * Cierra lo abierto de [uri] que no se este preparando: el siguiente
+     * fotograma lo vuelve a abrir (con la copia ligera que acaba de quedar
+     * lista). Entre fotogramas, en el hilo de dibujo.
+     */
+    fun cerrarVideosDe(uri: String) {
+        if (soltado) return
+        videos.filter { it.uri.toString() == uri && it !in anticipados }.forEach { cerrar(it) }
+    }
+
+    private fun video(uri: String, giro: Int, tiempo: Long): FuenteVideo? {
+        // Ya pedida en este mismo cuadro para el mismo instante (el fondo y el
+        // clip de delante, por ejemplo): la misma.
+        videos.firstOrNull { it.usadaEn == numero && it.uri.toString() == uri && it.ultimaPeticion == tiempo && it !in anticipados }
+            ?.let { return it }
+
+        val libres = videos.filter { it.uri.toString() == uri && it.usadaEn != numero && it !in anticipados }
+        // En la vista previa vale tambien uno apenas por delante (ver
+        // FuenteVideo.TOLERANCIA_VISTA): al pausar, el instante exacto cae un
+        // poco antes del ultimo fotograma pedido, y cualquier otro tendria que
+        // saltar al fotograma clave
+        val delante = if (vista) FuenteVideo.TOLERANCIA_VISTA else 0L
+        val cerca = libres
+            .filter { it.ultimaPeticion in 0..tiempo + delante && tiempo - it.ultimaPeticion < 1_500_000 }
+            .minByOrNull { kotlin.math.abs(tiempo - it.ultimaPeticion) }
+        // El anticipado es para el comienzo de su bloque: si uno que ya esta
+        // abierto queda mas cerca, ese (si no, se lo quedaria otro bloque del
+        // mismo archivo y tendria que leer desde el suyo)
+        if (anticipados.isNotEmpty() && (cerca == null || tiempo - cerca.ultimaPeticion > FuenteVideo.MARGEN_PREPARAR)) {
+            anticipado(uri, tiempo)?.let { return it }
+        }
+        if (cerca != null) return cerca
+        libres.firstOrNull()?.let { return it }
+
+        // Los moviles tienen pocos decodificadores por hardware. Si ya hay
+        // muchos abiertos, se cierra el que lleve mas tiempo sin usarse.
+        if (videos.size >= MAX_VIDEOS) {
+            // Primero uno sin usar desde hace un rato; si no, uno anticipado (es
+            // solo una ayuda); y solo si no queda otra, el mas viejo, aunque sea
+            // del cuadro anterior y haya que reabrirlo enseguida.
+            val viejo = videos.filter { it.usadaEn < numero - 1 && it !in anticipados }.minByOrNull { it.usadaEn }
+            anotar("sin sitio para otro video: cierra ${if (viejo != null) "uno sin usar" else if (anticipados.isNotEmpty()) "uno anticipado" else "uno del cuadro anterior"}")
+            if (viejo != null) cerrar(viejo)
+            else if (anticipados.isNotEmpty()) {
+                val (v, a) = anticipados.entries.maxByOrNull { it.value.hasta }!!.toPair()
+                a.abandonar = true
+                runCatching { a.futuro?.get(1, TimeUnit.SECONDS) }
+                if (a.futuro?.isDone != false) { anticipados.remove(v); cerrar(v) }
+            } else videos.filter { it.usadaEn != numero }.minByOrNull { it.usadaEn }?.let { cerrar(it) }
+        }
+        // Un archivo que acaba de fallar no se reintenta en cada fotograma: abrir
+        // un decodificador cuesta, y si falta el archivo fallara igual.
+        fallos[uri]?.let { if (numero - it < REINTENTO_FOTOGRAMAS) { avisos++; return null } }
+        anotar("abre ${Uri.parse(uri).lastPathSegment} en ${tiempo / 1000} ms (${videos.size} abiertos, ${anticipados.size} anticipados)" +
+            if (vista && Ligeras.de(uri) != null) ", copia ligera" else "")
+        return runCatching { abrirVideo(uri, giro) }
+            .onFailure { avisos++; fallos[uri] = numero }
+            .onSuccess { fallos.remove(uri) }
+            .getOrNull()
+            ?.also { videos.add(it) }
+    }
+
+    private fun tamanoCopia(f: FuenteVideo, paso: PasoClip): Pair<Int, Int> {
+        if (paso.esFondo) {
+            // El fondo se va a desenfocar: vale la copia que ya haya (la del
+            // clip de delante, si es el mismo) y si no, medio lienzo. Pedir
+            // un tamano propio obligaria a rehacer la copia dos veces por
+            // fotograma.
+            f.copia?.let { return it.ancho to it.alto }
+            return minOf(f.anchoVisible, ancho / 2).coerceAtLeast(16) to
+                minOf(f.altoVisible, alto / 2).coerceAtLeast(16)
+        }
+        fun redondear(v: Float, maximo: Int) = (ceil(v / 32f).toInt() * 32).coerceIn(16, maximo.coerceAtMost(2048))
+        var w = redondear(paso.anchoEnLienzo, f.anchoVisible)
+        var h = redondear(paso.altoEnLienzo, f.altoVisible)
+        // No rehacer la copia por pequenos cambios de tamano (una animacion de
+        // zoom pediria uno distinto en cada fotograma).
+        f.copia?.let { c ->
+            if (w <= c.ancho && h <= c.alto && w > c.ancho * 0.7f && h > c.alto * 0.7f) {
+                w = c.ancho; h = c.alto
+            }
+        }
+        return w to h
+    }
+
+    private fun textoDe(texto: Texto, escala: Float): Textura? {
+        // Escalones de un cuarto: un zoom animado no repinta el texto en
+        // cada fotograma, solo al cruzar cada escalon.
+        val e = (ceil(escala.coerceIn(0.25f, 4f) * 4f) / 4f)
+        val clave = Triple(texto, alto, e)
+        val f = textos.getOrPut(clave) {
+            val bmp = MaquetaTexto.pintar(texto, alto, e)
+            FuenteImagen.subir(bmp).also { bmp.recycle() }
+        }
+        f.usadaEn = numero
+        return Textura(f.textura, f.ancho, f.alto)
+    }
+
+    /**
+     * El relleno desenfocado: la imagen reducida a la mitad varias veces
+     * hasta quedarse en unos pocos pixeles. Reducir por mitades promedia todo;
+     * ampliar luego esa miniatura con filtro ya da el desenfoque, y el
+     * sombreador solo tiene que suavizar los escalones.
+     */
+    private fun fondo(clave: Any, textura: Int, w: Int, h: Int, pts: Long): Textura {
+        val previo = fondos[clave]
+        if (previo != null && previo.first == pts && pts >= 0) {
+            val l = previo.second.last()
+            return Textura(l.textura, l.ancho, l.alto)
+        }
+        val cadena = ArrayList<Lamina>()
+        var sw = w; var sh = h
+        val reutilizar = previo?.second
+        while (minOf(sw, sh) > 48) {
+            sw = (sw + 1) / 2; sh = (sh + 1) / 2
+            val i = cadena.size
+            val l = reutilizar?.getOrNull(i)?.takeIf { it.ancho == sw && it.alto == sh } ?: Lamina(sw, sh)
+            cadena.add(l)
+        }
+        reutilizar?.filter { it !in cadena }?.forEach { it.soltar() }
+        if (cadena.isEmpty()) cadena.add(Lamina(w, h))
+
+        var fuente = textura
+        GLES20.glDisable(GLES20.GL_BLEND)
+        copiaPlana.usar()
+        for (l in cadena) {
+            l.activar()
+            GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, fuente)
+            GLES20.glUniform1i(copiaPlana.u("sTex"), 0)
+            GLES20.glUniformMatrix3fv(copiaPlana.u("uMapa"), 1, false, IDENTIDAD, 0)
+            GLES20.glUniform2f(copiaPlana.u("uPaso"), 0.25f / l.ancho, 0.25f / l.alto)
+            copiaPlana.dibujar(voltear = true)
+            fuente = l.textura
+        }
+        fondos[clave] = pts to cadena
+        val l = cadena.last()
+        return Textura(l.textura, l.ancho, l.alto)
+    }
+
+    private fun cerrar(v: FuenteVideo) {
+        fluidez?.olvidar(v)
+        fondos.remove(v)?.second?.forEach { it.soltar() }
+        videos.remove(v)
+        val hilo = cerrador ?: Executors.newSingleThreadExecutor { r -> Thread(r, "cerrar-video") }
+            .also { cerrador = it }
+        cerrando.add(v)
+        hilo.execute { v.soltarDecodificador() }
+    }
+
+    /** Termina en este hilo los cierres cuyo decodificador ya se solto. */
+    private fun terminarCierres() {
+        val listos = cerrando.filter { it.decodificadorSuelto }
+        for (v in listos) { v.soltarGl(); cerrando.remove(v) }
+    }
+
+    /** Cierra lo que ya no se usa, para no acumular decodificadores abiertos. */
+    private fun limpiar() {
+        terminarCierres()
+        soltarAnticipados()
+        val viejos = videos.filter { numero - it.usadaEn > RETENER && it !in anticipados }
+        for (v in viejos) cerrar(v)
+        val imgViejas = imagenes.filterValues { numero - it.usadaEn > RETENER }
+        for ((k, v) in imgViejas) {
+            v.soltar(); imagenes.remove(k)
+            fondos.remove(v)?.second?.forEach { it.soltar() }
+        }
+        // Un texto con color/sombra animados puede generar una textura por cuadro.
+        val txtViejos = textos.filterValues { numero - it.usadaEn > 6 }
+            .toMutableMap().apply {
+                textos.entries.sortedBy { it.value.usadaEn }.take((textos.size - 12).coerceAtLeast(0))
+                    .filter { it.value.usadaEn != numero }.forEach { put(it.key, it.value) }
+            }
+        for ((k, v) in txtViejos) { v.soltar(); textos.remove(k) }
+    }
+
+    // ------------------------------------------------------------------
+    // Dibujo
+    // ------------------------------------------------------------------
+
+    private fun dibujarSolido(p: PasoSolido, voltear: Boolean) {
+        val a = p.opacidadMedia
+        if (a <= 0.002f) return
+        solido.usar()
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        GLES20.glUniform4f(
+            solido.u("uColor"),
+            Color.red(p.argb) / 255f, Color.green(p.argb) / 255f, Color.blue(p.argb) / 255f, a
+        )
+        solido.dibujar(voltear)
+    }
+
+    private fun dibujarLinea(p: PasoLinea, voltear: Boolean) {
+        linea.usar()
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        GLES20.glUniform2f(linea.u("uLienzo"), ancho.toFloat(), alto.toFloat())
+        GLES20.glUniform2f(linea.u("uDir"), p.dirX, p.dirY)
+        GLES20.glUniform1fv(linea.u("uBorde"), p.bordes.size, p.bordes, 0)
+        GLES20.glUniform1f(linea.u("uN"), p.bordes.size.toFloat())
+        GLES20.glUniform1f(linea.u("uGrosor"), p.grosor)
+        GLES20.glUniform4f(linea.u("uLuz"), p.luz.halo, p.luz.nucleo, p.luz.textura, if (p.luz.arcoiris) 1f else 0f)
+        GLES20.glUniform1f(linea.u("uAvance"), p.progreso)
+        GLES20.glUniform3f(
+            linea.u("uColor"),
+            Color.red(p.color) / 255f, Color.green(p.color) / 255f, Color.blue(p.color) / 255f
+        )
+        linea.dibujar(voltear)
+    }
+
+    private fun dibujarClip(p: PasoClip, t: Textura, voltear: Boolean, compartidos: BordesPieza = BordesPieza.NINGUNO) {
+        capa.usar()
+        aplicarMezcla(p.mezcla)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, t.id)
+        GLES20.glUniform1i(capa.u("sTex"), 0)
+        GLES20.glUniform2f(capa.u("uLienzo"), ancho.toFloat(), alto.toFloat())
+        GLES20.glUniform2f(capa.u("uTexel"), 1f / t.ancho, 1f / t.alto)
+
+        muestras(p.matrices, p.opacidades, p.bordes)
+
+        val r = if (p.esFondo) null else p.clip.encuadre.recorte
+        if (r == null) GLES20.glUniform4f(capa.u("uRecorte"), 0f, 0f, 1f, 1f)
+        else GLES20.glUniform4f(capa.u("uRecorte"), r.izquierda, r.arriba, 1f - r.derecha, 1f - r.abajo)
+
+        mascara(p.mascara)
+        // El fondo: la miniatura se suaviza con un radio de un par de sus pixeles
+        val radio = if (p.esFondo) alto * 0.035f else p.desenfoque
+        GLES20.glUniform1f(capa.u("uRadio"), radio)
+        GLES20.glUniform2f(capa.u("uRadioDir"), if (p.esFondo) 0f else p.desenfoqueX, if (p.esFondo) 0f else p.desenfoqueY)
+        GLES20.glUniform1f(capa.u("uEspejoBordes"), if (p.esFondo) 0f else p.espejoBordes)
+        val region = if (p.esFondo) null else p.recorteFuente
+        GLES20.glUniform1f(capa.u("uConRegionFuente"), if (region != null) 1f else 0f)
+        if (region != null) GLES20.glUniform4f(capa.u("uRegionFuente"), region.izquierda, region.arriba, region.derecha, region.abajo)
+        GLES20.glUniform4f(capa.u("uBordesCompartidos"),
+            if (compartidos.izquierda) 1f else 0f, if (compartidos.arriba) 1f else 0f,
+            if (compartidos.derecha) 1f else 0f, if (compartidos.abajo) 1f else 0f)
+
+        val marco = p.clip.marco
+        GLES20.glUniform1f(capa.u("uConMarco"), if (!p.esFondo && marco.activo) 1f else 0f)
+        val rw = (1f - (r?.izquierda ?: 0f) - (r?.derecha ?: 0f)).coerceAtLeast(.05f)
+        val rh = (1f - (r?.arriba ?: 0f) - (r?.abajo ?: 0f)).coerceAtLeast(.05f)
+        val fw = t.ancho * rw; val fh = t.alto * rh; val corto = minOf(fw, fh).coerceAtLeast(1f)
+        GLES20.glUniform2f(capa.u("uFormaTam"), fw / corto, fh / corto)
+        GLES20.glUniform4f(capa.u("uMarco"), marco.ancho, marco.radio, marco.neon, marco.sombra)
+        fun colorMarco(nombre: String, valor: Int) = GLES20.glUniform4f(capa.u(nombre),
+            ((valor ushr 16) and 255) / 255f, ((valor ushr 8) and 255) / 255f,
+            (valor and 255) / 255f, ((valor ushr 24) and 255) / 255f)
+        colorMarco("uColorMarco", marco.color); colorMarco("uColorSombra", marco.colorSombra)
+        val ang = Math.toRadians(marco.angulo.toDouble())
+        GLES20.glUniform4f(capa.u("uSombraMarco"), marco.suavidad,
+            (kotlin.math.cos(ang) * marco.distancia).toFloat(), (kotlin.math.sin(ang) * marco.distancia).toFloat(), 0f)
+
+        VfxPantallaShader.cargar(capa, if (p.esFondo) com.royermethod.app.editor.modelo.VfxPantalla.NEUTRO else p.vfxPantalla)
+        val recorteVisual = p.clip.recorteVisual
+        val claveColor = recorteVisual.croma
+        val forma = recorteVisual.mascara
+        GLES20.glUniform1f(capa.u("uCromaActivo"), if (!p.esFondo && claveColor.efectivo) 1f else 0f)
+        if (!p.esFondo && claveColor.efectivo) {
+            GLES20.glUniform3f(capa.u("uCromaColor"), ((claveColor.color ushr 16) and 255)/255f,
+                ((claveColor.color ushr 8) and 255)/255f, (claveColor.color and 255)/255f)
+            GLES20.glUniform4f(capa.u("uCroma"), claveColor.intensidad, claveColor.tolerancia, claveColor.suavidad, claveColor.limpiar)
+            GLES20.glUniform1f(capa.u("uCromaInvertir"), if (claveColor.invertir) 1f else 0f)
+        }
+        GLES20.glUniform1f(capa.u("uFormaTipo"), if (p.esFondo) 0f else forma.tipo.ordinal.toFloat())
+        if (!p.esFondo && forma.tipo != com.royermethod.app.editor.modelo.FormaRecorte.NINGUNA) {
+            GLES20.glUniform2f(capa.u("uFormaCentro"), forma.x, forma.y)
+            GLES20.glUniform4f(capa.u("uFormaDatos"), forma.ancho, forma.alto, Math.toRadians(forma.giro.toDouble()).toFloat(), forma.pluma)
+            GLES20.glUniform1f(capa.u("uFormaRadio"), forma.radio)
+            GLES20.glUniform1f(capa.u("uFormaInvertir"), if (forma.invertir) 1f else 0f)
+            val vertices = forma.poligono()
+            GLES20.glUniform1f(capa.u("uPoligonoN"), vertices.size.toFloat())
+            if (vertices.isNotEmpty()) {
+                val puntos = FloatArray(vertices.size*2)
+                vertices.forEachIndexed { i, v -> puntos[i*2] = v.first; puntos[i*2+1] = v.second }
+                GLES20.glUniform2fv(capa.u("uPoligono[0]"), vertices.size, puntos, 0)
+            }
+        }
+
+        val c = p.color
+        GLES20.glUniform1f(capa.u("uNitidez"), if (p.esFondo) 0f else c.nitidez)
+        GLES20.glUniform1f(capa.u("uBrillo"), c.brillo)
+        GLES20.glUniform1f(capa.u("uContraste"), c.contraste)
+        GLES20.glUniform1f(capa.u("uSaturacion"), c.saturacion)
+        GLES20.glUniform1f(capa.u("uExposicion"), c.exposicion)
+        GLES20.glUniform1f(capa.u("uCalidez"), c.calidez)
+        GLES20.glUniform1f(capa.u("uTinte"), c.tinte)
+        GLES20.glUniform1f(capa.u("uSombras"), c.sombras)
+        GLES20.glUniform1f(capa.u("uLuces"), c.luces)
+        GLES20.glUniform1f(capa.u("uVineta"), c.vineta)
+        // El relleno es una miniatura de pocos pixeles: claridad y grano ahi
+        // serian manchas, como la nitidez
+        GLES20.glUniform1f(capa.u("uClaridad"), if (p.esFondo) 0f else c.claridad)
+        GLES20.glUniform1f(capa.u("uVivacidad"), c.vivacidad)
+        GLES20.glUniform1f(capa.u("uDesvanecer"), c.desvanecer)
+        GLES20.glUniform1f(capa.u("uGrano"), if (p.esFondo) 0f else c.grano)
+        GLES20.glUniform1f(capa.u("uSemilla"), semilla)
+        GLES20.glUniform1f(capa.u("uNeutro"), if (c.copy(nitidez = 0f).neutro) 1f else 0f)
+        GLES20.glUniform1f(capa.u("uLuz"), p.luz)
+        GLES20.glUniform1f(capa.u("uRgb"), if (p.esFondo) 0f else p.rgb)
+        GLES20.glUniform1f(capa.u("uNegativo"), p.negativo)
+        capa.dibujar(voltear)
+        if (!p.esFondo && p.clip.luces.isNotEmpty()) {
+            usoLuces = true
+            pintorLuces.dibujar(p, ancho, alto, t.ancho, t.alto, voltear)
+        }
+    }
+
+    private fun aplicarMezcla(mezcla: Mezcla) {
+        when (mezcla) {
+            Mezcla.NORMAL -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            Mezcla.PANTALLA -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_COLOR)
+            Mezcla.SUMAR -> GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE)
+            Mezcla.MULTIPLICAR -> GLES20.glBlendFunc(GLES20.GL_DST_COLOR, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        }
+    }
+
+    /** Una escena montada aparte, puesta encima con su movimiento y su mascara. */
+    private fun dibujarGrupo(p: PasoGrupo, l: Lamina, voltear: Boolean) {
+        capa.usar()
+        VfxPantallaShader.cargar(capa, com.royermethod.app.editor.modelo.VfxPantalla.NEUTRO)
+        GLES20.glUniform1f(capa.u("uConMarco"), 0f)
+        GLES20.glUniform1f(capa.u("uCromaActivo"), 0f)
+        GLES20.glUniform1f(capa.u("uFormaTipo"), 0f)
+        GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
+        GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, l.textura)
+        GLES20.glUniform1i(capa.u("sTex"), 0)
+        GLES20.glUniform2f(capa.u("uLienzo"), ancho.toFloat(), alto.toFloat())
+        GLES20.glUniform2f(capa.u("uTexel"), 1f / l.ancho, 1f / l.alto)
+        muestras(p.matrices, p.opacidades, p.bordes)
+        // Extender: el recorte se sale de la lamina y lo de fuera repite el borde
+        if (p.extender) GLES20.glUniform4f(capa.u("uRecorte"), -1f, -1f, 2f, 2f)
+        else GLES20.glUniform4f(capa.u("uRecorte"), 0f, 0f, 1f, 1f)
+        mascara(p.mascara)
+        GLES20.glUniform1f(capa.u("uRadio"), 0f)
+        GLES20.glUniform2f(capa.u("uRadioDir"), 0f, 0f)
+        GLES20.glUniform1f(capa.u("uEspejoBordes"), 0f)
+        GLES20.glUniform1f(capa.u("uConRegionFuente"), 0f)
+        GLES20.glUniform1f(capa.u("uNitidez"), 0f)
+        GLES20.glUniform1f(capa.u("uNeutro"), 1f)
+        GLES20.glUniform1f(capa.u("uLuz"), 0f)
+        GLES20.glUniform1f(capa.u("uRgb"), 0f)
+        GLES20.glUniform1f(capa.u("uNegativo"), 0f)
+        capa.dibujar(voltear)
+    }
+
+    private fun muestras(matrices: List<FloatArray>, opacidades: FloatArray, bordes: FloatArray) {
+        val n = matrices.size
+        val todas = FloatArray(n * 9)
+        for (i in 0 until n) System.arraycopy(matrices[i], 0, todas, i * 9, 9)
+        GLES20.glUniformMatrix3fv(capa.u("uInv"), n, false, todas, 0)
+        GLES20.glUniform1fv(capa.u("uOpac"), n, opacidades, 0)
+        GLES20.glUniform1fv(capa.u("uBorde"), bordes.size.coerceAtMost(n), bordes, 0)
+        GLES20.glUniform1f(capa.u("uN"), n.toFloat())
+    }
+
+    private fun mascara(m: Mascara?) {
+        GLES20.glUniform1f(capa.u("uConMascara"), if (m != null) 1f else 0f)
+        GLES20.glUniform1f(capa.u("uMascInvertida"), if (m?.invertida == true) 1f else 0f)
+        if (m != null) {
+            GLES20.glUniform2f(capa.u("uMascDir"), m.dirX, m.dirY)
+            GLES20.glUniform1f(capa.u("uMascSuave"), m.suave.coerceAtLeast(0.5f))
+            GLES20.glUniform1f(capa.u("uMascRadial"), if (m.radial) 1f else 0f)
+            GLES20.glUniform2f(capa.u("uMascCentro"), m.centroX, m.centroY)
+            GLES20.glUniform1f(capa.u("uMascGrosor"), m.grosor.coerceAtLeast(0f))
+        }
+    }
+
+    fun soltar() {
+        soltado = true
+        // Los que se estan preparando: que su hilo los deje antes de soltarlos
+        anticipados.values.forEach { it.abandonar = true }
+        anticipador?.let { it.shutdown(); runCatching { it.awaitTermination(2, TimeUnit.SECONDS) } }
+        anticipador = null
+        anticipados.clear()
+        precargador?.shutdownNow()
+        precargador = null
+        pedidas.clear()
+        precargadas.values.forEach { it.recycle() }
+        precargadas.clear()
+        grupos.forEach { it.soltar() }
+        grupos.clear()
+        laminasAjuste.forEach { it.soltar() }; laminasAjuste.clear()
+        laminasSelectivas.forEach { it.soltar() }; laminasSelectivas.clear()
+        muestraPartes?.soltar(); muestraPartes = null
+        promedioPartes?.soltar(); promedioPartes = null
+        videos.forEach { it.soltar() }
+        videos.clear()
+        // Los que se estaban cerrando: esperar al decodificador antes de
+        // borrar su textura, que todavia podria estar escribiendo en ella.
+        cerrador?.let { it.shutdown(); runCatching { it.awaitTermination(2, TimeUnit.SECONDS) } }
+        cerrador = null
+        cerrando.forEach { if (!it.decodificadorSuelto) it.soltarDecodificador(); it.soltarGl() }
+        cerrando.clear()
+        imagenes.values.forEach { it.soltar() }
+        imagenes.clear()
+        textos.values.forEach { it.soltar() }
+        textos.clear()
+        fondos.values.forEach { par -> par.second.forEach { it.soltar() } }
+        fondos.clear()
+        fluidez?.soltar()
+        if (usoLuces) pintorLuces.soltar()
+        reduccion.soltar(); copiaPlana.soltar(); copiaExacta.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
+    }
+
+    private companion object {
+        const val MAX_VIDEOS = 6
+
+        /** Cuadros que se espera antes de volver a intentar abrir un archivo que fallo. */
+        private const val REINTENTO_FOTOGRAMAS = 30L
+
+        /** Cuadros que se mantiene abierta una fuente sin usarse. */
+        const val RETENER = 45L
+
+        /** Decodificadores a punto a la vez como mucho (ver anticiparVideos). */
+        const val MAX_ANTICIPADOS = 2
+
+        /** Un decodificador que va hasta 1.5 s por detras llega antes leyendo que saltando. */
+        const val CERCA_US = 1_500_000L
+
+        val IDENTIDAD = floatArrayOf(1f, 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f)
+    }
+}

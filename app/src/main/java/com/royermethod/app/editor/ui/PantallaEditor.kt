@@ -1,0 +1,591 @@
+package com.royermethod.app.editor.ui
+
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.ScrollState
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.unit.sp
+import com.royermethod.app.editor.modelo.Clip
+import com.royermethod.app.editor.modelo.Edicion
+import com.royermethod.app.editor.modelo.Medidor
+import com.royermethod.app.editor.modelo.Origen
+import com.royermethod.app.ui.components.BotonIcono
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Herramienta
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.LocalGestos
+import com.royermethod.app.ui.components.esquinas
+import com.royermethod.app.ui.components.reloj
+import com.royermethod.app.ui.theme.Ink
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+/**
+ * El editor.
+ *
+ * Arriba la imagen, en medio la linea de tiempo con el cabezal fijo y abajo
+ * las herramientas, como en CapCut: es la colocacion que todo el mundo ya
+ * tiene aprendida. Lo propio de esta app es que hay muy poco a la vez:
+ *
+ *  - Sin nada elegido, abajo solo salen las cosas del proyecto (agregar,
+ *    texto, sonido, formato).
+ *  - Con un bloque elegido salen solo las suyas.
+ *  - Cada herramienta abre un panel que ocupa el sitio de la linea de
+ *    tiempo, nunca el de la imagen, para ver el cambio mientras se hace.
+ *
+ * Esto no sabe nada de Android: lo que dibuja la imagen, las miniaturas y
+ * el elegir archivos llegan de fuera. Asi se puede dibujar y probar tambien
+ * fuera del telefono.
+ */
+@Composable
+fun PantallaEditor(
+    estado: EstadoEditor,
+    recursos: Recursos,
+    medidor: Medidor,
+    exportar: EstadoExportar,
+    onVolver: () -> Unit,
+    onAgregarPrincipal: () -> Unit,
+    onAgregarCapa: () -> Unit,
+    onAgregarSonido: () -> Unit,
+    onExportar: () -> Unit,
+    onCancelarExportar: () -> Unit,
+    onCompartir: () -> Unit,
+    onCerrarExportar: () -> Unit,
+    onAbrirProyecto: () -> Unit = {},
+    onGuardarProyecto: () -> Unit = {},
+    /** Agrega los ejemplos de movimiento (mitades, circulo y anillo, latigazo, barrido). */
+    onEjemplos: () -> Unit = {},
+    /** Elegir otro archivo para todos los bloques que usan este. */
+    onReemplazar: (Origen) -> Unit = {},
+    modifier: Modifier = Modifier,
+    vista: @Composable (Modifier) -> Unit
+) {
+    var exportando by remember { mutableStateOf(false) }
+    // Si hay una exportacion en marcha o recien hecha, se ensena
+    LaunchedEffect(exportar.corriendo, exportar.resultado, exportar.fallo) {
+        if (exportar.corriendo || exportar.resultado != null || exportar.fallo != null) exportando = true
+    }
+
+    CompositionLocalProvider(LocalGestos provides estado, LocalRecursosEditor provides recursos) {
+        BoxWithConstraints(modifier.fillMaxSize().background(Ink.Black)) {
+            val panel = estado.panel
+            var ampliado by remember { mutableStateOf(true) }
+            LaunchedEffect(panel, exportando) { if (panel != null || exportando) ampliado = true }
+            // El panel puede crecer para editar sin perder la vista del resultado.
+            val vistaMinima = if (maxHeight < 560.dp) 96.dp else 160.dp
+            val maximoPanel = (maxHeight - 52.dp - 56.dp - vistaMinima).coerceAtLeast(80.dp)
+            val compacto = min(maxHeight * 0.42f, 330.dp).coerceAtMost(maximoPanel)
+            val amplio = (maxHeight * 0.60f).coerceAtMost(maximoPanel).coerceAtLeast(compacto)
+            val abajo = if ((panel != null || exportando) && ampliado) amplio else compacto
+            val tamanoPanel = if (amplio > compacto + 4.dp)
+                TamanoPanelEditor(ampliado) { ampliado = !ampliado } else null
+            Column(Modifier.fillMaxSize()) {
+                BarraArriba(estado, onVolver, onExportar = { exportando = true })
+                Box(Modifier.fillMaxWidth().weight(1f).padding(horizontal = 12.dp, vertical = 6.dp)) {
+                    Lienzo(estado, medidor, Modifier.fillMaxSize(), vista)
+                    Aviso(estado, Modifier.align(Alignment.TopCenter).padding(top = 10.dp))
+                }
+                Transporte(estado)
+                Box(Modifier.fillMaxWidth().height(abajo)) {
+                    AnimatedContent(
+                        targetState = when {
+                            exportando -> "exportar"
+                            panel != null -> panel.name
+                            else -> ""
+                        },
+                        transitionSpec = {
+                            (slideInVertically(tween(260)) { it / 6 } + fadeIn(tween(200)))
+                                .togetherWith(fadeOut(tween(140)))
+                        },
+                        label = "abajo"
+                    ) { que ->
+                        when {
+                            que == "exportar" -> PanelExportar(
+                                estado, exportar, onExportar, onCancelarExportar, onCompartir,
+                                onCerrar = {
+                                    exportando = false
+                                    if (!exportar.corriendo) onCerrarExportar()
+                                }
+                            )
+                            que.isNotEmpty() -> {
+                                val p = Panel.valueOf(que)
+                                val cerrar = {
+                                    estado.panel = null
+                                    if (estado.seleccion is Seleccion.Paso) estado.elegir(null)
+                                }
+                                // Animar y Efectos montan su propia hoja (acciones en la
+                                // fila del titulo y zona fija); el resto, la de siempre
+                                CompositionLocalProvider(LocalTamanoPanelEditor provides tamanoPanel) {
+                                    when (p) {
+                                        Panel.ANIMACION -> HojaAnimacion(estado, cerrar)
+                                        Panel.EFECTOS -> HojaEfectos(estado, cerrar)
+                                        Panel.TEXTO -> HojaTexto(estado, cerrar)
+                                        Panel.MARCO -> HojaMarco(estado, cerrar)
+                                        Panel.COLOR -> HojaColor(estado, cerrar)
+                                        Panel.RECORTE -> HojaRecorte(estado, cerrar)
+                                        Panel.LUCES -> HojaLuces(estado, cerrar)
+                                        else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
+                                    }
+                                }
+                            }
+                            else -> Column(Modifier.fillMaxSize()) {
+                                // La linea y, encima, el zoom: abajo a la derecha, donde no tapa
+                                // la pista principal ni el "+ Agregar sonido"
+                                Box(Modifier.fillMaxWidth().weight(1f)) {
+                                    LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxSize())
+                                    ControlesZoom(estado, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp))
+                                }
+                                Herramientas(estado, onAgregarPrincipal, onAgregarCapa, onAgregarSonido, onAbrirProyecto, onGuardarProyecto, onEjemplos, onReemplazar)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
+    when (p) {
+        Panel.VELOCIDAD -> PanelVelocidad(estado)
+        Panel.VOLUMEN -> PanelVolumen(estado)
+        // Van con su hoja: HojaAnimacion y HojaEfectos
+        Panel.ANIMACION, Panel.EFECTOS -> Unit
+        Panel.PIEZAS -> PanelPiezas(estado)
+        Panel.TRANSICION -> PanelTransicion(estado)
+        Panel.COLOR, Panel.MARCO, Panel.RECORTE, Panel.LUCES -> Unit
+        Panel.CAPAS -> PanelCapas(estado)
+        Panel.ENCUADRE -> PanelEncuadre(estado)
+        Panel.TEXTO -> Unit
+        Panel.FORMATO -> PanelFormato(estado)
+        Panel.CURVA -> PanelCurva(estado)
+        Panel.FLUIDEZ -> PanelFluidez(estado)
+        Panel.COMPRESION -> PanelCompresion(estado)
+        Panel.RESOLUCION -> PanelResolucion(estado)
+    }
+}
+
+@Composable
+private fun BarraArriba(estado: EstadoEditor, onVolver: () -> Unit, onExportar: () -> Unit) {
+    val anchoExportar = if (LocalDensity.current.fontScale > 1.1f) 132.dp else 116.dp
+    Row(
+        Modifier.fillMaxWidth().height(52.dp).padding(horizontal = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)
+    ) {
+        BotonIcono(Glifos.atras, onVolver, tam = 44.dp, descripcion = "Volver")
+        Row(Modifier.weight(1f), horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(4.dp)) {
+            Pastilla(estado.proyecto.formato.nombre, Modifier.weight(1f), "Formato ${estado.proyecto.formato.nombre}") {
+                estado.elegir(null); estado.panel = Panel.FORMATO
+            }
+            Pastilla("${estado.proyecto.salida.ladoCorto}p", Modifier.weight(1f), "Resolución ${estado.proyecto.salida.ladoCorto}p") {
+                estado.elegir(null); estado.panel = Panel.RESOLUCION
+            }
+        }
+        Row(
+            Modifier
+                .width(anchoExportar)
+                .heightIn(min = 44.dp)
+                .clip(esquinas(22.dp))
+                .background(Ink.White)
+                .clickable(onClick = onExportar)
+                .semantics { contentDescription = "Exportar video" }
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+        ) {
+            Icono(Glifos.exportar, color = Ink.Black, tam = 16.dp)
+            Spacer(Modifier.width(6.dp))
+            Text("Exportar", style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 0.sp, fontWeight = FontWeight.Medium),
+                color = Ink.Black, maxLines = 1, softWrap = false)
+        }
+    }
+}
+
+/** Un dato del proyecto con su propia área táctil, sin desplazar Exportar. */
+@Composable
+private fun Pastilla(texto: String, modifier: Modifier = Modifier, descripcion: String = texto, onClick: () -> Unit) {
+    Box(
+        modifier
+            .heightIn(min = 44.dp)
+            .clip(esquinas(10.dp))
+            .background(Ink.White04)
+            .clickable(onClick = onClick)
+            .semantics { contentDescription = descripcion }
+            .padding(horizontal = 4.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(texto, style = MaterialTheme.typography.labelMedium.copy(letterSpacing = 0.sp),
+            color = Ink.White70, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+/** El reloj tiene su espacio: los botones nunca se dibujan encima del tiempo. */
+@Composable
+private fun Transporte(estado: EstadoEditor) {
+    val cabezal by remember(estado) { derivedStateOf { reloj(estado.tiempo, milesimas = estado.zoomFino && !estado.reproduciendo) } }
+    val duracion = reloj(estado.duracion)
+    Row(
+        Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f).padding(horizontal = 4.dp).clearAndSetSemantics {
+            contentDescription = "Tiempo $cabezal, duración $duracion"
+        }) {
+            Text(cabezal, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.sp, lineHeight = 18.sp),
+                color = Ink.White, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+            Text("/ $duracion", style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp, lineHeight = 14.sp),
+                color = Ink.White50, maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis)
+        }
+        BotonIcono(if (estado.reproduciendo) Glifos.pausa else Glifos.play,
+            { estado.reproduciendo = !estado.reproduciendo }, activo = estado.duracion > 0,
+            tam = 44.dp, descripcion = if (estado.reproduciendo) "Pausar" else "Reproducir")
+        BotonClave(estado)
+        BotonIcono(Glifos.deshacer, { estado.deshacer() }, activo = estado.puedeDeshacer,
+            tam = 44.dp, descripcion = "Deshacer")
+        BotonIcono(Glifos.rehacer, { estado.rehacer() }, activo = estado.puedeRehacer,
+            tam = 44.dp, descripcion = "Rehacer")
+    }
+}
+
+/**
+ * El rombo de fotograma clave. Con un bloque elegido y el cabezal dentro:
+ * si ya hay uno ahi lo quita, si no lo pone con el encuadre que se ve.
+ */
+@Composable
+private fun BotonClave(estado: EstadoEditor) {
+    if (estado.panel == Panel.LUCES) {
+        BotonIcono(Glifos.rombo, { ponerClaveLuz(estado, false) }, activo = estado.localElegido != null && estado.clipElegido?.luces?.isNotEmpty() == true,
+            tam = 44.dp, descripcion = "Añadir clave de luz")
+        return
+    }
+    val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
+    // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s: claves a una milesima son distintas
+    if (c != null && (c.esTexto || c.esAjuste || estado.panel == Panel.MARCO || estado.panel == Panel.COLOR || estado.panel == Panel.RECORTE)) {
+        val grupo = when {
+            estado.panel == Panel.RECORTE -> com.royermethod.app.editor.modelo.GrupoPropiedad.RECORTE
+            c.esAjuste || estado.panel == Panel.COLOR -> com.royermethod.app.editor.modelo.GrupoPropiedad.AJUSTES
+            estado.panel == Panel.MARCO -> com.royermethod.app.editor.modelo.GrupoPropiedad.MARCO
+            else -> com.royermethod.app.editor.modelo.GrupoPropiedad.TEXTO
+        }
+        BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, c.esTexto && estado.panel != Panel.RECORTE, false) }, activo = estado.localElegido != null,
+            tam = 44.dp, descripcion = "Añadir fotograma clave")
+        return
+    }
+    val tolerancia = toleranciaClaves()
+    // El cabezal se lee en derivedStateOf: al reproducir solo se recompone si cambia lo que se ve
+    val activo by remember(c) { derivedStateOf { c != null && estado.localElegido != null } }
+    val hay by remember(c, tolerancia) {
+        derivedStateOf { val l = estado.localElegido; c != null && l != null && Edicion.claveCercana(c.claves, l, tolerancia) != null }
+    }
+    BotonIcono(
+        if (hay) Glifos.romboLleno else Glifos.rombo,
+        {
+            val clip = c ?: return@BotonIcono
+            val l = estado.localElegido ?: return@BotonIcono
+            if (hay) {
+                estado.hacer { Edicion.quitarClave(it, clip.id, estado.tiempo, tolerancia) }
+            } else {
+                estado.hacer { Edicion.ponerClave(it, clip.id, estado.tiempo, clip.encuadreEn(l), tolerancia) }
+                if (clip.claves.isEmpty()) estado.avisar("Mueve el cabezal y cambia el bloque: se crea otro fotograma clave")
+            }
+        },
+        activo = activo, tam = 44.dp,
+        descripcion = if (hay) "Quitar clave de movimiento" else "Añadir clave de movimiento"
+    )
+}
+
+/**
+ * El bloque que se ve bajo el cabezal: la capa de mas arriba y si no la
+ * pista principal (en una transicion, el que entra). Con [sinTextos] se
+ * salta las capas de texto, para lo que solo tiene sentido en una imagen.
+ */
+private fun bloqueBajoCabezal(estado: EstadoEditor, sinTextos: Boolean = false): Clip? {
+    val p = estado.proyecto
+    val en = com.royermethod.app.editor.modelo.Linea.principalEn(p.principal, com.royermethod.app.editor.modelo.Linea.inicios(p.principal), estado.tiempo)
+    return com.royermethod.app.editor.modelo.Linea.capasEn(p.capas, estado.tiempo)
+        .lastOrNull { !it.clip.esAjuste && (!sinTextos || !it.clip.esTexto) }?.clip
+        ?: en?.segundo ?: en?.primero
+}
+
+/** La fila de herramientas: cambia segun lo elegido. */
+@Composable
+private fun Herramientas(
+    estado: EstadoEditor,
+    onAgregarPrincipal: () -> Unit,
+    onAgregarCapa: () -> Unit,
+    onAgregarSonido: () -> Unit,
+    onAbrirProyecto: () -> Unit,
+    onGuardarProyecto: () -> Unit,
+    onEjemplos: () -> Unit,
+    onReemplazar: (Origen) -> Unit
+) {
+    val s = estado.seleccion
+    val desliza = rememberScrollState()
+    LaunchedEffect(s) { desliza.scrollTo(0) }
+    var preguntarBorrar by remember { mutableStateOf(false) }
+    if (preguntarBorrar) DialogoBorrarTodo(
+        onCancelar = { preguntarBorrar = false },
+        onBorrar = { preguntarBorrar = false; borrarTodo(estado) }
+    )
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
+    Box(Modifier.fillMaxWidth().height(76.dp)) {
+        Row(
+            Modifier
+                .fillMaxSize()
+                .horizontalScroll(desliza)
+                .padding(horizontal = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (s != null) {
+                Herramienta(Glifos.atras, "Volver", { estado.elegir(null) })
+                Box(Modifier.width(1.dp).height(36.dp).background(Ink.White15))
+            }
+            when (s) {
+                null -> {
+                    Herramienta(Glifos.mas, "Agregar", onAgregarPrincipal)
+                    if (bloqueBajoCabezal(estado) != null) Herramienta(Glifos.editar, "Editar", {
+                        bloqueBajoCabezal(estado)?.let { estado.elegir(Seleccion.Bloque(it.id)) }
+                    })
+                    Herramienta(Glifos.superponer, "Capa", onAgregarCapa)
+                    Herramienta(Glifos.texto, "Texto", {
+                        var nuevo = 0L
+                        estado.hacer { p -> Edicion.agregarTexto(p, TEXTO_NUEVO, estado.tiempo).also { nuevo = it.second }.first }
+                        estado.elegir(Seleccion.Bloque(nuevo))
+                        estado.panel = Panel.TEXTO
+                    })
+                    Herramienta(Glifos.audio, "Sonido", onAgregarSonido)
+                    Herramienta(Glifos.ajustes, "Efectos", { crearCapaAjuste(estado, efectos = true) })
+                    Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado) })
+                    Herramienta(Glifos.formato, "Formato", { estado.panel = Panel.FORMATO })
+                    HerramientasZoom(estado)
+                    // Bloques hechos con las herramientas de movimiento, para verlas y cambiarlas
+                    Herramienta(Glifos.animacion, "Ejemplos", onEjemplos)
+                    Herramienta(Glifos.editar, "Abrir proyecto", onAbrirProyecto)
+                    Herramienta(Glifos.guardar, "Guardar proyecto", onGuardarProyecto)
+                    // Para empezar otro: pregunta antes, y se puede deshacer
+                    if (estado.proyecto != proyectoVacio(estado.proyecto)) {
+                        Herramienta(Glifos.papelera, "Borrar todo", { preguntarBorrar = true })
+                    }
+                }
+                is Seleccion.Sonido -> {
+                    val id = s.id
+                    Herramienta(Glifos.dividir, "Dividir", {
+                        val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
+                        if (r == null) estado.avisar("Pon el cabezal dentro del sonido para dividirlo") else estado.hacer { r.first }
+                    })
+                    Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
+                    Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                    Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                }
+                else -> {
+                    val c = estado.clipElegido ?: return@Row
+                    val id = c.id
+                    if (c.esAjuste) {
+                        Herramienta(Glifos.ajustes, "Efectos", { estado.panel = Panel.EFECTOS }, resaltada = c.efectos.isNotEmpty())
+                        Herramienta(Glifos.color, "Ajustes", { estado.panel = Panel.COLOR })
+                        Herramienta(Glifos.dividir, "Dividir", { Edicion.dividir(estado.proyecto, id, estado.tiempo)?.let { r -> estado.hacer { r.first } } })
+                        Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                        Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                        HerramientasVista(estado)
+                        return@Row
+                    }
+                    val principal = estado.proyecto.principal
+                    val i = principal.indexOfFirst { it.id == id }
+                    Herramienta(Glifos.dividir, "Dividir", {
+                        val r = Edicion.dividir(estado.proyecto, id, estado.tiempo)
+                        if (r == null) estado.avisar("Pon el cabezal dentro del bloque, lejos de sus bordes") else estado.hacer { r.first }
+                    })
+                    // Interruptor: encendido, arrastrar en la imagen mueve el bloque entero
+                    // con todas sus claves (o solo las elegidas); otro toque lo apaga
+                    if (c.claves.isNotEmpty()) {
+                        Herramienta(Glifos.moverTodo, "Mover todo", {
+                            estado.moverTodo = !estado.moverTodo
+                            val elegidas = estado.elegidasDe(c).size
+                            estado.avisar(
+                                if (!estado.moverTodo) "Mover todo apagado: arrastrar cambia solo la clave de aqui"
+                                else if (elegidas > 0) "Mover todo encendido: arrastrar mueve tus $elegidas claves elegidas. Toca otra vez para apagarlo"
+                                else "Mover todo encendido: arrastrar mueve el clip entero con sus claves. Toca otra vez para apagarlo"
+                            )
+                        }, encendida = estado.moverTodo)
+                    }
+                    if (c.esTexto) Herramienta(Glifos.texto, "Texto", { estado.panel = Panel.TEXTO })
+                    if (c.esVideo) Herramienta(Glifos.velocidad, "Velocidad", { estado.panel = Panel.VELOCIDAD })
+                    Herramienta(Glifos.animacion, "Animar", { estado.panel = Panel.ANIMACION })
+                    // Cerca del principio: al final de la fila nadie lo encontraba
+                    if (!c.esTexto) {
+                        Herramienta(Glifos.color, "Ajustes", { crearCapaAjuste(estado, desdeElegido = true) })
+                        if (!c.color.neutro || c.filtro != com.royermethod.app.editor.modelo.Filtro.NINGUNO || c.propiedades.keys.any { it.grupo == com.royermethod.app.editor.modelo.GrupoPropiedad.AJUSTES })
+                            Herramienta(Glifos.color, "Ajuste local", { estado.panel = Panel.COLOR }, resaltada = true)
+                    }
+                    Herramienta(Glifos.ajustes, "Efectos", {
+                        if (c.efectos.isNotEmpty()) estado.panel = Panel.EFECTOS
+                        else crearCapaAjuste(estado, efectos = true, desdeElegido = true)
+                    }, resaltada = c.efectos.isNotEmpty())
+                    Herramienta(Glifos.recorte, "Recorte", {
+                        val inicio = estado.inicioElegido ?: 0L
+                        estado.pausarEn(estado.tiempo.coerceIn(inicio,inicio+c.duracionUs-1))
+                        estado.panel = Panel.RECORTE
+                    }, resaltada = c.recorteVisual.activo)
+                    Herramienta(Glifos.estrella, "Luces", {
+                        val inicio = estado.inicioElegido ?: 0L
+                        estado.pausarEn(estado.tiempo.coerceIn(inicio, inicio + c.duracionUs - 1))
+                        estado.panel = Panel.LUCES
+                    }, resaltada = c.luces.isNotEmpty())
+                    Herramienta(Glifos.encuadre, "Borde / 3D", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
+                    Herramienta(Glifos.superponer, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())
+                    if (i >= 0 && i < principal.lastIndex) Herramienta(Glifos.transicion, "Transicion", { estado.elegir(Seleccion.Paso(id)) })
+                    Herramienta(Glifos.papelera, "Eliminar", { estado.hacer { Edicion.eliminar(it, id) }; estado.elegir(null) })
+                    Herramienta(Glifos.duplicar, "Duplicar", { Edicion.duplicar(estado.proyecto, id)?.let { r -> estado.hacer { r.first } } })
+                    // Otra version del mismo video: se cambia en todos los bloques que lo usan
+                    c.origen?.let { o -> Herramienta(Glifos.reemplazar, "Reemplazar", { onReemplazar(o) }) }
+                    Herramienta(Glifos.encuadre, "Encuadre", { estado.panel = Panel.ENCUADRE })
+                    Herramienta(Glifos.curva, "Curvas", { estado.panel = Panel.CURVA }, resaltada = c.claves.size >= 2)
+                    if (c.esVideo) Herramienta(Glifos.volumen, "Volumen", { estado.panel = Panel.VOLUMEN })
+                    if (i >= 0) Herramienta(Glifos.aCapa, "A capa", { estado.hacer { Edicion.aCapa(it, id) } })
+                    else if (!c.esTexto) Herramienta(Glifos.aPrincipal, "A principal", { estado.hacer { Edicion.aPrincipal(it, id) } })
+                    HerramientasZoom(estado)
+                    // Lo de la pantalla de Mejorar, al final: fotogramas y peso de este bloque
+                    if (c.esVideo) Herramienta(Glifos.fluidez, "Fluidez", { estado.panel = Panel.FLUIDEZ }, resaltada = c.fluido)
+                    Herramienta(Glifos.compresion, "Compresion", { estado.panel = Panel.COMPRESION }, resaltada = c.calidad != 1f)
+                }
+            }
+            HerramientasVista(estado)
+        }
+        MasALaDerecha(desliza, Modifier.align(Alignment.CenterEnd))
+    }
+}
+
+/** Utilidades de vista al final: no desplazan las acciones para editar el clip. */
+@Composable
+private fun HerramientasVista(estado: EstadoEditor) {
+    Herramienta(Glifos.superponer, "Orden", { estado.panel = Panel.CAPAS })
+    Herramienta(Glifos.encuadre, "Guías", {
+        AjustesEditor.mostrarMarcos = !AjustesEditor.mostrarMarcos
+        AjustesEditor.alCambiar()
+    }, encendida = AjustesEditor.mostrarMarcos)
+}
+
+/**
+ * Pista de que la fila de herramientas sigue a la derecha: en 360-393 dp
+ * "Ejemplos", "Abrir proyecto" y "Guardar proyecto" quedaban fuera sin que
+ * nada lo dijera. La flecha avanza una página para no saltarse herramientas.
+ * Se oculta al llegar al final.
+ */
+@Composable
+internal fun MasALaDerecha(desliza: ScrollState, modifier: Modifier) {
+    val alcance = rememberCoroutineScope()
+    val hayMas by remember(desliza) { derivedStateOf { desliza.value < desliza.maxValue } }
+    if (!hayMas) return
+    Box(
+        modifier
+            .width(36.dp)
+            .fillMaxHeight()
+            .background(Brush.horizontalGradient(listOf(Color.Transparent, Ink.Black.copy(alpha = 0.92f))))
+            .clickable {
+                alcance.launch {
+                    val pagina = (desliza.viewportSize * .8f).toInt().coerceAtLeast(120)
+                    desliza.animateScrollTo((desliza.value + pagina).coerceAtMost(desliza.maxValue))
+                }
+            }
+            .semantics { contentDescription = "Ver más herramientas" },
+        contentAlignment = Alignment.CenterEnd
+    ) {
+        Icono(Glifos.siguiente, Modifier.padding(end = 4.dp), color = Ink.White70, tam = 18.dp)
+    }
+}
+
+/** Mensaje corto sobre la imagen que se va solo. */
+@Composable
+private fun Aviso(estado: EstadoEditor, modifier: Modifier) {
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(estado.avisoN) {
+        if (estado.avisoN == 0) return@LaunchedEffect
+        visible = true
+        // Los largos (varias lineas) se quedan mas para poder leerlos
+        delay(if ((estado.aviso?.length ?: 0) > 60) 4500L else 2600L)
+        visible = false
+    }
+    AnimatedVisibility(visible, modifier, enter = fadeIn(tween(160)) + slideInVertically { -it / 2 }, exit = fadeOut(tween(300)) + slideOutVertically { -it / 3 }) {
+        Text(
+            estado.aviso ?: "",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Ink.Black,
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .clip(esquinas(18.dp))
+                .background(Ink.White)
+                .padding(horizontal = 14.dp, vertical = 8.dp)
+        )
+    }
+}
+
+/**
+ * Zoom de la vista: encendido, los dedos sobre la imagen solo acercan y
+ * desplazan (no eligen ni mueven nada). Al apagarlo el zoom se queda y se
+ * edita con el; "Sin zoom" lo quita.
+ */
+@Composable
+private fun HerramientasZoom(estado: EstadoEditor) {
+    Herramienta(Glifos.zoom, "Zoom", {
+        estado.modoZoom = !estado.modoZoom
+        estado.avisar(
+            if (estado.modoZoom) "Pellizca o toca dos veces la imagen para acercar. Toca Zoom otra vez para editar"
+            else if (estado.zoomVista.puesto) "El zoom se queda: ya puedes editar con el"
+            else "Zoom apagado"
+        )
+    }, encendida = estado.modoZoom)
+    if (estado.zoomVista.puesto) Herramienta(Glifos.sinZoom, "Sin zoom", {
+        estado.zoomVista = com.royermethod.app.editor.modelo.ZoomVista.NINGUNO
+        estado.modoZoom = false
+    })
+}

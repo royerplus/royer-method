@@ -417,9 +417,9 @@ class Reductor(
          * de textura, porque la del decodificador es externa y la intermedia
          * es normal.
          *
-         * TAPS es fijo porque en GLSL ES 2 el limite del bucle tiene que ser
+         * El limite del bucle es fijo porque en GLSL ES 2 tiene que ser
          * constante. Se sale antes con break en cuanto se pasa del radio, asi
-         * que en reducciones suaves no cuesta las 16 muestras.
+         * que en reducciones suaves no cuesta las 20 muestras.
          */
         fun fs(externa: Boolean, conRealce: Boolean) = """
             ${if (externa) "#extension GL_OES_EGL_image_external : require" else ""}
@@ -450,19 +450,32 @@ class Reductor(
 
             vec4 reducir(vec2 base) {
                 float radio = 2.0 * uEscala;
-                float centro = dot(base, sign(uPaso)) / max(uPaso.x + uPaso.y, 0.0000001);
-                float inicio = floor(centro - radio) + 0.5;
+                float total = 1.0 / max(uPaso.x + uPaso.y, 0.0000001);
+                float centro = dot(base, sign(uPaso)) * total;
+                // Si no llegan 20 muestras para todo el radio, se separan
+                // (cada una ya promedia dos pixeles con el filtro de la GPU)
+                float separacion = max(1.0, 2.0 * radio / 19.0);
+                float inicio = separacion > 1.0 ? centro - radio + 0.5 * separacion : floor(centro - radio) + 0.5;
+                // Los pixeles que caen justo debajo: el resultado no sale de
+                // su rango, asi Lanczos da filo sin el cerco claro alrededor
+                // de las lineas oscuras.
+                float pie = 0.5 * uEscala + 0.5;
                 vec4 suma = vec4(0.0);
                 float pesos = 0.0;
-                for (int i = 0; i < 16; i++) {
-                    float p = inicio + float(i);
+                vec4 suelo = vec4(1.0);
+                vec4 techo = vec4(0.0);
+                for (int i = 0; i < 20; i++) {
+                    float p = inicio + float(i) * separacion;
                     if (p > centro + radio) break;
                     float w = lanczos((p - centro) / uEscala);
-                    vec2 c = base + uPaso * (p - centro);
-                    suma += texture2D(sTex, (uMatriz * vec4(c, 0.0, 1.0)).xy) * w;
+                    // Sin salir del borde: fuera esta el relleno del decodificador
+                    vec2 c = base + uPaso * (clamp(p, 0.5, total - 0.5) - centro);
+                    vec4 t = texture2D(sTex, (uMatriz * vec4(c, 0.0, 1.0)).xy);
+                    suma += t * w;
                     pesos += w;
+                    if (abs(p - centro) <= pie) { suelo = min(suelo, t); techo = max(techo, t); }
                 }
-                return suma / max(pesos, 0.0001);
+                return clamp(suma / max(pesos, 0.0001), suelo, techo);
             }
 
             void main() {

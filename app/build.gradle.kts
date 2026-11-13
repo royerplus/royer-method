@@ -16,6 +16,7 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
+        testInstrumentationRunner = "android.test.InstrumentationTestRunner"
 
         // Solo arm64. Es lo que lleva cualquier telefono capaz de mover
         // Vulkan con computacion, que es lo que exige el modelo, y ncnn son
@@ -43,7 +44,27 @@ android {
         }
     }
 
+    signingConfigs {
+        // En GitHub Actions, la clave que guarda la cache (ver apk.yml), siempre
+        // la misma. Sin esto el plugin de Android se hacia una de depuracion
+        // nueva en cada compilacion y el telefono no dejaba instalar encima
+        // ("conflicto con un paquete"). En el PC no existe y se usa la de siempre.
+        System.getenv("FIRMA_CI")?.let { ruta ->
+            create("ci") {
+                storeFile = file(ruta)
+                storePassword = "android"
+                keyAlias = "androiddebugkey"
+                keyPassword = "android"
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // Permite validar el editor en el telefono sin sustituir la app instalada.
+            applicationIdSuffix = ".prueba"
+            versionNameSuffix = "-prueba"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -55,7 +76,27 @@ android {
             // medir el rendimiento de verdad. Un build de depuracion lleva
             // comprobaciones extra de Compose y va notablemente mas lento, asi
             // que juzgar la fluidez con el APK debug enganaba.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.findByName("ci") ?: signingConfigs.getByName("debug")
+        }
+        create("prueba") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".prueba"
+            versionNameSuffix = "-prueba"
+            matchingFallbacks += listOf("release")
+            proguardFiles("proguard-prueba.pro")
+        }
+        // Lo que publica GitHub Actions para instalar desde el telefono con un
+        // enlace. Va firmado con la clave de la CI, distinta de la del PC, asi
+        // que lleva su propio id: se instala al lado de la app y de .prueba
+        // sin reemplazar ni chocar con ninguna.
+        //
+        // Solo existe en Actions: uno compilado en el PC saldria con este mismo
+        // id y la clave del PC, y los del enlace ya no se podrian instalar
+        // encima sin desinstalar y perder lo que hubiera en la app.
+        if (System.getenv("GITHUB_ACTIONS") == "true") create("github") {
+            initWith(getByName("prueba"))
+            applicationIdSuffix = ".github"
+            versionNameSuffix = "-github"
         }
     }
 
@@ -83,4 +124,22 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     debugImplementation(libs.androidx.ui.tooling)
+    // El modelo del editor (linea de tiempo, escena, audio) es Kotlin puro y
+    // se prueba en el ordenador: ./gradlew test
+    testImplementation(libs.junit)
+    testImplementation(libs.json)
+    // Clases de prueba incluidas en Android. Solo se compilan para androidTest;
+    // las proporciona el telefono mediante uses-library, no se empaquetan stubs.
+    androidTestCompileOnly(files(
+        "${android.sdkDirectory}/platforms/android-${android.compileSdk}/optional/android.test.base.jar",
+        "${android.sdkDirectory}/platforms/android-${android.compileSdk}/optional/android.test.runner.jar"
+    ))
+}
+
+// El banco de la vista previa (EscenaRendimientoTest) va apagado. Se enciende
+// pasando -Dbench=1 a gradle; las opciones bench.* tambien llegan a las pruebas.
+tasks.withType<Test>().configureEach {
+    System.getProperties().stringPropertyNames()
+        .filter { it == "bench" || it.startsWith("bench.") }
+        .forEach { systemProperty(it, System.getProperty(it)) }
 }

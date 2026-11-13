@@ -16,6 +16,9 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
+        // Antes de pintar nada: el tema sale de lo que el usuario eligio.
+        Preferencias.cargar(this)
+
         // La app se ve mejor sin nada del sistema encima: es pantalla completa real.
         hideSystemBars()
 

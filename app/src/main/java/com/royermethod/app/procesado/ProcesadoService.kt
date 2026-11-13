@@ -179,9 +179,5 @@ class ProcesadoService : Service() {
                 context.startService(i)
             }
         }
-
-        fun parar(context: Context) {
-            context.stopService(Intent(context, ProcesadoService::class.java))
-        }
     }
 }

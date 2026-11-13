@@ -44,6 +44,7 @@ import androidx.compose.ui.window.Dialog
 import com.royermethod.app.media.tiempo
 import com.royermethod.app.procesado.Tramo
 import com.royermethod.app.ui.theme.Ink
+import com.royermethod.app.ui.theme.radio
 
 /**
  * Que trozos del video van a camara lenta.
@@ -83,16 +84,16 @@ fun TramosDialog(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(radio(24.dp)))
                 .drawBehind {
-                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(24.dp.toPx()))
+                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(radio(24.dp).toPx()))
                     drawRoundRect(
                         color = Ink.White, alpha = 0.06f,
-                        cornerRadius = CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(radio(24.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White, alpha = 0.20f,
-                        cornerRadius = CornerRadius(24.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(24.dp).toPx()),
                         style = Stroke(width = 1.dp.toPx())
                     )
                 }
@@ -286,17 +287,17 @@ private fun ChipFactor(
     Box(
         modifier = modifier
             .height(34.dp)
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(radio(11.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.White,
                     alpha = if (activo) 1f else 0.06f,
-                    cornerRadius = CornerRadius(11.dp.toPx())
+                    cornerRadius = CornerRadius(radio(11.dp).toPx())
                 )
                 if (!activo) {
                     drawRoundRect(
                         color = Ink.White, alpha = 0.14f,
-                        cornerRadius = CornerRadius(11.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(11.dp).toPx()),
                         style = Stroke(1.dp.toPx())
                     )
                 }
@@ -322,15 +323,15 @@ private fun BotonLinea(texto: String, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .height(40.dp)
-            .clip(RoundedCornerShape(13.dp))
+            .clip(RoundedCornerShape(radio(13.dp)))
             .drawBehind {
                 drawRoundRect(
                     color = Ink.White, alpha = 0.04f,
-                    cornerRadius = CornerRadius(13.dp.toPx())
+                    cornerRadius = CornerRadius(radio(13.dp).toPx())
                 )
                 drawRoundRect(
                     color = Ink.White, alpha = 0.14f,
-                    cornerRadius = CornerRadius(13.dp.toPx()),
+                    cornerRadius = CornerRadius(radio(13.dp).toPx()),
                     style = Stroke(1.dp.toPx())
                 )
             }
