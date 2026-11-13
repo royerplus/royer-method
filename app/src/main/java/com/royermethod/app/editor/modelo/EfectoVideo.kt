@@ -138,7 +138,13 @@ data class AjustesEfecto(
     /** Al reves: mostrar fuera en vez de dentro, ocultar en vez de descubrir. */
     val invertir: Boolean = false,
     /** Mitades: corte vertical (izquierda y derecha) en vez de horizontal (arriba y abajo). */
-    val vertical: Boolean = false
+    val vertical: Boolean = false,
+    /** Color de la luz o de la trama; los efectos antiguos no lo usan. */
+    val color: Int = 0xFFFFFFFF.toInt(),
+    /** Cuanto se concentra la luz en sus bordes y cuanto se difunde el resplandor. */
+    val halo: Float = .5f,
+    /** Luminancia minima para resplandor; contraste minimo para bordes de arcoiris. */
+    val umbral: Float = .6f
 ) {
     /** La curva elegida en [x], de 0 a 1. */
     fun avance(x: Float): Float = bezier?.en(x) ?: Escena.curva(curva, x)
@@ -184,5 +190,13 @@ enum class TipoEfectoVideo(val nombre: String) {
     /** Dos mitades que se juntan; desde/hasta: recorrido de cada mitad en lienzos. */
     MITADES("Mitades"),
     /** Una animacion del bloque convertida en efecto: lleva su contenido en [EfectoVideo.animacion]. */
-    ANIMACION("Animacion")
+    ANIMACION("Animacion"),
+    /** Ilumina alternativamente las dos regiones de un corte orientable. */
+    PULSO_MITADES("Luz alterna por mitades"),
+    /** Resplandor solo alrededor de los pixeles que superan el umbral. */
+    RESPLANDOR("Resplandor de luces"),
+    /** Trama de puntos o lineas del color elegido. */
+    SEMITONO("Semitono"),
+    /** Contornos de color espectral, sin recolorear las zonas planas. */
+    ARCOIRIS_BORDES("Bordes arcoiris")
 }

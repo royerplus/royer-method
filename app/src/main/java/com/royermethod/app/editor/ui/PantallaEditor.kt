@@ -156,6 +156,7 @@ fun PantallaEditor(
                                     Panel.MARCO -> HojaMarco(estado, cerrar)
                                     Panel.COLOR -> HojaColor(estado, cerrar)
                                     Panel.RECORTE -> HojaRecorte(estado, cerrar)
+                                    Panel.LUCES -> HojaLuces(estado, cerrar)
                                     else -> HojaPanel(p.titulo, onCerrar = cerrar) { ContenidoPanel(estado, p) }
                                 }
                             }
@@ -185,7 +186,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.ANIMACION, Panel.EFECTOS -> Unit
         Panel.PIEZAS -> PanelPiezas(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
-        Panel.COLOR, Panel.MARCO, Panel.RECORTE -> Unit
+        Panel.COLOR, Panel.MARCO, Panel.RECORTE, Panel.LUCES -> Unit
         Panel.CAPAS -> PanelCapas(estado)
         Panel.ENCUADRE -> PanelEncuadre(estado)
         Panel.TEXTO -> Unit
@@ -289,6 +290,10 @@ private fun Transporte(estado: EstadoEditor) {
  */
 @Composable
 private fun BotonClave(estado: EstadoEditor) {
+    if (estado.panel == Panel.LUCES) {
+        BotonIcono(Glifos.rombo, { ponerClaveLuz(estado, false) }, activo = estado.localElegido != null && estado.clipElegido?.luces?.isNotEmpty() == true)
+        return
+    }
     val c = (estado.seleccion as? Seleccion.Bloque)?.let { estado.clipElegido }
     // Sin el ajuste a fotogramas, "el mismo instante" es 0,0002 s: claves a una milesima son distintas
     if (c != null && (c.esTexto || c.esAjuste || estado.panel == Panel.MARCO || estado.panel == Panel.COLOR || estado.panel == Panel.RECORTE)) {
@@ -427,6 +432,11 @@ private fun Herramientas(
                         estado.pausarEn(estado.tiempo.coerceIn(inicio,inicio+c.duracionUs-1))
                         estado.panel = Panel.RECORTE
                     }, resaltada = c.recorteVisual.activo)
+                    Herramienta(Glifos.estrella, "Luces", {
+                        val inicio = estado.inicioElegido ?: 0L
+                        estado.pausarEn(estado.tiempo.coerceIn(inicio, inicio + c.duracionUs - 1))
+                        estado.panel = Panel.LUCES
+                    }, resaltada = c.luces.isNotEmpty())
                     Herramienta(Glifos.encuadre, "Borde / 3D", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
                     val principal = estado.proyecto.principal
                     val i = principal.indexOfFirst { it.id == id }

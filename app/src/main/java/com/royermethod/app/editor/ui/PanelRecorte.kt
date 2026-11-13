@@ -61,13 +61,20 @@ private fun cambiarMascara(e: EstadoEditor, arrastre: Boolean = false, f: (Masca
     e.cambiarAspecto(arrastre) { it.copy(recorteVisual = it.recorteVisual.copy(mascara = f(it.recorteVisual.mascara))) }
 
 @Composable
-private fun fuenteRecorte(e: EstadoEditor, c: Clip): ImageBitmap? {
+internal fun fuenteRecorte(e: EstadoEditor, c: Clip, preciso: Boolean = false): ImageBitmap? {
     val t = c.texto
     if (t != null) return remember(t) { MaquetaTexto.pintar(t, 400, 1f).asImageBitmap() }
     val o = c.origen ?: return null
     val local = e.localElegido ?: 0L
-    val tiempo = if (c.esVideo) c.tiempoArchivo(local) / 250_000L * 250_000L else 0L
-    return LocalRecursosEditor.current.miniatura(o, tiempo)
+    val exacto = preciso && !e.reproduciendo
+    val archivo = if(c.esVideo)c.tiempoArchivo(local)else 0L
+    val tiempo = if(!c.esVideo)0L else if(exacto) {
+        val fps=o.fps.takeIf { it.isFinite() && it in 1f..240f } ?: 30f
+        ((archivo.toDouble()*fps/1_000_000).roundToLong()*1_000_000.0/fps).roundToLong()
+            .coerceIn(0L,(o.duracionUs-1).coerceAtLeast(0L))
+    } else archivo / 250_000L * 250_000L
+    val recursos=LocalRecursosEditor.current
+    return if(exacto)recursos.fotograma(o,tiempo)else recursos.miniatura(o,tiempo)
 }
 
 @Composable

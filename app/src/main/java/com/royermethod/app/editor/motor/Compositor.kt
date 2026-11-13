@@ -52,6 +52,8 @@ class Compositor(
     private val capa = Programa(Sombreadores.VERTICE, Sombreadores.CAPA)
     private val solido = Programa(Sombreadores.VERTICE, Sombreadores.SOLIDO)
     private val linea = Programa(Sombreadores.VERTICE, Sombreadores.LINEA)
+    private val pintorLuces by lazy { PintorLuces() }
+    private var usoLuces = false
     private val copiaExacta = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_EXACTA)
 
     private val videos = ArrayList<FuenteVideo>()
@@ -722,6 +724,8 @@ class Compositor(
         GLES20.glUniform1fv(linea.u("uBorde"), p.bordes.size, p.bordes, 0)
         GLES20.glUniform1f(linea.u("uN"), p.bordes.size.toFloat())
         GLES20.glUniform1f(linea.u("uGrosor"), p.grosor)
+        GLES20.glUniform4f(linea.u("uLuz"), p.luz.halo, p.luz.nucleo, p.luz.textura, if (p.luz.arcoiris) 1f else 0f)
+        GLES20.glUniform1f(linea.u("uAvance"), p.progreso)
         GLES20.glUniform3f(
             linea.u("uColor"),
             Color.red(p.color) / 255f, Color.green(p.color) / 255f, Color.blue(p.color) / 255f
@@ -772,6 +776,7 @@ class Compositor(
         GLES20.glUniform4f(capa.u("uSombraMarco"), marco.suavidad,
             (kotlin.math.cos(ang) * marco.distancia).toFloat(), (kotlin.math.sin(ang) * marco.distancia).toFloat(), 0f)
 
+        VfxPantallaShader.cargar(capa, if (p.esFondo) com.royermethod.app.editor.modelo.VfxPantalla.NEUTRO else p.vfxPantalla)
         val recorteVisual = p.clip.recorteVisual
         val claveColor = recorteVisual.croma
         val forma = recorteVisual.mascara
@@ -820,6 +825,10 @@ class Compositor(
         GLES20.glUniform1f(capa.u("uRgb"), if (p.esFondo) 0f else p.rgb)
         GLES20.glUniform1f(capa.u("uNegativo"), p.negativo)
         capa.dibujar(voltear)
+        if (!p.esFondo && p.clip.luces.isNotEmpty()) {
+            usoLuces = true
+            pintorLuces.dibujar(p, ancho, alto, t.ancho, t.alto, voltear)
+        }
     }
 
     private fun aplicarMezcla(mezcla: Mezcla) {
@@ -834,6 +843,7 @@ class Compositor(
     /** Una escena montada aparte, puesta encima con su movimiento y su mascara. */
     private fun dibujarGrupo(p: PasoGrupo, l: Lamina, voltear: Boolean) {
         capa.usar()
+        VfxPantallaShader.cargar(capa, com.royermethod.app.editor.modelo.VfxPantalla.NEUTRO)
         GLES20.glUniform1f(capa.u("uConMarco"), 0f)
         GLES20.glUniform1f(capa.u("uCromaActivo"), 0f)
         GLES20.glUniform1f(capa.u("uFormaTipo"), 0f)
@@ -915,6 +925,7 @@ class Compositor(
         fondos.values.forEach { par -> par.second.forEach { it.soltar() } }
         fondos.clear()
         fluidez?.soltar()
+        if (usoLuces) pintorLuces.soltar()
         reduccion.soltar(); copiaPlana.soltar(); copiaExacta.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
     }
 

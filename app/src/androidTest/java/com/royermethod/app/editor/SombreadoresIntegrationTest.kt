@@ -181,6 +181,48 @@ class SombreadoresIntegrationTest : InstrumentationTestCase() {
         assertTrue((imagen.get(((LADO/2)*LADO+LADO/2)*4+1).toInt() and 255)>=254)
     }
 
+    fun testSemitonoDeUnaCapaNoAfectaLaSiguiente() = conFuenteColor(0xFF4280E0.toInt()) { compositor, destino, original ->
+        val izquierda=original.copy(id=1,encuadre=Encuadre(escala=.35f,x=-.25f))
+        val derecha=original.copy(id=2,encuadre=Encuadre(escala=.35f,x=.25f))
+        fun p(c:Clip)=Proyecto(formato=Formato.CUADRADO,fondo=Fondo.NEGRO,
+            salida=AjustesSalida(desenfoqueMovimiento=false),capas=listOf(Capa(0,0,c),Capa(0,1,derecha)))
+        val neutro=dibujarProyecto(compositor,destino,p(izquierda))
+        val efecto=EfectoVideo(TipoEfectoVideo.SEMITONO,finUs=1_000_000,
+            ajustes=CatalogoEfectos.ajustesDe(TipoEfectoVideo.SEMITONO).copy(grosor=.024f,color=0xFF000000.toInt()))
+        val conTrama=dibujarProyecto(compositor,destino,p(izquierda.copy(efectos=listOf(efecto))))
+        var distintosIzquierda=0
+        var errorDerecha=0
+        for(y in LADO/3 until 2*LADO/3) for(x in 0 until LADO) {
+            val i=(y*LADO+x)*4
+            val diferencia=(0..2).maxOf { canal -> abs((neutro[i+canal].toInt() and 255)-(conTrama[i+canal].toInt() and 255)) }
+            if(x<LADO/2 && diferencia>10) distintosIzquierda++
+            if(x>=LADO/2) errorDerecha=maxOf(errorDerecha,diferencia)
+        }
+        assertTrue("El semitono no llego al primer clip",distintosIzquierda>200)
+        assertTrue("El semitono contamino el clip siguiente: $errorDerecha/255",errorDerecha<=1)
+    }
+
+    fun testGrupoDespuesDeVfxNoHeredaLosIndicadoresDePantalla() = conFuenteColor(0xFF4280E0.toInt()) { compositor, destino, original ->
+        val efecto=EfectoVideo(TipoEfectoVideo.SEMITONO,finUs=1_000_000,
+            ajustes=CatalogoEfectos.ajustesDe(TipoEfectoVideo.SEMITONO).copy(color=0xFF000000.toInt()))
+        val c=original.copy(efectos=listOf(efecto,
+            EfectoVideo(TipoEfectoVideo.PULSO_MITADES,finUs=1_000_000,
+                ajustes=CatalogoEfectos.ajustesDe(TipoEfectoVideo.PULSO_MITADES).copy(halo=0f)),
+            EfectoVideo(TipoEfectoVideo.RESPLANDOR,finUs=1_000_000,
+                ajustes=CatalogoEfectos.ajustesDe(TipoEfectoVideo.RESPLANDOR).copy(umbral=0f))))
+        val paso=Escena(proyecto(c),LADO,LADO,compositor.medidor).cuadroEn(250_000).clips.single()
+        assertTrue(paso.vfxPantalla.activo)
+        val grupo=PasoGrupo(listOf(PasoSolido(0xFF4280E0.toInt(),floatArrayOf(1f))),
+            listOf(floatArrayOf(1f/LADO,0f,0f,0f,1f/LADO,0f,0f,0f,1f)),floatArrayOf(1f),null,floatArrayOf(0f),false)
+        compositor.dibujar(Cuadro(8,250_000,listOf(paso,grupo)),destino)
+        val imagen=ByteBuffer.allocateDirect(LADO*LADO*4);destino.leer(imagen)
+        val esperado=intArrayOf(66,128,224)
+        var error=0
+        for(i in 0 until LADO*LADO) for(canal in 0..2)
+            error=maxOf(error,abs((imagen.get(i*4+canal).toInt() and 255)-esperado[canal]))
+        assertTrue("El grupo heredo la trama del dibujo previo: $error/255",error<=1)
+    }
+
     private fun conGl(ancho: Int, alto: Int, accion: () -> Unit) {
         assertTrue("Solo .prueba", instrumentation.targetContext.packageName.endsWith(".prueba"))
         val egl = Egl(null, ancho, alto)

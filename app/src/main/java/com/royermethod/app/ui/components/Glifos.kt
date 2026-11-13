@@ -47,6 +47,9 @@ private fun DrawScope.circulo(c: Color, x: Float, y: Float, r: Float, relleno: B
     if (relleno) drawCircle(c, u(r), p(x, y)) else drawCircle(c, u(r), p(x, y), style = trazo())
 
 object Glifos {
+    val estrella: Glifo = { c ->
+        camino(c, true, false, 12f, 2f, 14.5f, 9.5f, 22f, 12f, 14.5f, 14.5f, 12f, 22f, 9.5f, 14.5f, 2f, 12f, 9.5f, 9.5f)
+    }
     val atras: Glifo = { c -> camino(c, false, false, 15f, 5f, 8f, 12f, 15f, 19f) }
     /** El contrario de atras: hay mas a la derecha. */
     val siguiente: Glifo = { c -> camino(c, false, false, 9f, 5f, 16f, 12f, 9f, 19f) }

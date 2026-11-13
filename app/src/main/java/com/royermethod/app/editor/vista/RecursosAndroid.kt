@@ -36,6 +36,21 @@ class RecursosAndroid(context: Context) : Recursos {
     private val ondas = mutableStateMapOf<String, FloatArray>()
     private val pedidas = HashSet<String>()
     private val principal = Handler(Looper.getMainLooper())
+    // Colocar un brillo sobre un ojo requiere un cuadro real, no el keyframe anterior.
+    // Una sola petición pendiente: arrastrar nunca acumula búsquedas antiguas.
+    private val hiloFotogramas = Executors.newSingleThreadExecutor { Thread(it,"fotograma-editor").apply { priority=Thread.MIN_PRIORITY } }
+    private val fotogramas = mutableStateMapOf<String,ImageBitmap>()
+    private val usoFotogramas = LinkedHashMap<String,Unit>(8,.75f,true)
+    private val fallosFotogramas = LinkedHashSet<String>()
+    private data class PedidoFotograma(val origen:Origen,val tiempoUs:Long) { val clave get()="${origen.uri}@$tiempoUs" }
+    private val bloqueoFotogramas=Any()
+    private var pendienteFotograma:PedidoFotograma?=null
+    private var procesandoFotograma:String?=null
+    private var lectorFotograma:MediaMetadataRetriever?=null // Solo hiloFotogramas.
+    private var uriFotograma:String?=null
+    private var trabajadorFotogramas=false
+    @Volatile private var cerrado=false
+
     private val lectores = object : LinkedHashMap<String, MediaMetadataRetriever>(4, 0.75f, true) {
         override fun removeEldestEntry(e: MutableMap.MutableEntry<String, MediaMetadataRetriever>): Boolean {
             if (size > 3) { runCatching { e.value.release() }; return true }
@@ -58,14 +73,14 @@ class RecursosAndroid(context: Context) : Recursos {
         }
         miniaturas[clave]?.let { return it }
         if (pedidas.add(clave)) hilo.execute {
-            val b = runCatching { if (o.esImagen) foto(o) else fotograma(o, tUs) }.getOrNull()
+            val b = runCatching { if (o.esImagen) foto(o) else miniaturaVideo(o, tUs) }.getOrNull()
             // Se publica en el hilo principal: el mapa es estado de Compose
             if (b != null) principal.post { if (clave in pedidas) miniaturas[clave] = b.asImageBitmap() }
         }
         return null
     }
 
-    private fun fotograma(o: Origen, tUs: Long): Bitmap? {
+    private fun miniaturaVideo(o: Origen, tUs: Long): Bitmap? {
         val r = lectores.getOrPut(o.uri) { MediaMetadataRetriever().apply { setDataSource(app, Uri.parse(o.uri)) } }
         val lado = LADO
         val b = if (Build.VERSION.SDK_INT >= 27) {
@@ -90,6 +105,80 @@ class RecursosAndroid(context: Context) : Recursos {
         val f = LADO.toFloat() / minOf(b.width, b.height)
         if (f >= 1f) return b
         return Bitmap.createScaledBitmap(b, (b.width * f).toInt().coerceAtLeast(1), (b.height * f).toInt().coerceAtLeast(1), true)
+    }
+
+    /** Devuelve únicamente ese instante; durante la carga no sustituye por un cuadro viejo. */
+    override fun fotograma(o:Origen,tUs:Long):ImageBitmap? {
+        if(cerrado)return null
+        val pedido=PedidoFotograma(o,tUs)
+        fotogramas[pedido.clave]?.let {
+            usoFotogramas[pedido.clave]=Unit
+            synchronized(bloqueoFotogramas) { pendienteFotograma=null }
+            return it
+        }
+        if(pedido.clave in fallosFotogramas)return null
+        val iniciar=synchronized(bloqueoFotogramas) {
+            if(cerrado)return null
+            pendienteFotograma=if(procesandoFotograma==pedido.clave)null else pedido
+            if(trabajadorFotogramas)false else { trabajadorFotogramas=true;true }
+        }
+        if(iniciar)hiloFotogramas.execute { cargarFotogramas() }
+        return null
+    }
+
+    private fun cargarFotogramas() {
+        while(true) {
+            val pedido=synchronized(bloqueoFotogramas) {
+                if(cerrado) { trabajadorFotogramas=false;procesandoFotograma=null;return }
+                val siguiente=pendienteFotograma
+                if(siguiente==null) { trabajadorFotogramas=false;procesandoFotograma=null;return }
+                pendienteFotograma=null
+                procesandoFotograma=siguiente.clave
+                siguiente
+            }
+            val bitmap=runCatching { fotogramaPreciso(pedido.origen,pedido.tiempoUs) }.getOrNull()
+            principal.post {
+                if(cerrado)bitmap?.recycle()
+                else if(bitmap!=null) {
+                    usoFotogramas[pedido.clave]=Unit
+                    fotogramas[pedido.clave]=bitmap.asImageBitmap()
+                    while(usoFotogramas.size>MAX_FOTOGRAMAS) {
+                        val vieja=usoFotogramas.keys.first()
+                        usoFotogramas.remove(vieja);fotogramas.remove(vieja)
+                    }
+                } else {
+                    fallosFotogramas.add(pedido.clave)
+                    while(fallosFotogramas.size>MAX_FOTOGRAMAS)fallosFotogramas.remove(fallosFotogramas.first())
+                }
+            }
+            synchronized(bloqueoFotogramas) { procesandoFotograma=null }
+        }
+    }
+
+    private fun fotogramaPreciso(o:Origen,tUs:Long):Bitmap? {
+        if(o.esImagen) {
+            val opciones=BitmapFactory.Options().apply { inSampleSize=max(1,maxOf(o.ancho,o.alto)/LADO_FOTOGRAMA) }
+            val b=app.contentResolver.openInputStream(Uri.parse(o.uri))?.use { BitmapFactory.decodeStream(it,null,opciones) } ?: return null
+            val orientada=if(o.giro==0)b else Bitmap.createBitmap(b,0,0,b.width,b.height,Matrix().apply { postRotate(o.giro.toFloat()) },true).also { if(it!==b)b.recycle() }
+            return reducirFotograma(orientada)
+        }
+        if(uriFotograma!=o.uri) {
+            runCatching { lectorFotograma?.release() }
+            lectorFotograma=null;uriFotograma=null
+            val nuevo=MediaMetadataRetriever()
+            try { nuevo.setDataSource(app,Uri.parse(o.uri)) }
+            catch(e:Exception) { runCatching { nuevo.release() };throw e }
+            lectorFotograma=nuevo;uriFotograma=o.uri
+        }
+        val r=lectorFotograma ?: return null
+        return if(Build.VERSION.SDK_INT>=27)r.getScaledFrameAtTime(tUs,MediaMetadataRetriever.OPTION_CLOSEST,LADO_FOTOGRAMA,LADO_FOTOGRAMA)
+        else r.getFrameAtTime(tUs,MediaMetadataRetriever.OPTION_CLOSEST)?.let { reducirFotograma(it) }
+    }
+
+    private fun reducirFotograma(b:Bitmap):Bitmap {
+        val f=LADO_FOTOGRAMA.toFloat()/maxOf(b.width,b.height)
+        if(f>=1f)return b
+        return Bitmap.createScaledBitmap(b,(b.width*f).toInt().coerceAtLeast(1),(b.height*f).toInt().coerceAtLeast(1),true).also { if(it!==b)b.recycle() }
     }
 
     override fun onda(o: Origen): FloatArray? {
@@ -126,6 +215,14 @@ class RecursosAndroid(context: Context) : Recursos {
     }
 
     fun cerrar() {
+        synchronized(bloqueoFotogramas) {
+            if(cerrado)return
+            cerrado=true;pendienteFotograma=null
+        }
+        hiloFotogramas.execute {
+            runCatching { lectorFotograma?.release() };lectorFotograma=null;uriFotograma=null
+        }
+        hiloFotogramas.shutdown()
         hilo.execute {
             lectores.values.forEach { runCatching { it.release() } }
             lectores.clear()
@@ -136,6 +233,8 @@ class RecursosAndroid(context: Context) : Recursos {
 
     companion object {
         private const val LADO = 160
+        private const val LADO_FOTOGRAMA = 640
+        private const val MAX_FOTOGRAMAS = 6
         /** Unos 25 MB de miniaturas como mucho. */
         private const val MAX_MINIATURAS = 240
         private const val MAX_ONDA_US = 15 * 60 * 1_000_000L

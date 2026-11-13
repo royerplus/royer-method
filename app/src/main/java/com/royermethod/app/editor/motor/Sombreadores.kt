@@ -3,8 +3,8 @@ package com.royermethod.app.editor.motor
 /**
  * Los sombreadores del editor, en GLSL ES 1.00 (OpenGL ES 2).
  *
- * Van como texto plano, sin plantillas de Kotlin dentro, para poder sacarlos
- * tal cual y compilarlos fuera del telefono en las pruebas.
+ * CAPA incorpora los bloques reutilizables de VfxPantallaShader. Las pruebas
+ * expanden esos bloques para compilar el mismo GLSL fuera del telefono.
  *
  * Todo trabaja con alfa premultiplicado: las texturas de Android (Bitmap)
  * llegan asi, y mezclar capas premultiplicadas es una suma limpia, sin el
@@ -241,6 +241,7 @@ uniform vec4 uMarco; // ancho, radio, neon, sombra
 uniform vec4 uColorMarco;
 uniform vec4 uColorSombra;
 uniform vec4 uSombraMarco; // suavidad, desplazamiento x/y, reservado
+${VfxPantallaShader.UNIFORMES}
 
 float cajaRedonda(vec2 p, vec2 medio, float r) {
     vec2 q = abs(p) - medio + vec2(r);
@@ -336,6 +337,8 @@ vec4 tomar(vec2 uv) {
     }
     return quitarColor(texture2D(sTex, clamp(uv, lo, hi)));
 }
+
+${VfxPantallaShader.FUNCIONES}
 
 vec4 tomarRgb(vec2 uv, vec2 desp) {
     vec4 c = tomar(uv);
@@ -715,7 +718,7 @@ void main() {
         vec2 ejeX = uRadioDir.x * vec2(m[0][0], m[0][1]);
         vec2 ejeY = uRadioDir.y * vec2(m[1][0], m[1][1]);
         float fase = (float(i) + 0.5) / uN - 0.5;
-        if (a > 0.0) suma += muestra(uv, vec2(pu, pv), desp, ejeX, ejeY, fase) * a;
+        if (a > 0.0) suma += aplicarVfxPantalla(muestra(uv, vec2(pu, pv), desp, ejeX, ejeY, fase), uv) * a;
     }
     suma /= uN;
     if (suma.a > 0.0 && (uNeutro < 0.5 || uLuz != 0.0 || uNegativo > 0.0)) {
@@ -765,19 +768,27 @@ uniform float uBorde[8];
 uniform float uN;
 uniform float uGrosor;
 uniform vec3 uColor;
+uniform vec4 uLuz; // difusión, núcleo, textura, arcoíris
+uniform float uAvance;
 void main() {
     vec2 p = vPos * uLienzo;
     float d0 = dot(p - 0.5 * uLienzo, uDir);
+    float aLoLargo = dot(p / max(uLienzo.x, uLienzo.y), vec2(-uDir.y, uDir.x));
     float v = 0.0;
+    vec3 rgb = vec3(0.0);
     for (int i = 0; i < 8; i++) {
         if (float(i) >= uN) break;
         float d = abs(d0 - uBorde[i]);
-        float nucleo = 1.0 - smoothstep(uGrosor * 0.5 - 0.75, uGrosor * 0.5 + 0.75, d);
-        float halo = exp(-d / (uGrosor * 2.2)) * 0.55;
-        v += max(nucleo, halo);
+        float nucleo = (1.0 - smoothstep(uGrosor * 0.5 - 0.75, uGrosor * 0.5 + 0.75, d)) * uLuz.y;
+        float textura = 1.0 - uLuz.z * (0.25 + 0.6 * pow(sin(aLoLargo * 27.0 + uAvance * 13.0), 2.0));
+        float halo = exp(-d / max(0.01, uGrosor * 2.2 * uLuz.x)) * 0.55 * min(1.0, uLuz.x) * textura;
+        float luz = clamp(max(nucleo, halo), 0.0, 1.0);
+        vec3 espectro = 0.55 + 0.45 * cos(6.2831853 * (aLoLargo + uAvance) + vec3(0.0, 2.094, 4.188));
+        rgb += mix(uColor, espectro, uLuz.w) * luz;
+        v += luz;
     }
     v = clamp(v / uN, 0.0, 1.0);
-    gl_FragColor = vec4(uColor * v, v);
+    gl_FragColor = vec4(min(rgb / uN, vec3(v)), v);
 }
 """
 }

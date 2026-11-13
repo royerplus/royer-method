@@ -14,7 +14,8 @@ enum class Parametro {
     FUNDIDOS,
     RAPIDEZ,
     /** Puntos de progreso medidos a mano. */
-    PROGRESO
+    PROGRESO,
+    COLOR, HALO, UMBRAL, LINEAS
 }
 
 /** Que son Desde y Hasta en un tipo: nombre, limites del control y unidad. */
@@ -36,8 +37,8 @@ object CatalogoEfectos {
         "Mascaras y cortes" to listOf(CIRCULO, BARRIDO, CIRCULO_CERRAR, CIRCULO_ABRIR, REVELAR_HORIZONTAL,
             CERRAR_VERTICAL, CERRAR_HORIZONTAL),
         "Desenfoque y bordes" to listOf(DESENFOQUE_DIRECCIONAL, DESENFOQUE, DESENFOQUE_HORIZONTAL, DESENFOQUE_VERTICAL, BORDES_ESPEJO),
-        "Luz" to listOf(FLASH, FLASH_NEGRO, ESTROBO),
-        "Imagen" to listOf(RGB, NEGATIVO, GLITCH)
+        "Luz" to listOf(PULSO_MITADES, RESPLANDOR, FLASH, FLASH_NEGRO, ESTROBO),
+        "Imagen" to listOf(SEMITONO, ARCOIRIS_BORDES, RGB, NEGATIVO, GLITCH)
     )
 
     /** Que controles ensena el panel para [tipo], en este orden. */
@@ -66,6 +67,14 @@ object CatalogoEfectos {
         SACUDIDA, SACUDIDA_VERTICAL, ZOOM_RITMO, FLASH, FLASH_NEGRO, ESTROBO, RGB, NEGATIVO, GLITCH, TWITCH ->
             listOf(Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ)
         ANIMACION -> listOf(Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ, Parametro.PROGRESO)
+        PULSO_MITADES -> listOf(Parametro.ANGULO, Parametro.CENTRO, Parametro.SUAVIDAD, Parametro.COLOR,
+            Parametro.HALO, Parametro.INVERTIR, Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ)
+        RESPLANDOR -> listOf(Parametro.COLOR, Parametro.UMBRAL, Parametro.HALO, Parametro.GROSOR,
+            Parametro.INTENSIDAD, Parametro.FUNDIDOS)
+        SEMITONO -> listOf(Parametro.COLOR, Parametro.ANGULO, Parametro.GROSOR, Parametro.LINEAS,
+            Parametro.INTENSIDAD, Parametro.FUNDIDOS)
+        ARCOIRIS_BORDES -> listOf(Parametro.UMBRAL, Parametro.GROSOR,
+            Parametro.INTENSIDAD, Parametro.FUNDIDOS, Parametro.RAPIDEZ)
     }
 
     /** Que miden Desde y Hasta en [tipo]; null si el tipo no los usa. */
@@ -108,6 +117,10 @@ object CatalogoEfectos {
         CIRCULO -> "Circulo o anillo que se abre o se cierra, con su centro."
         BARRIDO -> "Descubre u oculta la imagen con un borde que avanza en cualquier direccion."
         MITADES -> "Las dos mitades de la imagen llegan desde lados opuestos y se juntan."
+        PULSO_MITADES -> "Una mitad se ilumina y despues la otra. El angulo gira el corte; Halo concentra la luz en los contornos."
+        RESPLANDOR -> "Las zonas claras emiten un halo del color elegido. El umbral decide que luces brillan."
+        SEMITONO -> "Trama de puntos o lineas que sigue la luminosidad de la imagen."
+        ARCOIRIS_BORDES -> "Colores en movimiento solo sobre los contornos; el umbral deja fuera las zonas planas."
         ANIMACION -> "Una animacion convertida en efecto: muevela y recortala como cualquier otro. " +
             "Sus piezas ya no se ajustan una a una; para cambiarlas, deshaz la conversion."
     }
@@ -126,6 +139,10 @@ object CatalogoEfectos {
         GIRAR -> AjustesEfecto(desde = -90f, hasta = 0f, curva = Curva.SALIDA)
         LATIGAZO -> AjustesEfecto(angulo = 180f, desde = 1f, curva = Curva.ENTRADA)
         MITADES -> AjustesEfecto(angulo = 90f, desde = 0.5f, hasta = 0f, curva = Curva.SALIDA)
+        PULSO_MITADES -> AjustesEfecto(angulo = 0f, suavidad = .02f, color = 0xFFAB66FF.toInt(), halo = .65f)
+        RESPLANDOR -> AjustesEfecto(grosor = .018f, color = 0xFFFFFFFF.toInt(), halo = .65f, umbral = .6f)
+        SEMITONO -> AjustesEfecto(angulo = 30f, grosor = .012f, color = 0xFF181020.toInt())
+        ARCOIRIS_BORDES -> AjustesEfecto(grosor = .004f, umbral = .08f)
         // Circulo y barrido de 0 a 1 con la curva suave: son los ajustes por defecto
         else -> AjustesEfecto()
     }

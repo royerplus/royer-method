@@ -89,7 +89,8 @@ data class Clip(
     val desfasePropiedadesUs: Long = 0,
     /** Solo en capas de ajuste/efectos: null = todas, incluso las futuras. */
     val afectaA: Set<Long>? = null,
-    val recorteVisual: RecorteVisual = RecorteVisual()
+    val recorteVisual: RecorteVisual = RecorteVisual(),
+    val luces: List<LuzTrazo> = emptyList()
 ) {
     internal val propiedadesOrdenadas: Map<Propiedad, List<ClaveValor>> by lazy {
         propiedades.mapValues { (_, ks) -> ks.sortedBy { it.tiempoUs }.distinctBy { it.tiempoUs } }
@@ -169,6 +170,7 @@ data class Clip(
             clavesOriginales = clavesOriginales?.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) },
             efectos = efectos.map { it.tiempoEscalado(f) },
             piezas = piezas.map { it.tiempoEscalado(f) },
+            luces = luces.map { it.tiempoEscalado(f) },
             propiedades = propiedades.mapValues { (_, ks) -> ks.map { it.copy(tiempoUs = (it.tiempoUs * f).toLong()) } },
             desfasePropiedadesUs = (desfasePropiedadesUs * f).toLong()
         )
@@ -485,7 +487,9 @@ data class AjusteTransicion(
     /** Color de la linea o del destello. */
     val color: Int = 0xFFFFFFFF.toInt(),
     /** Cuanto zoom, giro o desenfoque: 1 lo normal. */
-    val intensidad: Float = 1f
+    val intensidad: Float = 1f,
+    /** Núcleo, difusión y recorrido de la línea de luz. */
+    val luz: LuzTransicion = LuzTransicion()
 ) {
     /** Hacia donde va, como vector de largo 1 (y hacia abajo). */
     val dx: Float get() = kotlin.math.cos(Math.toRadians(angulo.toDouble())).toFloat()

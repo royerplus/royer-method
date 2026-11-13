@@ -16,11 +16,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
@@ -40,6 +46,7 @@ import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.AjusteTransicion
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Linea
+import com.royermethod.app.editor.modelo.LuzTransicion
 import com.royermethod.app.editor.modelo.Transicion
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.Cuadricula
@@ -51,6 +58,8 @@ import com.royermethod.app.ui.components.Icono
 import com.royermethod.app.ui.components.Mosaico
 import com.royermethod.app.ui.components.Muestras
 import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Interruptor
+import com.royermethod.app.ui.components.Pestanas
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
@@ -127,14 +136,53 @@ fun PanelTransicion(estado: EstadoEditor) {
     }
     Etiqueta("Ritmo")
     Opciones(Curva.values().toList(), aj.curva, { it.nombre }, { c -> cambiar { it.copy(ajusteTransicion = it.ajusteTransicion.copy(curva = c)) } })
+    if (a.transicion == Transicion.LINEA) {
+        Etiqueta("Estilo de luz")
+        val estilos = listOf(
+            "Clásico" to LuzTransicion(),
+            "Neón" to LuzTransicion(halo = 2.3f, nucleo = .85f),
+            "Giro violeta" to LuzTransicion(girar = true, anguloMedio = 0f, anguloFinal = 90f, halo = 2.6f, textura = .6f),
+            "Aurora" to LuzTransicion(girar = true, anguloMedio = 0f, anguloFinal = 90f, halo = 3.5f, nucleo = .6f, textura = .85f, arcoiris = true)
+        )
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(estilos, key = { it.first }) { (nombre, luz) ->
+                Mosaico(nombre, aj.luz == luz, {
+                    cambiar { c -> c.copy(ajusteTransicion = c.ajusteTransicion.copy(
+                        luz = luz,
+                        angulo = if (luz.girar) 135f else c.ajusteTransicion.angulo,
+                        color = if (nombre == "Giro violeta") 0xFF9B5CFF.toInt() else c.ajusteTransicion.color
+                    )) }
+                }, Modifier.width(80.dp)) {
+                    val a0 = Offset(size.width * .2f, size.height * .9f)
+                    val b0 = Offset(size.width * .8f, size.height * .1f)
+                    val col = if (nombre == "Giro violeta") Color(0xFFAA77FF) else Color(aj.color)
+                    if (luz.halo > 0f) for (k in 4 downTo 1) drawLine(col.copy(alpha = .04f * (5-k)), a0,b0,(2f + k*luz.halo).dp.toPx(), StrokeCap.Round)
+                    if (luz.arcoiris) drawLine(Brush.linearGradient(listOf(Color.Cyan,Color.Magenta,Color.Yellow),a0,b0),a0,b0,3.dp.toPx(), StrokeCap.Round)
+                    else drawLine(col,a0,b0,2.dp.toPx(), StrokeCap.Round)
+                }
+            }
+        }
+        Interruptor("Girar durante el barrido", aj.luz.girar, { v -> cambiar { it.copy(ajusteTransicion = it.ajusteTransicion.copy(luz = it.ajusteTransicion.luz.copy(girar = v))) } })
+    }
     if (a.transicion in CON_DIRECCION) {
         Spacer(Modifier.height(6.dp))
-        Etiqueta("Hacia donde")
+        var fase by rememberSaveable(a.id) { mutableIntStateOf(0) }
+        val gira = a.transicion == Transicion.LINEA && aj.luz.girar
+        Etiqueta(if (gira) "Recorrido de la luz" else "Hacia donde")
+        if (gira) Pestanas(listOf("Inicio", "Mitad", "Final"), fase, { fase = it })
+        val angulo = if (!gira || fase == 0) aj.angulo else if (fase == 1) aj.luz.anguloMedio else aj.luz.anguloFinal
         RuedaDireccion(
-            aj.angulo,
+            angulo,
             barrido = a.transicion == Transicion.LINEA || a.transicion == Transicion.BARRIDO,
             color = if (a.transicion in CON_COLOR) Color(aj.color) else Ink.White,
-            onCambio = { g -> cambiar(true) { it.copy(ajusteTransicion = it.ajusteTransicion.copy(angulo = g)) } }
+            onCambio = { g -> cambiar(true) { c ->
+                val ajuste = c.ajusteTransicion
+                c.copy(ajusteTransicion = when {
+                    !gira || fase == 0 -> ajuste.copy(angulo = g)
+                    fase == 1 -> ajuste.copy(luz = ajuste.luz.copy(anguloMedio = g))
+                    else -> ajuste.copy(luz = ajuste.luz.copy(anguloFinal = g))
+                })
+            } }
         )
     }
     if (a.transicion in CON_COLOR) {
@@ -147,6 +195,16 @@ fun PanelTransicion(estado: EstadoEditor) {
             { v -> cambiar(true) { it.copy(ajusteTransicion = it.ajusteTransicion.copy(intensidad = v)) } },
             neutro = 1f, texto = { "${(it * 100).toInt()}%" }
         )
+    }
+    if (a.transicion == Transicion.LINEA) {
+        var detalles by rememberSaveable(a.id) { mutableStateOf(false) }
+        BotonBorde(if (detalles) "Ocultar luz" else "Personalizar luz", { detalles = !detalles })
+        if (detalles) {
+            Deslizador("Difusión del halo",aj.luz.halo,0f,4f,{ v -> cambiar(true) { it.copy(ajusteTransicion = it.ajusteTransicion.copy(luz = it.ajusteTransicion.luz.copy(halo = v))) } },neutro = 1f)
+            Deslizador("Núcleo brillante",aj.luz.nucleo,0f,2f,{ v -> cambiar(true) { it.copy(ajusteTransicion = it.ajusteTransicion.copy(luz = it.ajusteTransicion.luz.copy(nucleo = v))) } },neutro = 1f)
+            Deslizador("Textura de la luz",aj.luz.textura,0f,1f,{ v -> cambiar(true) { it.copy(ajusteTransicion = it.ajusteTransicion.copy(luz = it.ajusteTransicion.luz.copy(textura = v))) } },neutro = 0f)
+            Interruptor("Luz arcoíris",aj.luz.arcoiris,{ v -> cambiar { it.copy(ajusteTransicion = it.ajusteTransicion.copy(luz = it.ajusteTransicion.luz.copy(arcoiris = v))) } })
+        }
     }
     Spacer(Modifier.height(8.dp))
     BotonBorde("Usar en todas las uniones", {

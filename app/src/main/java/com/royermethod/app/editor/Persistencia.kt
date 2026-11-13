@@ -144,6 +144,7 @@ object Persistencia {
         })
         c.origen?.let { put("origen", origen(it)) }
         c.texto?.let { put("texto", texto(it)) }
+        if(c.luces.isNotEmpty()) put("luces", PersistenciaLuces.escribir(c.luces))
         put("desde", c.desdeUs)
         put("hasta", c.hastaUs)
         put("velocidad", c.velocidad.toDouble())
@@ -220,6 +221,16 @@ object Persistencia {
             put("angulo", a.angulo.toDouble())
             put("color", a.color)
             put("intensidad", a.intensidad.toDouble())
+            if (a.luz != LuzTransicion()) put("luz", JSONObject().apply {
+                val l = a.luz
+                put("girar", l.girar)
+                numero("anguloMedio", l.anguloMedio, 90f)
+                numero("anguloFinal", l.anguloFinal, 0f)
+                numero("halo", l.halo, 1f)
+                numero("nucleo", l.nucleo, 1f)
+                numero("textura", l.textura, 0f)
+                put("arcoiris", l.arcoiris)
+            })
         })
         put("fluido", c.fluido)
         put("calidad", c.calidad.toDouble())
@@ -244,6 +255,9 @@ object Persistencia {
         numero("centroY", a.centroY, d.centroY)
         numero("grosor", a.grosor, d.grosor)
         numero("suavidad", a.suavidad, d.suavidad)
+        if (a.color != d.color) put("color", a.color)
+        numero("halo", a.halo, d.halo)
+        numero("umbral", a.umbral, d.umbral)
         if (a.invertir) put("invertir", true)
         if (a.vertical) put("vertical", true)
     }
@@ -449,6 +463,7 @@ object Persistencia {
         return Clip(
             id = o.optLong("id"),
             recorteVisual = recorteVisualDe(o.optJSONObject("recorteVisual")),
+            luces = PersistenciaLuces.leer(o.optJSONArray("luces")),
             afectaA = o.optJSONArray("afectaA")?.let { a -> (0 until a.length()).map { a.optLong(it) }.filter { it > 0 }.toSet() },
             esAjuste = esAjuste,
             desfasePropiedadesUs = o.optLong("relojPropiedades"),
@@ -489,7 +504,13 @@ object Persistencia {
                     curva = a.enumeracion("curva", def.curva),
                     angulo = if (a.has("angulo")) a.f("angulo", def.angulo) else anguloViejo(a.optString("direccion"), o.optString("transicion")),
                     color = a.optInt("color", def.color),
-                    intensidad = a.f("intensidad", def.intensidad)
+                    intensidad = a.f("intensidad", def.intensidad),
+                    luz = a.optJSONObject("luz")?.let { l ->
+                        fun n(k: String, d: Float, min: Float, max: Float) = l.f(k,d).takeIf { it.isFinite() }?.coerceIn(min,max) ?: d
+                        LuzTransicion(l.optBoolean("girar"), n("anguloMedio",90f,-720f,720f),
+                            n("anguloFinal",0f,-720f,720f), n("halo",1f,0f,4f),
+                            n("nucleo",1f,0f,2f), n("textura",0f,0f,1f), l.optBoolean("arcoiris"))
+                    } ?: LuzTransicion()
                 )
             } ?: AjusteTransicion(),
             fluido = o.optBoolean("fluido"),
@@ -614,7 +635,10 @@ object Persistencia {
             grosor = n("grosor", d.grosor).coerceAtLeast(0f),
             suavidad = n("suavidad", d.suavidad).coerceAtLeast(0f),
             invertir = o.optBoolean("invertir", d.invertir),
-            vertical = o.optBoolean("vertical", d.vertical)
+            vertical = o.optBoolean("vertical", d.vertical),
+            color = o.optInt("color", d.color),
+            halo = n("halo", d.halo).coerceIn(0f,1f),
+            umbral = n("umbral", d.umbral).coerceIn(0f,1f)
         )
     }
 

@@ -44,6 +44,7 @@ enum class Panel(val titulo: String) {
     COLOR("Ajustes"),
     MARCO("Bordes y perspectiva"),
     RECORTE("Recorte"),
+    LUCES("Luces y trazos"),
     CAPAS("Orden de capas"),
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
@@ -64,6 +65,8 @@ enum class Panel(val titulo: String) {
 interface Recursos {
     /** Fotograma del archivo en [tUs], pequeno. */
     fun miniatura(o: Origen, tUs: Long): ImageBitmap?
+    /** Fotograma cercano al instante real para colocar controles con precisión, sin limitarse a claves del video. */
+    fun fotograma(o: Origen, tUs: Long): ImageBitmap? = miniatura(o,tUs)
     /** Picos del sonido, uno cada [Recursos.PICOS_US], de 0 a 1. */
     fun onda(o: Origen): FloatArray?
 
@@ -123,6 +126,7 @@ class EstadoEditor(inicial: Proyecto) : Gestos {
     var canalPropiedad by mutableStateOf<com.royermethod.app.editor.modelo.Propiedad?>(null)
     var modoClaveTexto by mutableIntStateOf(0)
     var verCurvasPropiedades by mutableStateOf(false)
+    var luzElegida by mutableStateOf<Long?>(null)
     /**
      * Las claves elegidas para moverlas juntas: tiempos (del bloque) de las
      * claves del bloque [ClavesElegidas.id]. Leerlas con [elegidasDe], que

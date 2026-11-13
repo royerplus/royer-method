@@ -319,6 +319,7 @@ class Escena(
         return PasoClip(
             clip = clip,
             tiempoArchivoUs = clip.tiempoArchivo(localCentro),
+            tiempoLocalUs = localCentro,
             exposicionUs = if (ts.size > 1 || clip.fluido) (duracionFotograma * obturador * clip.velocidad).toLong() else 0,
             matrices = matrices,
             opacidades = opacidades,
@@ -339,7 +340,8 @@ class Escena(
             desenfoqueX = desenfoqueX,
             desenfoqueY = desenfoqueY,
             recorteFuente = pieza?.region?.acotada(),
-            ajustesCapa = AlcanceCapas.ajustesPara(ajustesSelectivos, clip.id, t)
+            ajustesCapa = AlcanceCapas.ajustesPara(ajustesSelectivos, clip.id, t),
+            vfxPantalla = clip.vfxPantallaEn(localCentro)
         )
     }
 
@@ -481,8 +483,13 @@ class Escena(
         }
         val tipo = a.transicion
         val fuerza = ajuste.intensidad
-        val bx = ajuste.dx
-        val by = ajuste.dy
+        val avanceCentro = curva(ajuste.curva, if (solape > 0) ((t - inicioB).toDouble() / solape).toFloat().coerceIn(0f, 1f) else 1f)
+        // La orientación se evalúa una vez por cuadro: máscara y luz tienen
+        // exactamente la misma normal, también durante el giro del barrido.
+        val direccion = if (tipo == Transicion.LINEA)
+            ajuste.luz.direccionEn(ajuste.angulo, avanceCentro) else ajuste.dx to ajuste.dy
+        val bx = direccion.first
+        val by = direccion.second
         // Para empujar: lo justo para que salga entero del lienzo en cualquier
         // angulo. En diagonal no basta con moverse un lienzo en cada eje a
         // medias: el lado mas largo del vector tiene que llegar a 1.
@@ -494,7 +501,8 @@ class Escena(
         fun borde(p: Float): Float {
             // Desde fuera del todo por un lado hasta fuera del todo por el otro,
             // contando el halo de la linea, para que no aparezca ya a medias.
-            val margen = grosorLinea * 6f
+            val margen = if (tipo == Transicion.LINEA && ajuste.luz != LuzTransicion())
+                grosorLinea * fuerza.coerceIn(.3f,3f) * 16f * max(1f, ajuste.luz.halo) else grosorLinea * 6f
             return -extension - margen + (2 * extension + 2 * margen) * p
         }
         // Cambio seco en la mitad, para las que lo tapan con algo. El lado A
@@ -533,7 +541,9 @@ class Escena(
                             dirX = bx, dirY = by,
                             bordes = FloatArray(ts.size) { borde(ps[it]) },
                             grosor = grosorLinea * fuerza.coerceIn(0.3f, 3f),
-                            color = ajuste.color
+                            color = ajuste.color,
+                            luz = ajuste.luz,
+                            progreso = avanceCentro
                         )
                     )
                 }
@@ -1194,7 +1204,8 @@ class Escena(
                 TipoEfectoVideo.CIRCULO -> circulo(ef, local)
                 TipoEfectoVideo.BARRIDO -> barrido(ef, local)
                 // Las mitades no son un Efecto: parten el bloque en dibujos()
-                TipoEfectoVideo.MITADES -> Efecto()
+                TipoEfectoVideo.MITADES, TipoEfectoVideo.PULSO_MITADES, TipoEfectoVideo.RESPLANDOR,
+                TipoEfectoVideo.SEMITONO, TipoEfectoVideo.ARCOIRIS_BORDES -> Efecto()
                 TipoEfectoVideo.ANIMACION -> efectoDeAnimacion(ef, local, i)
             }
             r = r.y(e)
@@ -1543,7 +1554,9 @@ data class PasoLinea(
     /** Posicion del borde en cada muestra, en pixeles desde el centro. */
     val bordes: FloatArray,
     val grosor: Float,
-    val color: Int
+    val color: Int,
+    val luz: LuzTransicion = LuzTransicion(),
+    val progreso: Float = 0f
 ) : Paso()
 
 data class PasoClip(
@@ -1584,7 +1597,10 @@ data class PasoClip(
     val desenfoqueY: Float = 0f,
     /** Mascara en UV de la fuente completa, sin cambiar su geometria. */
     val recorteFuente: RegionUv? = null,
-    val ajustesCapa: List<AjustesColor> = emptyList()
+    val ajustesCapa: List<AjustesColor> = emptyList(),
+    /** Reloj de luces locales; separado del instante del archivo y su velocidad. */
+    val tiempoLocalUs: Long = 0,
+    val vfxPantalla: VfxPantalla = VfxPantalla.NEUTRO
 ) : Paso() {
 
     val muestras: Int get() = matrices.size

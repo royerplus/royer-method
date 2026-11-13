@@ -564,7 +564,8 @@ private fun AvisosEfecto(p: PanelFx, e: EfectoVideo) {
 
 /** Lo que va en "Forma", en el orden de [CatalogoEfectos.parametros]. */
 private val FORMA = setOf(Parametro.DESDE, Parametro.HASTA, Parametro.ANGULO, Parametro.CURVA, Parametro.CENTRO,
-    Parametro.GROSOR, Parametro.SUAVIDAD, Parametro.INVERTIR, Parametro.CORTE_VERTICAL)
+    Parametro.GROSOR, Parametro.SUAVIDAD, Parametro.INVERTIR, Parametro.CORTE_VERTICAL,
+    Parametro.COLOR, Parametro.HALO, Parametro.UMBRAL, Parametro.LINEAS)
 
 /**
  * Nombre, encendido, probar, duplicar (si va suelto) y quitar. Si es de una
@@ -683,6 +684,7 @@ private fun pasoGrupo(p: PanelFx): Long = if (p.fotogramas) com.royermethod.app.
 private fun SeccionForma(p: PanelFx, e: EfectoVideo, forma: List<Parametro>) {
     val a = e.ajustes
     val defecto = CatalogoEfectos.ajustesDe(e.tipo)
+    ControlesVfxPantalla(p,e)
     if (e.tipo == TipoEfectoVideo.MITADES && p.vista.piezas.isNotEmpty()) {
         Nota("Este bloque ya esta partido en partes: las mitades no se ven. Quita las partes para usarlas.",
             Modifier.padding(vertical = 4.dp), color = Ink.Peligro)
@@ -727,8 +729,17 @@ private fun SeccionForma(p: PanelFx, e: EfectoVideo, forma: List<Parametro>) {
         }
     }
     if (Parametro.GROSOR in forma) {
-        FilaValor("Grosor", a.grosor, 0f, 1f, neutro = 0f, paso = 0.01f,
-            texto = { if (it <= 0f) "Lleno" else "${(it * 100).roundToInt()}%" }) { v ->
+        val luz = e.tipo == TipoEfectoVideo.RESPLANDOR || e.tipo == TipoEfectoVideo.ARCOIRIS_BORDES || e.tipo == TipoEfectoVideo.SEMITONO
+        val titulo = when(e.tipo) {
+            TipoEfectoVideo.RESPLANDOR -> "Radio del halo"
+            TipoEfectoVideo.SEMITONO -> "Tamaño de la trama"
+            TipoEfectoVideo.ARCOIRIS_BORDES -> "Anchura del contorno"
+            else -> "Grosor"
+        }
+        val min = if(luz) .002f else 0f
+        val max = if(e.tipo == TipoEfectoVideo.ARCOIRIS_BORDES) .04f else if(luz) .1f else 1f
+        FilaValor(titulo, a.grosor.coerceIn(min,max), min, max, neutro = defecto.grosor, paso = if(luz).001f else .01f,
+            texto = { if (it <= 0f) "Lleno" else "%.1f%%".format(it * 100) }) { v ->
             p.cambiar(true) { it.copy(ajustes = it.ajustes.copy(grosor = v)) }
         }
     }
@@ -739,8 +750,13 @@ private fun SeccionForma(p: PanelFx, e: EfectoVideo, forma: List<Parametro>) {
         }
     }
     if (Parametro.INVERTIR in forma) {
-        val detalle = if (e.tipo == TipoEfectoVideo.BARRIDO) "Oculta en vez de descubrir" else "Se ve fuera en vez de dentro"
-        Interruptor("Invertir", a.invertir, { v -> p.cambiar { it.copy(ajustes = it.ajustes.copy(invertir = v)) } }, detalle)
+        val detalle = when(e.tipo) {
+            TipoEfectoVideo.BARRIDO -> "Oculta en vez de descubrir"
+            TipoEfectoVideo.PULSO_MITADES -> "Cambia la mitad que se ilumina primero"
+            else -> "Se ve fuera en vez de dentro"
+        }
+        Interruptor(if(e.tipo == TipoEfectoVideo.PULSO_MITADES) "Alternar el orden" else "Invertir", a.invertir,
+            { v -> p.cambiar { it.copy(ajustes = it.ajustes.copy(invertir = v)) } }, detalle)
     }
     if (Parametro.CORTE_VERTICAL in forma) {
         Interruptor("Corte vertical", a.vertical, { v -> p.cambiar { it.copy(ajustes = it.ajustes.copy(vertical = v)) } },
