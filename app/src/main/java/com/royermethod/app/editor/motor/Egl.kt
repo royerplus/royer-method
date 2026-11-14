@@ -15,11 +15,12 @@ import android.opengl.EGLSurface
  * dibuje igual en los dos casos es lo que garantiza que lo exportado sea lo
  * que se vio: no hay dos caminos de render que puedan separarse.
  */
-class Egl(ventana: Any?, ancho: Int = 1, alto: Int = 1, paraCodificador: Boolean = false) {
+class Egl(private val ventana: Any?, ancho: Int = 1, alto: Int = 1, paraCodificador: Boolean = false) {
 
     private var display: EGLDisplay = EGL14.EGL_NO_DISPLAY
     private var contexto: EGLContext = EGL14.EGL_NO_CONTEXT
     private var superficie: EGLSurface = EGL14.EGL_NO_SURFACE
+    private var config: EGLConfig? = null
 
     init {
         display = EGL14.eglGetDisplay(EGL14.EGL_DEFAULT_DISPLAY)
@@ -47,7 +48,7 @@ class Egl(ventana: Any?, ancho: Int = 1, alto: Int = 1, paraCodificador: Boolean
             EGL14.eglChooseConfig(display, atributos.toIntArray(), 0, configs, 0, 1, cuantas, 0) &&
                 cuantas[0] > 0
         ) { "eglChooseConfig" }
-        val config = configs[0]
+        config = configs[0]
 
         contexto = EGL14.eglCreateContext(
             display, config, EGL14.EGL_NO_CONTEXT,
@@ -68,6 +69,27 @@ class Egl(ventana: Any?, ancho: Int = 1, alto: Int = 1, paraCodificador: Boolean
 
     fun activar() {
         check(EGL14.eglMakeCurrent(display, superficie, superficie, contexto)) { "eglMakeCurrent" }
+    }
+
+    /**
+     * Rehace la superficie de la ventana y deja el contexto activo en ella.
+     *
+     * Para cuando la vista cambia de tamano: el driver puede tener ya pedido
+     * el siguiente bufer con el tamano de antes, y el primer cuadro dibujado
+     * con las medidas nuevas sale en ese bufer viejo, descolocado y estirado
+     * (en pausa se queda asi hasta el siguiente dibujo). Con una superficie
+     * nueva los buferes se piden al tamano de ahora; es lo mismo que hace
+     * GLSurfaceView. El contexto no se toca: texturas y programas siguen
+     * valiendo. Si falla lanza, y quien llama monta el contexto entero otra vez.
+     */
+    fun rehacerSuperficie() {
+        val v = checkNotNull(ventana) { "sin ventana" }
+        check(display != EGL14.EGL_NO_DISPLAY && contexto != EGL14.EGL_NO_CONTEXT) { "EGL suelto" }
+        EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
+        if (superficie != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(display, superficie)
+        superficie = EGL14.eglCreateWindowSurface(display, config, v, intArrayOf(EGL14.EGL_NONE), 0)
+        check(superficie != EGL14.EGL_NO_SURFACE) { "eglCreateWindowSurface" }
+        activar()
     }
 
     /** El codificador toma la marca de tiempo de aqui, no del orden de llamada. */

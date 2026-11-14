@@ -193,19 +193,27 @@ class Previsualizador(context: Context) {
 
     fun adjuntar(superficie: Surface, w: Int, hgt: Int) {
         h.post {
-            soltarGl()
-            runCatching {
-                val e = Egl(superficie)
-                e.activar()
-                egl = e
-                ancho = w; alto = hgt
-                compositor = Compositor(app, w, hgt, vista = true).also { it.zoom = zoomVista }
-                escena = null
-                ultimoDibujado = -1
-                vigilarPausa()
-                dibujarAhora()
-                programarBucle()
-            }
+            ventana = superficie
+            montar(superficie, w, hgt)
+        }
+    }
+
+    /** La superficie de la pantalla mientras esta adjuntada: para volver a montar el contexto si hace falta. */
+    private var ventana: Surface? = null
+
+    private fun montar(superficie: Surface, w: Int, hgt: Int) {
+        soltarGl()
+        runCatching {
+            val e = Egl(superficie)
+            e.activar()
+            egl = e
+            ancho = w; alto = hgt
+            compositor = Compositor(app, w, hgt, vista = true).also { it.zoom = zoomVista }
+            escena = null
+            ultimoDibujado = -1
+            vigilarPausa()
+            dibujarAhora()
+            programarBucle()
         }
     }
 
@@ -229,15 +237,29 @@ class Previsualizador(context: Context) {
     @Volatile
     private var zoomVista = com.royermethod.app.editor.modelo.ZoomVista.NINGUNO
 
+    /**
+     * La vista mide otra cosa (se amplio un panel, giro el telefono). Ademas
+     * del compositor se rehace la superficie de EGL: si no, el primer cuadro
+     * podia salir en un bufer con el tamano de antes y la imagen se veia
+     * descolocada hasta el siguiente dibujo (ver [Egl.rehacerSuperficie]).
+     */
     fun cambiarTamano(w: Int, hgt: Int) {
         h.post {
             if (w == ancho && hgt == alto) return@post
             val e = egl ?: return@post
-            compositor?.soltar()
+            // Con el contexto todavia activo: suelta sus texturas y programas
+            runCatching { compositor?.soltar() }
+            compositor = null
+            if (runCatching { e.rehacerSuperficie() }.isFailure) {
+                // Sin superficie no se puede seguir: se monta todo de nuevo
+                val v = ventana
+                if (v != null) montar(v, w, hgt) else soltarGl()
+                return@post
+            }
             ancho = w; alto = hgt
-            e.activar()
             compositor = Compositor(app, w, hgt, vista = true).also { it.zoom = zoomVista }
             escena = null
+            ultimoDibujado = -1
             dibujarAhora()
         }
     }
@@ -249,6 +271,7 @@ class Previsualizador(context: Context) {
             // Fuera de la pantalla no hace falta tener el sonido a punto
             if (!reproduciendo && sonido?.pausada == true) soltarSonido()
             soltarGl()
+            ventana = null
             listo.countDown()
         }
         listo.await(2, TimeUnit.SECONDS)
