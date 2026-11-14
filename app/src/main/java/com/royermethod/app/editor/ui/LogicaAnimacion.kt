@@ -212,6 +212,10 @@ internal object LogicaAnimacion {
     fun conContinuas(c: Clip, id: Long, continuas: List<Continuo>): Clip =
         if (continuas.isEmpty()) c.sinAnimacion(id) else c.cambiarAnimacion(id) { it.copy(continuas = continuas) }
 
+    /** "Ninguna": quita todas las de [momento]; las de los otros momentos se quedan. */
+    fun sinMomento(c: Clip, momento: MomentoAnimacion): Clip =
+        aplicadas(c).filter { it.momento == momento }.fold(c) { acc, a -> acc.sinAnimacion(a.id) }
+
     /** "Entrada · 0.500 s", "Siempre · todo el bloque" (y si esta apagada). */
     fun detalle(a: AnimacionAplicada): String {
         val cuanto = if (a.momento == MomentoAnimacion.SIEMPRE) "todo el bloque" else TiempoPreciso.texto(a.duracionUs)
@@ -258,6 +262,10 @@ internal object LogicaAnimacion {
         estado.cambiarClip(arrastre) { c -> conContinuas(c, id, continuas) }
 
     fun quitar(estado: EstadoEditor, id: Long) = estado.cambiarClip { c -> c.sinAnimacion(id) }
+
+    /** La casilla "Ninguna" de una pestana: fuera todas las de [momento], en un solo paso. */
+    fun quitarMomento(estado: EstadoEditor, momento: MomentoAnimacion) =
+        estado.cambiarClip { c -> sinMomento(c, momento) }
 
     /**
      * Convierte [id] en un efecto en un solo paso (la animacion se va en el

@@ -525,9 +525,12 @@ fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifie
     }
 }
 
-/** Pestanas de texto: la elegida se ilumina y lleva una raya debajo. */
+/**
+ * Pestanas de texto: la elegida se ilumina y lleva una raya debajo. Las de
+ * [marcas] llevan un punto: "aqui dentro ya hay algo puesto".
+ */
 @Composable
-fun Pestanas(nombres: List<String>, elegida: Int, onElegir: (Int) -> Unit, modifier: Modifier = Modifier) {
+fun Pestanas(nombres: List<String>, elegida: Int, onElegir: (Int) -> Unit, modifier: Modifier = Modifier, marcas: Set<Int> = emptySet()) {
     Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
         nombres.forEachIndexed { i, n ->
             val sel = i == elegida
@@ -542,12 +545,18 @@ fun Pestanas(nombres: List<String>, elegida: Int, onElegir: (Int) -> Unit, modif
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(
-                        n,
-                        style = Letra.cuerpo.copy(fontSize = 13.5.sp * Estilo.letra, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
-                        color = if (sel) Ink.White else Ink.White50,
-                        maxLines = 1, softWrap = false
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            n,
+                            style = Letra.cuerpo.copy(fontSize = 13.5.sp * Estilo.letra, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
+                            color = if (sel) Ink.White else Ink.White50,
+                            maxLines = 1, softWrap = false
+                        )
+                        if (i in marcas) {
+                            Spacer(Modifier.width(4.dp))
+                            Box(Modifier.size(4.dp).clip(CircleShape).background(if (sel) Ink.White else Ink.White50))
+                        }
+                    }
                     Spacer(Modifier.height(4.dp))
                     Box(Modifier.size(if (sel) 16.dp else 0.dp, 2.dp).clip(CircleShape).background(Ink.White))
                 }

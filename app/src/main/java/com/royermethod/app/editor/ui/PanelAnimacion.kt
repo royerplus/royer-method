@@ -5,26 +5,22 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -43,21 +39,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import com.royermethod.app.editor.modelo.Animacion
 import com.royermethod.app.editor.modelo.AnimacionAplicada
@@ -74,6 +73,7 @@ import com.royermethod.app.editor.modelo.limitacionesConversion
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonIcono
 import com.royermethod.app.ui.components.BotonLleno
+import com.royermethod.app.ui.components.BotonTexto
 import com.royermethod.app.ui.components.Chip
 import com.royermethod.app.ui.components.Cuadricula
 import com.royermethod.app.ui.components.Deslizador
@@ -81,10 +81,12 @@ import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
 import com.royermethod.app.ui.components.Glifos
 import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Pestanas
+import com.royermethod.app.ui.components.Tira
 import com.royermethod.app.ui.components.esquinas
-import com.royermethod.app.ui.theme.Estilo
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.min
 import kotlin.math.roundToLong
@@ -92,20 +94,23 @@ import kotlin.math.roundToLong
 /*
  * Panel "Animar".
  *
- * Fila del titulo: "Animar", y a la derecha "Animaciones (n) ▾" (las puestas
- * en el bloque, en un desplegable para elegir, ajustar, quitar o convertir en
- * efecto) y "+" (tocar una del catalogo la suma a las que ya hay).
- * Zona fija, que no se desliza: pestanas Entrada/Salida/Siempre y la
- * duracion de la elegida. Debajo, lo que se desliza: el catalogo por
- * categorias (con una fila para ensenar solo una; las puestas con borde y
- * etiqueta) o los ajustes de la elegida.
+ * Arriba, fijas, las pestanas Entrada / Salida / Siempre (con un punto las
+ * que ya tienen alguna) y, con una elegida, lo que dura. Debajo, lo que se
+ * desliza: el catalogo (una tira de categorias y las casillas; la primera,
+ * "Ninguna", quita las de esa pestana) o los ajustes de la elegida.
+ * En la barra de abajo, con alguna puesta: "Puestas n" (las del bloque, para
+ * elegir, ajustar o quitar) y "+" (tocar una del catalogo la suma a las que
+ * ya hay en vez de cambiar la elegida).
  * Lo que hace cada toque esta en LogicaAnimacion.
  */
 
-/** Alto de la fila del titulo de HojaPanel (raya + margen + boton): el desplegable sale debajo. */
-private val ALTO_TITULO = 47.dp
+/** Alto de la barra de abajo de HojaPanel (raya + fila): el desplegable de las puestas sale encima. */
+private val ALTO_BARRA = 47.dp
 
 private val MOMENTOS = MomentoAnimacion.values().toList()
+
+/** El aviso de como se suman o se cambian sale una vez por sesion, al poner la primera. */
+private var consejoSumarVisto = false
 
 /** Lo que el panel recuerda mientras esta abierto. No es del proyecto: no se deshace. */
 @Stable
@@ -183,10 +188,10 @@ private fun recordarVista(c: Clip): VistaAnimacion =
     }
 
 /**
- * La hoja del panel de animacion: "Animar ... Animaciones (n) ▾  +" en la
- * fila del titulo, la duracion fija arriba y el catalogo (o los ajustes de
- * la elegida) debajo, deslizandose. El desplegable de las puestas sale por
- * encima, dentro de la hoja: no tapa la imagen.
+ * La hoja del panel de animacion: pestanas y duracion fijas arriba, el
+ * catalogo (o los ajustes de la elegida) deslizandose debajo y, en la barra,
+ * "Puestas n" y "+". El desplegable de las puestas sale por encima de la
+ * barra, dentro de la hoja: no tapa la imagen.
  */
 @Composable
 fun HojaAnimacion(estado: EstadoEditor, onCerrar: () -> Unit) {
@@ -210,8 +215,8 @@ fun HojaAnimacion(estado: EstadoEditor, onCerrar: () -> Unit) {
         key(vista.pestana, verAjustes) {
             HojaPanel(
                 Panel.ANIMACION.titulo, onCerrar,
-                acciones = { AccionesTitulo(vista, aplicadas.size) },
-                fijo = { ZonaFija(estado, c, vista, elegida) }
+                acciones = if (aplicadas.isNotEmpty()) ({ AccionesBarra(vista, aplicadas.size) }) else null,
+                fijo = { ZonaFija(estado, c, vista, aplicadas, elegida) }
             ) {
                 if (verAjustes) AjustesElegida(estado, c, elegida) { vista.convertir = elegida.id }
                 else CatalogoAnimaciones(estado, vista, aplicadas, elegida)
@@ -219,22 +224,6 @@ fun HojaAnimacion(estado: EstadoEditor, onCerrar: () -> Unit) {
         }
         if (vista.menu) MenuAplicadas(estado, vista, aplicadas, elegida)
     }
-    Convertir(estado, vista, aplicadas)
-}
-
-/**
- * Lo de dentro de la hoja sin la fila del titulo (sin desplegable ni "+"):
- * la zona fija y el catalogo seguidos. La hoja de verdad es [HojaAnimacion].
- */
-@Composable
-fun PanelAnimacion(estado: EstadoEditor) {
-    val c = estado.clipElegido ?: return
-    val vista = recordarVista(c)
-    val aplicadas = LogicaAnimacion.aplicadas(c)
-    val elegida = LogicaAnimacion.elegida(aplicadas, vista.elegidaId, vista.pestana)
-    ZonaFija(estado, c, vista, elegida)
-    if (vista.ajustes && !vista.agregando && elegida != null) AjustesElegida(estado, c, elegida) { vista.convertir = elegida.id }
-    else CatalogoAnimaciones(estado, vista, aplicadas, elegida)
     Convertir(estado, vista, aplicadas)
 }
 
@@ -260,65 +249,38 @@ private fun Convertir(estado: EstadoEditor, vista: VistaAnimacion, aplicadas: Li
 }
 
 // ----------------------------------------------------------------------
-// Fila del titulo
+// Barra de abajo
 // ----------------------------------------------------------------------
 
 @Composable
-private fun RowScope.AccionesTitulo(vista: VistaAnimacion, n: Int) {
+private fun AccionesBarra(vista: VistaAnimacion, n: Int) {
     SelectorAplicadas(n, vista.menu) { vista.menu = !vista.menu }
-    Spacer(Modifier.width(6.dp))
-    BotonSumar(vista.agregando) {
+    BotonIcono(Glifos.mas, {
         vista.agregando = !vista.agregando
         vista.ajustes = false
         vista.menu = false
-    }
-    Spacer(Modifier.width(4.dp))
+    }, tam = 38.dp, descripcion = "Sumar otra animación", encendido = vista.agregando)
 }
 
-/** "Animaciones (2) ▾": pastilla de 40 dp que abre el desplegable de las puestas. */
+/** "Puestas 2 ▾": abre el desplegable de las que tiene el bloque. */
 @Composable
 private fun SelectorAplicadas(n: Int, abierto: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
-            .heightIn(min = 40.dp)
-            .clip(esquinas(20.dp))
+            .heightIn(min = 34.dp)
+            .clip(esquinas(17.dp))
             .background(if (abierto) Ink.White15 else Ink.White08)
-            .border(1.dp, if (abierto) Ink.White else Ink.White15, esquinas(20.dp))
+            .semantics { contentDescription = "Animaciones puestas: $n" }
             .clickable(onClick = onClick)
-            .padding(start = 12.dp, end = 10.dp),
+            .padding(start = 12.dp, end = 9.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Text(
-            "Animaciones ($n)",
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-            color = if (n > 0) Ink.White else Ink.White70,
-            maxLines = 1
-        )
+        Text("Puestas", style = Letra.cuerpo, color = Ink.White70, maxLines = 1)
         Spacer(Modifier.width(6.dp))
-        // ▾ dibujado (no todas las fuentes del telefono traen el caracter); abierto, ▴
-        Canvas(Modifier.size(10.dp)) {
-            val p = Path().apply {
-                if (abierto) { moveTo(0f, size.height * 0.75f); lineTo(size.width, size.height * 0.75f); lineTo(size.width / 2, size.height * 0.2f) }
-                else { moveTo(0f, size.height * 0.25f); lineTo(size.width, size.height * 0.25f); lineTo(size.width / 2, size.height * 0.8f) }
-                close()
-            }
-            drawPath(p, Ink.White90)
-        }
-    }
-}
-
-/** "+": encendido, el proximo toque en el catalogo suma otra. */
-@Composable
-private fun BotonSumar(activo: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .background(if (activo) Ink.White else Ink.White08)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Icono(Glifos.mas, color = if (activo) Ink.Black else Ink.White, tam = 22.dp)
+        Text("$n", style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium), color = Ink.White, maxLines = 1)
+        Spacer(Modifier.width(5.dp))
+        // Abierto apunta hacia abajo (se cierra); cerrado, hacia arriba, que es hacia donde sale
+        Icono(Glifos.siguiente, Modifier.rotate(if (abierto) 90f else -90f), color = Ink.White50, tam = 12.dp)
     }
 }
 
@@ -327,19 +289,26 @@ private fun BotonSumar(activo: Boolean, onClick: () -> Unit) {
 // ----------------------------------------------------------------------
 
 @Composable
-private fun ZonaFija(estado: EstadoEditor, c: Clip, vista: VistaAnimacion, elegida: AnimacionAplicada?) {
+private fun ZonaFija(estado: EstadoEditor, c: Clip, vista: VistaAnimacion, aplicadas: List<AnimacionAplicada>, elegida: AnimacionAplicada?) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        PestanasMomento(vista.pestana, { vista.pestana = it }, Modifier.weight(1f))
+        Pestanas(
+            MOMENTOS.map { it.nombre }, MOMENTOS.indexOf(vista.pestana), { vista.pestana = MOMENTOS[it] }, Modifier.weight(1f),
+            marcas = MOMENTOS.indices.filter { i -> aplicadas.any { it.momento == MOMENTOS[i] } }.toSet()
+        )
         when {
-            vista.agregando -> Chip("Cancelar", false, { vista.agregando = false })
-            elegida != null -> Chip(if (vista.ajustes) "Catalogo" else "Ajustar", false, { vista.ajustes = !vista.ajustes })
+            vista.agregando -> BotonTexto("Cancelar", { vista.agregando = false }, glifo = Glifos.cerrar)
+            elegida != null -> BotonTexto("Ajustar", { vista.ajustes = !vista.ajustes }, glifo = Glifos.ajustes, encendido = vista.ajustes)
         }
     }
     when {
-        // Cada pestana tiene su elegida: aqui no hay ninguna puesta todavia
-        elegida == null -> FilaFija("Duracion", "Ninguna en ${vista.pestana.nombre}: toca una")
-        elegida.momento == MomentoAnimacion.SIEMPRE ->
-            FilaFija("Duracion", "Todo el bloque (${TiempoPreciso.texto(c.duracionUs.coerceAtLeast(0))})")
+        // Sumando, la zona fija dice que hace el siguiente toque
+        vista.agregando -> Text(
+            "Toca otra para sumarla a las que ya hay",
+            style = Letra.cuerpo, color = Ink.White,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp).padding(vertical = 11.dp)
+        )
+        // Cada pestana tiene su elegida; las de Siempre duran lo que el bloque
+        elegida == null || elegida.momento == MomentoAnimacion.SIEMPRE -> Unit
         else -> key(elegida.id) {
             val (minimo, limite) = LogicaAnimacion.limitesDuracion(c.duracionUs)
             // Si ya dura mas que el bloque (se recorto despues), se ensena la de
@@ -347,58 +316,15 @@ private fun ZonaFija(estado: EstadoEditor, c: Clip, vista: VistaAnimacion, elegi
             val maximo = maxOf(limite, elegida.duracionUs)
             val fotogramas = AjustesEditor.ajustarFotogramas
             // Una duracion: el ajuste a fotogramas se cuenta desde 0. No mueve el
-            // cabezal. Con el ajuste, sin deslizador: en 330 dp el catalogo
-            // necesita ese sitio y -/+ (un fotograma) y escribir el valor bastan.
-            // Sin el ajuste CampoTiempo pone igualmente la fila del paso (1/10 ms):
-            // ahi cabe el deslizador
+            // cabezal. Con el ajuste, sin barra: -/+ (un fotograma) y escribir el
+            // valor bastan, y el catalogo necesita ese sitio
             CampoTiempo(
-                "Duracion · ${elegida.nombre}", elegida.duracionUs, minimo, maximo,
+                "Duración", elegida.duracionUs, minimo, maximo,
                 onCambio = { us, arrastre -> LogicaAnimacion.cambiarDuracion(estado, elegida.id, us, arrastre) },
                 fotogramas = fotogramas,
                 deslizador = !fotogramas
             )
         }
-    }
-    Box(Modifier.fillMaxWidth().padding(top = 2.dp).height(1.dp).background(Ink.White08))
-}
-
-/**
- * Entrada / Salida / Siempre, como las Pestanas de siempre pero mas
- * estrechas y sin partir la palabra: con la pastilla de al lado caben en 360 dp.
- */
-@Composable
-private fun PestanasMomento(elegida: MomentoAnimacion, onElegir: (MomentoAnimacion) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        MOMENTOS.forEach { m ->
-            val sel = m == elegida
-            Column(
-                Modifier
-                    .heightIn(min = 40.dp)
-                    .clip(esquinas(8.dp))
-                    .clickable { onElegir(m) }
-                    .padding(horizontal = 8.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    m.nombre,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
-                    color = if (sel) Ink.White else Ink.White50,
-                    maxLines = 1,
-                    softWrap = false
-                )
-                Spacer(Modifier.height(5.dp))
-                Box(Modifier.size(if (sel) 18.dp else 0.dp, 2.dp).clip(CircleShape).background(Ink.White))
-            }
-        }
-    }
-}
-
-/** Una fila de la zona fija sin control (del alto de los botones de CampoTiempo). */
-@Composable
-private fun FilaFija(titulo: String, texto: String) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(titulo, style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.weight(1f))
-        Nota(texto)
     }
 }
 
@@ -424,82 +350,61 @@ private fun CatalogoAnimaciones(estado: EstadoEditor, vista: VistaAnimacion, apl
     }
     val conPuestas = remember(todos, puestas) { LogicaAnimacion.categoriasConPuestas(todos, puestas) }
     val nombres = remember(todos) { todos.map { it.first } }
-    FiltroCategorias(nombres, categoria, conPuestas) { vista.categoria = it }
-    val tocar by rememberUpdatedState { o: LogicaAnimacion.Opcion ->
-        val r = LogicaAnimacion.aplicar(estado, o, elegida?.id, vista.agregando)
-        if (r != null) {
-            vista.elegidaId = r.elegidaId
+    // Las categorias en una tira: tocar una ensena solo esa (otra vez, o "Todas", todas)
+    Tira(Modifier.padding(top = 2.dp, bottom = 6.dp)) {
+        Chip(LogicaAnimacion.TODAS, categoria == null, { vista.categoria = null })
+        nombres.forEach { n -> Chip(rotulo(n), n == categoria, { vista.categoria = if (n == categoria) null else n }, marca = n in conPuestas) }
+    }
+    val tocar by rememberUpdatedState { o: LogicaAnimacion.Opcion? ->
+        if (o == null) {
+            // "Ninguna": fuera las de esta pestana, en un solo paso
+            if (puestas.isNotEmpty()) LogicaAnimacion.quitarMomento(estado, momento)
             vista.agregando = false
+        } else {
+            val r = LogicaAnimacion.aplicar(estado, o, elegida?.id, vista.agregando)
+            if (r != null) {
+                vista.elegidaId = r.elegidaId
+                vista.agregando = false
+                if (r.accion == LogicaAnimacion.Accion.SUMADA && !consejoSumarVisto) {
+                    consejoSumarVisto = true
+                    estado.avisar("Tocar otra la cambia. Con + se suma a esta")
+                }
+            }
         }
     }
-    val alTocar = remember { { o: LogicaAnimacion.Opcion -> tocar(o) } }
-    Casillas(momento, grupos, marcas, vista.agregando, elegida != null, alTocar)
+    val alTocar = remember { { o: LogicaAnimacion.Opcion? -> tocar(o) } }
+    Casillas(momento, grupos, marcas, puestas.isEmpty(), categoria == null, alTocar)
+}
+
+/** Las categorias y las casillas se guardan sin tildes; en pantalla, con ellas. */
+private fun rotulo(nombre: String): String = when (nombre) {
+    "Basicas" -> "Básicas"
+    "Mias" -> "Mías"
+    else -> nombre
 }
 
 /**
- * Las categorias de siempre en una fila que se desliza de lado: tocar una
- * ensena solo esa (tocarla otra vez, o "Todas", las ensena todas). Un punto
- * marca las que tienen alguna puesta en el bloque.
+ * Las casillas, por categorias (con su nombre solo cuando se ven todas). La
+ * primera es "Ninguna": encendida cuando la pestana no tiene ninguna, y
+ * tocarla las quita.
  */
-@Composable
-private fun FiltroCategorias(nombres: List<String>, elegida: String?, conPuestas: Set<String>, onElegir: (String?) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top = 6.dp),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
-    ) {
-        PastillaCategoria(LogicaAnimacion.TODAS, elegida == null, false) { onElegir(null) }
-        nombres.forEach { n -> PastillaCategoria(n, n == elegida, n in conPuestas) { onElegir(if (n == elegida) null else n) } }
-    }
-}
-
-/** Como un Chip, con el punto de "hay alguna puesta" al lado del nombre. */
-@Composable
-private fun PastillaCategoria(texto: String, elegida: Boolean, conPuestas: Boolean, onClick: () -> Unit) {
-    Row(
-        Modifier
-            .heightIn(min = 40.dp)
-            .clip(esquinas(20.dp))
-            .background(if (elegida) Ink.White else Ink.White08)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            texto,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (elegida) FontWeight.Medium else FontWeight.Normal),
-            color = if (elegida) Ink.Black else Ink.White70,
-            maxLines = 1,
-            softWrap = false
-        )
-        if (conPuestas) {
-            Spacer(Modifier.width(6.dp))
-            Box(Modifier.size(6.dp).clip(CircleShape).background(if (elegida) Ink.Black else Ink.White))
-        }
-    }
-}
-
 @Composable
 private fun Casillas(
     momento: MomentoAnimacion,
     grupos: List<Pair<String, List<LogicaAnimacion.Opcion>>>,
     marcas: Map<LogicaAnimacion.Opcion, LogicaAnimacion.Marca>,
-    agregando: Boolean,
-    hayElegida: Boolean,
-    onTocar: (LogicaAnimacion.Opcion) -> Unit
+    sinNinguna: Boolean,
+    conNombres: Boolean,
+    onTocar: (LogicaAnimacion.Opcion?) -> Unit
 ) {
-    Nota(
-        when {
-            agregando -> "Toca una para sumarla a las que ya hay"
-            hayElegida -> "Tocar otra cambia la elegida. Con + se suma"
-            else -> "Toca una para ponerla"
-        },
-        Modifier.padding(top = 6.dp),
-        color = if (agregando) Ink.White else Ink.White50
-    )
-    grupos.forEach { (nombre, opciones) ->
-        Etiqueta(nombre, Modifier.padding(top = 6.dp))
-        Cuadricula(opciones) { o, mod ->
-            Casilla(o.nombre, marcas[o] ?: LogicaAnimacion.Marca.DISPONIBLE, { onTocar(o) }, mod) { col ->
+    grupos.forEachIndexed { g, (nombre, opciones) ->
+        if (conNombres) Etiqueta(rotulo(nombre), if (g == 0) Modifier else Modifier.padding(top = 4.dp))
+        // null es "Ninguna": solo en la primera fila
+        val celdas: List<LogicaAnimacion.Opcion?> = if (g == 0) listOf<LogicaAnimacion.Opcion?>(null) + opciones else opciones
+        Cuadricula(celdas) { o, mod ->
+            if (o == null) {
+                Casilla("Ninguna", if (sinNinguna) LogicaAnimacion.Marca.ELEGIDA else LogicaAnimacion.Marca.DISPONIBLE, { onTocar(null) }, mod, visto = false) { col -> ninguna(col) }
+            } else Casilla(o.nombre, marcas[o] ?: LogicaAnimacion.Marca.DISPONIBLE, { onTocar(o) }, mod) { col ->
                 if (momento == MomentoAnimacion.SIEMPRE) {
                     if (o.continuas.isNotEmpty()) dibujoContinua(o.continuas.first().tipo, col)
                     // "Zoom y flash" se distingue de "Zoom al ritmo" por los rayos
@@ -516,8 +421,8 @@ private fun Casillas(
 }
 
 /**
- * Casilla del catalogo. Las puestas en el bloque llevan borde del acento y la
- * etiqueta PUESTA; la elegida, ademas, fondo y la etiqueta ELEGIDA rellena.
+ * Casilla del catalogo, con las medidas de Mosaico. Las puestas en el bloque
+ * llevan borde; la elegida, ademas, fondo claro y un visto en la esquina.
  */
 @Composable
 private fun Casilla(
@@ -525,48 +430,40 @@ private fun Casilla(
     marca: LogicaAnimacion.Marca,
     onClick: () -> Unit,
     modifier: Modifier,
+    visto: Boolean = true,
     dibujo: DrawScope.(Color) -> Unit
 ) {
     val puesta = marca != LogicaAnimacion.Marca.DISPONIBLE
     val elegida = marca == LogicaAnimacion.Marca.ELEGIDA
     Column(
         modifier
-            .width(72.dp)
+            .width(60.dp)
+            .semantics { selected = elegida; if (puesta && !elegida) stateDescription = "Puesta" }
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Box(Modifier.size(62.dp)) {
+        Box(Modifier.size(56.dp)) {
             Box(
                 Modifier
-                    .size(62.dp)
+                    .size(56.dp)
                     .clip(esquinas(12.dp))
                     .background(if (elegida) Ink.White15 else Ink.White08)
-                    .border(if (elegida) 2.5.dp else 1.5.dp, if (puesta) Ink.White else Color.Transparent, esquinas(12.dp)),
+                    .border(1.5.dp, if (elegida) Ink.White else if (puesta) Ink.White50 else Color.Transparent, esquinas(12.dp)),
                 contentAlignment = Alignment.Center
             ) {
-                Canvas(Modifier.size(38.dp)) { dibujo(if (puesta) Ink.White else Ink.White70) }
+                Canvas(Modifier.size(34.dp)) { dibujo(if (puesta) Ink.White else Ink.White70) }
             }
-            if (puesta) {
-                Text(
-                    if (elegida) "ELEGIDA" else "PUESTA",
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = 8.5.sp * Estilo.letra, letterSpacing = 0.4.sp, fontWeight = FontWeight.Medium),
-                    color = if (elegida) Ink.Black else Ink.White,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .offset(y = 6.dp)
-                        .clip(esquinas(8.dp))
-                        .background(if (elegida) Ink.White else Ink.Black)
-                        .border(1.dp, Ink.White, esquinas(8.dp))
-                        .padding(horizontal = 5.dp)
-                )
+            if (elegida && visto) {
+                Box(
+                    Modifier.align(Alignment.TopEnd).padding(4.dp).size(14.dp).clip(CircleShape).background(Ink.White),
+                    contentAlignment = Alignment.Center
+                ) { Icono(Glifos.listo, color = Ink.Black, tam = 10.dp) }
             }
         }
-        // El mismo hueco con etiqueta o sin ella: las filas no se descuadran
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             texto,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.2.sp, fontSize = 10.5.sp * Estilo.letra),
+            style = Letra.mini,
             color = if (puesta) Ink.White else Ink.White70,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,
@@ -580,13 +477,12 @@ private fun Casilla(
 // ----------------------------------------------------------------------
 
 /**
- * Las animaciones del bloque, por encima de la hoja: tocar una la elige (y
- * ensena "Ajustar" y "Convertir en efecto"), la ✕ la quita. Tocar fuera lo
- * cierra.
+ * Las animaciones del bloque, justo encima de la barra: tocar una la elige y
+ * lleva a su pestana; a su derecha, ajustarla y quitarla. Tocar fuera lo cierra.
  */
 @Composable
 private fun MenuAplicadas(estado: EstadoEditor, vista: VistaAnimacion, aplicadas: List<AnimacionAplicada>, elegida: AnimacionAplicada?) {
-    Box(Modifier.fillMaxSize().padding(top = ALTO_TITULO)) {
+    Box(Modifier.fillMaxSize().padding(bottom = ALTO_BARRA), contentAlignment = Alignment.BottomCenter) {
         Box(
             Modifier
                 .fillMaxSize()
@@ -596,97 +492,51 @@ private fun MenuAplicadas(estado: EstadoEditor, vista: VistaAnimacion, aplicadas
         Column(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp)
-                .clip(esquinas(16.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+                .clip(esquinas(14.dp))
                 .background(Ink.Black)
                 .background(Ink.White08)
-                .border(1.dp, Ink.White15, esquinas(16.dp))
+                .border(1.dp, Ink.White15, esquinas(14.dp))
                 .verticalScroll(rememberScrollState())
                 .padding(vertical = 4.dp)
         ) {
-            if (aplicadas.isEmpty()) {
-                Nota("Todavia no hay ninguna en este bloque. Toca una del catalogo o +", Modifier.padding(horizontal = 16.dp, vertical = 12.dp))
-            }
             aplicadas.forEach { a ->
                 FilaAplicada(
                     a, a.id == elegida?.id,
-                    onElegir = { vista.elegidaId = a.id; vista.pestana = a.momento },
+                    onElegir = { vista.elegidaId = a.id; vista.pestana = a.momento; vista.agregando = false; vista.menu = false },
                     onAjustar = { vista.elegidaId = a.id; vista.pestana = a.momento; vista.agregando = false; vista.ajustes = true; vista.menu = false },
-                    onQuitar = { LogicaAnimacion.quitar(estado, a.id) },
-                    onConvertir = { vista.convertir = a.id }
+                    onQuitar = { LogicaAnimacion.quitar(estado, a.id) }
                 )
             }
-            Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clickable { vista.menu = false; vista.ajustes = false; vista.agregando = true }
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icono(Glifos.mas, color = Ink.White90, tam = 18.dp)
-                Spacer(Modifier.width(10.dp))
-                Text("Sumar otra", style = MaterialTheme.typography.bodyMedium, color = Ink.White90)
-            }
+            if (aplicadas.isEmpty()) Nota("Ya no queda ninguna en este bloque.", Modifier.padding(horizontal = 14.dp, vertical = 12.dp))
         }
     }
 }
 
 @Composable
-private fun FilaAplicada(
-    a: AnimacionAplicada,
-    elegida: Boolean,
-    onElegir: () -> Unit,
-    onAjustar: () -> Unit,
-    onQuitar: () -> Unit,
-    onConvertir: () -> Unit
-) {
-    Column(Modifier.fillMaxWidth().background(if (elegida) Ink.White08 else Color.Transparent)) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp)
-                .clickable(onClick = onElegir)
-                .padding(start = 14.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // La elegida, con el punto relleno
-            Box(
-                Modifier
-                    .size(20.dp)
-                    .clip(CircleShape)
-                    .background(if (elegida) Ink.White else Color.Transparent)
-                    .border(1.5.dp, if (elegida) Ink.White else Ink.White30, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                if (elegida) Icono(Glifos.listo, color = Ink.Black, tam = 14.dp)
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    a.nombre,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                    color = if (elegida) Ink.White else Ink.White90,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Nota(LogicaAnimacion.detalle(a))
-            }
-            BotonIcono(Glifos.cerrar, onQuitar, color = Ink.White50)
+private fun FilaAplicada(a: AnimacionAplicada, elegida: Boolean, onElegir: () -> Unit, onAjustar: () -> Unit, onQuitar: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 46.dp)
+            .background(if (elegida) Ink.White08 else Color.Transparent)
+            .semantics { selected = elegida }
+            .clickable(onClick = onElegir)
+            .padding(start = 14.dp, end = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                a.nombre,
+                style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium),
+                color = if (elegida) Ink.White else Ink.White90,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Nota(LogicaAnimacion.detalle(a))
         }
-        if (elegida) {
-            Row(
-                Modifier.fillMaxWidth().padding(start = 46.dp, end = 12.dp, bottom = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Chip("Ajustar", false, onAjustar)
-                val motivo = LogicaAnimacion.motivoNoConvertible(a)
-                if (motivo == null) Chip("Convertir en efecto", false, onConvertir)
-                else Nota(motivo, Modifier.weight(1f))
-            }
-        }
+        BotonIcono(Glifos.ajustes, onAjustar, color = Ink.White70, tam = 38.dp, descripcion = "Ajustar ${a.nombre}")
+        BotonIcono(Glifos.cerrar, onQuitar, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${a.nombre}")
     }
 }
 
@@ -697,19 +547,19 @@ private fun DialogoConvertir(a: AnimacionAplicada, onCancelar: () -> Unit, onCon
         Column(
             Modifier
                 .fillMaxWidth()
-                .clip(esquinas(20.dp))
+                .clip(esquinas(18.dp))
                 .background(Ink.Black)
                 .background(Ink.White08)
-                .border(1.dp, Ink.White15, esquinas(20.dp))
+                .border(1.dp, Ink.White15, esquinas(18.dp))
                 .verticalScroll(rememberScrollState())
-                .padding(20.dp)
+                .padding(18.dp)
         ) {
-            Text("Convertir en efecto", style = MaterialTheme.typography.titleMedium, color = Ink.White)
+            Text("Convertir en efecto", style = Letra.titulo, color = Ink.White)
             Spacer(Modifier.height(8.dp))
             Text(
                 "\"${a.nombre}\" pasa a ser un efecto con su propio tramo, que se mueve y se recorta en Efectos. " +
                     "Ahora se ve igual y no quedan dos copias. Se puede deshacer.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = Letra.cuerpo,
                 color = Ink.White90
             )
             Etiqueta("Ten en cuenta", Modifier.padding(top = 6.dp))
@@ -734,29 +584,26 @@ private fun DialogoConvertir(a: AnimacionAplicada, onCancelar: () -> Unit, onCon
 
 @Composable
 private fun AjustesElegida(estado: EstadoEditor, c: Clip, a: AnimacionAplicada, onConvertir: () -> Unit) {
-    // El nombre, el ajuste a fotogramas (de la duracion y de los tramos) y quitar,
-    // en una fila: lo que dura ya se ve arriba
-    Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+    // El nombre y quitar, en una fila: lo que dura ya se ve arriba
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             a.nombre,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+            style = Letra.titulo,
             color = Ink.White,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f)
         )
-        InterruptorFotogramas()
         // Quitar: un paso de deshacer, como la ✕ del desplegable
-        BotonIcono(Glifos.papelera, { LogicaAnimacion.quitar(estado, a.id) }, color = Ink.White70)
+        BotonIcono(Glifos.papelera, { LogicaAnimacion.quitar(estado, a.id) }, color = Ink.White70, tam = 38.dp, descripcion = "Quitar ${a.nombre}")
     }
     if (a.momento == MomentoAnimacion.SIEMPRE) {
         PiezasContinuas(estado, a)
     } else {
-        if (a.momento == MomentoAnimacion.SALIDA) Nota("En la salida, Empieza y Termina se cuentan hacia atras desde el final del bloque.")
         // Los tramos cuentan sobre lo que dura la animacion, como en la escena,
         // aunque el bloque se haya quedado mas corto; solo se ve lo que cabe
         val (base, visible) = LogicaAnimacion.baseTramos(a, c.duracionUs)
-        if (base > visible) Nota("Dura ${TiempoPreciso.texto(base)}, mas que el bloque: lo que pasa de ${TiempoPreciso.texto(visible)} no se ve.")
+        if (base > visible) Nota("Dura ${TiempoPreciso.texto(base)}, más que el bloque: lo que pasa de ${TiempoPreciso.texto(visible)} no se ve.", color = Ink.Peligro)
         Piezas(
             a.id,
             a.piezas,
@@ -765,6 +612,7 @@ private fun AjustesElegida(estado: EstadoEditor, c: Clip, a: AnimacionAplicada, 
             // En la entrada los tramos son instantes desde el comienzo del bloque: el
             // ajuste a fotogramas se cuenta desde donde empieza en la linea
             origenUs = if (a.momento == MomentoAnimacion.ENTRADA) estado.inicioElegido ?: 0L else 0L,
+            deSalida = a.momento == MomentoAnimacion.SALIDA,
             onCambio = { l, arrastre -> LogicaAnimacion.cambiarPiezas(estado, a.id, l, arrastre) },
             guardada = (Combinaciones.entrada + AjustesEditor.mias).any { it.piezas == a.piezas },
             onGuardar = {
@@ -775,11 +623,10 @@ private fun AjustesElegida(estado: EstadoEditor, c: Clip, a: AnimacionAplicada, 
             }
         )
     }
-    // Lo mismo que en el desplegable: solo si se puede, y si no, por que
-    Spacer(Modifier.height(10.dp))
+    // Solo si se puede, y si no, por que
     val motivo = LogicaAnimacion.motivoNoConvertible(a)
-    if (motivo == null) BotonBorde("Convertir en efecto", onConvertir)
-    else Nota(motivo)
+    if (motivo == null) BotonTexto("Convertir en efecto", onConvertir, glifo = Glifos.estrella)
+    else Nota(motivo, Modifier.padding(top = 6.dp))
 }
 
 /**
@@ -794,48 +641,49 @@ private fun Piezas(
     duracionUs: Long,
     visibleUs: Long,
     origenUs: Long,
+    deSalida: Boolean,
     onCambio: (List<Movimiento>, Boolean) -> Unit,
     guardada: Boolean,
     onGuardar: () -> Unit
 ) {
     var abierta by remember(idAnimacion) { mutableIntStateOf(-1) }
     var agregando by remember(idAnimacion) { mutableStateOf(false) }
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Etiqueta("Piezas de esta animacion", Modifier.weight(1f))
-        if (!guardada) BotonGuardar(onGuardar)
-    }
+    CabeceraPiezas(guardada, onGuardar)
     piezas.forEachIndexed { i, m ->
         fun cambiar(n: Movimiento, arrastre: Boolean = true) = onCambio(piezas.toMutableList().also { it[i] = n }, arrastre)
         Column(
             Modifier
                 .fillMaxWidth()
                 .padding(vertical = 3.dp)
-                .background(Ink.White04, esquinas(12.dp))
+                .clip(esquinas(10.dp))
+                .background(Ink.White04)
         ) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 44.dp)
+                    .heightIn(min = 42.dp)
                     .clickable { abierta = if (abierta == i) -1 else i }
-                    .padding(start = 12.dp),
+                    .padding(start = 10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icono({ col -> dibujoPieza(m.tipo, col, false) }, tam = 22.dp, color = Ink.White90)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(m.tipo.nombre, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = Ink.White90)
+                    Text(m.tipo.nombre, style = Letra.cuerpo, color = Ink.White90, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
                         "${(m.intensidad * 100).toInt()}%  ·  ${m.curva.nombre}" +
                             if (m.desde > 0f || m.hasta < 1f) "  ·  ${TiempoPreciso.texto(tramo(m.desde, duracionUs))}–${TiempoPreciso.texto(tramo(m.hasta, duracionUs))}" else "",
-                        style = MaterialTheme.typography.labelSmall, color = Ink.White50
+                        style = Letra.mini, color = Ink.White50, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }
-                BotonIcono(Glifos.cerrar, { onCambio(piezas.filterIndexed { j, _ -> j != i }, false); abierta = -1 }, color = Ink.White50)
+                BotonIcono(Glifos.cerrar, { onCambio(piezas.filterIndexed { j, _ -> j != i }, false); abierta = -1 }, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${m.tipo.nombre}")
             }
             AnimatedVisibility(abierta == i) {
-                Column(Modifier.padding(horizontal = 12.dp).padding(bottom = 8.dp)) {
-                    Deslizador("Cuanto", m.intensidad, 0f, 3f, { v -> cambiar(m.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
-                    Opciones(Curva.values().toList(), m.curva, { it.nombre }, { cu -> cambiar(m.copy(curva = cu), false) })
+                Column(Modifier.padding(horizontal = 10.dp).padding(bottom = 8.dp)) {
+                    Deslizador("Cuánto", m.intensidad, 0f, 3f, { v -> cambiar(m.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+                    Tira(Modifier.padding(vertical = 3.dp)) {
+                        Curva.values().forEach { cu -> Chip(cu.nombre, cu == m.curva, { cambiar(m.copy(curva = cu), false) }) }
+                    }
                     if (duracionUs > 0 && visibleUs > 0) {
                         val inicio = tramo(m.desde, duracionUs)
                         val fin = tramo(m.hasta, duracionUs).coerceAtLeast(inicio)
@@ -846,23 +694,33 @@ private fun Piezas(
                         // Se escribe sobre lo que dura la animacion, pero solo dentro de lo que se ve
                         CampoTiempo("Empieza", inicio, 0, (min(fin, visibleUs) - paso).coerceAtLeast(0), { us, arrastre ->
                             cambiar(m.copy(desde = us.toFloat() / duracionUs), arrastre)
-                        }, origenUs = origenUs)
+                        }, deslizador = false, origenUs = origenUs)
                         CampoTiempo("Termina", fin, (inicio + paso).coerceAtMost(visibleUs), visibleUs, { us, arrastre ->
                             cambiar(m.copy(hasta = us.toFloat() / duracionUs), arrastre)
-                        }, origenUs = origenUs)
+                        }, deslizador = false, origenUs = origenUs)
+                        if (deSalida) Nota("En la salida se cuentan hacia atrás, desde el final del bloque.")
                     }
                 }
             }
         }
     }
-    Spacer(Modifier.height(4.dp))
-    BotonBorde(if (agregando) "Elige la pieza" else "Sumar otra pieza", { agregando = !agregando }, glifo = Glifos.mas)
+    BotonTexto(if (agregando) "Elige la pieza" else "Sumar otra pieza", { agregando = !agregando }, glifo = Glifos.mas, encendido = agregando)
     AnimatedVisibility(agregando) {
         Opciones(Animacion.values().toList(), null, { it.nombre }, { t ->
             onCambio(piezas + Movimiento(t), false)
             agregando = false
             abierta = piezas.size
-        }, Modifier.padding(top = 6.dp))
+        })
+    }
+}
+
+/** "Piezas", el ajuste a fotogramas de sus tiempos y, si no esta ya guardada, "Guardar". */
+@Composable
+private fun CabeceraPiezas(guardada: Boolean, onGuardar: () -> Unit, conFotogramas: Boolean = true) {
+    Row(Modifier.fillMaxWidth().padding(bottom = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+        Etiqueta("Piezas", Modifier.weight(1f))
+        if (!guardada) BotonTexto("Guardar", onGuardar, glifo = Glifos.guardar)
+        if (conFotogramas) InterruptorFotogramas()
     }
 }
 
@@ -876,32 +734,28 @@ private fun PiezasContinuas(estado: EstadoEditor, a: AnimacionAplicada) {
     val piezas = a.continuas
     var agregando by remember(a.id) { mutableStateOf(false) }
     fun poner(l: List<Continuo>, arrastre: Boolean = false) = LogicaAnimacion.cambiarContinuas(estado, a.id, l, arrastre)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Etiqueta("Piezas", Modifier.weight(1f))
-        if ((Combinaciones.continuas + AjustesEditor.continuasMias).none { it.second == piezas }) BotonGuardar {
-            val nombre = AjustesEditor.nombreNuevo("Mia continua", AjustesEditor.continuasMias.map { it.first })
-            AjustesEditor.continuasMias = AjustesEditor.continuasMias + (nombre to piezas)
-            AjustesEditor.alCambiar()
-            estado.avisar("Guardada como \"$nombre\"")
-        }
-    }
+    CabeceraPiezas((Combinaciones.continuas + AjustesEditor.continuasMias).any { it.second == piezas }, {
+        val nombre = AjustesEditor.nombreNuevo("Mia continua", AjustesEditor.continuasMias.map { it.first })
+        AjustesEditor.continuasMias = AjustesEditor.continuasMias + (nombre to piezas)
+        AjustesEditor.alCambiar()
+        estado.avisar("Guardada como \"$nombre\"")
+    }, conFotogramas = false)
     piezas.forEachIndexed { i, k ->
         fun cambiar(n: Continuo) = poner(piezas.toMutableList().also { it[i] = n }, true)
-        Column(Modifier.fillMaxWidth().padding(vertical = 3.dp).background(Ink.White04, esquinas(12.dp)).padding(horizontal = 12.dp)) {
+        Column(Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(esquinas(10.dp)).background(Ink.White04).padding(start = 10.dp, end = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(k.tipo.nombre, style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium), color = Ink.White90, modifier = Modifier.weight(1f))
-                BotonIcono(Glifos.cerrar, { poner(piezas.filterIndexed { j, _ -> j != i }) }, color = Ink.White50)
+                Text(k.tipo.nombre, style = Letra.cuerpo, color = Ink.White90, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                BotonIcono(Glifos.cerrar, { poner(piezas.filterIndexed { j, _ -> j != i }) }, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${k.tipo.nombre}")
             }
-            Deslizador("Cuanto", k.intensidad, 0f, 3f, { v -> cambiar(k.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+            Deslizador("Cuánto", k.intensidad, 0f, 3f, { v -> cambiar(k.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
             Deslizador("Rapidez", k.velocidad, 0.1f, 5f, { v -> cambiar(k.copy(velocidad = v)) }, neutro = 1f, escala = Escala.LOGARITMICA, texto = { "%.2gx".format(it) })
         }
     }
-    Spacer(Modifier.height(4.dp))
-    BotonBorde(if (agregando) "Elige la pieza" else "Sumar otra pieza", { agregando = !agregando }, glifo = Glifos.mas)
+    BotonTexto(if (agregando) "Elige la pieza" else "Sumar otra pieza", { agregando = !agregando }, glifo = Glifos.mas, encendido = agregando)
     AnimatedVisibility(agregando) {
         Opciones(AnimacionContinua.values().toList(), null, { it.nombre }, { t ->
             poner(piezas + Continuo(t)); agregando = false
-        }, Modifier.padding(top = 6.dp))
+        })
     }
 }
 
@@ -1169,21 +1023,4 @@ private fun DrawScope.dibujoContinua(t: AnimacionContinua, col: Color) {
 private fun DrawScope.pulsos(col: Color, tl: Offset, w: Float, h: Float) {
     val y = tl.y + h + 6.dp.toPx()
     for (k in 0..2) drawCircle(col.copy(alpha = if (k == 0) 1f else 0.45f), 1.6.dp.toPx(), Offset(tl.x + w * (0.2f + k * 0.3f), y))
-}
-
-/** "Guardar como mia", con sitio de sobra para el dedo. */
-@Composable
-private fun BotonGuardar(onClick: () -> Unit) {
-    Row(
-        Modifier
-            .heightIn(min = 40.dp)
-            .clip(esquinas(10.dp))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icono(Glifos.guardar, tam = 16.dp)
-        Spacer(Modifier.width(6.dp))
-        Text("Guardar como mia", style = MaterialTheme.typography.bodyMedium, color = Ink.White)
-    }
 }

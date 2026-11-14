@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,6 +34,8 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -46,8 +47,14 @@ import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.TiempoPreciso
-import com.royermethod.app.ui.components.Chip
+import com.royermethod.app.ui.components.BotonTexto
+import com.royermethod.app.ui.components.ChipInterruptor
 import com.royermethod.app.ui.components.Deslizador
+import com.royermethod.app.ui.components.Fila
+import com.royermethod.app.ui.components.Glifo
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
@@ -60,7 +67,8 @@ import kotlin.math.roundToLong
  * o se mueve con -/+; se pega a los fotogramas solo si el usuario lo tiene
  * pedido (AjustesEditor.ajustarFotogramas). TiempoFotogramas es el de
  * siempre, en fotogramas enteros: lo siguen usando las transiciones, que la
- * linea cuantiza igual (Linea.solape).
+ * linea cuantiza igual (Linea.solape). Los dos van en una fila, como los
+ * deslizadores de las hojas.
  */
 
 /**
@@ -175,13 +183,14 @@ internal object TiempoCampo {
 }
 
 /**
- * Un tiempo con precision de microsegundos, pensado para el pulgar: el valor
- * se toca para escribirlo (acepta "0,005", "0.005" o "5 ms"; nunca negativo),
- * -/+ lo mueven un fotograma (sin ajuste a fotogramas, 1 ms o 10 ms segun la
- * pastilla "Paso" de debajo) y el deslizador lo arrastra (redondeado, nunca
- * truncado; en tramos largos al milisegundo, lo exacto se escribe). Escribir
- * o tocar -/+ es un paso de deshacer (`arrastre = false`); un arrastre
- * entero, otro (`arrastre = true`). Botones de 44 dp.
+ * Un tiempo con precision de microsegundos en una sola fila: el nombre, y a la
+ * derecha "−", el valor y "+". El valor se toca para escribirlo (acepta
+ * "0,005", "0.005" o "5 ms"; nunca negativo); -/+ lo mueven un fotograma (sin
+ * ajuste a fotogramas, 1 ms o 10 ms segun el boton de paso). Con [deslizador]
+ * hay debajo una barra para arrastrarlo (redondeado, nunca truncado; en tramos
+ * largos al milisegundo, lo exacto se escribe). Escribir o tocar -/+ es un
+ * paso de deshacer (`arrastre = false`); un arrastre entero, otro
+ * (`arrastre = true`).
  *
  * [origenUs] es donde empieza el bloque en la linea, para que el ajuste a
  * fotogramas caiga en cuadros que se exportan; con 0 se cuenta desde el
@@ -213,24 +222,13 @@ fun CampoTiempo(
         onCambio(TiempoCampo.paso(valor, sentido, fotogramas, pasoUs, minimo, maximo, origenUs), false)
     }
 
-    // Titulo y -/valor/+ en una fila; debajo el deslizador y el paso de los
-    // botones. Asi el titulo tiene sitio en 360 dp sin partirse letra a letra
     val conDeslizador = deslizador && maximo > minimo
-    // Sin deslizador, el paso de 1/10 ms va bajo el titulo y no ocupa otra fila
-    val pasoBajoTitulo = !conDeslizador && !fotogramas
-    Column(modifier.fillMaxWidth().padding(vertical = 2.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    titulo,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Ink.White70,
-                    maxLines = if (pasoBajoTitulo) 1 else 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-                if (pasoBajoTitulo) Chip(if (grueso) "Paso 10 ms" else "Paso 1 ms", grueso, { grueso = !grueso })
-            }
-            BotonPaso("−", valor > minimo) { mover(-1) }
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 42.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(titulo, style = Letra.cuerpo, color = Ink.White70, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            // Lo que mueven -/+ cuando no se pegan a los fotogramas: se toca para cambiarlo
+            if (!fotogramas && !conDeslizador) BotonTexto(if (grueso) "±10 ms" else "±1 ms", { grueso = !grueso })
+            BotonPaso(Glifos.menos, "Menos $titulo", valor > minimo) { mover(-1) }
             if (editando) {
                 EntradaTiempo(valor, error != null, onListo = { texto, explicito ->
                     val l = TiempoCampo.leer(texto, minimo, maximo, fotogramas, origenUs)
@@ -251,22 +249,21 @@ fun CampoTiempo(
             } else {
                 Text(
                     TiempoPreciso.texto(valor),
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+                    style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
                     color = Ink.White,
                     maxLines = 1,
                     modifier = Modifier
-                        .widthIn(min = 96.dp)
-                        .clip(esquinas(10.dp))
-                        .border(1.dp, Ink.White15, esquinas(10.dp))
+                        .widthIn(min = ANCHO_VALOR)
+                        .clip(esquinas(9.dp))
+                        .background(Ink.White08)
                         .clickable { editando = true; error = null; nota = null }
-                        .padding(horizontal = 8.dp, vertical = 12.dp)
+                        .padding(horizontal = 8.dp, vertical = 9.dp)
                 )
             }
-            BotonPaso("+", valor < maximo) { mover(1) }
+            BotonPaso(Glifos.mas, "Más $titulo", valor < maximo) { mover(1) }
         }
-        // Sin deslizador no hace falta la fila (el paso fino ya esta bajo el titulo)
         if (conDeslizador) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 Deslizador(
                     titulo, valor / 1e6f, minimo / 1e6f, maximo / 1e6f,
                     { v ->
@@ -278,9 +275,7 @@ fun CampoTiempo(
                     iman = false,
                     cabecera = false
                 )
-                // Lo que mueven -/+
-                if (fotogramas) Nota("Paso 1 f", Modifier.padding(horizontal = 6.dp))
-                else Chip(if (grueso) "Paso 10 ms" else "Paso 1 ms", grueso, { grueso = !grueso })
+                if (!fotogramas) BotonTexto(if (grueso) "±10 ms" else "±1 ms", { grueso = !grueso })
             }
         }
         val aviso = error ?: nota?.takeIf { it.first == valor }?.second
@@ -288,19 +283,23 @@ fun CampoTiempo(
     }
 }
 
-/** Boton redondo de -/+ de un fotograma o un paso: 44 dp para el pulgar. */
+/** Lo que ocupa el valor entre -/+: cabe "≈10.067 s" sin bailar al cambiar. */
+private val ANCHO_VALOR = 82.dp
+
+/** Boton redondo de -/+ de un fotograma o un paso. */
 @Composable
-private fun BotonPaso(texto: String, activo: Boolean, onClick: () -> Unit) {
+internal fun BotonPaso(glifo: Glifo, descripcion: String, activo: Boolean, onClick: () -> Unit) {
     Box(
         Modifier
-            .size(44.dp)
+            .size(36.dp)
+            .semantics { contentDescription = descripcion }
             .clip(CircleShape)
             .background(Ink.White08)
             .clickable(enabled = activo, onClick = onClick)
             .alpha(if (activo) 1f else 0.3f),
         contentAlignment = Alignment.Center
     ) {
-        Text(texto, style = MaterialTheme.typography.titleMedium, color = Ink.White90)
+        Icono(glifo, color = Ink.White90, tam = 16.dp)
     }
 }
 
@@ -329,15 +328,14 @@ private fun EntradaTiempo(valorUs: Long, mal: Boolean, onListo: (String, Boolean
         value = texto,
         onValueChange = { texto = it },
         singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium.copy(color = Ink.White, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+        textStyle = Letra.cuerpo.copy(color = Ink.White, fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
         cursorBrush = SolidColor(Ink.White),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { listo(true) }),
         modifier = Modifier
-            .width(96.dp)
-            .heightIn(min = 44.dp)
-            .border(1.dp, if (mal) Ink.Peligro else Ink.White, esquinas(10.dp))
-            .padding(horizontal = 8.dp, vertical = 12.dp)
+            .width(ANCHO_VALOR)
+            .border(1.dp, if (mal) Ink.Peligro else Ink.White, esquinas(9.dp))
+            .padding(horizontal = 8.dp, vertical = 9.dp)
             .focusRequester(foco)
             .onFocusChanged {
                 if (it.isFocused) tuvoFoco = true
@@ -352,13 +350,16 @@ private fun EntradaTiempo(valorUs: Long, mal: Boolean, onListo: (String, Boolean
  */
 @Composable
 fun InterruptorFotogramas(modifier: Modifier = Modifier) {
-    Chip("Ajustar a fotogramas", AjustesEditor.ajustarFotogramas, {
-        AjustesEditor.ajustarFotogramas = !AjustesEditor.ajustarFotogramas
+    ChipInterruptor("Ajustar a fotogramas", AjustesEditor.ajustarFotogramas, {
+        AjustesEditor.ajustarFotogramas = it
         AjustesEditor.alCambiar()
     }, modifier)
 }
 
-/** Unidades reales y pasos exactos de 30 fps, tambien para tramos menores de 0.1 s. */
+/**
+ * Un tiempo en fotogramas enteros de 30 fps (lo usan las transiciones, que la
+ * linea cuantiza igual), en una fila: la barra y -/+ de un fotograma.
+ */
 @Composable
 internal fun TiempoFotogramas(
     titulo: String,
@@ -370,24 +371,22 @@ internal fun TiempoFotogramas(
     val maximo = maxOf(minimoUs, maximoUs)
     val valor = valorUs.coerceIn(minimoUs, maximo)
     fun cuantizar(us: Long) = Linea.tiempoDe((us.coerceAtLeast(0) * Linea.FPS / 1_000_000.0).roundToLong()).coerceIn(minimoUs, maximo)
-    if (maximo > minimoUs) {
-        Deslizador(
-            titulo, valor / 1e6f, minimoUs / 1e6f, maximo / 1e6f,
-            { v -> onCambio(cuantizar((v * 1e6).toLong()), true) },
-            texto = { "%.3f s".format(it) }
-        )
-    } else {
-        Text("$titulo  ${"%.3f s".format(valor / 1e6)}", style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.padding(vertical = 8.dp))
+    fun paso(sentido: Int) {
+        val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
+        onCambio(Linea.tiempoDe((n + sentido).coerceAtLeast(0)).coerceIn(minimoUs, maximo), false)
     }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Chip("−1 f", false, {
-            val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
-            onCambio(Linea.tiempoDe((n - 1).coerceAtLeast(0)).coerceIn(minimoUs, maximo), false)
-        })
-        Chip("+1 f", false, {
-            val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
-            onCambio(Linea.tiempoDe(n + 1).coerceIn(minimoUs, maximo), false)
-        })
-        Text("1 f = 0.033 s", style = MaterialTheme.typography.bodySmall, color = Ink.White50)
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        if (maximo > minimoUs) {
+            Deslizador(
+                titulo, valor / 1e6f, minimoUs / 1e6f, maximo / 1e6f,
+                { v -> onCambio(cuantizar((v * 1e6).toLong()), true) },
+                modifier = Modifier.weight(1f),
+                texto = { "%.2f s".format(it) }
+            )
+        } else {
+            Fila(titulo, Modifier.weight(1f)) { Text("%.2f s".format(valor / 1e6), style = Letra.cuerpo, color = Ink.White) }
+        }
+        BotonPaso(Glifos.menos, "Un fotograma menos", valor > minimoUs) { paso(-1) }
+        BotonPaso(Glifos.mas, "Un fotograma más", valor < maximo) { paso(1) }
     }
 }

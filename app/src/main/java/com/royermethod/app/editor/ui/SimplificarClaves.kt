@@ -1,10 +1,7 @@
 package com.royermethod.app.editor.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +9,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -28,7 +23,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,9 +37,13 @@ import com.royermethod.app.editor.modelo.Tolerancia
 import com.royermethod.app.editor.modelo.Trayectoria
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonLleno
+import com.royermethod.app.ui.components.Chip
 import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.Nota
-import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Segmentos
+import com.royermethod.app.ui.components.Tira
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import java.util.Locale
@@ -245,39 +243,27 @@ internal fun NavegadorClaves(tiempos: List<Long>, tolerancia: Long, local: () ->
     }
     val p = pos
     Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        BotonFlecha("‹", p.anterior != null) { p.anterior?.let(onIr) }
+        BotonPaso(Glifos.atras, "Clave anterior", p.anterior != null) { p.anterior?.let(onIr) }
         Text(
             if (p.indice >= 0) "Clave ${p.indice + 1} de ${tiempos.size} · ${TiempoPreciso.texto(tiempos[p.indice])}"
             else "${tiempos.size} claves · ninguna en el cabezal",
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+            style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
             color = if (p.indice >= 0) Ink.White else Ink.White70,
             maxLines = 1,
             modifier = Modifier.weight(1f)
         )
-        BotonFlecha("›", p.siguiente != null) { p.siguiente?.let(onIr) }
+        BotonPaso(Glifos.siguiente, "Clave siguiente", p.siguiente != null) { p.siguiente?.let(onIr) }
     }
-    if (tiempos.size <= MAX_PASTILLAS) {
-        Opciones(tiempos, if (p.indice >= 0) tiempos[p.indice] else null, { TiempoPreciso.texto(it) }, onIr)
+    // Pocas claves: una pastilla por clave con su tiempo, en una tira
+    if (tiempos.size in 2..MAX_PASTILLAS) {
+        Tira(Modifier.padding(vertical = 3.dp)) {
+            tiempos.forEach { t -> Chip(TiempoPreciso.texto(t), p.indice >= 0 && tiempos[p.indice] == t, { onIr(t) }) }
+        }
     }
 }
 
 /** Con mas claves que esto, solo las flechas: cientos de pastillas no se pueden leer. */
 private const val MAX_PASTILLAS = 12
-
-@Composable
-private fun BotonFlecha(texto: String, activo: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(Ink.White08)
-            .clickable(enabled = activo, onClick = onClick)
-            .alpha(if (activo) 1f else 0.3f),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(texto, style = MaterialTheme.typography.titleLarge, color = Ink.White90)
-    }
-}
 
 /**
  * "Simplificar claves" del bloque o de una parte, con antes/despues:
@@ -315,8 +301,8 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
     // La primera y la ultima se quedan siempre: con menos de tres no hay que probar
     val puede = claves.size >= 3
     if (puede) {
-        Nota("Quita las claves que sobran sin apartarse mas de la tolerancia en ningun cuadro exportado.", color = Ink.White50)
-        Opciones(Simplificador.TOLERANCIAS, tolPx, { Simplificador.textoPx(it) }, { tolPx = it })
+        // Quita las que sobran sin apartarse mas de la tolerancia en ningun cuadro exportado
+        Segmentos(Simplificador.TOLERANCIAS, tolPx, { Simplificador.textoPx(it) }, { tolPx = it })
     }
 
     val pr = vigente
@@ -331,11 +317,11 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
                 .padding(14.dp)
         ) {
             if (s.despues < s.antes) {
-                Text(Simplificador.resumen(s), style = MaterialTheme.typography.titleMedium, color = Ink.White)
+                Text(Simplificador.resumen(s), style = Letra.titulo, color = Ink.White)
                 Spacer(Modifier.height(4.dp))
                 Nota(Simplificador.textoError(s.errorMaxPx, s.tolerancia), color = Ink.White70)
                 Nota(Simplificador.textoOpacidad(s.errorMaxOpacidad, s.tolerancia), color = Ink.White70)
-                Nota("Medido en ${s.instantes} instantes de la exportacion", color = Ink.White50)
+                Nota("Medido en ${s.instantes} instantes de la exportación", color = Ink.White50)
                 Spacer(Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     BotonLleno("Aplicar", {
@@ -345,7 +331,7 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
                     BotonBorde("Cancelar", { prueba = null })
                 }
             } else {
-                Text("No sobra ninguna clave", style = MaterialTheme.typography.titleMedium, color = Ink.White)
+                Text("No sobra ninguna clave", style = Letra.titulo, color = Ink.White)
                 Nota("Con ${Simplificador.textoPx(s.tolerancia.px)} cada una de las ${s.antes} hace falta. Prueba otra tolerancia.", color = Ink.White70)
                 Spacer(Modifier.height(8.dp))
                 BotonBorde("Cerrar", { prueba = null })
@@ -372,6 +358,5 @@ internal fun SimplificadorClaves(estado: EstadoEditor, dueno: DuenoClaves) {
             })
             BotonBorde("Olvidar original", { estado.hacer { Simplificador.olvidar(it, dueno) } })
         }
-        Nota("Las claves que quedan se cambian una a una arriba.", Modifier.padding(top = 4.dp), color = Ink.White50)
     }
 }
