@@ -257,4 +257,61 @@ object Glifos {
         linea(c, 15f, 15f, 20f, 20f)
         linea(c, 8f, 10.5f, 13f, 10.5f)
     }
+
+    private fun DrawScope.almendra(c: Color) {
+        val path = Path()
+        path.moveTo(p(2.5f, 12f).x, p(2.5f, 12f).y)
+        path.cubicTo(p(6.5f, 5.5f).x, p(6.5f, 5.5f).y, p(17.5f, 5.5f).x, p(17.5f, 5.5f).y, p(21.5f, 12f).x, p(21.5f, 12f).y)
+        path.cubicTo(p(17.5f, 18.5f).x, p(17.5f, 18.5f).y, p(6.5f, 18.5f).x, p(6.5f, 18.5f).y, p(2.5f, 12f).x, p(2.5f, 12f).y)
+        path.close()
+        drawPath(path, c, style = trazo())
+    }
+    /** Ojo: las guias y el marco de lo elegido estan a la vista. */
+    val ojo: Glifo = { c -> almendra(c); circulo(c, 12f, 12f, 2.8f) }
+    /** Ojo tachado: guias y marcos ocultos. */
+    val ojoCerrado: Glifo = { c -> almendra(c); circulo(c, 12f, 12f, 2.8f); linea(c, 4.5f, 4.5f, 19.5f, 19.5f) }
+    /** Hojas apiladas: que capa va delante de cual. */
+    val capas: Glifo = { c ->
+        camino(c, true, false, 12f, 3.5f, 21f, 8.5f, 12f, 13.5f, 3f, 8.5f)
+        camino(c, false, false, 3f, 12.5f, 12f, 17.5f, 21f, 12.5f)
+        camino(c, false, false, 3f, 16.5f, 12f, 21.5f, 21f, 16.5f)
+    }
+    /** La imagen en trozos que se mueven por separado. */
+    val partes: Glifo = { c ->
+        caja(c, 3.5f, 3.5f, 7.5f, 7.5f, 1.5f)
+        caja(c, 13f, 3.5f, 7.5f, 7.5f, 1.5f)
+        caja(c, 3.5f, 13f, 7.5f, 7.5f, 1.5f)
+        caja(c, 13f, 13f, 7.5f, 7.5f, 1.5f)
+    }
+    /** Una caja con su sombra: borde, sombra y perspectiva. */
+    val borde: Glifo = { c ->
+        caja(c, 3.5f, 3.5f, 13.5f, 13.5f, 2.5f)
+        camino(c, false, false, 8f, 20.5f, 20.5f, 20.5f, 20.5f, 8f)
+    }
+    /** Carpeta: abrir, guardar y lo demas del proyecto. */
+    val carpeta: Glifo = { c ->
+        camino(c, true, false, 3.5f, 6.5f, 3.5f, 18.5f, 20.5f, 18.5f, 20.5f, 8.5f, 12f, 8.5f, 10f, 5.5f, 4.5f, 5.5f)
+    }
+    /** Sol: luces y destellos. */
+    val luz: Glifo = { c ->
+        circulo(c, 12f, 12f, 3.8f)
+        linea(c, 12f, 2.5f, 12f, 5f); linea(c, 12f, 19f, 12f, 21.5f)
+        linea(c, 2.5f, 12f, 5f, 12f); linea(c, 19f, 12f, 21.5f, 12f)
+        linea(c, 5.3f, 5.3f, 7f, 7f); linea(c, 17f, 17f, 18.7f, 18.7f)
+        linea(c, 5.3f, 18.7f, 7f, 17f); linea(c, 17f, 7f, 18.7f, 5.3f)
+    }
+    /** Candado: esto no se mueve de aqui. */
+    val candado: Glifo = { c ->
+        caja(c, 5.5f, 10.5f, 13f, 9.5f, 2f)
+        val a = Path()
+        a.addArc(androidx.compose.ui.geometry.Rect(p(8.5f, 4f), Size(u(7f), u(7f))), 180f, 180f)
+        drawPath(a, c, style = trazo())
+        linea(c, 8.5f, 7.5f, 8.5f, 10.5f); linea(c, 15.5f, 7.5f, 15.5f, 10.5f)
+    }
+    /** Caja con asas en las esquinas: mover, girar y cambiar de tamano. */
+    val transformar: Glifo = { c ->
+        caja(c, 5f, 5f, 14f, 14f, 1f)
+        circulo(c, 5f, 5f, 2.1f, relleno = true); circulo(c, 19f, 5f, 2.1f, relleno = true)
+        circulo(c, 5f, 19f, 2.1f, relleno = true); circulo(c, 19f, 19f, 2.1f, relleno = true)
+    }
 }

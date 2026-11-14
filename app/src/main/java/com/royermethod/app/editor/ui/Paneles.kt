@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -90,6 +91,7 @@ import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
 import com.royermethod.app.ui.components.Glifos
 import com.royermethod.app.ui.components.Interruptor
+import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.Mosaico
 import com.royermethod.app.ui.components.Muestras
@@ -108,15 +110,20 @@ import kotlin.math.max
 import kotlin.math.min
 
 /**
- * Hoja de abajo con un panel. Ocupa el sitio de la linea de tiempo y la
- * barra de herramientas. El panel puede ampliarse conservando el lienzo
- * visible para comprobar los cambios mientras se editan.
+ * Hoja de abajo con un panel, ordenada como en CapCut: arriba lo que se
+ * toca, abajo una barra con el nombre y el boton de listo, justo donde
+ * estaba la barra de herramientas (y donde cae el pulgar).
  *
- * [acciones] va en la fila del titulo, entre el titulo y el boton de cerrar
- * (p. ej. "Animaciones (2) ▾  +"). [fijo] queda debajo del titulo sin
- * desplazarse, encima del [contenido], que es lo unico que se desliza (p. ej.
- * una duracion que no debe perderse al bajar por un catalogo). Sin ellos la
- * hoja es la de siempre.
+ * Ocupa el sitio de la linea de tiempo y la barra de herramientas, nunca el
+ * de la imagen: abrir un panel no mueve ni encoge lo que se esta viendo. Con
+ * el asa de arriba se puede ampliar para ver mas controles a la vez.
+ *
+ * [corta] es para los paneles de dos o tres controles: la hoja mide lo que su
+ * contenido y la linea de tiempo se sigue viendo (y usando) encima.
+ *
+ * [acciones] va en la barra de abajo, entre el nombre y el boton de listo
+ * (p. ej. "Animar"). [fijo] queda arriba sin desplazarse, encima del
+ * [contenido], que es lo unico que se desliza (p. ej. unas pestanas).
  */
 @Composable
 fun HojaPanel(
@@ -126,18 +133,20 @@ fun HojaPanel(
     acciones: (@Composable RowScope.() -> Unit)? = null,
     fijo: (@Composable ColumnScope.() -> Unit)? = null,
     claveDesplazamiento: Any? = null,
+    corta: Boolean = false,
     contenido: @Composable ColumnScope.() -> Unit
 ) {
     val desplazamiento=rememberScrollState()
     LaunchedEffect(claveDesplazamiento) { desplazamiento.scrollTo(0) }
-    val tamano=LocalTamanoPanelEditor.current
+    val tamano=LocalTamanoPanelEditor.current.takeUnless { corta }
     Column(
         modifier
-            .fillMaxSize()
+            .fillMaxWidth()
+            .then(if (corta) Modifier else Modifier.fillMaxHeight())
             .background(Ink.Black)
     ) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
-        if(tamano!=null) Box(Modifier.fillMaxWidth().height(32.dp)
+        if(tamano!=null) Box(Modifier.fillMaxWidth().height(20.dp)
             .pointerInput(tamano.ampliado) {
                 var distancia=0f
                 detectVerticalDragGestures(onDragStart={distancia=0f},onDragEnd={
@@ -145,27 +154,38 @@ fun HojaPanel(
                 }) { ch,dy -> distancia+=dy;ch.consume() }
             }
             .semantics { contentDescription=if(tamano.ampliado) "Reducir panel" else "Ampliar panel" }
-            .clickable { tamano.cambiar() },contentAlignment=Alignment.Center) {
-            Box(Modifier.width(36.dp).height(4.dp).clip(esquinas(2.dp)).background(Ink.White30))
-        }
-        Row(
-            Modifier.fillMaxWidth().padding(start = 16.dp, end = 8.dp, top = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(titulo, style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 0.2.sp), color = Ink.White, modifier = Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
-            acciones?.invoke(this)
-            BotonIcono(Glifos.listo, onCerrar, descripcion = "Cerrar panel")
-        }
-        if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp), content = fijo)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tamano.cambiar() },contentAlignment=Alignment.Center) {
+            Box(Modifier.width(30.dp).height(3.dp).clip(esquinas(2.dp)).background(Ink.White30))
+        } else Spacer(Modifier.height(10.dp))
+        if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = MARGEN_HOJA), content = fijo)
         Column(
             Modifier
                 .fillMaxWidth()
-                .weight(1f)
+                .weight(1f, fill = !corta)
                 .verticalScroll(desplazamiento)
-                .padding(horizontal = 16.dp)
-                .padding(bottom = 16.dp),
+                .padding(horizontal = MARGEN_HOJA)
+                .padding(bottom = 8.dp),
             content = contenido
         )
+        BarraHoja(titulo, onCerrar, acciones)
+    }
+}
+
+/** Margen lateral del contenido de una hoja. */
+internal val MARGEN_HOJA = 14.dp
+
+/** La barra de abajo de una hoja: nombre, acciones y listo. */
+@Composable
+internal fun BarraHoja(titulo: String, onCerrar: () -> Unit, acciones: (@Composable RowScope.() -> Unit)? = null) {
+    Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 46.dp).padding(start = MARGEN_HOJA, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(titulo, style = Letra.titulo, color = Ink.White, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        acciones?.invoke(this)
+        BotonIcono(Glifos.listo, onCerrar, color = Ink.White, tam = 44.dp, descripcion = "Cerrar panel")
     }
 }
 

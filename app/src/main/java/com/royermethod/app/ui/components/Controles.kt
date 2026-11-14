@@ -20,10 +20,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,6 +37,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
@@ -46,14 +50,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.semantics.*
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -86,12 +93,41 @@ val LocalGestos = compositionLocalOf<Gestos> {
     }
 }
 
+/**
+ * Dentro del editor los controles van apretados: cada deslizador en una sola
+ * fila (nombre, barra, valor) para que quepan varios en la hoja de abajo sin
+ * tapar la imagen. Fuera (Personalizar) hay sitio y la barra va a todo el ancho.
+ */
+val LocalDenso = staticCompositionLocalOf { false }
+
+/**
+ * Letra de los paneles: la de la app sin el espaciado de letrero. En una hoja
+ * densa las mayusculas espaciadas ocupan el doble y se leen peor.
+ */
+object Letra {
+    val titulo: TextStyle
+        @Composable get() = MaterialTheme.typography.bodyLarge.copy(
+            fontSize = 14.5.sp * Estilo.letra, fontWeight = FontWeight.Medium, letterSpacing = 0.1.sp, lineHeight = 20.sp * Estilo.letra)
+    val cuerpo: TextStyle
+        @Composable get() = MaterialTheme.typography.bodyMedium.copy(letterSpacing = 0.1.sp, lineHeight = 17.sp * Estilo.letra)
+    val chica: TextStyle
+        @Composable get() = MaterialTheme.typography.bodyMedium.copy(
+            fontSize = 11.5.sp * Estilo.letra, letterSpacing = 0.1.sp, lineHeight = 15.sp * Estilo.letra)
+    val mini: TextStyle
+        @Composable get() = MaterialTheme.typography.labelSmall.copy(
+            fontSize = 10.5.sp * Estilo.letra, letterSpacing = 0.2.sp, lineHeight = 13.sp * Estilo.letra)
+}
+
 @Composable
 fun Icono(glifo: Glifo, modifier: Modifier = Modifier, color: Color = Ink.White, tam: Dp = 22.dp) {
     Canvas(modifier.size(tam)) { glifo(color) }
 }
 
-/** Un icono que se toca. Apagado se ve a medias y no responde. */
+/**
+ * Un icono que se toca. Apagado se ve a medias y no responde. [encendido] es
+ * para los que se prenden y se apagan (Zoom, Mover todo): un disco claro
+ * detras, que se vea de un vistazo que siguen puestos.
+ */
 @Composable
 fun BotonIcono(
     glifo: Glifo,
@@ -100,7 +136,8 @@ fun BotonIcono(
     activo: Boolean = true,
     color: Color = Ink.White90,
     tam: Dp = 40.dp,
-    descripcion: String? = null
+    descripcion: String? = null,
+    encendido: Boolean = false
 ) {
     Box(
         modifier
@@ -111,75 +148,94 @@ fun BotonIcono(
             .alpha(if (activo) 1f else 0.28f),
         contentAlignment = Alignment.Center
     ) {
-        Icono(glifo, color = color, tam = tam * 0.55f)
+        if (encendido) Box(Modifier.size(tam * 0.84f).clip(CircleShape).background(Ink.White15))
+        Icono(glifo, color = if (encendido) Ink.White else color, tam = tam * 0.55f)
     }
 }
 
 /**
- * Una herramienta de la barra de abajo: icono y nombre debajo. [encendida]
- * es para las que se prenden y se apagan (Zoom, Mover todo): fondo claro y
- * un punto, que se vea de lejos.
+ * Una herramienta de la barra de abajo: icono y nombre debajo. [resaltada]
+ * pone un punto junto al icono: "aqui ya hay algo puesto". [encendida] es
+ * para las que se prenden y se apagan (Mover todo): fondo claro, que se vea
+ * de lejos.
  */
 @Composable
 fun Herramienta(glifo: Glifo, texto: String, onClick: () -> Unit, activa: Boolean = true, resaltada: Boolean = false, encendida: Boolean = false) {
     Column(
         Modifier
             // Un nombre largo ("Compresion") ensancha la suya en vez de partirse
-            .widthIn(min = 64.dp)
+            .widthIn(min = 58.dp)
             .clip(esquinas(12.dp))
             .background(if (encendida) Ink.White15 else Color.Transparent)
             .clickable(enabled = activa, onClick = onClick)
             .alpha(if (activa) 1f else 0.3f)
-            .padding(horizontal = 4.dp, vertical = 8.dp),
+            .padding(horizontal = 5.dp, vertical = 7.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icono(glifo, color = if (resaltada) Ink.White else Ink.White90, tam = 22.dp)
-        Spacer(Modifier.height(6.dp))
+        Box {
+            Icono(glifo, color = if (resaltada || encendida) Ink.White else Ink.White90, tam = 22.dp)
+            if (resaltada) Box(Modifier.align(Alignment.TopEnd).offset(x = 5.dp, y = (-2).dp).size(5.dp).clip(CircleShape).background(Ink.White))
+        }
+        Spacer(Modifier.height(5.dp))
         Text(
             texto,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.4.sp, fontSize = 10.5.sp * Estilo.letra),
-            color = if (resaltada) Ink.White else Ink.White70,
+            style = Letra.mini,
+            color = if (resaltada || encendida) Ink.White else Ink.White70,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             textAlign = TextAlign.Center
         )
-        if (encendida) {
-            Spacer(Modifier.height(3.dp))
-            Box(Modifier.size(4.dp).clip(CircleShape).background(Ink.White))
-        }
     }
 }
 
 /** Una frase de ayuda: chica y tenue, pero sin espaciar para que se lea. */
 @Composable
 fun Nota(texto: String, modifier: Modifier = Modifier, color: Color = Ink.White50) {
-    Text(texto, modifier = modifier, style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp * Estilo.letra, letterSpacing = 0.2.sp), color = color)
+    Text(texto, modifier = modifier, style = Letra.chica, color = color)
 }
 
-/** Texto chico y espaciado que encabeza un grupo de controles. */
+/** Texto chico que encabeza un grupo de controles. */
 @Composable
 fun Etiqueta(texto: String, modifier: Modifier = Modifier) {
     Text(
-        texto.uppercase(),
-        modifier = modifier.padding(top = 8.dp, bottom = 2.dp),
-        style = MaterialTheme.typography.labelSmall,
+        texto,
+        modifier = modifier.padding(top = 6.dp, bottom = 2.dp),
+        style = Letra.chica.copy(fontWeight = FontWeight.Medium),
         color = Ink.White50,
-        maxLines = 1
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis
     )
 }
+
+/**
+ * Una fila "nombre y control", con el nombre en la misma columna que el de los
+ * deslizadores: varias seguidas quedan alineadas como una tabla.
+ */
+@Composable
+fun Fila(etiqueta: String, modifier: Modifier = Modifier, contenido: @Composable RowScope.() -> Unit) {
+    Row(modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(etiqueta, style = Letra.cuerpo, color = Ink.White70, modifier = Modifier.width(ANCHO_NOMBRE), maxLines = 2, overflow = TextOverflow.Ellipsis)
+        contenido()
+    }
+}
+
+/** Lo que ocupa el nombre de un control en su fila. */
+private val ANCHO_NOMBRE = 84.dp
 
 /** Como se mueve el valor a lo largo de la barra. */
 enum class Escala { LINEAL, LOGARITMICA }
 
 /**
  * Deslizador propio: barra fina con el tramo desde el valor neutro
- * iluminado, valor con unidades legibles y botón explícito de restablecer.
- * Un arrastre horizontal es un solo paso de deshacer; el vertical deja
- * desplazar la página sin tocar el valor.
+ * iluminado y el valor con unidades legibles. Tocar el valor (cuando no es
+ * el neutro) lo restablece. Un arrastre horizontal es un solo paso de
+ * deshacer; el vertical deja desplazar la página sin tocar el valor.
  *
- * [iman] = false quita el salto al neutro cerca de el (para tiempos finos);
- * [cabecera] = false dibuja solo la barra, para quien pone su propia fila
- * de titulo y valor encima (CampoTiempo).
+ * [enFila] lo pone todo en una fila (nombre, barra, valor), que es como va
+ * en los paneles del editor; si no, el nombre y el valor van encima y la
+ * barra ocupa todo el ancho. [iman] = false quita el salto al neutro cerca
+ * de el (para tiempos finos); [cabecera] = false dibuja solo la barra, para
+ * quien pone su propia fila de titulo y valor encima (CampoTiempo).
  */
 @Composable
 fun Deslizador(
@@ -194,7 +250,8 @@ fun Deslizador(
     paso: Float = 0f,
     texto: (Float) -> String = { valorDeControl(it, desde, hasta) },
     iman: Boolean = true,
-    cabecera: Boolean = true
+    cabecera: Boolean = true,
+    enFila: Boolean = LocalDenso.current
 ) {
     val gestos = LocalGestos.current
     val cambio by rememberUpdatedState(onCambio)
@@ -212,19 +269,11 @@ fun Deslizador(
         if (iman && abs(aPos(v) - aPos(neutro)) < 0.015f) v = neutro
         return v.coerceIn(desde, hasta)
     }
+    val restablecer = { gestos.empezar(); cambio(neutro); gestos.terminar() }
 
-    Column(modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        if (cabecera) Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 40.dp)) {
-            Text(etiqueta, style = MaterialTheme.typography.bodyMedium, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 2)
-            Text(texto(valor), style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
-                color = if (valor == neutro) Ink.White50 else Ink.White, modifier = Modifier.padding(horizontal = 8.dp))
-            BotonIcono(Glifos.reiniciar, {
-                gestos.empezar(); cambio(neutro); gestos.terminar()
-            }, activo = valor != neutro, tam = 32.dp, descripcion = "Restablecer $etiqueta")
-        }
+    val barra: @Composable (Modifier) -> Unit = { m ->
         Canvas(
-            Modifier
-                .fillMaxWidth()
+            m
                 .height(36.dp)
                 .semantics {
                     contentDescription = etiqueta
@@ -253,7 +302,7 @@ fun Deslizador(
             val margen = 10.dp.toPx()
             val w = size.width - 2 * margen
             val y = size.height / 2
-            val alto = 3.dp.toPx()
+            val alto = 2.5.dp.toPx()
             drawRoundRect(Ink.White15, Offset(margen, y - alto / 2), Size(w, alto), CornerRadius(alto))
             val p0 = aPos(neutro)
             val p1 = aPos(valor)
@@ -262,10 +311,46 @@ fun Deslizador(
             drawRoundRect(Ink.White, Offset(a, y - alto / 2), Size(b - a, alto), CornerRadius(alto))
             if (p0 > 0.001f && p0 < 0.999f) drawCircle(Ink.White50, 2.dp.toPx(), Offset(margen + w * p0, y))
             val x = margen + w * p1
-            drawCircle(Ink.Glow18, 13.dp.toPx(), Offset(x, y))
-            drawCircle(Ink.White, 8.dp.toPx(), Offset(x, y))
-            drawCircle(Ink.Black, 3.dp.toPx(), Offset(x, y))
+            drawCircle(Ink.Glow18, 11.dp.toPx(), Offset(x, y))
+            drawCircle(Ink.White, 7.dp.toPx(), Offset(x, y))
+            drawCircle(Ink.Black, 2.5.dp.toPx(), Offset(x, y))
         }
+    }
+
+    when {
+        !cabecera -> barra(modifier.fillMaxWidth())
+        enFila -> Row(modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(etiqueta, style = Letra.cuerpo, color = Ink.White70, modifier = Modifier.width(ANCHO_NOMBRE), maxLines = 2, overflow = TextOverflow.Ellipsis)
+            barra(Modifier.weight(1f))
+            ValorDeslizador(texto(valor), valor != neutro, etiqueta, restablecer, Modifier.widthIn(min = 56.dp))
+        }
+        else -> Column(modifier.fillMaxWidth().padding(vertical = 2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.heightIn(min = 28.dp)) {
+                Text(etiqueta, style = Letra.cuerpo, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                ValorDeslizador(texto(valor), valor != neutro, etiqueta, restablecer)
+            }
+            barra(Modifier.fillMaxWidth())
+        }
+    }
+}
+
+/** El valor de un deslizador. Cambiado, se ilumina y tocarlo vuelve al neutro. */
+@Composable
+private fun ValorDeslizador(texto: String, cambiado: Boolean, etiqueta: String, restablecer: () -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier
+            .heightIn(min = 32.dp)
+            .clip(esquinas(8.dp))
+            .then(if (cambiado) Modifier.semantics { contentDescription = "Restablecer $etiqueta" }.clickable(onClick = restablecer) else Modifier)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.End
+    ) {
+        if (cambiado) {
+            Icono(Glifos.reiniciar, color = Ink.White50, tam = 11.dp)
+            Spacer(Modifier.width(3.dp))
+        }
+        Text(texto, style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium), color = if (cambiado) Ink.White else Ink.White50, maxLines = 1, softWrap = false)
     }
 }
 
@@ -275,39 +360,74 @@ fun Chip(texto: String, elegido: Boolean, onClick: () -> Unit, modifier: Modifie
     val fondo by animateColorAsState(if (elegido) Ink.White else Ink.White08, tween(180), label = "chip")
     Row(
         modifier
-            .heightIn(min = 40.dp)
-            .clip(esquinas(20.dp))
+            .heightIn(min = 34.dp)
+            .clip(esquinas(17.dp))
             .background(fondo)
             .semantics { selected = elegido }
             .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             texto,
-            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (elegido) FontWeight.Medium else FontWeight.Normal),
+            style = Letra.cuerpo.copy(fontWeight = if (elegido) FontWeight.Medium else FontWeight.Normal),
             color = if (elegido) Ink.Black else Ink.White70,
             maxLines = 1
         )
         if (marca) {
-            Spacer(Modifier.width(6.dp))
-            Box(Modifier.size(6.dp).clip(CircleShape).background(if (elegido) Ink.Black else Ink.White))
+            Spacer(Modifier.width(5.dp))
+            Box(Modifier.size(5.dp).clip(CircleShape).background(if (elegido) Ink.Black else Ink.White))
         }
     }
 }
 
-/** Fila de pastillas que se desliza de lado si no caben. */
+/** Pastillas para elegir una opcion. Las que no caben bajan a otra fila: nada queda escondido. */
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
 fun <T> Opciones(opciones: List<T>, elegida: T?, nombre: (T) -> String, onElegir: (T) -> Unit, modifier: Modifier = Modifier) {
-    // Las que no caben bajan a otra fila: nada queda escondido a la derecha
     FlowRow(
-        modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        modifier.fillMaxWidth().padding(vertical = 3.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         opciones.forEach { o -> Chip(nombre(o), o == elegida, { onElegir(o) }) }
+    }
+}
+
+/**
+ * Pocas opciones (dos a cinco) en un solo control de ancho completo, todas del
+ * mismo tamaño: se lee de un vistazo y no deja pastillas sueltas de anchos
+ * distintos.
+ */
+@Composable
+fun <T> Segmentos(opciones: List<T>, elegida: T?, nombre: (T) -> String, onElegir: (T) -> Unit, modifier: Modifier = Modifier) {
+    Row(
+        modifier.fillMaxWidth().padding(vertical = 3.dp).clip(esquinas(11.dp)).background(Ink.White08).padding(3.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        opciones.forEach { o ->
+            val sel = o == elegida
+            val fondo by animateColorAsState(if (sel) Ink.White else Color.Transparent, tween(160), label = "segmento")
+            Box(
+                Modifier
+                    .weight(1f)
+                    .heightIn(min = 32.dp)
+                    .clip(esquinas(8.dp))
+                    .background(fondo)
+                    .semantics { selected = sel; role = Role.Tab }
+                    .clickable { onElegir(o) }
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    nombre(o),
+                    style = Letra.cuerpo.copy(fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
+                    color = if (sel) Ink.Black else Ink.White70,
+                    maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
     }
 }
 
@@ -320,52 +440,78 @@ fun Interruptor(texto: String, activo: Boolean, onCambio: (Boolean) -> Unit, det
             .clip(esquinas(10.dp))
             .semantics { stateDescription = if(activo) "Activado" else "Desactivado"; role = Role.Switch }
             .clickable { onCambio(!activo) }
-            .padding(vertical = 10.dp),
+            .heightIn(min = 40.dp)
+            .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(texto, style = MaterialTheme.typography.bodyMedium, color = Ink.White90)
+            Text(texto, style = Letra.cuerpo, color = Ink.White90)
             if (detalle != null) Nota(detalle)
         }
-        Spacer(Modifier.width(12.dp))
-        val pista by animateColorAsState(if (activo) Ink.White else Ink.White15, tween(200), label = "pista")
-        Box(
-            Modifier
-                .size(44.dp, 26.dp)
-                .clip(CircleShape)
-                .background(pista)
-                .padding(3.dp),
-            contentAlignment = if (activo) Alignment.CenterEnd else Alignment.CenterStart
-        ) {
-            Box(Modifier.size(20.dp).clip(CircleShape).background(if (activo) Ink.Black else Ink.White70))
-        }
+        Spacer(Modifier.width(10.dp))
+        Palanca(activo)
     }
 }
 
-/** Muestras de color. La elegida lleva un aro. Las que no caben bajan a otra fila. */
-@OptIn(ExperimentalLayoutApi::class)
+/** La palanca de un interruptor, sola. */
+@Composable
+fun Palanca(activo: Boolean, modifier: Modifier = Modifier) {
+    val pista by animateColorAsState(if (activo) Ink.White else Ink.White15, tween(200), label = "pista")
+    Box(
+        modifier
+            .size(38.dp, 22.dp)
+            .clip(CircleShape)
+            .background(pista)
+            .padding(3.dp),
+        contentAlignment = if (activo) Alignment.CenterEnd else Alignment.CenterStart
+    ) {
+        Box(Modifier.size(16.dp).clip(CircleShape).background(if (activo) Ink.Black else Ink.White70))
+    }
+}
+
+/**
+ * Un interruptor en pastilla, para poner varios en una fila ("Tono",
+ * "Fluido"): un punto relleno cuando esta encendido.
+ */
+@Composable
+fun ChipInterruptor(texto: String, activo: Boolean, onCambio: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val borde by animateColorAsState(if (activo) Ink.White else Ink.White15, tween(180), label = "chipInterruptor")
+    Row(
+        modifier
+            .heightIn(min = 34.dp)
+            .clip(esquinas(17.dp))
+            .background(if (activo) Ink.White15 else Color.Transparent)
+            .border(1.dp, borde, esquinas(17.dp))
+            .semantics { stateDescription = if (activo) "Activado" else "Desactivado"; role = Role.Switch }
+            .clickable { onCambio(!activo) }
+            .padding(horizontal = 12.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(9.dp).clip(CircleShape).background(if (activo) Ink.White else Color.Transparent).border(1.2.dp, if (activo) Ink.White else Ink.White50, CircleShape))
+        Spacer(Modifier.width(7.dp))
+        Text(texto, style = Letra.cuerpo, color = if (activo) Ink.White else Ink.White70, maxLines = 1)
+    }
+}
+
+/** Muestras de color en una tira que se desliza. La elegida lleva un aro. */
 @Composable
 fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifier: Modifier = Modifier, conNinguno: Boolean = false) {
-    FlowRow(
-        modifier.fillMaxWidth().padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
+    Tira(modifier.padding(vertical = 3.dp), hueco = 8.dp) {
         if (conNinguno) {
             Box(
                 Modifier
-                    .size(40.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .border(if (elegido == 0) 2.dp else 1.dp, if (elegido == 0) Ink.White else Ink.White30, CircleShape)
                     .clickable { onElegir(0) },
                 contentAlignment = Alignment.Center
-            ) { Icono(Glifos.cerrar, color = Ink.White50, tam = 16.dp) }
+            ) { Icono(Glifos.cerrar, color = Ink.White50, tam = 14.dp) }
         }
         colores.forEach { c ->
             val sel = c == elegido
             Box(
                 Modifier
-                    .size(40.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .border(2.dp, if (sel) Ink.White else Color.Transparent, CircleShape)
                     .padding(if (sel) 4.dp else 0.dp)
@@ -379,37 +525,39 @@ fun Muestras(colores: List<Int>, elegido: Int?, onElegir: (Int) -> Unit, modifie
     }
 }
 
-/** Pestanas con una raya debajo de la elegida. */
+/** Pestanas de texto: la elegida se ilumina y lleva una raya debajo. */
 @Composable
 fun Pestanas(nombres: List<String>, elegida: Int, onElegir: (Int) -> Unit, modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(modifier.fillMaxWidth().horizontalScroll(rememberScrollState())) {
         nombres.forEachIndexed { i, n ->
             val sel = i == elegida
-            Column(
+            Box(
                 Modifier
-                    .heightIn(min = 48.dp)
+                    .heightIn(min = 38.dp)
                     .clip(esquinas(8.dp))
-                    .background(if(sel)Ink.White08 else Color.Transparent)
                     .semantics { selected = sel; role = Role.Tab }
                     .clickable { onElegir(i) }
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    // El hueco entre pestanas es de la de la izquierda: tambien se toca
+                    .padding(end = 18.dp),
+                contentAlignment = Alignment.Center
             ) {
-                Text(
-                    n,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
-                    color = if (sel) Ink.White else Ink.White50,
-                    maxLines = 1, softWrap = false
-                )
-                Spacer(Modifier.height(5.dp))
-                Box(Modifier.size(if (sel) 18.dp else 0.dp, 2.dp).clip(CircleShape).background(Ink.White))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        n,
+                        style = Letra.cuerpo.copy(fontSize = 13.5.sp * Estilo.letra, fontWeight = if (sel) FontWeight.Medium else FontWeight.Normal),
+                        color = if (sel) Ink.White else Ink.White50,
+                        maxLines = 1, softWrap = false
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Box(Modifier.size(if (sel) 16.dp else 0.dp, 2.dp).clip(CircleShape).background(Ink.White))
+                }
             }
         }
     }
 }
 
 /**
- * Casilla de una cuadricula de opciones (animaciones, transiciones,
+ * Casilla de una tira o cuadricula de opciones (animaciones, transiciones,
  * filtros). Arriba un dibujo que explica la opcion, abajo su nombre.
  */
 @Composable
@@ -424,25 +572,25 @@ fun Mosaico(
     Column(
         modifier
             // Con peso dentro de una Cuadricula, el peso manda y se estira
-            .width(72.dp)
+            .width(60.dp)
             // Sin recortar: el nombre llega justo al borde y se comeria letras
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
             Modifier
-                .size(62.dp)
+                .size(56.dp)
                 .clip(esquinas(12.dp))
                 .background(if (elegido) Ink.White15 else Ink.White08)
                 .border(1.5.dp, borde, esquinas(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (dibujo != null) Canvas(Modifier.size(38.dp)) { dibujo(if (elegido) Ink.White else Ink.White70) }
+            if (dibujo != null) Canvas(Modifier.size(34.dp)) { dibujo(if (elegido) Ink.White else Ink.White70) }
         }
-        Spacer(Modifier.height(5.dp))
+        Spacer(Modifier.height(4.dp))
         Text(
             texto,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.2.sp, fontSize = 10.5.sp * Estilo.letra),
+            style = Letra.mini,
             color = if (elegido) Ink.White else Ink.White70,
             // Dos lineas: "Desde la izquierda" y "Desde la derecha" no pueden
             // quedar las dos en "Desde la…"
@@ -454,9 +602,8 @@ fun Mosaico(
 }
 
 /**
- * Casillas en filas que bajan, en vez de una tira que hay que arrastrar de
- * lado: se ven todas de un vistazo y el panel ya se desliza hacia abajo.
- * Cada columna se estira lo justo para llenar el ancho.
+ * Casillas en filas que bajan: se ven todas de un vistazo y el panel ya se
+ * desliza hacia abajo. Cada columna se estira lo justo para llenar el ancho.
  */
 @Composable
 fun <T> Cuadricula(
@@ -465,9 +612,9 @@ fun <T> Cuadricula(
     celda: @Composable (T, Modifier) -> Unit
 ) {
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        val hueco = 8.dp
-        val columnas = ((maxWidth + hueco) / (72.dp + hueco)).toInt().coerceAtLeast(3)
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        val hueco = 6.dp
+        val columnas = ((maxWidth + hueco) / (60.dp + hueco)).toInt().coerceAtLeast(3)
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             elementos.chunked(columnas).forEach { fila ->
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(hueco)) {
                     fila.forEach { celda(it, Modifier.weight(1f)) }
@@ -478,20 +625,52 @@ fun <T> Cuadricula(
     }
 }
 
+/**
+ * Tira que se desliza de lado, como las de CapCut. Un difuminado en el borde
+ * derecho avisa de que sigue: sin el, lo que no cabe parece que no existe.
+ */
+@Composable
+fun Tira(modifier: Modifier = Modifier, hueco: Dp = 6.dp, contenido: @Composable RowScope.() -> Unit) {
+    val desliza = rememberScrollState()
+    val hayMas by remember(desliza) { derivedStateOf { desliza.value < desliza.maxValue } }
+    val hayAntes by remember(desliza) { derivedStateOf { desliza.value > 0 } }
+    val fondo = Ink.Black
+    Row(
+        modifier
+            .fillMaxWidth()
+            .drawWithContent {
+                drawContent()
+                val ancho = 22.dp.toPx()
+                if (hayMas) drawRect(
+                    Brush.horizontalGradient(listOf(Color.Transparent, fondo), startX = size.width - ancho, endX = size.width),
+                    topLeft = Offset(size.width - ancho, 0f), size = Size(ancho, size.height)
+                )
+                if (hayAntes) drawRect(
+                    Brush.horizontalGradient(listOf(fondo, Color.Transparent), startX = 0f, endX = ancho),
+                    topLeft = Offset.Zero, size = Size(ancho, size.height)
+                )
+            }
+            .horizontalScroll(desliza),
+        horizontalArrangement = Arrangement.spacedBy(hueco),
+        content = contenido
+    )
+}
+
 /** Boton de texto con relleno de neon. */
 @Composable
 fun BotonLleno(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier, activo: Boolean = true) {
     Box(
         modifier
-            .clip(esquinas(22.dp))
+            .heightIn(min = 38.dp)
+            .clip(esquinas(19.dp))
             .background(if (activo) Ink.White else Ink.White15)
             .clickable(enabled = activo, onClick = onClick)
-            .padding(horizontal = 18.dp, vertical = 10.dp),
+            .padding(horizontal = 18.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
             texto,
-            style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 1.5.sp),
+            style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium, letterSpacing = 0.3.sp),
             color = if (activo) Ink.Black else Ink.White50,
             maxLines = 1
         )
@@ -504,19 +683,65 @@ fun BotonBorde(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier
     val color = if(peligro)Ink.Peligro else Ink.White90
     Row(
         modifier
-            .clip(esquinas(22.dp))
-            .heightIn(min = 42.dp)
-            .border(1.dp, if(peligro)Ink.Peligro.copy(alpha=.5f) else Ink.White30, esquinas(22.dp))
+            .clip(esquinas(18.dp))
+            .heightIn(min = 36.dp)
+            .border(1.dp, if(peligro)Ink.Peligro.copy(alpha=.5f) else Ink.White30, esquinas(18.dp))
             .alpha(if(activo)1f else .35f)
             .clickable(enabled = activo, onClick = onClick)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (glifo != null) {
-            Icono(glifo, color = color, tam = 16.dp)
+            Icono(glifo, color = color, tam = 15.dp)
             Spacer(Modifier.width(6.dp))
         }
-        Text(texto, style = MaterialTheme.typography.bodyMedium, color = color, maxLines = 1, softWrap = false)
+        Text(texto, style = Letra.cuerpo, color = color, maxLines = 1, softWrap = false)
+    }
+}
+
+/** Accion discreta, sin borde: icono y nombre. Para la barra de titulo de una hoja. */
+@Composable
+fun BotonTexto(texto: String, onClick: () -> Unit, modifier: Modifier = Modifier, glifo: Glifo? = null, activo: Boolean = true, encendido: Boolean = false) {
+    Row(
+        modifier
+            .heightIn(min = 36.dp)
+            .clip(esquinas(18.dp))
+            .background(if (encendido) Ink.White15 else Color.Transparent)
+            .alpha(if (activo) 1f else .35f)
+            .clickable(enabled = activo, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (glifo != null) {
+            Icono(glifo, color = if (encendido) Ink.White else Ink.White70, tam = 15.dp)
+            Spacer(Modifier.width(5.dp))
+        }
+        Text(texto, style = Letra.cuerpo, color = if (encendido) Ink.White else Ink.White70, maxLines = 1, softWrap = false)
+    }
+}
+
+/**
+ * Una accion de las que se hacen y ya (Espejo, Girar, Abrir, Guardar): casilla
+ * ancha con el icono encima y el nombre debajo. Varias en una fila, cada una
+ * con su peso, llenan el ancho y quedan todas iguales.
+ */
+@Composable
+fun BotonAccion(glifo: Glifo, texto: String, onClick: () -> Unit, modifier: Modifier = Modifier, activo: Boolean = true, peligro: Boolean = false) {
+    val color = if (peligro) Ink.Peligro else Ink.White90
+    Column(
+        modifier
+            .heightIn(min = 54.dp)
+            .clip(esquinas(12.dp))
+            .background(Ink.White08)
+            .alpha(if (activo) 1f else .35f)
+            .clickable(enabled = activo, onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icono(glifo, color = color, tam = 20.dp)
+        Spacer(Modifier.height(5.dp))
+        Text(texto, style = Letra.mini, color = if (peligro) Ink.Peligro else Ink.White70, maxLines = 1, overflow = TextOverflow.Ellipsis, textAlign = TextAlign.Center)
     }
 }
 
@@ -554,13 +779,13 @@ internal fun valorDeControl(v:Float,desde:Float,hasta:Float):String {
 @Composable
 fun SeccionAjustes(titulo:String,inicialmenteAbierta:Boolean=false,contenido:@Composable androidx.compose.foundation.layout.ColumnScope.()->Unit) {
     var abierta by rememberSaveable(titulo) { mutableStateOf(inicialmenteAbierta) }
-    Column(Modifier.fillMaxWidth().padding(vertical=6.dp).clip(esquinas(12.dp)).background(Ink.White04)) {
-        Row(Modifier.fillMaxWidth().heightIn(min=48.dp)
+    Column(Modifier.fillMaxWidth().padding(vertical=4.dp).clip(esquinas(10.dp)).background(Ink.White04)) {
+        Row(Modifier.fillMaxWidth().heightIn(min=40.dp)
             .semantics { stateDescription=if(abierta) "Expandido" else "Contraído" }
-            .clickable { abierta=!abierta }.padding(horizontal=12.dp,vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text(titulo,style=MaterialTheme.typography.bodyMedium,color=Ink.White90,modifier=Modifier.weight(1f))
-            Icono(Glifos.siguiente,Modifier.rotate(if(abierta)90f else 0f),color=Ink.White50,tam=18.dp)
+            .clickable { abierta=!abierta }.padding(horizontal=10.dp,vertical=6.dp),verticalAlignment=Alignment.CenterVertically) {
+            Text(titulo,style=Letra.cuerpo,color=Ink.White90,modifier=Modifier.weight(1f))
+            Icono(Glifos.siguiente,Modifier.rotate(if(abierta)90f else 0f),color=Ink.White50,tam=16.dp)
         }
-        AnimatedVisibility(abierta) { Column(Modifier.fillMaxWidth().padding(horizontal=12.dp).padding(bottom=12.dp),content=contenido) }
+        AnimatedVisibility(abierta) { Column(Modifier.fillMaxWidth().padding(horizontal=10.dp).padding(bottom=8.dp),content=contenido) }
     }
 }

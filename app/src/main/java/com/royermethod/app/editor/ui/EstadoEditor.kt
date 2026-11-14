@@ -33,26 +33,31 @@ data class ClavesElegidas(val id: Long, val tiempos: Set<Long>) {
     }
 }
 
-/** Paneles que se abren abajo para cambiar algo. */
+/**
+ * Paneles que se abren abajo para cambiar algo. El titulo es el mismo nombre
+ * que lleva su herramienta en la barra: se abre lo que se toco.
+ */
 enum class Panel(val titulo: String) {
     VELOCIDAD("Velocidad"),
     VOLUMEN("Volumen"),
     ANIMACION("Animar"),
-    PIEZAS("Partes de la imagen"),
-    EFECTOS("Efectos de video"),
-    TRANSICION("Transicion"),
+    PIEZAS("Partes"),
+    EFECTOS("Efectos"),
+    TRANSICION("Transición"),
     COLOR("Ajustes"),
-    MARCO("Bordes y perspectiva"),
+    MARCO("Borde"),
     RECORTE("Recorte"),
-    LUCES("Luces y trazos"),
-    CAPAS("Orden de capas"),
+    LUCES("Luces"),
+    CAPAS("Orden"),
     ENCUADRE("Encuadre"),
     TEXTO("Texto"),
     FORMATO("Formato"),
     CURVA("Curvas"),
     FLUIDEZ("Fluidez"),
-    COMPRESION("Compresion"),
-    RESOLUCION("Resolucion")
+    COMPRESION("Compresión"),
+    RESOLUCION("Resolución"),
+    /** Abrir, guardar, ejemplos y borrar todo: lo del proyecto entero. */
+    PROYECTO("Proyecto")
 }
 
 /**

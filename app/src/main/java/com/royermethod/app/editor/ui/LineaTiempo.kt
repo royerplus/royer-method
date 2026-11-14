@@ -644,7 +644,8 @@ private fun DrawScope.dibujar(
 
     // ---- Filas de abajo (capas y sonido), recortadas bajo la principal ----
     val arriba = FILAS_Y.dp.toPx() - 4.dp.toPx()
-    clipRect(top = arriba) {
+    // Con la linea muy baja (una hoja corta debajo) no queda sitio para estas filas
+    if (arriba < size.height) clipRect(top = arriba) {
         for (pz in g.piezas) {
             if (pz.pista == Pista.PRINCIPAL) continue
             val (y0d, y1d) = filaY(pz, desplazamientoY, g)

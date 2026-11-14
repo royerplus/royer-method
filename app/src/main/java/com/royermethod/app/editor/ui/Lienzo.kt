@@ -2,8 +2,11 @@ package com.royermethod.app.editor.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -37,6 +40,8 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.propiedadesEn
 import com.royermethod.app.editor.modelo.Clip
@@ -47,6 +52,9 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Medidor
 import com.royermethod.app.editor.modelo.Perspectiva
 import com.royermethod.app.editor.modelo.ZoomVista
+import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Icono
+import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.theme.Ink
 import com.royermethod.app.ui.theme.radio
@@ -277,17 +285,29 @@ fun Lienzo(
             }
             val z = estado.zoomVista
             if (z.puesto || estado.modoZoom) {
-                Text(
-                    if (z.puesto) "%.1fx".format(z.escala) else "Zoom",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Ink.White90,
-                    modifier = Modifier
+                // Cuanto esta acercada la vista. Con zoom puesto, tocarla lo quita:
+                // es el "Sin zoom" de antes, en el sitio donde se ve que hay zoom
+                Row(
+                    Modifier
                         .align(Alignment.BottomStart)
                         .padding(6.dp)
-                        .clip(esquinas(12.dp))
-                        .background(Color.Black.copy(alpha = 0.55f))
-                        .padding(horizontal = 10.dp, vertical = 5.dp)
-                )
+                        .clip(esquinas(14.dp))
+                        .background(Color.Black.copy(alpha = 0.6f))
+                        .then(
+                            if (z.puesto) Modifier
+                                .clickable { estado.zoomVista = ZoomVista.NINGUNO }
+                                .semantics { contentDescription = "Quitar zoom" }
+                            else Modifier
+                        )
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(if (z.puesto) "%.1fx".format(z.escala) else "Zoom", style = Letra.mini, color = Ink.White90, maxLines = 1)
+                    if (z.puesto) {
+                        Spacer(Modifier.width(6.dp))
+                        Icono(Glifos.cerrar, color = Ink.White70, tam = 9.dp)
+                    }
+                }
             }
         }
     }
