@@ -27,12 +27,14 @@ import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.PlanExportacion
 import com.royermethod.app.ui.components.BotonBorde
 import com.royermethod.app.ui.components.BotonLleno
+import com.royermethod.app.ui.components.BotonTexto
+import com.royermethod.app.ui.components.ChipInterruptor
 import com.royermethod.app.ui.components.Etiqueta
 import com.royermethod.app.ui.components.Glifos
 import com.royermethod.app.ui.components.Icono
-import com.royermethod.app.ui.components.Interruptor
+import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.Nota
-import com.royermethod.app.ui.components.Opciones
+import com.royermethod.app.ui.components.Segmentos
 import com.royermethod.app.ui.components.reloj
 import com.royermethod.app.ui.theme.Ink
 
@@ -81,61 +83,61 @@ fun PanelExportar(
 ) {
     val p = estado.proyecto
     when {
-        exportar.corriendo -> HojaPanel("Exportando", onCerrar) {
-            Spacer(Modifier.height(18.dp))
-            Text("${(exportar.fraccion * 100).toInt()}%", style = MaterialTheme.typography.displayLarge.copy(letterSpacing = 2.sp), color = Ink.White)
+        exportar.corriendo -> HojaPanel("Exportando", onCerrar, acciones = { BotonTexto("Cancelar", onCancelar, glifo = Glifos.cerrar) }) {
             Spacer(Modifier.height(14.dp))
+            Row(verticalAlignment = Alignment.Bottom) {
+                Text("${(exportar.fraccion * 100).toInt()}%", style = MaterialTheme.typography.displayLarge.copy(letterSpacing = 0.sp), color = Ink.White)
+                Spacer(Modifier.size(12.dp))
+                Text(
+                    exportar.restanteMs?.let { "Quedan unos ${(it / 1000).coerceAtLeast(1)} s" } ?: "Calculando…",
+                    style = Letra.cuerpo, color = Ink.White50, modifier = Modifier.padding(bottom = 10.dp)
+                )
+            }
+            Spacer(Modifier.height(10.dp))
             Barra(exportar.fraccion)
             Spacer(Modifier.height(10.dp))
-            Text(
-                exportar.restanteMs?.let { "Quedan unos ${(it / 1000).coerceAtLeast(1)} s" } ?: "Calculando…",
-                style = MaterialTheme.typography.bodyMedium, color = Ink.White50
-            )
-            Spacer(Modifier.height(6.dp))
-            Nota("Puedes salir de la app: sigue en segundo plano.", color = Ink.White30)
-            Spacer(Modifier.height(18.dp))
-            BotonBorde("Cancelar", onCancelar, glifo = Glifos.cerrar)
+            Nota("Puedes salir de la app: sigue en segundo plano.")
         }
 
         exportar.resultado != null -> HojaPanel("Listo", onCerrar) {
             val r = exportar.resultado
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icono(Glifos.listo, tam = 34.dp)
+                Icono(Glifos.listo, tam = 30.dp)
                 Spacer(Modifier.size(12.dp))
                 Column {
-                    Text("Guardado en la galeria", style = MaterialTheme.typography.titleMedium.copy(letterSpacing = 1.sp), color = Ink.White)
-                    Text("${peso(r.bytes)}  ·  ${r.ancho}×${r.alto}  ·  ${r.codec}", style = MaterialTheme.typography.bodyMedium, color = Ink.White70)
+                    Text("Guardado en la galería", style = Letra.titulo, color = Ink.White)
+                    Text("${peso(r.bytes)}  ·  ${r.ancho}×${r.alto}  ·  ${r.codec}", style = Letra.cuerpo, color = Ink.White70)
                 }
             }
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(12.dp))
             Text(
                 (if (r.perfecta) "Comprobado: " else "Ojo: ") + r.verificacion,
-                style = MaterialTheme.typography.bodyMedium,
+                style = Letra.cuerpo,
                 color = if (r.perfecta) Ink.White70 else Ink.Peligro
             )
             if (r.avisos > 0) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    "Algun archivo no se pudo leer en ${r.avisos} fotogramas y ahi salio en negro. " +
-                        "Mira que siga en el telefono.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    "Algún archivo no se pudo leer en ${r.avisos} fotogramas y ahí salió en negro. " +
+                        "Mira que siga en el teléfono.",
+                    style = Letra.cuerpo,
                     color = Ink.Peligro
                 )
             }
-            Spacer(Modifier.height(18.dp))
+            Spacer(Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                BotonLleno("Compartir", onCompartir)
+                BotonLleno("Compartir", onCompartir, Modifier.weight(1f))
                 BotonBorde("Seguir editando", onCerrar)
             }
         }
 
         exportar.fallo != null -> HojaPanel("No se pudo exportar", onCerrar) {
-            Spacer(Modifier.height(10.dp))
-            Text(exportar.fallo, style = MaterialTheme.typography.bodyMedium, color = Ink.White70)
-            Spacer(Modifier.height(16.dp))
+            Spacer(Modifier.height(8.dp))
+            Text(exportar.fallo, style = Letra.cuerpo, color = Ink.White70)
+            Spacer(Modifier.height(14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                BotonLleno("Intentar otra vez", onExportar)
+                BotonLleno("Intentar otra vez", onExportar, Modifier.weight(1f))
                 BotonBorde("Cerrar", onCerrar)
             }
         }
@@ -146,29 +148,30 @@ fun PanelExportar(
             fun salida(f: (AjustesSalida) -> AjustesSalida) = estado.hacer { it.copy(salida = f(it.salida)) }
             val plan = remember(p) { PlanExportacion.de(p, conAudio = p.audios.isNotEmpty() || p.principal.any { it.esVideo && it.origen?.conAudio == true && it.volumen > 0f }) }
             Etiqueta("Calidad")
-            Opciones(Calidad.values().toList(), s.calidad, { it.nombre }, { c -> salida { it.copy(calidad = c) } })
-            Spacer(Modifier.height(6.dp))
-            Etiqueta("Resolucion")
-            Opciones(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
-            Interruptor("H.265", s.hevc, { v -> salida { it.copy(hevc = v) } }, "Misma calidad con bastante menos peso. Si el telefono no lo tiene, sale en H.264")
-            Interruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v -> salida { it.copy(desenfoqueMovimiento = v) } },
-                "El rastro que hace que las transiciones a 30 fps se vean fluidas")
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "≈ ${peso(plan.bytesEstimados)}",
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Medium, letterSpacing = 1.sp),
-                color = Ink.White
-            )
-            Nota("${plan.ancho}×${plan.alto}  ·  30 fps exactos  ·  ${reloj(plan.duracionUs)}  ·  ${Linea.fotogramas(p)} fotogramas", color = Ink.White50)
+            Segmentos(Calidad.values().toList(), s.calidad, { it.nombre }, { c -> salida { it.copy(calidad = c) } })
+            Etiqueta("Resolución")
+            Segmentos(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
+            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChipInterruptor("H.265", s.hevc, { v ->
+                    salida { it.copy(hevc = v) }
+                    if (v) estado.avisar("H.265: la misma calidad con bastante menos peso. Si el teléfono no lo tiene, sale en H.264")
+                })
+                ChipInterruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v ->
+                    salida { it.copy(desenfoqueMovimiento = v) }
+                    if (v) estado.avisar("El rastro que hace que las transiciones a 30 fps se vean fluidas")
+                })
+            }
+            // Lo que va a pesar, en grande, y al lado lo que sale
             val fluidos = (p.principal + p.capas.map { it.clip }).count { it.fluido }
-            if (fluidos > 0) {
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("≈ ${peso(plan.bytesEstimados)}", style = Letra.titulo.copy(fontSize = 18.sp, lineHeight = 24.sp), color = Ink.White, maxLines = 1, softWrap = false)
+                Spacer(Modifier.size(12.dp))
                 Nota(
-                    (if (fluidos == 1) "Un bloque va" else "$fluidos bloques van") +
-                        " con Fluido: se generan los fotogramas que faltan y tarda mas en salir.",
-                    color = Ink.White30
+                    "${plan.ancho}×${plan.alto}  ·  30 fps  ·  ${reloj(plan.duracionUs)}" +
+                        (if (fluidos > 0) "\n" + (if (fluidos == 1) "1 bloque" else "$fluidos bloques") + " con Fluido: tarda más" else ""),
+                    Modifier.weight(1f)
                 )
             }
-            Spacer(Modifier.height(14.dp))
             BotonLleno("Exportar", onExportar, Modifier.fillMaxWidth(), activo = p.principal.isNotEmpty() || p.capas.isNotEmpty())
         }
     }

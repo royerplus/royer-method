@@ -70,6 +70,7 @@ import com.royermethod.app.ui.components.LocalDenso
 import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.esquinas
 import com.royermethod.app.ui.components.reloj
+import com.royermethod.app.ui.components.segundos
 import com.royermethod.app.ui.theme.Ink
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -205,8 +206,15 @@ fun PantallaEditor(
                                         Panel.RECORTE -> HojaRecorte(estado, cerrar)
                                         Panel.LUCES -> HojaLuces(estado, cerrar)
                                         Panel.CAPAS -> HojaCapas(estado, cerrar)
+                                        Panel.ENCUADRE -> HojaEncuadre(estado, cerrar)
                                         Panel.PROYECTO -> HojaProyecto(estado, cerrar, onAbrirProyecto, onGuardarProyecto, onEjemplos)
-                                        else -> HojaPanel(p.titulo, onCerrar = cerrar, corta = p in HOJAS_CORTAS) { ContenidoPanel(estado, p) }
+                                        else -> {
+                                            val dato = datoDe(estado, p)
+                                            HojaPanel(
+                                                p.titulo, onCerrar = cerrar, corta = p in HOJAS_CORTAS,
+                                                acciones = if (dato != null) ({ DatoHoja(dato) }) else null
+                                            ) { ContenidoPanel(estado, p) }
+                                        }
                                     }
                                 }
                             }
@@ -222,6 +230,14 @@ fun PantallaEditor(
 /** Las hojas de dos o tres controles: miden lo que su contenido y dejan ver la linea de tiempo. */
 private val HOJAS_CORTAS = setOf(Panel.VELOCIDAD, Panel.VOLUMEN, Panel.FORMATO, Panel.FLUIDEZ, Panel.COMPRESION, Panel.RESOLUCION)
 
+/** Un dato corto para la barra de la hoja: lo que dura, lo que mide, a cuantos fps va. */
+private fun datoDe(estado: EstadoEditor, p: Panel): String? = when (p) {
+    Panel.VELOCIDAD -> estado.clipElegido?.let { "Dura ${segundos(it.duracionUs)}" }
+    Panel.FLUIDEZ -> fpsElegido(estado)
+    Panel.RESOLUCION -> medidasSalida(estado.proyecto)
+    else -> null
+}
+
 @Composable
 private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
     when (p) {
@@ -229,7 +245,6 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.VOLUMEN -> PanelVolumen(estado)
         Panel.PIEZAS -> PanelPiezas(estado)
         Panel.TRANSICION -> PanelTransicion(estado)
-        Panel.ENCUADRE -> PanelEncuadre(estado)
         Panel.FORMATO -> PanelFormato(estado)
         Panel.CURVA -> PanelCurva(estado)
         Panel.FLUIDEZ -> PanelFluidez(estado)
@@ -237,7 +252,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.RESOLUCION -> PanelResolucion(estado)
         // Van con su propia hoja (acciones en la barra y zona fija)
         Panel.ANIMACION, Panel.EFECTOS, Panel.TEXTO, Panel.COLOR, Panel.MARCO, Panel.RECORTE, Panel.LUCES,
-        Panel.CAPAS, Panel.PROYECTO -> Unit
+        Panel.CAPAS, Panel.ENCUADRE, Panel.PROYECTO -> Unit
     }
 }
 

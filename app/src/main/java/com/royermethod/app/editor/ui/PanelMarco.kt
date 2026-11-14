@@ -4,10 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -92,17 +89,17 @@ internal fun TiempoPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, movi
     val tiempos = puntos.filter { it in 0..c.duracionUs }.distinct().sorted()
     val tolerancia = toleranciaClaves()
     val cercano = tiempos.minByOrNull { abs(it - local) }?.takeIf { abs(it - local) <= tolerancia }
-    Column(Modifier.fillMaxWidth().clip(esquinas(12.dp)).background(Ink.White04).padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(c.duracionUs)}", style = MaterialTheme.typography.labelSmall, color = Ink.White70)
+    Column(Modifier.fillMaxWidth()) {
         val buscar by rememberUpdatedState<(Float, Float) -> Unit>({ x, w ->
             estado.pausarEn(inicio + ((x / w.coerceAtLeast(1f)).coerceIn(0f, 1f) * c.duracionUs).toLong())
         })
-        Canvas(Modifier.fillMaxWidth().height(36.dp)
+        // El tramo entero con sus rombos: tocar o arrastrar lleva el cabezal
+        Canvas(Modifier.fillMaxWidth().height(30.dp)
             .pointerInput(c.id) { detectTapGestures { buscar(it.x, size.width.toFloat()) } }
             .pointerInput(c.id) { detectDragGestures(onDragStart = { buscar(it.x, size.width.toFloat()) }) { ch, _ -> ch.consume(); buscar(ch.position.x, size.width.toFloat()) } }) {
-            val cy = size.height * .75f
-            val yClave = size.height * .22f
-            drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 4.dp.toPx())
+            val cy = size.height * .72f
+            val yClave = size.height * .24f
+            drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
             for (t in tiempos) {
                 val x = t.toFloat() / c.duracionUs * size.width
                 val r = 4.dp.toPx()
@@ -113,15 +110,20 @@ internal fun TiempoPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, movi
             drawLine(Ink.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
             drawCircle(Ink.White, 4.dp.toPx(), Offset(x, cy))
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            BotonIcono(Glifos.atras, { tiempos.lastOrNull { it < local - tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it < local - tolerancia })
+        // El instante a la izquierda y, a la derecha, ir de clave en clave, poner, quitar y la curva
+        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(c.duracionUs)}", style = Letra.chica, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 1)
+            BotonIcono(Glifos.atras, { tiempos.lastOrNull { it < local - tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it < local - tolerancia },
+                tam = 36.dp, descripcion = "Keyframe anterior")
             BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, false) },
-                modifier = Modifier.semantics { contentDescription = "Poner keyframe" })
+                tam = 36.dp, descripcion = "Poner keyframe")
             BotonIcono(Glifos.romboQuitar, { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, true) }, activo = cercano != null,
-                modifier = Modifier.semantics { contentDescription = "Quitar keyframe" })
-            BotonIcono(Glifos.siguiente, { tiempos.firstOrNull { it > local + tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it > local + tolerancia })
+                tam = 36.dp, descripcion = "Quitar keyframe")
+            BotonIcono(Glifos.siguiente, { tiempos.firstOrNull { it > local + tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it > local + tolerancia },
+                tam = 36.dp, descripcion = "Keyframe siguiente")
             BotonIcono(Glifos.curva, { estado.verCurvasPropiedades = !estado.verCurvasPropiedades },
-                modifier=Modifier.semantics { selected=estado.verCurvasPropiedades },descripcion="Editar curva de keyframes")
+                modifier = Modifier.semantics { selected = estado.verCurvasPropiedades }, tam = 36.dp, descripcion = "Editar curva de keyframes",
+                encendido = estado.verCurvasPropiedades)
         }
     }
 }
@@ -136,16 +138,13 @@ internal fun OpcionesPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, mo
     val canales = if (canal != null) listOf(canal) else disponibles
     val conEstilo = !movimiento || estado.modoClaveTexto != 1
     val conMovimiento = movimiento && estado.modoClaveTexto != 2 && canal == null
-    Spacer(Modifier.height(8.dp))
-    if (movimiento) Opciones(listOf(0, 1, 2), estado.modoClaveTexto, { listOf("Todo", "Movimiento", "Estilo")[it] }, { estado.modoClaveTexto = it })
+    // Que guarda cada keyframe: todo junto o una sola propiedad
+    if (movimiento) Segmentos(listOf(0, 1, 2), estado.modoClaveTexto, { listOf("Todo", "Movimiento", "Estilo")[it] }, { estado.modoClaveTexto = it })
     if (conEstilo) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip("Juntas", canal == null, { estado.canalPropiedad = null })
-            Chip("Por propiedad", canal != null, { estado.canalPropiedad = disponibles.first() })
-        }
+        Segmentos(listOf(false, true), canal != null, { if (it) "Por propiedad" else "Todas juntas" },
+            { suelta -> estado.canalPropiedad = if (suelta) (canal ?: disponibles.first()) else null })
         if (canal != null) {
-            Spacer(Modifier.height(6.dp))
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Tira(Modifier.padding(vertical = 3.dp)) {
                 disponibles.forEach { p -> Chip(p.titulo, canal == p, { estado.canalPropiedad = p }, marca = c.propiedades[p].orEmpty().isNotEmpty()) }
             }
         }
@@ -179,17 +178,23 @@ internal fun OpcionesPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, mo
     }
 }
 
+/** Los bordes hechos, en una tira: se toca uno y luego se afina con las barras. */
+private val ESTILOS_BORDE = listOf(
+    "Sin borde" to MarcoVisual(), "Fino" to MarcoVisual(ancho = .006f, color = 0xFF161616.toInt()),
+    "Blanco" to MarcoVisual(ancho = .012f), "Suave" to MarcoVisual(ancho = .008f, radio = .04f, sombra = .5f),
+    "Neón" to MarcoVisual(ancho = .008f, color = 0xFF53E4FF.toInt(), neon = .8f)
+)
+
 @Composable
 internal fun HojaMarco(estado: EstadoEditor, cerrar: () -> Unit) {
     val original=estado.clipElegido ?: return
     var tab by rememberSaveable { mutableIntStateOf(0) }
     var animar by rememberSaveable(original.id) { mutableStateOf(false) }
-    HojaPanel("Borde y 3D", cerrar, acciones={
+    HojaPanel(Panel.MARCO.titulo, cerrar, acciones={
         Chip("Animar",animar,{ animar=!animar },marca=original.propiedades.keys.any { it.grupo==GrupoPropiedad.MARCO })
     }, claveDesplazamiento=tab, fijo = {
-        if(animar) TiempoPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
-        Spacer(Modifier.height(8.dp))
         Pestanas(listOf("Borde", "Sombra", "Perspectiva"), tab, { tab = it })
+        if(animar) TiempoPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
     }) {
         if(animar) OpcionesPropiedades(estado, GrupoPropiedad.MARCO, tab == 2)
         if (tab == 2) {
@@ -198,39 +203,32 @@ internal fun HojaMarco(estado: EstadoEditor, cerrar: () -> Unit) {
             val original = estado.clipElegido ?: return@HojaPanel
             val c = original.propiedadesEn(estado.localElegido ?: 0L)
             val m = c.marco
-            Spacer(Modifier.height(8.dp))
             if (tab == 0) {
-                Etiqueta("Estilos rápidos")
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    for ((nombre, marco) in listOf(
-                        "Limpio" to MarcoVisual(), "Fino" to MarcoVisual(ancho = .006f, color = 0xFF161616.toInt()),
-                        "Blanco" to MarcoVisual(ancho = .012f), "Suave" to MarcoVisual(ancho = .008f, radio = .04f, sombra = .5f),
-                        "Neón" to MarcoVisual(ancho = .008f, color = 0xFF53E4FF.toInt(), neon = .8f))) {
+                Tira(Modifier.padding(top = 4.dp, bottom = 2.dp)) {
+                    for ((nombre, marco) in ESTILOS_BORDE) {
                         Chip(nombre, m == marco, { estado.cambiarAspecto { it.copy(marco = marco) } })
                     }
                 }
-                Deslizador("Anchura", m.ancho, 0f, .15f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(ancho = v)) } }, texto = { "%.1f %%".format(it * 100) })
-                Deslizador("Esquinas redondeadas", m.radio, 0f, .5f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(radio = v)) } })
-                Etiqueta("Color del borde")
+                Deslizador("Grosor", m.ancho, 0f, .15f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(ancho = v)) } }, texto = { "%.1f %%".format(it * 100) })
+                Deslizador("Esquinas", m.radio, 0f, .5f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(radio = v)) } })
+                Deslizador("Neón", m.neon, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(neon = v)) } })
                 ColorMarco(m.color) { v -> estado.cambiarAspecto { it.copy(marco = it.marco.copy(color = v, ancho = it.marco.ancho.takeIf { a -> a > 0f } ?: .008f)) } }
-                Deslizador("Resplandor neón", m.neon, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(neon = v)) } })
             } else {
-                Etiqueta("Sombra y resplandor")
-                Nota("El color y la difusión de la sombra son independientes del borde. Sin distancia funciona como un halo.")
+                // Sin distancia la sombra queda alrededor, como un halo
                 Deslizador("Opacidad", m.sombra, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(sombra = v)) } })
-                Etiqueta("Color de la sombra")
-                ColorMarco(m.colorSombra) { v -> estado.cambiarAspecto { it.copy(marco = it.marco.copy(colorSombra = v, sombra = it.marco.sombra.takeIf { a -> a > 0f } ?: .6f)) } }
                 Deslizador("Difusión", m.suavidad, 0f, .2f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(suavidad = v)) } })
                 Deslizador("Distancia", m.distancia, 0f, .3f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(distancia = v)) } })
                 Deslizador("Dirección", m.angulo, 0f, 360f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(angulo = v)) } }, texto = { "${it.toInt()}°" })
+                ColorMarco(m.colorSombra) { v -> estado.cambiarAspecto { it.copy(marco = it.marco.copy(colorSombra = v, sombra = it.marco.sombra.takeIf { a -> a > 0f } ?: .6f)) } }
             }
         }
     }
 }
 
+/** El color en su fila, con las muestras en una tira; el personalizado, plegado debajo. */
 @Composable
 private fun ColorMarco(color: Int, cambiar: (Int) -> Unit) {
-    Muestras(COLORES_TEXTO, color, cambiar)
+    Fila("Color") { Muestras(COLORES_TEXTO, color, cambiar, Modifier.weight(1f)) }
     SeccionAjustes("Color personalizado") {
         for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
             Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
@@ -239,18 +237,27 @@ private fun ColorMarco(color: Int, cambiar: (Int) -> Unit) {
     }
 }
 
+/**
+ * Ajustes de imagen de un bloque o de un tramo compartido. Tres pestanas: los
+ * ajustes (un deslizador y la tira para elegir cual), los filtros y a que
+ * capas llega.
+ */
 @Composable
 internal fun HojaColor(estado: EstadoEditor, cerrar: () -> Unit) {
     val c=estado.clipElegido ?: return
     var animar by rememberSaveable(c.id) { mutableStateOf(false) }
-    HojaPanel(if (c.esAjuste) "Ajustes" else "Ajuste local", cerrar, acciones={
+    var pestana by rememberSaveable { mutableIntStateOf(0) }
+    HojaPanel(if (c.esAjuste) Panel.COLOR.titulo else "Ajuste local", cerrar, acciones={
         Chip("Animar",animar,{ animar=!animar },marca=c.propiedades.keys.any { it.grupo==GrupoPropiedad.AJUSTES })
-    }, fijo = {
+    }, claveDesplazamiento = pestana, fijo = {
+        Pestanas(listOf("Ajustes", "Filtros", "Afecta a"), pestana, { pestana = it })
         if(animar) TiempoPropiedades(estado, GrupoPropiedad.AJUSTES)
     }) {
         if(animar) OpcionesPropiedades(estado, GrupoPropiedad.AJUSTES)
-        DestinosCapa(estado)
-        if(animar) Nota("Los keyframes cambian los valores durante el tramo.")
-        PanelColor(estado)
+        when (pestana) {
+            0 -> AjustesDeColor(estado)
+            1 -> FiltrosDeColor(estado)
+            else -> DestinosCapa(estado, desplegado = true)
+        }
     }
 }

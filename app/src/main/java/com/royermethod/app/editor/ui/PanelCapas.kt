@@ -81,11 +81,15 @@ internal fun ImagenClip(c: Clip, modifier: Modifier = Modifier) {
                 val fuente = when (t.fuente) { Fuente.SERIF -> FontFamily.Serif; Fuente.MONO -> FontFamily.Monospace; else -> FontFamily.SansSerif }
                 // El fondo, al contrario que la letra: un texto negro no se pierde
                 Box(Modifier.fillMaxSize().background(if (color.luminance() > 0.45f) Color(0xFF2B2E35) else Color(0xFFD5D8DE)), contentAlignment = Alignment.Center) {
-                    Text(t.contenido.trim().ifBlank { "Aa" }, color = color, fontFamily = fuente,
+                    val letras = t.contenido.trim().ifBlank { "Aa" }
+                    // Con una palabra larga la letra baja: partida en dos no se reconoce
+                    val larga = letras.split(' ', '\n').maxOf { it.length }
+                    val cuerpo = if (larga <= 4) 12.sp else if (larga <= 6) 9.5.sp else 8.sp
+                    Text(letras, color = color, fontFamily = fuente,
                         fontWeight = if (t.negrita) FontWeight.Bold else FontWeight.Normal,
                         fontStyle = if (t.cursiva) FontStyle.Italic else FontStyle.Normal,
-                        fontSize = 11.sp, lineHeight = 13.sp, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(3.dp))
+                        fontSize = cuerpo, lineHeight = cuerpo * 1.2f, textAlign = TextAlign.Center, maxLines = 3, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(2.dp))
                 }
             }
             else -> Icono(if (c.esVideo) Glifos.play else Glifos.superponer, color = Ink.White50, tam = 20.dp)
@@ -100,37 +104,43 @@ private fun tipoDe(c: Clip): String = if (c.esTexto) "Texto" else if (c.esVideo)
 // ----------------------------------------------------------------------
 
 /**
- * "Afecta a": una fila con lo elegido que se despliega en una tira de
- * casillas. El destino se guarda por identidad, de modo que reordenar las
- * capas no lo cambia.
+ * "Afecta a": a que capas llega un ajuste o un efecto. Una fila con lo elegido
+ * que se despliega en una tira de casillas; con [desplegado] (cuando ya tiene
+ * su propia pestana) va la tira sola. El destino se guarda por identidad, de
+ * modo que reordenar las capas no lo cambia.
  */
 @Composable
-internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null) {
+internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null, desplegado: Boolean = false) {
     val c = estado.clipElegido ?: return
     var abierto by rememberSaveable(c.id) { mutableStateOf(false) }
     val resumen = when {
-        !c.esAjuste -> "Solo este"
+        !c.esAjuste -> "Solo este bloque"
         c.afectaA == null -> "Todas las capas"
         c.afectaA.isEmpty() -> "Ninguna"
         c.afectaA.size == 1 -> "1 capa"
         else -> "${c.afectaA.size} capas"
     }
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 40.dp)
-            .clip(esquinas(10.dp))
-            .clickable { abierto = !abierto }
-            .semantics { contentDescription = "Afecta a: $resumen" },
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text("Afecta a", style = Letra.cuerpo, color = Ink.White70, modifier = Modifier.weight(1f))
-        Text(resumen, style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium), color = Ink.White, maxLines = 1)
-        Spacer(Modifier.width(6.dp))
-        Icono(Glifos.siguiente, Modifier.rotate(if (abierto) -90f else 90f), color = Ink.White50, tam = 13.dp)
+    if (!desplegado) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 40.dp)
+                .clip(esquinas(10.dp))
+                .clickable { abierto = !abierto }
+                .semantics { contentDescription = "Afecta a: $resumen" },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Afecta a", style = Letra.cuerpo, color = Ink.White70, modifier = Modifier.weight(1f))
+            Text(resumen, style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium), color = Ink.White, maxLines = 1)
+            Spacer(Modifier.width(6.dp))
+            Icono(Glifos.siguiente, Modifier.rotate(if (abierto) -90f else 90f), color = Ink.White50, tam = 13.dp)
+        }
+        if (!abierto) return
+    } else {
+        Spacer(Modifier.height(6.dp))
     }
-    if (!abierto) return
     if (!c.esAjuste) {
+        if (desplegado) Text(resumen, style = Letra.cuerpo, color = Ink.White70, modifier = Modifier.padding(bottom = 8.dp))
         // Lo puesto en un bloque es solo suyo: compartirlo lo pasa a un tramo aparte
         BotonBorde(if (efectoId == null) "Crear ajuste compartido" else "Compartir efecto", {
             if (efectoId == null) crearCapaAjuste(estado, efectos = estado.panel == Panel.EFECTOS, desdeElegido = true)
@@ -245,17 +255,14 @@ internal fun HojaCapas(estado: EstadoEditor, onCerrar: () -> Unit) {
     val filas = remember(p.capas) { filasOrden(p) }
     HojaPanel(
         Panel.CAPAS.titulo, onCerrar, corta = true,
-        acciones = if (filas.size >= 2) ({
-            Text("Mantén y arrastra", style = Letra.chica, color = Ink.White50, maxLines = 1, softWrap = false)
-            Spacer(Modifier.width(4.dp))
-        }) else null
+        acciones = if (filas.size >= 2) ({ DatoHoja("Mantén y arrastra") }) else null
     ) {
         if (filas.isEmpty()) {
             Nota("No hay capas encima de la pista principal.", Modifier.padding(vertical = 14.dp))
         } else {
             Row(Modifier.fillMaxWidth().padding(bottom = 3.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Delante", style = Letra.mini, color = Ink.White50)
-                Box(Modifier.weight(1f).padding(horizontal = 8.dp).height(1.dp).background(Ink.White08))
+                Box(Modifier.weight(1f).padding(horizontal = 8.dp).height(1.dp).background(Ink.White15))
                 Text("Detrás", style = Letra.mini, color = Ink.White50)
             }
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

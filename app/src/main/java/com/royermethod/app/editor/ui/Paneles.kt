@@ -7,7 +7,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,7 +56,6 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.propiedadesEn
 import com.royermethod.app.editor.modelo.Ajuste
 import com.royermethod.app.editor.modelo.AjustesColor
@@ -81,25 +78,24 @@ import com.royermethod.app.editor.modelo.Mezcla
 import com.royermethod.app.editor.modelo.Recorte
 import com.royermethod.app.editor.modelo.Texto
 import com.royermethod.app.editor.modelo.TiempoPreciso
-import com.royermethod.app.ui.components.BotonBorde
+import com.royermethod.app.ui.components.BotonAccion
 import com.royermethod.app.ui.components.BotonIcono
-import com.royermethod.app.ui.components.BotonLleno
+import com.royermethod.app.ui.components.BotonTexto
 import com.royermethod.app.ui.components.Chip
-import com.royermethod.app.ui.components.Cuadricula
+import com.royermethod.app.ui.components.ChipInterruptor
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
 import com.royermethod.app.ui.components.Glifos
-import com.royermethod.app.ui.components.Interruptor
 import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.Mosaico
-import com.royermethod.app.ui.components.Muestras
 import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.Opciones
 import com.royermethod.app.ui.components.Pestanas
+import com.royermethod.app.ui.components.Segmentos
+import com.royermethod.app.ui.components.Tira
 import com.royermethod.app.ui.components.esquinas
-import com.royermethod.app.ui.components.segundos
 import com.royermethod.app.ui.theme.Ink
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -189,6 +185,16 @@ internal fun BarraHoja(titulo: String, onCerrar: () -> Unit, acciones: (@Composa
     }
 }
 
+/**
+ * Un dato corto en la barra de una hoja, junto al boton de listo: lo que dura,
+ * lo que mide, lo que pesa. Va ahi para no gastar una linea del contenido.
+ */
+@Composable
+internal fun DatoHoja(texto: String) {
+    Text(texto, style = Letra.chica, color = Ink.White50, maxLines = 1, softWrap = false)
+    Spacer(Modifier.width(4.dp))
+}
+
 @Composable
 private fun Hueco(alto: Int = 12) = Spacer(Modifier.height(alto.dp))
 
@@ -196,6 +202,15 @@ private fun Hueco(alto: Int = 12) = Spacer(Modifier.height(alto.dp))
 // Velocidad
 // ----------------------------------------------------------------------
 
+private val VELOCIDADES = listOf(0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 5f)
+
+/** "0.5x", "2x": sin ceros de mas. */
+private fun veces(v: Float): String = (if (v == v.toInt().toFloat()) "${v.toInt()}" else "$v") + "x"
+
+/**
+ * Velocidad: la barra, los valores de siempre en una tira y, debajo, los dos
+ * interruptores. Lo que dura el bloque va en la barra de la hoja.
+ */
 @Composable
 fun PanelVelocidad(estado: EstadoEditor) {
     val c = estado.clipElegido ?: return
@@ -205,22 +220,26 @@ fun PanelVelocidad(estado: EstadoEditor) {
         neutro = 1f, escala = Escala.LOGARITMICA,
         texto = { "%.2gx".format(it) }
     )
-    Opciones(listOf(0.25f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 5f), c.velocidad, { "%.2gx".format(it) }, { v ->
-        estado.cambiarClip { it.conVelocidad(v) }
-    })
-    Hueco(4)
-    Text("Dura ${segundos(c.duracionUs)}", style = MaterialTheme.typography.bodyMedium, color = Ink.White50)
-    Hueco(8)
-    Interruptor("Mantener el tono", c.mantenerTono, { v -> estado.cambiarClip { it.copy(mantenerTono = v) } },
-        "Que la voz no suene aguda al acelerar ni grave al frenar")
-    Interruptor("Fluido", c.fluido, { v -> estado.cambiarClip { it.copy(fluido = v) } },
-        "Genera los fotogramas que faltan: 30 fps sin tirones y camara lenta real. Exporta mas despacio")
+    Tira(Modifier.padding(vertical = 3.dp)) {
+        VELOCIDADES.forEach { v -> Chip(veces(v), c.velocidad == v, { estado.cambiarClip { it.conVelocidad(v) } }) }
+    }
+    Row(Modifier.fillMaxWidth().padding(top = 5.dp, bottom = 2.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        ChipInterruptor("Mantener tono", c.mantenerTono, { v ->
+            estado.cambiarClip { it.copy(mantenerTono = v) }
+            if (v) estado.avisar("La voz no suena aguda al acelerar ni grave al frenar")
+        })
+        ChipInterruptor("Fluido", c.fluido, { v ->
+            estado.cambiarClip { it.copy(fluido = v) }
+            if (v) estado.avisar("Fluido: se generan los fotogramas que faltan, sin tirones. Exporta más despacio")
+        })
+    }
 }
 
 // ----------------------------------------------------------------------
 // Volumen
 // ----------------------------------------------------------------------
 
+/** Volumen y los dos fundidos, de un sonido o del audio de un video. */
 @Composable
 fun PanelVolumen(estado: EstadoEditor) {
     val a = estado.sonidoElegido
@@ -228,17 +247,34 @@ fun PanelVolumen(estado: EstadoEditor) {
         val id = a.id
         fun cambiar(f: (com.royermethod.app.editor.modelo.PistaAudio) -> com.royermethod.app.editor.modelo.PistaAudio) =
             estado.ajustar { Edicion.cambiarAudio(it, id, f) }
-        val maxFundido = min(a.duracionUs / 2, 10_000_000L) / 1_000_000f
-        Deslizador("Volumen", a.volumen, 0f, 2f, { v -> cambiar { it.copy(volumen = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
-        Deslizador("Aparece poco a poco", a.fundidoEntradaUs / 1e6f, 0f, maxFundido, { v -> cambiar { it.copy(fundidoEntradaUs = (v * 1e6).toLong()) } }, paso = 0.1f, texto = { "%.1f s".format(it) })
-        Deslizador("Se va poco a poco", a.fundidoSalidaUs / 1e6f, 0f, maxFundido, { v -> cambiar { it.copy(fundidoSalidaUs = (v * 1e6).toLong()) } }, paso = 0.1f, texto = { "%.1f s".format(it) })
+        ControlesVolumen(
+            a.volumen, a.fundidoEntradaUs, a.fundidoSalidaUs, a.duracionUs,
+            { v -> cambiar { it.copy(volumen = v) } },
+            { v -> cambiar { it.copy(fundidoEntradaUs = v) } },
+            { v -> cambiar { it.copy(fundidoSalidaUs = v) } }
+        )
         return
     }
     val c = estado.clipElegido ?: return
-    val maxFundido = min(c.duracionUs / 2, 10_000_000L) / 1_000_000f
-    Deslizador("Volumen", c.volumen, 0f, 2f, { v -> estado.cambiarClip(true) { it.copy(volumen = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
-    Deslizador("Aparece poco a poco", c.fundidoEntradaUs / 1e6f, 0f, maxFundido, { v -> estado.cambiarClip(true) { it.copy(fundidoEntradaUs = (v * 1e6).toLong()) } }, paso = 0.1f, texto = { "%.1f s".format(it) })
-    Deslizador("Se va poco a poco", c.fundidoSalidaUs / 1e6f, 0f, maxFundido, { v -> estado.cambiarClip(true) { it.copy(fundidoSalidaUs = (v * 1e6).toLong()) } }, paso = 0.1f, texto = { "%.1f s".format(it) })
+    ControlesVolumen(
+        c.volumen, c.fundidoEntradaUs, c.fundidoSalidaUs, c.duracionUs,
+        { v -> estado.cambiarClip(true) { it.copy(volumen = v) } },
+        { v -> estado.cambiarClip(true) { it.copy(fundidoEntradaUs = v) } },
+        { v -> estado.cambiarClip(true) { it.copy(fundidoSalidaUs = v) } }
+    )
+}
+
+@Composable
+private fun ControlesVolumen(
+    volumen: Float, entradaUs: Long, salidaUs: Long, duracionUs: Long,
+    onVolumen: (Float) -> Unit, onEntrada: (Long) -> Unit, onSalida: (Long) -> Unit
+) {
+    val maxFundido = min(duracionUs / 2, 10_000_000L) / 1_000_000f
+    Deslizador("Volumen", volumen, 0f, 2f, onVolumen, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+    // Subir desde el silencio al empezar y bajar hasta el al terminar
+    Etiqueta("Fundido")
+    Deslizador("Entrada", entradaUs / 1e6f, 0f, maxFundido, { v -> onEntrada((v * 1e6).toLong()) }, paso = 0.1f, texto = { "%.1f s".format(it) })
+    Deslizador("Salida", salidaUs / 1e6f, 0f, maxFundido, { v -> onSalida((v * 1e6).toLong()) }, paso = 0.1f, texto = { "%.1f s".format(it) })
 }
 
 // ----------------------------------------------------------------------
@@ -250,6 +286,7 @@ private class Ajustito(
     val desde: Float,
     val leer: (AjustesColor) -> Float,
     val poner: (AjustesColor, Float) -> AjustesColor,
+    /** Lo que hace, para los que no se explican solos: sale un momento la primera vez que se elige. */
     val nota: String? = null
 )
 
@@ -258,19 +295,22 @@ private class Ajustito(
 private val AJUSTES = listOf(
     Ajustito("Brillo", -1f, { it.brillo }, { a, v -> a.copy(brillo = v) }),
     Ajustito("Contraste", -1f, { it.contraste }, { a, v -> a.copy(contraste = v) }),
-    Ajustito("Saturacion", -1f, { it.saturacion }, { a, v -> a.copy(saturacion = v) }),
-    Ajustito("Nitidez", 0f, { it.nitidez }, { a, v -> a.copy(nitidez = v) }, "Marca el filo de las lineas"),
-    Ajustito("Claridad", -1f, { it.claridad }, { a, v -> a.copy(claridad = v) }, "Mas volumen en el pelo y la ropa; a la izquierda suaviza"),
-    Ajustito("Exposicion", -1f, { it.exposicion }, { a, v -> a.copy(exposicion = v) }),
+    Ajustito("Saturación", -1f, { it.saturacion }, { a, v -> a.copy(saturacion = v) }),
+    Ajustito("Nitidez", 0f, { it.nitidez }, { a, v -> a.copy(nitidez = v) }, "Nitidez: marca el filo de las líneas"),
+    Ajustito("Claridad", -1f, { it.claridad }, { a, v -> a.copy(claridad = v) }, "Claridad: más volumen en el pelo y la ropa; a la izquierda suaviza"),
+    Ajustito("Exposición", -1f, { it.exposicion }, { a, v -> a.copy(exposicion = v) }),
     Ajustito("Luces", -1f, { it.luces }, { a, v -> a.copy(luces = v) }),
     Ajustito("Sombras", -1f, { it.sombras }, { a, v -> a.copy(sombras = v) }),
     Ajustito("Calidez", -1f, { it.calidez }, { a, v -> a.copy(calidez = v) }),
     Ajustito("Tinte", -1f, { it.tinte }, { a, v -> a.copy(tinte = v) }),
-    Ajustito("Vivacidad", -1f, { it.vivacidad }, { a, v -> a.copy(vivacidad = v) }, "Sube los colores apagados sin quemar los fuertes"),
+    Ajustito("Vivacidad", -1f, { it.vivacidad }, { a, v -> a.copy(vivacidad = v) }, "Vivacidad: sube los colores apagados sin quemar los fuertes"),
     Ajustito("Desvanecer", 0f, { it.desvanecer }, { a, v -> a.copy(desvanecer = v) }),
-    Ajustito("Vineta", 0f, { it.vineta }, { a, v -> a.copy(vineta = v) }),
-    Ajustito("Grano", 0f, { it.grano }, { a, v -> a.copy(grano = v) }, "El grano cambia en cada fotograma: el video exportado pesa mas")
+    Ajustito("Viñeta", 0f, { it.vineta }, { a, v -> a.copy(vineta = v) }),
+    Ajustito("Grano", 0f, { it.grano }, { a, v -> a.copy(grano = v) }, "El grano cambia en cada fotograma: el video exportado pesa más")
 )
+
+/** Las notas de ajustes que ya salieron en esta sesion: cada una se ensena una sola vez. */
+private val notasVistas = HashSet<String>()
 
 /** Un color que representa cada filtro en su casilla. */
 private fun muestraDe(f: Filtro): List<Color> = when (f) {
@@ -287,109 +327,120 @@ private fun muestraDe(f: Filtro): List<Color> = when (f) {
 }
 
 /**
- * Ajustes y filtros del bloque. Como en CapCut: un solo deslizador, el del
- * ajuste elegido en la fila de pastillas de abajo; un punto marca los que
- * tienen algo puesto. Asi caben todos sin una columna de catorce barras.
+ * Los ajustes del bloque, como en CapCut: un solo deslizador, el del ajuste
+ * elegido en la tira de abajo; un punto marca los que tienen algo puesto.
+ * Asi caben todos sin una columna de catorce barras.
  */
 @Composable
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-fun PanelColor(estado: EstadoEditor) {
+internal fun AjustesDeColor(estado: EstadoEditor) {
     val c = estado.clipElegido?.propiedadesEn(estado.localElegido ?: 0L) ?: return
-    var pestana by rememberSaveable { mutableIntStateOf(0) }
     var elegido by rememberSaveable { mutableIntStateOf(0) }
-    Pestanas(listOf("Ajustes", "Filtros"), pestana, { pestana = it })
-    Hueco(6)
-    if (pestana == 0) {
-        val a = AJUSTES[elegido]
-        // key: cada ajuste su deslizador, que el gesto guarda el rango y el neutro con que empezo
-        key(elegido) {
-            Deslizador(a.nombre, a.leer(c.color), a.desde, 1f, { v -> estado.cambiarAspecto(true) { it.copy(color = a.poner(it.color, v)) } },
-                neutro = 0f, texto = { if (a.desde < 0) "%+d".format((it * 100).toInt()) else "${(it * 100).toInt()}" })
+    val a = AJUSTES[elegido]
+    // key: cada ajuste su deslizador, que el gesto guarda el rango y el neutro con que empezo
+    key(elegido) {
+        Deslizador(a.nombre, a.leer(c.color), a.desde, 1f, { v -> estado.cambiarAspecto(true) { it.copy(color = a.poner(it.color, v)) } },
+            neutro = 0f, texto = { if (a.desde < 0) "%+d".format((it * 100).toInt()) else "${(it * 100).toInt()}" })
+    }
+    Tira(Modifier.padding(top = 4.dp, bottom = 4.dp)) {
+        AJUSTES.forEachIndexed { i, x ->
+            Chip(x.nombre, i == elegido, {
+                elegido = i
+                if (x.nota != null && notasVistas.add(x.nombre)) estado.avisar(x.nota)
+            }, marca = x.leer(c.color) != 0f)
         }
-        Nota(a.nota ?: "", color = Ink.White50)
-        Hueco(6)
-        val desliza = rememberScrollState()
-        Box(Modifier.fillMaxWidth()) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(desliza), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                AJUSTES.forEachIndexed { i, x -> Chip(x.nombre, i == elegido, { elegido = i }, marca = x.leer(c.color) != 0f) }
-            }
-            MasALaDerecha(desliza, Modifier.align(Alignment.CenterEnd).height(40.dp))
-        }
-    } else {
-        Cuadricula(Filtro.values().toList()) { f, m ->
+    }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        BotonTexto("Restablecer", { estado.cambiarAspecto { it.copy(color = AjustesColor()) } }, glifo = Glifos.reiniciar, activo = !c.color.neutro)
+        if (!c.esAjuste) BotonTexto("Copiar a la pista principal", { copiarColorAPrincipal(estado, c) })
+    }
+}
+
+/** Los filtros en una tira que se desliza y, con uno puesto, cuanto se nota. */
+@Composable
+internal fun FiltrosDeColor(estado: EstadoEditor) {
+    val c = estado.clipElegido?.propiedadesEn(estado.localElegido ?: 0L) ?: return
+    Tira(Modifier.padding(top = 4.dp)) {
+        Filtro.values().forEach { f ->
             val colores = muestraDe(f)
-            Mosaico(f.nombre, c.filtro == f, { estado.cambiarAspecto { it.copy(filtro = f) } }, m) { _ ->
+            Mosaico(f.nombre, c.filtro == f, { estado.cambiarAspecto { if (f == Filtro.NINGUNO) it.copy(filtro = f, intensidadFiltro = 1f) else it.copy(filtro = f) } }) { _ ->
                 drawCircle(colores[0], size.minDimension * 0.34f, Offset(size.width * 0.38f, size.height * 0.5f))
                 drawCircle(colores[1].copy(alpha = 0.85f), size.minDimension * 0.34f, Offset(size.width * 0.62f, size.height * 0.5f))
             }
         }
-        if (c.filtro != Filtro.NINGUNO) {
-            Hueco(6)
-            Deslizador("Intensidad", c.intensidadFiltro, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(intensidadFiltro = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
-        }
     }
-    Hueco(10)
-    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        // Cada pestana quita lo suyo: quitar los ajustes no se lleva el filtro
-        BotonBorde("Restablecer", {
-            if (pestana == 0) estado.cambiarAspecto { it.copy(color = AjustesColor()) }
-            else estado.cambiarAspecto { it.copy(filtro = Filtro.NINGUNO, intensidadFiltro = 1f) }
-        }, glifo = Glifos.reiniciar)
-        if(!c.esAjuste) BotonBorde("Copiar a pista principal", {
-            estado.hacer { p ->
-                // Los textos no tienen ajustes de imagen
-                p.copy(principal = p.principal.map { if (it.esTexto) it else it.copy(color = c.color, filtro = c.filtro, intensidadFiltro = c.intensidadFiltro) })
-            }
-            estado.avisar("Ajustes y filtro aplicados a toda la pista principal")
-        })
+    if (c.filtro != Filtro.NINGUNO) {
+        Hueco(4)
+        Deslizador("Intensidad", c.intensidadFiltro, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(intensidadFiltro = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+        if (!c.esAjuste) BotonTexto("Copiar a la pista principal", { copiarColorAPrincipal(estado, c) })
     }
+}
+
+/** Los ajustes y el filtro de [c], a todos los bloques de la pista principal. */
+private fun copiarColorAPrincipal(estado: EstadoEditor, c: Clip) {
+    estado.hacer { p ->
+        // Los textos no tienen ajustes de imagen
+        p.copy(principal = p.principal.map { if (it.esTexto) it else it.copy(color = c.color, filtro = c.filtro, intensidadFiltro = c.intensidadFiltro) })
+    }
+    estado.avisar("Ajustes y filtro aplicados a toda la pista principal")
 }
 
 // ----------------------------------------------------------------------
 // Encuadre
 // ----------------------------------------------------------------------
 
+/**
+ * Encuadre: donde esta el bloque, cuanto mide y como se mezcla. En pestanas,
+ * que eran catorce controles en una sola columna: Posicion (lo de todos los
+ * dias), Recorte (los cuatro bordes) y, en una capa, Mezcla.
+ */
 @Composable
-fun PanelEncuadre(estado: EstadoEditor) {
+internal fun HojaEncuadre(estado: EstadoEditor, cerrar: () -> Unit) {
     val c = estado.clipElegido ?: return
     val id = c.id
     val e = c.encuadreEn(estado.localElegido ?: 0)
+    val capa = estado.capaElegida
     fun cambiar(arrastre: Boolean = true, f: (com.royermethod.app.editor.modelo.Encuadre) -> com.royermethod.app.editor.modelo.Encuadre) {
         val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto = { Edicion.ajustarEncuadre(it, id, estado.tiempo, toleranciaClaves(), f) }
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
-    if (c.claves.isNotEmpty()) {
-        Nota("Tiene fotogramas clave: lo que cambies aqui se guarda en el del cabezal", color = Ink.White50)
-        Hueco(6)
+    val pestanas = buildList {
+        add("Posición")
+        if (!c.esTexto) add("Recorte")
+        if (capa != null) add("Mezcla")
     }
-    if (!c.esTexto) {
-        Opciones(Ajuste.values().toList(), e.ajuste, { it.nombre }, { a -> cambiar(false) { it.copy(ajuste = a) } })
-    }
-    Row(Modifier.padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        BotonBorde("Espejo", { cambiar(false) { it.copy(espejo = !it.espejo) } }, glifo = Glifos.espejo)
-        BotonBorde("Girar", { cambiar(false) { it.copy(rotacion = ((it.rotacion + 90f + 180f) % 360f) - 180f) } }, glifo = Glifos.girar)
-        BotonBorde("Centrar", { cambiar(false) { it.copy(x = 0f, y = 0f, escala = 1f, rotacion = 0f) } }, glifo = Glifos.reiniciar)
-    }
-    Deslizador("Tamano", e.escala, 0.1f, 6f, { v -> cambiar { it.copy(escala = v) } }, neutro = 1f, escala = Escala.LOGARITMICA, texto = { "${(it * 100).toInt()}%" })
-    Deslizador("Horizontal", e.x, -1f, 1f, { v -> cambiar { it.copy(x = v) } }, neutro = 0f, texto = { "%+d".format((it * 100).toInt()) })
-    Deslizador("Vertical", e.y, -1f, 1f, { v -> cambiar { it.copy(y = v) } }, neutro = 0f, texto = { "%+d".format((it * 100).toInt()) })
-    Deslizador("Giro", e.rotacion, -180f, 180f, { v -> cambiar { it.copy(rotacion = v) } }, neutro = 0f, texto = { "${it.toInt()}°" })
-    Deslizador("Opacidad", e.opacidad, 0f, 1f, { v -> cambiar { it.copy(opacidad = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
-    if (!c.esTexto) {
-        Hueco(6)
-        Etiqueta("Recortar")
-        val r = e.recorte
-        fun rc(f: (Recorte) -> Recorte) = cambiar { it.copy(recorte = f(it.recorte)) }
-        Deslizador("Izquierda", r.izquierda, 0f, 0.45f, { v -> rc { it.copy(izquierda = v) } }, texto = { "${(it * 100).toInt()}%" })
-        Deslizador("Derecha", r.derecha, 0f, 0.45f, { v -> rc { it.copy(derecha = v) } }, texto = { "${(it * 100).toInt()}%" })
-        Deslizador("Arriba", r.arriba, 0f, 0.45f, { v -> rc { it.copy(arriba = v) } }, texto = { "${(it * 100).toInt()}%" })
-        Deslizador("Abajo", r.abajo, 0f, 0.45f, { v -> rc { it.copy(abajo = v) } }, texto = { "${(it * 100).toInt()}%" })
-    }
-    val capa = estado.capaElegida
-    if (capa != null) {
-        Hueco(6)
-        Etiqueta("Mezcla con lo de abajo")
-        Opciones(Mezcla.values().toList(), capa.mezcla, { it.nombre }, { m -> estado.hacer { Edicion.cambiarCapa(it, id) { k -> k.copy(mezcla = m) } } })
+    var elegida by rememberSaveable(id) { mutableStateOf(pestanas[0]) }
+    val pestana = if (elegida in pestanas) elegida else pestanas[0]
+    HojaPanel(
+        Panel.ENCUADRE.titulo, cerrar, claveDesplazamiento = pestana,
+        fijo = if (pestanas.size > 1) ({ Pestanas(pestanas, pestanas.indexOf(pestana), { elegida = pestanas[it] }) }) else null
+    ) {
+        when (pestana) {
+            "Recorte" -> {
+                val r = e.recorte
+                fun rc(f: (Recorte) -> Recorte) = cambiar { it.copy(recorte = f(it.recorte)) }
+                Deslizador("Izquierda", r.izquierda, 0f, 0.45f, { v -> rc { it.copy(izquierda = v) } }, texto = { "${(it * 100).toInt()}%" })
+                Deslizador("Derecha", r.derecha, 0f, 0.45f, { v -> rc { it.copy(derecha = v) } }, texto = { "${(it * 100).toInt()}%" })
+                Deslizador("Arriba", r.arriba, 0f, 0.45f, { v -> rc { it.copy(arriba = v) } }, texto = { "${(it * 100).toInt()}%" })
+                Deslizador("Abajo", r.abajo, 0f, 0.45f, { v -> rc { it.copy(abajo = v) } }, texto = { "${(it * 100).toInt()}%" })
+            }
+            "Mezcla" -> if (capa != null) {
+                Hueco(4)
+                Opciones(Mezcla.values().toList(), capa.mezcla, { it.nombre }, { m -> estado.hacer { Edicion.cambiarCapa(it, id) { k -> k.copy(mezcla = m) } } })
+            }
+            else -> {
+                Row(Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BotonAccion(Glifos.espejo, "Espejo", { cambiar(false) { it.copy(espejo = !it.espejo) } }, Modifier.weight(1f))
+                    BotonAccion(Glifos.girar, "Girar 90°", { cambiar(false) { it.copy(rotacion = ((it.rotacion + 90f + 180f) % 360f) - 180f) } }, Modifier.weight(1f))
+                    BotonAccion(Glifos.reiniciar, "Centrar", { cambiar(false) { it.copy(x = 0f, y = 0f, escala = 1f, rotacion = 0f) } }, Modifier.weight(1f))
+                }
+                if (!c.esTexto) Segmentos(Ajuste.values().toList(), e.ajuste, { it.nombre }, { a -> cambiar(false) { it.copy(ajuste = a) } })
+                Deslizador("Tamaño", e.escala, 0.1f, 6f, { v -> cambiar { it.copy(escala = v) } }, neutro = 1f, escala = Escala.LOGARITMICA, texto = { "${(it * 100).toInt()}%" })
+                Deslizador("Horizontal", e.x, -1f, 1f, { v -> cambiar { it.copy(x = v) } }, neutro = 0f, texto = { "%+d".format((it * 100).toInt()) })
+                Deslizador("Vertical", e.y, -1f, 1f, { v -> cambiar { it.copy(y = v) } }, neutro = 0f, texto = { "%+d".format((it * 100).toInt()) })
+                Deslizador("Giro", e.rotacion, -180f, 180f, { v -> cambiar { it.copy(rotacion = v) } }, neutro = 0f, texto = { "${it.toInt()}°" })
+                Deslizador("Opacidad", e.opacidad, 0f, 1f, { v -> cambiar { it.copy(opacidad = v) } }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
+            }
+        }
     }
 }
 
@@ -409,13 +460,13 @@ internal const val TEXTO_NUEVO = "Tu texto"
 // Formato
 // ----------------------------------------------------------------------
 
+/** La proporcion del video y lo que se ve donde la imagen no llega. */
 @Composable
 fun PanelFormato(estado: EstadoEditor) {
     val p = estado.proyecto
-    Etiqueta("Proporcion")
-    Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         Formato.values().forEach { f ->
-            Mosaico(f.nombre, p.formato == f, { estado.hacer { it.copy(formato = f) } }) { col ->
+            Mosaico(f.nombre, p.formato == f, { estado.hacer { it.copy(formato = f) } }, Modifier.weight(1f)) { col ->
                 val a = f.ancho.toFloat() / f.alto
                 val w = if (a >= 1) size.width * 0.9f else size.height * 0.9f * a
                 val h = if (a >= 1) size.width * 0.9f / a else size.height * 0.9f
@@ -424,26 +475,8 @@ fun PanelFormato(estado: EstadoEditor) {
             }
         }
     }
-    Etiqueta("Fondo donde el video no llega")
-    Opciones(Fondo.values().toList(), p.fondo, { it.nombre }, { f -> estado.hacer { it.copy(fondo = f) } })
-    Hueco(20)
-    // Empezar de cero borra todo lo que hay: pide un segundo toque
-    var seguro by remember { mutableStateOf(false) }
-    if (!seguro) {
-        BotonBorde("Empezar proyecto nuevo", { seguro = true }, glifo = Glifos.mas)
-    } else {
-        Nota("Se quita todo lo que hay en este proyecto.")
-        Hueco(6)
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            BotonLleno("Si, empezar de cero", {
-                estado.hacer { AjustesEditor.proyectoNuevo() }
-                estado.panel = null
-                estado.irA(0)
-                estado.avisar("Proyecto nuevo. Si fue sin querer, deshaz")
-            })
-            BotonBorde("No", { seguro = false })
-        }
-    }
+    Etiqueta("Fondo")
+    Segmentos(Fondo.values().toList(), p.fondo, { it.nombre }, { f -> estado.hacer { it.copy(fondo = f) } })
 }
 
 // ----------------------------------------------------------------------
@@ -483,8 +516,8 @@ fun PanelCurva(estado: EstadoEditor) {
     if (tiempos.size < 2) {
         Hueco(4)
         Text(
-            "Pon al menos dos fotogramas clave (el rombo de arriba, en dos momentos distintos) y aqui eliges como se mueve de uno a otro.",
-            style = MaterialTheme.typography.bodyMedium, color = Ink.White70
+            "Pon dos fotogramas clave en momentos distintos (el rombo de arriba) y aquí eliges cómo se mueve de uno a otro.",
+            style = Letra.cuerpo, color = Ink.White70
         )
         return
     }
@@ -498,26 +531,26 @@ fun PanelCurva(estado: EstadoEditor) {
     val i = tramo
     val tk = tiempos[i]
     val k = c.claves.lastOrNull { it.tiempoUs == tk } ?: return
+    // De que clave a que clave: las flechas llevan el cabezal al tramo de al lado
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        BotonIcono(Glifos.atras, { estado.pausarEn(ini + tiempos[i - 1]) }, activo = i > 0)
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("Tramo ${i + 1} de ${tiempos.size - 1}", style = MaterialTheme.typography.bodyMedium, color = Ink.White)
-            Text("%.2f s a %.2f s".format(tk / 1e6, tiempos[i + 1] / 1e6), style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp), color = Ink.White50)
+        BotonIcono(Glifos.atras, { estado.pausarEn(ini + tiempos[i - 1]) }, activo = i > 0, tam = 36.dp, descripcion = "Tramo anterior")
+        Row(Modifier.weight(1f), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+            Text("Tramo ${i + 1} de ${tiempos.size - 1}", style = Letra.cuerpo.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = Ink.White, maxLines = 1)
+            Spacer(Modifier.width(8.dp))
+            Text("%.2f a %.2f s".format(tk / 1e6, tiempos[i + 1] / 1e6), style = Letra.chica, color = Ink.White50, maxLines = 1)
         }
-        BotonIcono(Glifos.siguiente, { estado.pausarEn(ini + tiempos[i + 1]) }, activo = i < tiempos.size - 2)
+        BotonIcono(Glifos.siguiente, { estado.pausarEn(ini + tiempos[i + 1]) }, activo = i < tiempos.size - 2, tam = 36.dp, descripcion = "Tramo siguiente")
     }
-    Hueco(6)
     SelectorCurva(k.curva, k.bezier, k.velocidad) { cu, b, v, arrastre ->
         val g: (com.royermethod.app.editor.modelo.Proyecto) -> com.royermethod.app.editor.modelo.Proyecto =
             { Edicion.cambiarClave(it, c.id, ini + tk, tolerancia) { x -> x.copy(curva = cu, bezier = b, velocidad = v) } }
         if (arrastre) estado.ajustar(g) else estado.hacer(g)
     }
     if (tiempos.size >= 3) {
-        Hueco(10)
-        BotonBorde("Usar esta curva en todos los tramos", {
+        BotonTexto("Usar en todos los tramos", {
             estado.hacer { Edicion.curvaEnClaves(it, c.id, null, k.curva, k.bezier, k.velocidad) }
             estado.avisar("Curva puesta en los ${tiempos.size - 1} tramos")
-        })
+        }, glifo = Glifos.duplicar)
     }
 }
 
@@ -627,15 +660,7 @@ internal fun SelectorCurva(
     }
     val nombre = deVelocidad?.nombre ?: mia?.nombre ?: PlantillasCurva.nombreDe(bezier)
         ?: if (velocidad != null || bezier != null) "Personalizada" else curva.nombre
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Etiqueta("Curva", Modifier.weight(1f))
-        Text(nombre, style = MaterialTheme.typography.labelMedium, color = Ink.White)
-    }
-    Hueco(6)
-    Row(
-        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
+    Tira(Modifier.padding(top = 2.dp), hueco = 8.dp) {
         CasillaCurva("Personalizar", propia, Unit, null, {
             // Parte de la curva de ahora, ya con sus puntos para moverlos
             if (!propia) poner(curva, null, velocidad ?: CurvaVelocidad.desde(f), false)
@@ -654,27 +679,28 @@ internal fun SelectorCurva(
             CasillaCurva(pl.nombre, velocidad == null && bezier == pl.bezier, pl.bezier, { pl.bezier.en(it) }, { poner(curva, pl.bezier, null, false) })
         }
     }
-    Hueco(10)
+    Hueco(8)
+    // La curva de ahora, con su nombre encima: con puntos de velocidad se editan ahi mismo
+    Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(nombre, style = Letra.chica.copy(fontWeight = androidx.compose.ui.text.font.FontWeight.Medium), color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (velocidad != null || bezier != null) {
+            if (mia == null) {
+                BotonTexto("Guardar en mis curvas", {
+                    AjustesEditor.curvasMias = mias + CurvaMia(AjustesEditor.nombreNuevo("Curva", mias.map { it.nombre }), if (velocidad == null) bezier else null, velocidad)
+                    AjustesEditor.alCambiar()
+                }, glifo = Glifos.mas)
+            } else {
+                BotonTexto("Quitar de mis curvas", {
+                    AjustesEditor.curvasMias = mias.filter { it !== mia }
+                    AjustesEditor.alCambiar()
+                }, glifo = Glifos.papelera)
+            }
+        }
+    }
     if (velocidad != null) {
         EditorVelocidad(velocidad) { nv, arrastre -> poner(curva, null, nv, arrastre) }
     } else {
         GraficaVelocidad(f)
-        Hueco(4)
-        Nota("Toca Personalizar para mover sus puntos de velocidad.", color = Ink.White50)
-    }
-    if (velocidad != null || bezier != null) {
-        Hueco(8)
-        if (mia == null) {
-            BotonBorde("Guardar en mis curvas", {
-                AjustesEditor.curvasMias = mias + CurvaMia(AjustesEditor.nombreNuevo("Curva", mias.map { it.nombre }), if (velocidad == null) bezier else null, velocidad)
-                AjustesEditor.alCambiar()
-            }, glifo = Glifos.mas)
-        } else {
-            BotonBorde("Quitar ${mia.nombre} de mis curvas", {
-                AjustesEditor.curvasMias = mias.filter { it !== mia }
-                AjustesEditor.alCambiar()
-            }, glifo = Glifos.papelera)
-        }
     }
 }
 
@@ -723,7 +749,7 @@ private fun CasillaCurva(nombre: String, elegida: Boolean, clave: Any, f: ((Floa
         Spacer(Modifier.height(4.dp))
         Text(
             nombre,
-            style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp),
+            style = Letra.mini,
             color = if (elegida) Ink.White else Ink.White70,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
@@ -774,8 +800,6 @@ private fun GraficaVelocidad(f: (Float) -> Float) {
         drawLine(Ink.White30, Offset(0f, uno), Offset(size.width, uno), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 6f)))
         dibujoVelocidad(v, pico, Ink.White, Ink.Glow35)
     }
-    Hueco(4)
-    Nota("Arriba, mas rapido. Pico: %.1f veces la velocidad pareja (la linea de puntos)".format(pico), color = Ink.White50)
 }
 
 /**
@@ -889,19 +913,19 @@ private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boole
     Hueco(4)
     val p = cv.puntos.getOrNull(elegido)
     val media = remember(cv) { (0..64).sumOf { cv.velocidadCruda(it / 64f).toDouble() }.toFloat() / 65f }
-    Nota(
-        if (p != null && media > 1e-3f) "Punto en el %d %%: %.1f veces la velocidad pareja (la linea de puntos)".format((p.x * 100).roundToInt(), p.v / media)
-        else "Arrastra los puntos (arriba, mas rapido). Toca un sitio vacio para agregar uno.",
-        color = Ink.White50
-    )
-    Hueco(6)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    // Una sola linea debajo: lo que vale el punto elegido o, sin ninguno, como se usa
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Nota(
+            if (p != null && media > 1e-3f) "%d %% del tramo · %.1f× la velocidad pareja".format((p.x * 100).roundToInt(), p.v / media)
+            else "Arrastra los puntos · toca un hueco para añadir otro",
+            Modifier.weight(1f)
+        )
         val quitable = p != null && elegido in 1 until cv.puntos.lastIndex
-        if (quitable) BotonBorde("Quitar punto", {
+        if (quitable) BotonTexto("Quitar", {
             onCambio(CurvaVelocidad(cv.puntos.filterIndexed { i, _ -> i != elegido }), false)
             elegido = -1
         }, glifo = Glifos.menos)
-        BotonBorde("Pareja", {
+        BotonTexto("Pareja", {
             onCambio(CurvaVelocidad(listOf(PuntoVelocidad(0f, 1f), PuntoVelocidad(1f, 1f))), false)
             elegido = -1
         }, glifo = Glifos.reiniciar)
@@ -912,7 +936,7 @@ private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boole
 @Composable
 fun SinNada(texto: String) {
     Box(Modifier.fillMaxWidth().padding(vertical = 30.dp), contentAlignment = Alignment.Center) {
-        Text(texto, style = MaterialTheme.typography.bodyMedium, color = Ink.White50)
+        Text(texto, style = Letra.cuerpo, color = Ink.White50)
     }
 }
 
