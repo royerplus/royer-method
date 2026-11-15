@@ -650,3 +650,40 @@ Artefactos fuera de git: `/workspace/validation/ux-render/{before,after}/`, READ
 Se diagnosticó el escritorio con la guía cloud-desktop: entorno `ccarenv_b64_Y2NhcmVudl81OGY4Y2FiNWM4YTg4MTkxODMxYjM1ZTNmY2I2MzFmNA`, remote_desktop enabled=true/state=unknown, sin herramienta cua_repl/js ofrecida; tampoco había teléfono en adb ni /dev/kvm. Se usó el render nativo de Compose para la revisión visual, sin crear una imitación HTML de la app. El HTML de comparación muestra las capturas reales del harness.
 
 **Compilación final de UX: BUILD SUCCESSFUL (3m35s)** con `testDebugUnitTest assemblePrueba assembleDebugAndroidTest`. **519 pruebas JVM: 517 pasan, 2 omitidas, cero fallos**, además de las 3 de interfaz antes descritas. APK local `.prueba` SHA256 `68684ec55e42a27c2562dfa4668bfd60bbbc32b4218d83c7f30440dfc4610f1f`. Comparación visual y archivos de prueba permanecen fuera del repositorio.
+
+## Rediseño de los paneles de herramientas (2026-11-13 a 2026-11-15, Claude)
+
+Pedido de Royer: revisar solo el diseño y el orden de toda la zona de herramientas, que seguía viéndose tosca; su ejemplo fue «Orden de capas» (iconos con el fotograma de cada elemento, menos letras, mantener para reacomodar, ventana más chica). Pidió guiarse por la lógica de CapCut y permitió un rediseño agresivo. Base `dc90b94`; sin cambios en el modelo, la persistencia, los shaders ni la exportación. Esta sección sustituye a las decisiones de distribución de la revisión del 2026-11-13 (panel ampliado al abrir, secciones plegables, pestaña Animar): `docs/REVISION_UX_EDITOR.md` queda como historia.
+
+### El patrón de un panel (seguirlo en los nuevos)
+
+- **La imagen no se mueve.** Toda hoja abre del alto de la línea de tiempo (`compacto` en `PantallaEditor`); el asa la amplía a mano. Nada se amplía solo.
+- **`HojaPanel(titulo, onCerrar, acciones, fijo, claveDesplazamiento, corta, pie) { contenido }`** en `Paneles.kt`. El nombre y el ✓ van abajo, en `BarraHoja`; `acciones` entra en esa barra (el chip **Animar**, «Usar en todas», un dato corto con `DatoHoja`). `fijo` no se desliza: ahí van las pestañas (`Pestanas`, con `marcas` para el punto de «tiene algo») y la franja de keyframes (`FranjaClaves`). `pie` es para el botón que no puede quedar escondido (Exportar). `corta = true` hace que la hoja mida lo que su contenido y la línea de tiempo siga a la vista; si no le queda `LINEA_MINIMA` a la línea, ocupa todo. Varias hojas son cortas solo mientras no hay nada puesto.
+- **Dentro, siempre en este orden:** tira de casillas con dibujo (`Tira` + `Mosaico`, «Ninguna» primero con `dibujoNinguna`), luego las barras (`Deslizador`, que con `LocalDenso` va en una fila: nombre de 84 dp, barra, valor), luego lo secundario como `BotonTexto` o `ChipInterruptor`. Los objetos de una lista (luces, partes) son pastillas (`PastillaElemento`). Los colores, `FilaColor`.
+- **Sin párrafos de ayuda.** Lo que antes era una nota fija ahora es un aviso de una vez (`estado.avisar`) al usar el control, o no está.
+- **Animar** es un chip de la barra que enseña u oculta la franja de keyframes en `fijo`; no es una pestaña.
+- **Recuadros de gestos** (máscara, luces, cuentagotas): miden `altoRecuadro(encima)`, que deja asomar el control siguiente. Dentro de ellos el arrastre mueve la figura, así que si llenaran la hoja no habría por dónde deslizar.
+- **Nombres con tilde:** el modelo los guarda sin tilde y no se tocan (proyectos y pruebas los comparan letra a letra). En pantalla pasan por `Rotulos.de(texto)`.
+- La letra del sistema agranda la del editor hasta 1.2 (`LETRA_MAXIMA`); con más, los nombres de las casillas se partían.
+
+### Lo que cambió de sitio
+
+- **Orden:** una fila de miniaturas (fotograma del bloque bajo el cabezal, vista del texto), «Delante … Detrás», mantener y arrastrar; un solo paso de deshacer, tocar elige la capa. La pista principal va al final con candado. Lógica en `filasOrden`/`moverFila` (`PanelCapas.kt`, con pruebas en `OrdenCapasTest`). Se quitaron las flechas, los nombres de archivo y el interruptor «Marcos de edición».
+- **Barra de arriba:** atrás, ojo de guías (antes «Marcos»/«Guías» en la fila de herramientas), resolución y Exportar. La pastilla de formato salió de ahí: Formato sigue en las herramientas.
+- **Junto al reloj:** Zoom de la vista y Mover todo (son modos de los dedos sobre la imagen, no herramientas del bloque). «Sin zoom» es la ✕ de la insignia de zoom.
+- **Proyecto:** Abrir, Guardar, Ejemplos y Borrar todo en una hoja corta (`PanelProyecto.kt`); antes eran cuatro herramientas al final de la fila. «Empezar proyecto nuevo» salió de Formato (es Borrar todo).
+- **Máscara** (antes Recorte): pestañas Forma y Croma; las medidas debajo del recuadro.
+- **Efectos:** catálogo por pestañas de grupo (Movimiento, Máscaras, Desenfoque, Luz…). Con efectos puestos queda fija arriba la franja (`FranjaEfectos`) para elegirlos, moverlos y recortarlos, y el elegido tiene pestañas Ajustes, Tiempo y Más. «Afecta a» es una pestaña en Ajustes y, en un tramo compartido de efectos, va en la barra de la hoja.
+- **Animar, Transición, Partes, Luces, Texto, Borde, Encuadre, Ajustes, Velocidad, Volumen, Formato, Fluidez, Compresión, Resolución, Curvas y Exportar** rehechos con el mismo patrón. En Texto, Color entró en la pestaña Letra. En Transición la tira queda fija arriba y la dirección es una barra de grados con flechas de atajo. Los botones de zoom de la línea se esconden con una hoja abierta.
+
+### La imagen que se descolocaba al abrir un panel
+
+Al cambiar de tamaño la vista (antes pasaba con cada panel; ahora solo al ampliar la hoja o girar), el primer cuadro podía salir en un búfer del tamaño anterior. `Previsualizador.cambiarTamano` rehace ahora la superficie de EGL (`Egl.rehacerSuperficie`, como hace GLSurfaceView) y, si eso falla, monta el contexto de nuevo. **Sin probar en el teléfono.**
+
+### Validación
+
+- No hay build de Android en la nube: compila el CI (`apk.yml`) al subir. Las llamadas nuevas de Compose se eligieron para valer en la 1.7.6 de la app y en el arnés de escritorio (1.5.12): nada de `animateItem`, `ScrollState.viewportSize` ni intrínsecos sobre `BoxWithConstraints`.
+- Arnés JVM con Compose de escritorio (fuera de git, en el scratchpad de la sesión): compila `editor/modelo`, `editor/ui`, `ui/components/Controles.kt`, `Glifos.kt` y `ui/theme` tal cual, con el proyecto de ejemplo y gestos simulados. 38 escenas (todas las hojas y sus pestañas) a 360×812, y repasos a 320×640, en 9:16 y con letra 1.2 y 1.3. No compila `editor/motor`, `editor/vista` ni `ui/screens`: `Egl.kt` y `Previsualizador.kt` solo los comprueba el CI.
+- 339 pruebas JVM del editor (las 15 de `editor/ui`, 16 archivos de `editor/modelo` y `RelojTest`) pasan en ese arnés con el código nuevo. El resto de la batería (`motor`, `vista`, `exportar`, `audio`) no se pudo ejecutar aquí: no toca archivos cambiados, pero conviene un `testDebugUnitTest` en el PC.
+- Las tres pruebas de interfaz externas de Codex (Robolectric, fuera de git) se escribieron contra la distribución anterior y habrá que rehacerlas.
+- **Nada de esto se ha probado en el teléfono:** ni el tacto del arrastre en Orden, ni el arreglo de la superficie.

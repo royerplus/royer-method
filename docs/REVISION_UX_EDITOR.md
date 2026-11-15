@@ -1,5 +1,7 @@
 # Revisión de orden y experiencia del editor
 
+> Nota (2026-11-15): la distribución de los paneles que describe esta revisión se rehízo después. El patrón vigente está en `CONTINUAR_CON_CLAUDE.md`, sección «Rediseño de los paneles de herramientas». Este documento queda como historia.
+
 La revisión se hizo renderizando la interfaz Compose real con Robolectric y gráficos nativos de Android, con el elemento de referencia como recurso de prueba. Se capturaron las mismas pantallas antes y después a 360 × 800 y 320 × 640, también con texto ampliado al 130 %. La vista de video de estas pruebas es una fuente de prueba; las capturas validan la distribución y los controles, no el rendimiento del motor de video en un teléfono.
 
 ## Problemas observados y cambios
