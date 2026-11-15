@@ -88,44 +88,11 @@ internal fun TiempoPropiedades(estado: EstadoEditor, grupo: GrupoPropiedad, movi
         (if (conMovimiento) c.claves.map { it.tiempoUs } else emptyList())
     val tiempos = puntos.filter { it in 0..c.duracionUs }.distinct().sorted()
     val tolerancia = toleranciaClaves()
-    val cercano = tiempos.minByOrNull { abs(it - local) }?.takeIf { abs(it - local) <= tolerancia }
-    Column(Modifier.fillMaxWidth()) {
-        val buscar by rememberUpdatedState<(Float, Float) -> Unit>({ x, w ->
-            estado.pausarEn(inicio + ((x / w.coerceAtLeast(1f)).coerceIn(0f, 1f) * c.duracionUs).toLong())
-        })
-        // El tramo entero con sus rombos: tocar o arrastrar lleva el cabezal
-        Canvas(Modifier.fillMaxWidth().height(30.dp)
-            .pointerInput(c.id) { detectTapGestures { buscar(it.x, size.width.toFloat()) } }
-            .pointerInput(c.id) { detectDragGestures(onDragStart = { buscar(it.x, size.width.toFloat()) }) { ch, _ -> ch.consume(); buscar(ch.position.x, size.width.toFloat()) } }) {
-            val cy = size.height * .72f
-            val yClave = size.height * .24f
-            drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 3.dp.toPx(), cap = androidx.compose.ui.graphics.StrokeCap.Round)
-            for (t in tiempos) {
-                val x = t.toFloat() / c.duracionUs * size.width
-                val r = 4.dp.toPx()
-                val path = Path().apply { moveTo(x, yClave-r); lineTo(x+r, yClave); lineTo(x, yClave+r); lineTo(x-r, yClave); close() }
-                drawPath(path, Ink.White70)
-            }
-            val x = local.toFloat() / c.duracionUs * size.width
-            drawLine(Ink.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
-            drawCircle(Ink.White, 4.dp.toPx(), Offset(x, cy))
-        }
-        // El instante a la izquierda y, a la derecha, ir de clave en clave, poner, quitar y la curva
-        Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
-            Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(c.duracionUs)}", style = Letra.chica, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 1)
-            BotonIcono(Glifos.atras, { tiempos.lastOrNull { it < local - tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it < local - tolerancia },
-                tam = 36.dp, descripcion = "Keyframe anterior")
-            BotonIcono(Glifos.rombo, { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, false) },
-                tam = 36.dp, descripcion = "Poner keyframe")
-            BotonIcono(Glifos.romboQuitar, { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, true) }, activo = cercano != null,
-                tam = 36.dp, descripcion = "Quitar keyframe")
-            BotonIcono(Glifos.siguiente, { tiempos.firstOrNull { it > local + tolerancia }?.let { estado.pausarEn(inicio + it) } }, activo = tiempos.any { it > local + tolerancia },
-                tam = 36.dp, descripcion = "Keyframe siguiente")
-            BotonIcono(Glifos.curva, { estado.verCurvasPropiedades = !estado.verCurvasPropiedades },
-                modifier = Modifier.semantics { selected = estado.verCurvasPropiedades }, tam = 36.dp, descripcion = "Editar curva de keyframes",
-                encendido = estado.verCurvasPropiedades)
-        }
-    }
+    FranjaClaves(c.id, c.duracionUs, local, tiempos, tolerancia,
+        onIr = { estado.pausarEn(inicio + it) },
+        onPoner = { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, false) },
+        onQuitar = { cambiarClavePropiedades(estado, grupo, movimientoPorDefecto, true) },
+        curva = estado.verCurvasPropiedades, onCurva = { estado.verCurvasPropiedades = !estado.verCurvasPropiedades })
 }
 
 /** Controles avanzados en el cuerpo desplazable, sin tapar la barra de tiempo. */

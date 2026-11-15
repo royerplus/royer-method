@@ -6,6 +6,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,7 +23,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
@@ -35,8 +40,10 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -89,6 +96,7 @@ import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
 import com.royermethod.app.ui.components.Fila
 import com.royermethod.app.ui.components.Glifos
+import com.royermethod.app.ui.components.Icono
 import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.Mosaico
@@ -954,6 +962,86 @@ internal fun FilaColor(colores: List<Int>, color: Int, etiqueta: String = "Color
         Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
             { v -> onCambio((color and (255 shl shift).inv()) or (v.roundToInt().coerceIn(0, 255) shl shift), true) },
             texto = { it.roundToInt().toString() })
+    }
+}
+
+/**
+ * El tramo de un bloque con sus keyframes, el mismo en todas las hojas que
+ * animan algo: tocar o arrastrar la linea lleva el cabezal; debajo, el
+ * instante y, a la derecha, ir de uno a otro, poner, quitar y (si [curva] no
+ * es nulo) abrir la curva. Los tiempos son del bloque, no de la linea.
+ * [de] completa lo que leen los lectores de pantalla ("de la luz").
+ */
+@Composable
+internal fun FranjaClaves(
+    clave: Any?,
+    duracionUs: Long,
+    local: Long,
+    tiempos: List<Long>,
+    tolerancia: Long,
+    onIr: (Long) -> Unit,
+    onPoner: () -> Unit,
+    onQuitar: () -> Unit,
+    puedePoner: Boolean = true,
+    de: String = "",
+    curva: Boolean? = null,
+    onCurva: () -> Unit = {}
+) {
+    val dur = duracionUs.coerceAtLeast(1L)
+    Column(Modifier.fillMaxWidth()) {
+        val buscar by rememberUpdatedState<(Float, Float) -> Unit>({ x, w -> onIr(((x / w.coerceAtLeast(1f)).coerceIn(0f, 1f) * dur).toLong()) })
+        Canvas(Modifier.fillMaxWidth().height(30.dp)
+            .pointerInput(clave) { detectTapGestures { buscar(it.x, size.width.toFloat()) } }
+            .pointerInput(clave) { detectDragGestures(onDragStart = { buscar(it.x, size.width.toFloat()) }) { ch, _ -> ch.consume(); buscar(ch.position.x, size.width.toFloat()) } }) {
+            val cy = size.height * .72f
+            val yClave = size.height * .24f
+            drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 3.dp.toPx(), cap = StrokeCap.Round)
+            for (t in tiempos) {
+                val x = t.toFloat() / dur * size.width
+                val r = 4.dp.toPx()
+                drawPath(Path().apply { moveTo(x, yClave - r); lineTo(x + r, yClave); lineTo(x, yClave + r); lineTo(x - r, yClave); close() }, Ink.White70)
+            }
+            val x = local.toFloat() / dur * size.width
+            drawLine(Ink.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
+            drawCircle(Ink.White, 4.dp.toPx(), Offset(x, cy))
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(duracionUs)}", style = Letra.chica, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 1)
+            BotonIcono(Glifos.atras, { tiempos.lastOrNull { it < local - tolerancia }?.let(onIr) }, activo = tiempos.any { it < local - tolerancia },
+                tam = 36.dp, descripcion = "Keyframe anterior$de")
+            BotonIcono(Glifos.rombo, onPoner, activo = puedePoner, tam = 36.dp, descripcion = "Poner keyframe$de")
+            BotonIcono(Glifos.romboQuitar, onQuitar, activo = puedePoner && tiempos.any { abs(it - local) <= tolerancia },
+                tam = 36.dp, descripcion = "Quitar keyframe$de")
+            BotonIcono(Glifos.siguiente, { tiempos.firstOrNull { it > local + tolerancia }?.let(onIr) }, activo = tiempos.any { it > local + tolerancia },
+                tam = 36.dp, descripcion = "Keyframe siguiente$de")
+            if (curva != null) BotonIcono(Glifos.curva, onCurva, modifier = Modifier.semantics { selected = curva }, tam = 36.dp,
+                descripcion = "Editar curva$de", encendido = curva)
+        }
+    }
+}
+
+/**
+ * Una de las cosas que lleva el bloque (una luz, una parte) en la tira de
+ * arriba de su hoja: su dibujo, el nombre y un rombo si tiene keyframes.
+ */
+@Composable
+internal fun PastillaElemento(nombre: String, elegida: Boolean, onElegir: () -> Unit, conClaves: Boolean = false, dibujo: DrawScope.(Color) -> Unit) {
+    val color = if (elegida) Ink.White else Ink.White70
+    Row(
+        Modifier.heightIn(min = 34.dp).clip(esquinas(17.dp))
+            .background(if (elegida) Ink.White15 else Ink.White08)
+            .border(1.dp, if (elegida) Ink.White else Color.Transparent, esquinas(17.dp))
+            .selectable(elegida, role = Role.RadioButton, onClick = onElegir)
+            .padding(horizontal = 11.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Canvas(Modifier.size(16.dp)) { dibujo(color) }
+        Spacer(Modifier.width(7.dp))
+        Text(nombre, style = Letra.cuerpo, color = color, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.widthIn(max = 120.dp))
+        if (conClaves) {
+            Spacer(Modifier.width(5.dp))
+            Icono(Glifos.romboLleno, color = color, tam = 8.dp)
+        }
     }
 }
 

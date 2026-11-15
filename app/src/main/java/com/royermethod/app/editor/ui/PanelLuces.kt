@@ -106,8 +106,10 @@ internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
         }) else null,
         fijo = {
             if (c.luces.isNotEmpty() && !dibujar) Tira(Modifier.padding(bottom = 2.dp)) {
-                for (l in c.luces) PastillaLuz(l, l.id == luz?.id && !catalogo, l.estiloEn(relojLuz(e)).color) {
-                    e.luzElegida = l.id; dibujar = false; agregarAbierto = false
+                for (l in c.luces) {
+                    val color = Color(l.estiloEn(relojLuz(e)).color)
+                    PastillaElemento(l.nombre, l.id == luz?.id && !catalogo, { e.luzElegida = l.id; dibujar = false; agregarAbierto = false },
+                        conClaves = l.claves.isNotEmpty()) { iconoLuz(l.tipo, color) }
                 }
             }
             if (luz != null && !catalogo && !dibujar) {
@@ -150,28 +152,6 @@ internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
                     ControlesColocarLuz(e, luz)
                 } else ControlesEstiloLuz(e, luz, animar)
             }
-        }
-    }
-}
-
-/** Una luz del bloque en la tira de arriba: su dibujo con su color, el nombre y un rombo si se mueve. */
-@Composable
-private fun PastillaLuz(l: LuzTrazo, elegida: Boolean, color: Int, onElegir: () -> Unit) {
-    Row(
-        Modifier.heightIn(min = 34.dp).clip(esquinas(17.dp))
-            .background(if (elegida) Ink.White15 else Ink.White08)
-            .border(1.dp, if (elegida) Ink.White else Color.Transparent, esquinas(17.dp))
-            .selectable(elegida, role = Role.RadioButton, onClick = onElegir)
-            .padding(horizontal = 11.dp, vertical = 6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Canvas(Modifier.size(16.dp)) { iconoLuz(l.tipo, Color(color)) }
-        Spacer(Modifier.width(7.dp))
-        Text(l.nombre, style = Letra.cuerpo, color = if (elegida) Ink.White else Ink.White70, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 120.dp))
-        if (l.claves.isNotEmpty()) {
-            Spacer(Modifier.width(5.dp))
-            Icono(Glifos.romboLleno, color = if (elegida) Ink.White else Ink.White70, tam = 8.dp)
         }
     }
 }
@@ -263,34 +243,10 @@ private fun TiempoLuces(e: EstadoEditor, l: LuzTrazo, curvas: Boolean, onCurvas:
     val ini = e.inicioElegido ?: return
     val local = (e.tiempo - ini).coerceIn(0, c.duracionUs)
     val ts = l.claves.map { it.tiempoUs - c.desfasePropiedadesUs }.filter { it in 0..c.duracionUs }.sorted()
-    val tol = toleranciaClaves()
-    Column(Modifier.fillMaxWidth()) {
-        val buscar by rememberUpdatedState<(Float, Float) -> Unit>({ x, w -> e.pausarEn(ini + (x / w.coerceAtLeast(1f)).coerceIn(0f, 1f).times(c.duracionUs).toLong()) })
-        Canvas(Modifier.fillMaxWidth().height(30.dp).pointerInput(c.id) { detectTapGestures { buscar(it.x, size.width.toFloat()) } }
-            .pointerInput(c.id) { detectDragGestures(onDragStart = { buscar(it.x, size.width.toFloat()) }) { ch, _ -> ch.consume(); buscar(ch.position.x, size.width.toFloat()) } }) {
-            val cy = size.height * .72f
-            val yClave = size.height * .24f
-            drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 3.dp.toPx(), cap = StrokeCap.Round)
-            for (t in ts) {
-                val x = t.toFloat() / c.duracionUs * size.width; val r = 4.dp.toPx()
-                drawPath(Path().apply { moveTo(x, yClave - r); lineTo(x + r, yClave); lineTo(x, yClave + r); lineTo(x - r, yClave); close() }, Ink.White70)
-            }
-            val x = local.toFloat() / c.duracionUs * size.width
-            drawLine(Ink.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
-            drawCircle(Ink.White, 4.dp.toPx(), Offset(x, cy))
-        }
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(c.duracionUs)}", style = Letra.chica, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 1)
-            BotonIcono(Glifos.atras, { ts.lastOrNull { it < local - tol }?.let { e.pausarEn(ini + it) } }, activo = ts.any { it < local - tol },
-                tam = 36.dp, descripcion = "Keyframe anterior de la luz")
-            BotonIcono(Glifos.rombo, { ponerClaveLuz(e, false) }, activo = e.localElegido != null, tam = 36.dp, descripcion = "Poner keyframe de luz")
-            BotonIcono(Glifos.romboQuitar, { ponerClaveLuz(e, true) }, activo = e.localElegido != null && ts.any { abs(it - local) <= tol },
-                tam = 36.dp, descripcion = "Quitar keyframe de luz")
-            BotonIcono(Glifos.siguiente, { ts.firstOrNull { it > local + tol }?.let { e.pausarEn(ini + it) } }, activo = ts.any { it > local + tol },
-                tam = 36.dp, descripcion = "Keyframe siguiente de la luz")
-            BotonIcono(Glifos.curva, onCurvas, modifier = Modifier.semantics { selected = curvas }, tam = 36.dp, descripcion = "Editar curva de la luz", encendido = curvas)
-        }
-    }
+    FranjaClaves(c.id, c.duracionUs, local, ts, toleranciaClaves(),
+        onIr = { e.pausarEn(ini + it) },
+        onPoner = { ponerClaveLuz(e, false) }, onQuitar = { ponerClaveLuz(e, true) },
+        puedePoner = e.localElegido != null, de = " de la luz", curva = curvas, onCurva = onCurvas)
 }
 
 private fun DrawScope.iconoLuz(tipo:TipoLuz,color:Color) {
