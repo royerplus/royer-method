@@ -314,4 +314,15 @@ object Glifos {
         circulo(c, 5f, 5f, 2.1f, relleno = true); circulo(c, 19f, 5f, 2.1f, relleno = true)
         circulo(c, 5f, 19f, 2.1f, relleno = true); circulo(c, 19f, 19f, 2.1f, relleno = true)
     }
+    /** Un marco con un hueco redondo: lo que la mascara deja ver. */
+    val mascara: Glifo = { c ->
+        caja(c, 3.5f, 3.5f, 17f, 17f, 3f)
+        circulo(c, 12f, 12f, 4.6f)
+    }
+    /** Cuentagotas: tomar un color de la imagen. */
+    val gotero: Glifo = { c ->
+        camino(c, true, false, 4.5f, 19.5f, 5.2f, 16.3f, 12.5f, 9f, 15f, 11.5f, 7.7f, 18.8f)
+        linea(c, 10.8f, 7.2f, 16.8f, 13.2f)
+        camino(c, true, false, 14.2f, 7.4f, 17.2f, 4.4f, 19.6f, 6.8f, 16.6f, 9.8f)
+    }
 }

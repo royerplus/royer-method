@@ -607,7 +607,7 @@ private fun RowScope.HerramientasBloque(estado: EstadoEditor, c: Clip, onReempla
     Separador()
     Herramienta(Glifos.curva, "Curvas", { estado.panel = Panel.CURVA }, resaltada = c.claves.size >= 2)
     Herramienta(Glifos.transformar, "Encuadre", { estado.panel = Panel.ENCUADRE })
-    Herramienta(Glifos.recorte, "Recorte", { abrirEnBloque(Panel.RECORTE) }, resaltada = c.recorteVisual.activo)
+    Herramienta(Glifos.mascara, "Máscara", { abrirEnBloque(Panel.RECORTE) }, resaltada = c.recorteVisual.activo)
     Herramienta(Glifos.borde, "Borde", { estado.panel = Panel.MARCO }, resaltada = c.marco.activo)
     Herramienta(Glifos.luz, "Luces", { abrirEnBloque(Panel.LUCES) }, resaltada = c.luces.isNotEmpty())
     Herramienta(Glifos.partes, "Partes", { estado.panel = Panel.PIEZAS }, resaltada = c.piezas.isNotEmpty())

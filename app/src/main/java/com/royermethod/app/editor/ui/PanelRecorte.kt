@@ -3,13 +3,9 @@ package com.royermethod.app.editor.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
@@ -22,6 +18,11 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -31,24 +32,39 @@ import com.royermethod.app.ui.components.*
 import com.royermethod.app.ui.theme.Ink
 import kotlin.math.*
 
+/** Lo que se ensena una sola vez por sesion: como se mueve la figura en el recuadro. */
+private var consejoMascaraVisto = false
+
+private val COLORES_CROMA = listOf(0xFF00FF00, 0xFF0000FF, 0xFFFFFFFF, 0xFF000000, 0xFFFF00FF, 0xFFFF0000).map { it.toInt() }
+
+/**
+ * Mascara: una figura que deja ver solo una parte de la imagen, o un color que
+ * se vuelve transparente. Cada una en su pestana, con un punto en la que ya
+ * tiene algo puesto. "Animar" abre las claves sin cambiar de pestana.
+ */
 @Composable
 internal fun HojaRecorte(estado: EstadoEditor, cerrar: () -> Unit) {
     val seleccionado = estado.clipElegido ?: return
     var tab by rememberSaveable(seleccionado.id) { mutableIntStateOf(0) }
-    HojaPanel("Recorte", cerrar, claveDesplazamiento=seleccionado.id to tab, fijo = {
-        Pestanas(listOf("Croma", "Máscaras", "Animar"), tab, { tab = it })
-    }) {
+    var animar by rememberSaveable(seleccionado.id) { mutableStateOf(false) }
+    // El cuentagotas: la imagen del bloque, para tocar el color que sobra
+    var gotero by rememberSaveable(seleccionado.id) { mutableStateOf(false) }
+    val rv = seleccionado.propiedadesEn(estado.localElegido ?: 0).recorteVisual
+    val vacia = if (tab == 0) rv.mascara.tipo == FormaRecorte.NINGUNA else !rv.croma.activo && !gotero
+    HojaPanel(Panel.RECORTE.titulo, cerrar, claveDesplazamiento = seleccionado.id to tab, acciones = {
+        Chip("Animar", animar, { animar = !animar }, marca = seleccionado.propiedades.keys.any { it.grupo == GrupoPropiedad.RECORTE })
+    }, fijo = {
+        Pestanas(listOf("Forma", "Croma"), tab, { tab = it }, marcas = buildSet {
+            if (rv.mascara.tipo != FormaRecorte.NINGUNA) add(0)
+            if (rv.croma.activo) add(1)
+        })
+        if (animar) TiempoPropiedades(estado, GrupoPropiedad.RECORTE)
+    // Sin nada puesto solo hay una fila que ensenar: la hoja se queda en eso
+    }, corta = vacia && !animar) {
         val original = estado.clipElegido ?: return@HojaPanel
         val c = original.propiedadesEn(estado.localElegido ?: 0)
-        when(tab) {
-            0 -> ControlesCroma(estado,c)
-            1 -> ControlesMascara(estado,c)
-            else -> {
-                TiempoPropiedades(estado,GrupoPropiedad.RECORTE)
-                OpcionesPropiedades(estado,GrupoPropiedad.RECORTE)
-                Nota("Pon una clave, avanza el tiempo y cambia el croma o la máscara.")
-            }
-        }
+        if (animar) OpcionesPropiedades(estado, GrupoPropiedad.RECORTE)
+        if (tab == 0) ControlesMascara(estado, c) else ControlesCroma(estado, c, gotero) { gotero = it }
     }
 }
 
@@ -74,38 +90,31 @@ internal fun fuenteRecorte(e: EstadoEditor, c: Clip, preciso: Boolean = false): 
     return if(exacto)recursos.fotograma(o,tiempo)else recursos.miniatura(o,tiempo)
 }
 
+/**
+ * Croma: se elige el color que sobra y ya esta puesto; la casilla sin color lo
+ * quita. El cuentagotas lo toma de la imagen. Los ajustes salen cuando hay un
+ * color elegido.
+ */
 @Composable
-private fun ControlesCroma(e: EstadoEditor, c: Clip) {
+private fun ControlesCroma(e: EstadoEditor, c: Clip, elegir: Boolean, onElegir: (Boolean) -> Unit) {
     val k = c.recorteVisual.croma
-    var elegir by rememberSaveable(c.id) { mutableStateOf(false) }
-    Interruptor("Eliminar un color", k.activo, { v -> cambiarCroma(e) { it.copy(activo = v) } },
-        detalle=if(k.activo)null else "Elige el color del fondo para dejarlo transparente.")
-    if(!k.activo)return
-    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(38.dp).clip(CircleShape).background(Color(k.color)).border(2.dp,Ink.White70,CircleShape))
-        BotonBorde(if(elegir) "Ocultar selector" else "Elegir del clip",{ elegir=!elegir },glifo=Glifos.color)
+    // El que se tomo de la imagen no esta entre las muestras: va el primero
+    val colores = if (k.activo && k.color !in COLORES_CROMA) listOf(k.color) + COLORES_CROMA else COLORES_CROMA
+    Fila("Color") {
+        BotonIcono(Glifos.gotero, { onElegir(!elegir) }, tam = 38.dp, descripcion = "Elegir el color de la imagen", encendido = elegir)
+        Muestras(colores, if (k.activo) k.color else 0, { v ->
+            cambiarCroma(e) { if (v == 0) it.copy(activo = false) else it.copy(activo = true, color = v) }
+        }, Modifier.weight(1f), conNinguno = true)
     }
-    Muestras(listOf(0xFF00FF00,0xFF0000FF,0xFFFFFFFF,0xFF000000,0xFFFF00FF,0xFFFF0000).map { it.toInt() },k.color,
-        { v -> cambiarCroma(e) { it.copy(color=v) } })
-    if(elegir) {
-        val imagen=fuenteRecorte(e,c,preciso=true)
-        if(imagen==null)Nota("Preparando fotograma…")else SelectorColor(e,imagen)
-    }
-    Deslizador("Intensidad",k.intensidad,0f,1f,{ v -> cambiarCroma(e,true) { it.copy(intensidad=v) } },neutro=1f)
-    Deslizador("Tolerancia al color",k.tolerancia,0f,.8f,{ v -> cambiarCroma(e,true) { it.copy(tolerancia=v) } },neutro=.14f)
-    SeccionAjustes("Bordes y limpieza") {
-        Deslizador("Bordes suaves",k.suavidad,0f,.3f,{ v -> cambiarCroma(e,true) { it.copy(suavidad=v) } },neutro=.05f)
-        Deslizador("Limpiar halo de color",k.limpiar,0f,1f,{ v -> cambiarCroma(e,true) { it.copy(limpiar=v) } },neutro=.5f)
-    }
-    SeccionAjustes("Color personalizado") {
-        for((nombre,shift) in listOf("Rojo" to 16,"Verde" to 8,"Azul" to 0))
-            Deslizador(nombre,((k.color ushr shift)and 255).toFloat(),0f,255f,{ v ->
-                cambiarCroma(e,true) { it.copy(color=(it.color and (255 shl shift).inv()) or (v.roundToInt() shl shift)) }
-            },texto={ it.roundToInt().toString() })
-    }
-    SeccionAjustes("Opciones de croma") {
-        Interruptor("Conservar solo ese color",k.invertir,{ v -> cambiarCroma(e) { it.copy(invertir=v) } })
-        BotonBorde("Restablecer croma",{ cambiarCroma(e) { Croma() } },glifo=Glifos.reiniciar)
+    if (elegir) fuenteRecorte(e, c, preciso = true)?.let { SelectorColor(e, it) }
+    if (!k.activo) return
+    Deslizador("Intensidad", k.intensidad, 0f, 1f, { v -> cambiarCroma(e, true) { it.copy(intensidad = v) } }, neutro = 1f)
+    Deslizador("Tolerancia", k.tolerancia, 0f, .8f, { v -> cambiarCroma(e, true) { it.copy(tolerancia = v) } }, neutro = .14f)
+    Deslizador("Suavizar", k.suavidad, 0f, .3f, { v -> cambiarCroma(e, true) { it.copy(suavidad = v) } }, neutro = .05f)
+    Deslizador("Quitar halo", k.limpiar, 0f, 1f, { v -> cambiarCroma(e, true) { it.copy(limpiar = v) } }, neutro = .5f)
+    Tira(Modifier.padding(vertical = 4.dp)) {
+        ChipInterruptor("Invertir", k.invertir, { v -> cambiarCroma(e) { it.copy(invertir = v) } })
+        BotonTexto("Restablecer", { cambiarCroma(e) { Croma(activo = true, color = it.color) } })
     }
 }
 
@@ -127,11 +136,10 @@ private fun SelectorColor(e: EstadoEditor, imagen: ImageBitmap) {
         val x = ((p.x-r.left)/r.width*mapa.width).toInt().coerceIn(0,mapa.width-1)
         val y = ((p.y-r.top)/r.height*mapa.height).toInt().coerceIn(0,mapa.height-1)
         val color = mapa[x,y].toArgb() or (0xFF shl 24)
-        cambiarCroma(e,arrastre) { it.copy(color = color) }
+        cambiarCroma(e,arrastre) { it.copy(activo = true, color = color) }
     }
     val seleccionar by rememberUpdatedState<(Offset,Float,Float,Boolean)->Unit>(::elegir)
-    Nota("Toca o arrastra sobre el color que quieres quitar.")
-    Canvas(Modifier.fillMaxWidth().height(180.dp).clip(esquinas(12.dp)).background(Ink.White04)
+    Canvas(Modifier.fillMaxWidth().height(150.dp).semantics { contentDescription = "Toca el color que quieres quitar" }.clip(esquinas(12.dp)).background(Ink.White04)
         .pointerInput(imagen) { detectTapGestures { seleccionar(it,size.width.toFloat(),size.height.toFloat(),false) } }
         .pointerInput(imagen) { detectDragGestures(onDragStart = { e.empezarGesto(); seleccionar(it,size.width.toFloat(),size.height.toFloat(),true) },
             onDragEnd = { e.terminarGesto() }, onDragCancel = { e.terminarGesto() }) { cambio,_ ->
@@ -148,47 +156,69 @@ private fun SelectorColor(e: EstadoEditor, imagen: ImageBitmap) {
     }
 }
 
+/**
+ * Forma: las figuras en una tira, sin nombre debajo porque el dibujo ya lo
+ * dice, con "Ninguna" la primera. Con una puesta, el recuadro para moverla con
+ * el dedo y, mas abajo, sus medidas.
+ */
 @Composable
 private fun ControlesMascara(e: EstadoEditor, c: Clip) {
     val m = c.recorteVisual.mascara
-    LazyRow(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-        items(FormaRecorte.values().toList(),key={ it.name }) { tipo ->
-            Mosaico(tipo.titulo,m.tipo==tipo,{ cambiarMascara(e) { it.copy(tipo=tipo) } },Modifier.width(76.dp)) {
-                if(tipo==FormaRecorte.NINGUNA) {
-                    drawLine(Ink.White70,Offset(size.width*.2f,size.height*.2f),Offset(size.width*.8f,size.height*.8f),2.dp.toPx())
-                    drawLine(Ink.White70,Offset(size.width*.8f,size.height*.2f),Offset(size.width*.2f,size.height*.8f),2.dp.toPx())
-                } else {
-                    val puntos=MascaraForma(tipo=tipo,ancho=.75f,alto=.75f).contorno(1f to 1f)
-                    val p=Path().apply { puntos.forEachIndexed { i,v -> val x=v.first*size.width;val y=v.second*size.height;if(i==0)moveTo(x,y)else lineTo(x,y) };close() }
-                    clipRect { drawPath(p,Ink.White70) }
+    Tira(Modifier.padding(top = 4.dp), hueco = 8.dp) {
+        for (tipo in FormaRecorte.values()) {
+            CasillaForma(tipo, m.tipo == tipo) {
+                cambiarMascara(e) { it.copy(tipo = tipo) }
+                if (tipo != FormaRecorte.NINGUNA && !consejoMascaraVisto) {
+                    consejoMascaraVisto = true
+                    e.avisar("Mueve y gira la figura en el recuadro")
                 }
             }
         }
     }
-    if(m.tipo==FormaRecorte.NINGUNA) {
-        Spacer(Modifier.height(12.dp))
-        Nota("Elige una figura. Lo que quede fuera dejará ver las capas de detrás.")
-        return
-    }
+    if (m.tipo == FormaRecorte.NINGUNA) return
     Spacer(Modifier.height(8.dp))
-    val imagen=fuenteRecorte(e,c,preciso=true)
-    if(imagen==null)Nota("Preparando fotograma…")
-    PreviewMascara(e,c,imagen)
-    Nota("Arrastra para mover · esquinas para tamaño · círculo para girar")
-    Deslizador("Borde suave",m.pluma,0f,.3f,{ v -> cambiarMascara(e,true) { it.copy(pluma=v) } },neutro=.015f)
-    SeccionAjustes("Tamaño y giro") {
-        val fijo=m.tipo==FormaRecorte.CIRCULO || m.tipo==FormaRecorte.CUADRADO
-        if(m.tipo!=FormaRecorte.LINEAL) {
-            Deslizador(if(fijo) "Tamaño" else "Anchura",m.ancho,.02f,2f,{ v -> cambiarMascara(e,true) { it.copy(ancho=v) } },neutro=.8f)
-            if(!fijo)Deslizador("Altura",m.alto,.02f,2f,{ v -> cambiarMascara(e,true) { it.copy(alto=v) } },neutro=.8f)
-        }
-        Deslizador("Giro",m.giro,-180f,180f,{ v -> cambiarMascara(e,true) { it.copy(giro=v) } },neutro=0f,texto={ "${it.roundToInt()}°" })
-        if(m.tipo==FormaRecorte.REDONDEADO)Deslizador("Esquinas",m.radio,0f,.5f,{ v -> cambiarMascara(e,true) { it.copy(radio=v) } },neutro=.12f)
-        BotonBorde("Centrar máscara",{ cambiarMascara(e) { it.copy(x=.5f,y=.5f) } })
+    PreviewMascara(e, c, fuenteRecorte(e, c, preciso = true))
+    Spacer(Modifier.height(4.dp))
+    Deslizador("Difuminar", m.pluma, 0f, .3f, { v -> cambiarMascara(e, true) { it.copy(pluma = v) } }, neutro = .015f)
+    val fijo = m.tipo == FormaRecorte.CIRCULO || m.tipo == FormaRecorte.CUADRADO
+    if (m.tipo != FormaRecorte.LINEAL) {
+        Deslizador(if (fijo) "Tamaño" else "Anchura", m.ancho, .02f, 2f, { v -> cambiarMascara(e, true) { it.copy(ancho = v) } }, neutro = .8f)
+        if (!fijo) Deslizador("Altura", m.alto, .02f, 2f, { v -> cambiarMascara(e, true) { it.copy(alto = v) } }, neutro = .8f)
     }
-    SeccionAjustes("Opciones de máscara") {
-        Interruptor("Invertir máscara",m.invertir,{ v -> cambiarMascara(e) { it.copy(invertir=v) } })
-        BotonBorde("Quitar máscara",{ cambiarMascara(e) { MascaraForma() } },glifo=Glifos.reiniciar)
+    Deslizador("Giro", m.giro, -180f, 180f, { v -> cambiarMascara(e, true) { it.copy(giro = v) } }, neutro = 0f, texto = { "${it.roundToInt()}°" })
+    if (m.tipo == FormaRecorte.REDONDEADO) Deslizador("Esquinas", m.radio, 0f, .5f, { v -> cambiarMascara(e, true) { it.copy(radio = v) } }, neutro = .12f)
+    Tira(Modifier.padding(vertical = 4.dp)) {
+        ChipInterruptor("Invertir", m.invertir, { v -> cambiarMascara(e) { it.copy(invertir = v) } })
+        BotonTexto("Centrar", { cambiarMascara(e) { it.copy(x = .5f, y = .5f) } })
+        BotonTexto("Restablecer", { cambiarMascara(e) { MascaraForma(tipo = it.tipo) } })
+    }
+}
+
+/** Una figura de la tira: su silueta y nada mas. */
+@Composable
+private fun CasillaForma(tipo: FormaRecorte, elegida: Boolean, onClick: () -> Unit) {
+    val nombre = if (tipo == FormaRecorte.NINGUNA) "Ninguna" else tipo.titulo
+    Box(
+        Modifier.size(52.dp).clip(esquinas(12.dp))
+            .background(if (elegida) Ink.White15 else Ink.White08)
+            .border(1.5.dp, if (elegida) Ink.White else Color.Transparent, esquinas(12.dp))
+            .semantics { contentDescription = nombre; selected = elegida; role = Role.Button }
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Canvas(Modifier.size(30.dp)) {
+            val color = if (elegida) Ink.White else Ink.White70
+            if (tipo == FormaRecorte.NINGUNA) {
+                drawCircle(color, size.minDimension * .42f, style = Stroke(1.7.dp.toPx()))
+                val d = size.minDimension * .42f * .707f
+                drawLine(color, center + Offset(-d, d), center + Offset(d, -d), 1.7.dp.toPx(), StrokeCap.Round)
+            } else {
+                val ancha = tipo == FormaRecorte.RECTANGULO || tipo == FormaRecorte.REDONDEADO || tipo == FormaRecorte.OVALO
+                val puntos = MascaraForma(tipo = tipo, ancho = .92f, alto = if (ancha) .64f else .92f, radio = .2f).contorno(1f to 1f)
+                val p = Path().apply { puntos.forEachIndexed { i, v -> val x = v.first * size.width; val y = v.second * size.height; if (i == 0) moveTo(x, y) else lineTo(x, y) }; close() }
+                clipRect { drawPath(p, color) }
+            }
+        }
     }
 }
 
@@ -200,7 +230,11 @@ private fun PreviewMascara(e: EstadoEditor, c: Clip, imagen: ImageBitmap?) {
         else if(o != null && o.altoVisible > 0) o.anchoVisible.toFloat()*rc.ancho/(o.altoVisible*rc.alto) else 1f
     val aspecto = if(razon >= 1f) razon to 1f else 1f to 1f/razon.coerceAtLeast(.01f)
     val actual by rememberUpdatedState(c.recorteVisual.mascara)
-    Canvas(Modifier.fillMaxWidth().height(190.dp).clip(esquinas(12.dp)).background(Ink.White04)
+    // Bajo, para que la primera medida asome por debajo y se vea que hay mas;
+    // con la hoja ampliada hay sitio para un recuadro comodo
+    val alto = if (LocalTamanoPanelEditor.current?.ampliado == true) 200.dp else 124.dp
+    Canvas(Modifier.fillMaxWidth().height(alto).clip(esquinas(12.dp)).background(Ink.White04)
+        .semantics { contentDescription = "Mover, agrandar o girar la máscara" }
         .pointerInput(c.id,razon) {
             awaitEachGesture {
                 val abajo = awaitFirstDown()
