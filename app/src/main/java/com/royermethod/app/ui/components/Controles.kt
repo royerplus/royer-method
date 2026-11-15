@@ -4,6 +4,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -639,8 +640,13 @@ fun <T> Cuadricula(
  * derecho avisa de que sigue: sin el, lo que no cabe parece que no existe.
  */
 @Composable
-fun Tira(modifier: Modifier = Modifier, hueco: Dp = 6.dp, contenido: @Composable RowScope.() -> Unit) {
-    val desliza = rememberScrollState()
+fun Tira(
+    modifier: Modifier = Modifier,
+    hueco: Dp = 6.dp,
+    /** Para quien quiera llevarla a un sitio: p. ej. hasta la casilla elegida al abrir. */
+    desliza: ScrollState = rememberScrollState(),
+    contenido: @Composable RowScope.() -> Unit
+) {
     val hayMas by remember(desliza) { derivedStateOf { desliza.value < desliza.maxValue } }
     val hayAntes by remember(desliza) { derivedStateOf { desliza.value > 0 } }
     val fondo = Ink.Black

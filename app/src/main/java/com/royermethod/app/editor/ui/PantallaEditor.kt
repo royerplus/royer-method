@@ -205,6 +205,7 @@ fun PantallaEditor(
                                         Panel.COLOR -> HojaColor(estado, cerrar)
                                         Panel.RECORTE -> HojaRecorte(estado, cerrar)
                                         Panel.LUCES -> HojaLuces(estado, cerrar)
+                                        Panel.TRANSICION -> HojaTransicion(estado, cerrar)
                                         Panel.CAPAS -> HojaCapas(estado, cerrar)
                                         Panel.ENCUADRE -> HojaEncuadre(estado, cerrar)
                                         Panel.PROYECTO -> HojaProyecto(estado, cerrar, onAbrirProyecto, onGuardarProyecto, onEjemplos)
@@ -244,7 +245,6 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.VELOCIDAD -> PanelVelocidad(estado)
         Panel.VOLUMEN -> PanelVolumen(estado)
         Panel.PIEZAS -> PanelPiezas(estado)
-        Panel.TRANSICION -> PanelTransicion(estado)
         Panel.FORMATO -> PanelFormato(estado)
         Panel.CURVA -> PanelCurva(estado)
         Panel.FLUIDEZ -> PanelFluidez(estado)
@@ -252,7 +252,7 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.RESOLUCION -> PanelResolucion(estado)
         // Van con su propia hoja (acciones en la barra y zona fija)
         Panel.ANIMACION, Panel.EFECTOS, Panel.TEXTO, Panel.COLOR, Panel.MARCO, Panel.RECORTE, Panel.LUCES,
-        Panel.CAPAS, Panel.ENCUADRE, Panel.PROYECTO -> Unit
+        Panel.TRANSICION, Panel.CAPAS, Panel.ENCUADRE, Panel.PROYECTO -> Unit
     }
 }
 

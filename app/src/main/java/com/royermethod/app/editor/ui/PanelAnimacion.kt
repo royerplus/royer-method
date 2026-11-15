@@ -403,7 +403,7 @@ private fun Casillas(
         val celdas: List<LogicaAnimacion.Opcion?> = if (g == 0) listOf<LogicaAnimacion.Opcion?>(null) + opciones else opciones
         Cuadricula(celdas) { o, mod ->
             if (o == null) {
-                Casilla("Ninguna", if (sinNinguna) LogicaAnimacion.Marca.ELEGIDA else LogicaAnimacion.Marca.DISPONIBLE, { onTocar(null) }, mod, visto = false) { col -> ninguna(col) }
+                Casilla("Ninguna", if (sinNinguna) LogicaAnimacion.Marca.ELEGIDA else LogicaAnimacion.Marca.DISPONIBLE, { onTocar(null) }, mod, visto = false) { col -> dibujoNinguna(col) }
             } else Casilla(o.nombre, marcas[o] ?: LogicaAnimacion.Marca.DISPONIBLE, { onTocar(o) }, mod) { col ->
                 if (momento == MomentoAnimacion.SIEMPRE) {
                     if (o.continuas.isNotEmpty()) dibujoContinua(o.continuas.first().tipo, col)
@@ -762,12 +762,6 @@ private fun PiezasContinuas(estado: EstadoEditor, a: AnimacionAplicada) {
 // ----------------------------------------------------------------------
 // Dibujos de las casillas
 // ----------------------------------------------------------------------
-
-private fun DrawScope.ninguna(col: Color) {
-    val r = size.minDimension * 0.32f
-    drawCircle(col, r, center, style = Stroke(1.6.dp.toPx()))
-    drawLine(col, Offset(center.x - r * 0.7f, center.y + r * 0.7f), Offset(center.x + r * 0.7f, center.y - r * 0.7f), 1.6.dp.toPx())
-}
 
 /** Un rectangulo (el bloque) y una pista de como se mueve. */
 fun DrawScope.dibujoPieza(t: Animacion, col: Color, alReves: Boolean) {

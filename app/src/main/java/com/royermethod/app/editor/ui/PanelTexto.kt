@@ -276,11 +276,7 @@ private val SOMBRAS = listOf(
 @Composable
 private fun TextoSombra(estado: EstadoEditor, t: Texto) {
     Tira(Modifier.padding(top = 2.dp, bottom = 4.dp)) {
-        Mosaico("Ninguna", !t.sombra, { cambiar(estado) { it.copy(sombra = false) } }) { col ->
-            val r = size.minDimension * 0.32f
-            drawCircle(col, r, center, style = Stroke(1.6.dp.toPx()))
-            drawLine(col, Offset(center.x - r * 0.7f, center.y + r * 0.7f), Offset(center.x + r * 0.7f, center.y - r * 0.7f), 1.6.dp.toPx())
-        }
+        Mosaico("Ninguna", !t.sombra, { cambiar(estado) { it.copy(sombra = false) } }) { col -> dibujoNinguna(col) }
         for (s in SOMBRAS) {
             val elegida = t.sombra && (s.color == null || s.color == t.sombraColor) && abs(s.opacidad - t.sombraOpacidad) < 0.01f &&
                 abs(s.desenfoque - t.sombraDesenfoque) < 0.005f && abs(s.distancia - t.sombraDistancia) < 0.005f

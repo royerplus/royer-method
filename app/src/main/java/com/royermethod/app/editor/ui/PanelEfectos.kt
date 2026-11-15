@@ -754,7 +754,7 @@ private fun PuntosProgreso(p: PanelFx, efecto: EfectoVideo) {
 
 /** Ocho flechas para elegir la direccion de un toque (0 derecha, 90 abajo, como las transiciones). */
 @Composable
-private fun Direcciones(angulo: Float, onElegir: (Float) -> Unit) {
+internal fun Direcciones(angulo: Float, onElegir: (Float) -> Unit) {
     Row(Modifier.fillMaxWidth().padding(bottom = 4.dp), horizontalArrangement = Arrangement.SpaceBetween) {
         for (k in 0 until 8) {
             val a = k * 45f

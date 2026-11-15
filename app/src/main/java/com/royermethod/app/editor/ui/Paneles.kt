@@ -957,6 +957,13 @@ internal fun FilaColor(colores: List<Int>, color: Int, etiqueta: String = "Color
     }
 }
 
+/** El dibujo de la casilla "Ninguna": un aro tachado, el mismo en todas las hojas. */
+internal fun DrawScope.dibujoNinguna(col: Color) {
+    val r = size.minDimension * 0.32f
+    drawCircle(col, r, center, style = Stroke(1.6.dp.toPx()))
+    drawLine(col, Offset(center.x - r * 0.7f, center.y + r * 0.7f), Offset(center.x + r * 0.7f, center.y - r * 0.7f), 1.6.dp.toPx(), StrokeCap.Round)
+}
+
 /** Para los paneles que no tienen nada que ensenar con lo elegido. */
 @Composable
 fun SinNada(texto: String) {
