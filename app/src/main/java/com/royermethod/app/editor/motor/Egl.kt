@@ -87,6 +87,8 @@ class Egl(private val ventana: Any?, ancho: Int = 1, alto: Int = 1, paraCodifica
         check(display != EGL14.EGL_NO_DISPLAY && contexto != EGL14.EGL_NO_CONTEXT) { "EGL suelto" }
         EGL14.eglMakeCurrent(display, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_SURFACE, EGL14.EGL_NO_CONTEXT)
         if (superficie != EGL14.EGL_NO_SURFACE) EGL14.eglDestroySurface(display, superficie)
+        // Si crear la nueva lanza, soltar() no debe destruir otra vez la de antes
+        superficie = EGL14.EGL_NO_SURFACE
         superficie = EGL14.eglCreateWindowSurface(display, config, v, intArrayOf(EGL14.EGL_NONE), 0)
         check(superficie != EGL14.EGL_NO_SURFACE) { "eglCreateWindowSurface" }
         activar()

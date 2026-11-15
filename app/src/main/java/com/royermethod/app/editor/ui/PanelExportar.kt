@@ -35,6 +35,7 @@ import com.royermethod.app.ui.components.Icono
 import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.Segmentos
+import com.royermethod.app.ui.components.Tira
 import com.royermethod.app.ui.components.reloj
 import com.royermethod.app.ui.theme.Ink
 
@@ -99,7 +100,12 @@ fun PanelExportar(
             Nota("Puedes salir de la app: sigue en segundo plano.")
         }
 
-        exportar.resultado != null -> HojaPanel("Listo", onCerrar) {
+        exportar.resultado != null -> HojaPanel("Listo", onCerrar, pie = {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                BotonLleno("Compartir", onCompartir, Modifier.weight(1f))
+                BotonBorde("Seguir editando", onCerrar)
+            }
+        }) {
             val r = exportar.resultado
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -125,54 +131,55 @@ fun PanelExportar(
                     color = Ink.Peligro
                 )
             }
-            Spacer(Modifier.height(16.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                BotonLleno("Compartir", onCompartir, Modifier.weight(1f))
-                BotonBorde("Seguir editando", onCerrar)
-            }
+            Spacer(Modifier.height(8.dp))
         }
 
-        exportar.fallo != null -> HojaPanel("No se pudo exportar", onCerrar) {
-            Spacer(Modifier.height(8.dp))
-            Text(exportar.fallo, style = Letra.cuerpo, color = Ink.White70)
-            Spacer(Modifier.height(14.dp))
+        exportar.fallo != null -> HojaPanel("No se pudo exportar", onCerrar, pie = {
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 BotonLleno("Intentar otra vez", onExportar, Modifier.weight(1f))
                 BotonBorde("Cerrar", onCerrar)
             }
+        }) {
+            Spacer(Modifier.height(8.dp))
+            Text(exportar.fallo, style = Letra.cuerpo, color = Ink.White70)
+            Spacer(Modifier.height(8.dp))
         }
 
-        else -> HojaPanel("Exportar", onCerrar) {
+        else -> {
             val s = p.salida
-            // Solo este proyecto: los de por defecto se cambian en Personalizar
-            fun salida(f: (AjustesSalida) -> AjustesSalida) = estado.hacer { it.copy(salida = f(it.salida)) }
             val plan = remember(p) { PlanExportacion.de(p, conAudio = p.audios.isNotEmpty() || p.principal.any { it.esVideo && it.origen?.conAudio == true && it.volumen > 0f }) }
-            Etiqueta("Calidad")
-            Segmentos(Calidad.values().toList(), s.calidad, { Rotulos.de(it.nombre) }, { c -> salida { it.copy(calidad = c) } })
-            Etiqueta("Resolución")
-            Segmentos(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChipInterruptor("H.265", s.hevc, { v ->
-                    salida { it.copy(hevc = v) }
-                    if (v) estado.avisar("H.265: la misma calidad con bastante menos peso. Si el teléfono no lo tiene, sale en H.264")
-                })
-                ChipInterruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v ->
-                    salida { it.copy(desenfoqueMovimiento = v) }
-                    if (v) estado.avisar("El rastro que hace que las transiciones a 30 fps se vean fluidas")
-                })
+            HojaPanel("Exportar", onCerrar, pie = {
+                // Lo que va a pesar, en grande, y al lado lo que sale. Con el boton,
+                // siempre a la vista: en una pantalla baja las opciones se deslizan
+                val fluidos = (p.principal + p.capas.map { it.clip }).count { it.fluido }
+                Row(Modifier.fillMaxWidth().padding(top = 2.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("≈ ${peso(plan.bytesEstimados)}", style = Letra.titulo.copy(fontSize = 18.sp, lineHeight = 24.sp), color = Ink.White, maxLines = 1, softWrap = false)
+                    Spacer(Modifier.size(12.dp))
+                    Nota(
+                        "${plan.ancho}×${plan.alto}  ·  30 fps  ·  ${reloj(plan.duracionUs)}" +
+                            (if (fluidos > 0) "\n" + (if (fluidos == 1) "1 bloque" else "$fluidos bloques") + " con Fluido: tarda más" else ""),
+                        Modifier.weight(1f)
+                    )
+                }
+                BotonLleno("Exportar", onExportar, Modifier.fillMaxWidth(), activo = p.principal.isNotEmpty() || p.capas.isNotEmpty())
+            }) {
+                // Solo este proyecto: los de por defecto se cambian en Personalizar
+                fun salida(f: (AjustesSalida) -> AjustesSalida) = estado.hacer { it.copy(salida = f(it.salida)) }
+                Etiqueta("Calidad")
+                Segmentos(Calidad.values().toList(), s.calidad, { Rotulos.de(it.nombre) }, { c -> salida { it.copy(calidad = c) } })
+                Etiqueta("Resolución")
+                Segmentos(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
+                Tira(Modifier.padding(top = 8.dp), hueco = 8.dp) {
+                    ChipInterruptor("H.265", s.hevc, { v ->
+                        salida { it.copy(hevc = v) }
+                        if (v) estado.avisar("H.265: la misma calidad con bastante menos peso. Si el teléfono no lo tiene, sale en H.264")
+                    })
+                    ChipInterruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v ->
+                        salida { it.copy(desenfoqueMovimiento = v) }
+                        if (v) estado.avisar("El rastro que hace que las transiciones a 30 fps se vean fluidas")
+                    })
+                }
             }
-            // Lo que va a pesar, en grande, y al lado lo que sale
-            val fluidos = (p.principal + p.capas.map { it.clip }).count { it.fluido }
-            Row(Modifier.fillMaxWidth().padding(top = 10.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("≈ ${peso(plan.bytesEstimados)}", style = Letra.titulo.copy(fontSize = 18.sp, lineHeight = 24.sp), color = Ink.White, maxLines = 1, softWrap = false)
-                Spacer(Modifier.size(12.dp))
-                Nota(
-                    "${plan.ancho}×${plan.alto}  ·  30 fps  ·  ${reloj(plan.duracionUs)}" +
-                        (if (fluidos > 0) "\n" + (if (fluidos == 1) "1 bloque" else "$fluidos bloques") + " con Fluido: tarda más" else ""),
-                    Modifier.weight(1f)
-                )
-            }
-            BotonLleno("Exportar", onExportar, Modifier.fillMaxWidth(), activo = p.principal.isNotEmpty() || p.capas.isNotEmpty())
         }
     }
 }

@@ -64,7 +64,11 @@ internal fun HojaRecorte(estado: EstadoEditor, cerrar: () -> Unit) {
         val original = estado.clipElegido ?: return@HojaPanel
         val c = original.propiedadesEn(estado.localElegido ?: 0)
         if (animar) OpcionesPropiedades(estado, GrupoPropiedad.RECORTE)
-        if (tab == 0) ControlesMascara(estado, c) else ControlesCroma(estado, c, gotero) { gotero = it }
+        // Con el mismo alto minimo en las dos: sin nada puesto la hoja es corta y,
+        // si una midiera menos, las pestanas saltarian al cambiar de una a otra
+        Column(Modifier.fillMaxWidth().heightIn(min = 56.dp), verticalArrangement = Arrangement.Center) {
+            if (tab == 0) ControlesMascara(estado, c) else ControlesCroma(estado, c, gotero) { gotero = it }
+        }
     }
 }
 
@@ -139,7 +143,8 @@ private fun SelectorColor(e: EstadoEditor, imagen: ImageBitmap) {
         cambiarCroma(e,arrastre) { it.copy(activo = true, color = color) }
     }
     val seleccionar by rememberUpdatedState<(Offset,Float,Float,Boolean)->Unit>(::elegir)
-    Canvas(Modifier.fillMaxWidth().height(150.dp).semantics { contentDescription = "Toca el color que quieres quitar" }.clip(esquinas(12.dp)).background(Ink.White04)
+    // Bajo la fila del color, y sin llenar la hoja: debajo siguen las medidas
+    Canvas(Modifier.fillMaxWidth().height(altoRecuadro(encima = 44.dp)).semantics { contentDescription = "Toca el color que quieres quitar" }.clip(esquinas(12.dp)).background(Ink.White04)
         .pointerInput(imagen) { detectTapGestures { seleccionar(it,size.width.toFloat(),size.height.toFloat(),false) } }
         .pointerInput(imagen) { detectDragGestures(onDragStart = { e.empezarGesto(); seleccionar(it,size.width.toFloat(),size.height.toFloat(),true) },
             onDragEnd = { e.terminarGesto() }, onDragCancel = { e.terminarGesto() }) { cambio,_ ->
@@ -230,9 +235,8 @@ private fun PreviewMascara(e: EstadoEditor, c: Clip, imagen: ImageBitmap?) {
         else if(o != null && o.altoVisible > 0) o.anchoVisible.toFloat()*rc.ancho/(o.altoVisible*rc.alto) else 1f
     val aspecto = if(razon >= 1f) razon to 1f else 1f to 1f/razon.coerceAtLeast(.01f)
     val actual by rememberUpdatedState(c.recorteVisual.mascara)
-    // Bajo, para que la primera medida asome por debajo y se vea que hay mas;
-    // con la hoja ampliada hay sitio para un recuadro comodo
-    val alto = if (LocalTamanoPanelEditor.current?.ampliado == true) 200.dp else 124.dp
+    // Lo que deja la hoja bajo la tira de formas, con la primera medida asomando
+    val alto = altoRecuadro(encima = 62.dp)
     Canvas(Modifier.fillMaxWidth().height(alto).clip(esquinas(12.dp)).background(Ink.White04)
         .semantics { contentDescription = "Mover, agrandar o girar la máscara" }
         .pointerInput(c.id,razon) {

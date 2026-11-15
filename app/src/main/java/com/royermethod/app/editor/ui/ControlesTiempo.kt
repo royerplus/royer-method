@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -358,7 +359,8 @@ fun InterruptorFotogramas(modifier: Modifier = Modifier) {
 
 /**
  * Un tiempo en fotogramas enteros de 30 fps (lo usan las transiciones, que la
- * linea cuantiza igual), en una fila: la barra y -/+ de un fotograma.
+ * linea cuantiza igual), en una fila como las demas: el nombre, la barra para
+ * ir rapido y el valor entre "−" y "+", que lo mueven un fotograma.
  */
 @Composable
 internal fun TiempoFotogramas(
@@ -375,18 +377,26 @@ internal fun TiempoFotogramas(
         val n = (valor * Linea.FPS / 1_000_000.0).roundToLong()
         onCambio(Linea.tiempoDe((n + sentido).coerceAtLeast(0)).coerceIn(minimoUs, maximo), false)
     }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Fila(titulo) {
         if (maximo > minimoUs) {
             Deslizador(
                 titulo, valor / 1e6f, minimoUs / 1e6f, maximo / 1e6f,
                 { v -> onCambio(cuantizar((v * 1e6).toLong()), true) },
                 modifier = Modifier.weight(1f),
-                texto = { "%.2f s".format(it) }
+                texto = { "%.2f s".format(it) },
+                iman = false,
+                cabecera = false
             )
         } else {
-            Fila(titulo, Modifier.weight(1f)) { Text("%.2f s".format(valor / 1e6), style = Letra.cuerpo, color = Ink.White) }
+            Spacer(Modifier.weight(1f))
         }
         BotonPaso(Glifos.menos, "Un fotograma menos", valor > minimoUs) { paso(-1) }
+        Text(
+            "%.2f s".format(valor / 1e6),
+            style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium, textAlign = TextAlign.Center),
+            color = Ink.White, maxLines = 1, softWrap = false,
+            modifier = Modifier.widthIn(min = 58.dp)
+        )
         BotonPaso(Glifos.mas, "Un fotograma más", valor < maximo) { paso(1) }
     }
 }

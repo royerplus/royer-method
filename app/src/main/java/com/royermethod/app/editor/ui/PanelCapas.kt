@@ -84,7 +84,8 @@ internal fun ImagenClip(c: Clip, modifier: Modifier = Modifier) {
                     val letras = t.contenido.trim().ifBlank { "Aa" }
                     // Con una palabra larga la letra baja: partida en dos no se reconoce
                     val larga = letras.split(' ', '\n').maxOf { it.length }
-                    val cuerpo = if (larga <= 4) 12.sp else if (larga <= 6) 9.5.sp else 8.sp
+                    // En dp: es una miniatura del texto, no letra de la app; no crece con la del sistema
+                    val cuerpo = with(LocalDensity.current) { (if (larga <= 4) 12.dp else if (larga <= 6) 9.5.dp else 8.dp).toSp() }
                     Text(letras, color = color, fontFamily = fuente,
                         fontWeight = if (t.negrita) FontWeight.Bold else FontWeight.Normal,
                         fontStyle = if (t.cursiva) FontStyle.Italic else FontStyle.Normal,

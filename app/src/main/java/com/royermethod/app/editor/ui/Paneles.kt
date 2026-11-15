@@ -3,6 +3,7 @@ package com.royermethod.app.editor.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -11,13 +12,13 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -32,8 +33,10 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -53,7 +56,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.SolidColor
@@ -61,8 +66,10 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.propiedadesEn
 import com.royermethod.app.editor.modelo.Ajuste
@@ -127,11 +134,15 @@ import kotlin.math.min
  * el asa de arriba se puede ampliar para ver mas controles a la vez.
  *
  * [corta] es para los paneles de dos o tres controles: la hoja mide lo que su
- * contenido y la linea de tiempo se sigue viendo (y usando) encima.
+ * contenido y la linea de tiempo se sigue viendo (y usando) encima. Si lo que
+ * sobra no llega para la linea (pantallas bajas), ocupa todo como las demas:
+ * mejor que dejar una franja vacia encima.
  *
  * [acciones] va en la barra de abajo, entre el nombre y el boton de listo
  * (p. ej. "Animar"). [fijo] queda arriba sin desplazarse, encima del
- * [contenido], que es lo unico que se desliza (p. ej. unas pestanas).
+ * [contenido], que es lo unico que se desliza (p. ej. unas pestanas). [pie]
+ * queda abajo, sobre la barra, tambien sin desplazarse: es para el boton que
+ * no puede quedar escondido (p. ej. "Exportar") en una pantalla baja.
  */
 @Composable
 fun HojaPanel(
@@ -142,45 +153,94 @@ fun HojaPanel(
     fijo: (@Composable ColumnScope.() -> Unit)? = null,
     claveDesplazamiento: Any? = null,
     corta: Boolean = false,
+    pie: (@Composable ColumnScope.() -> Unit)? = null,
     contenido: @Composable ColumnScope.() -> Unit
 ) {
     val desplazamiento=rememberScrollState()
     LaunchedEffect(claveDesplazamiento) { desplazamiento.scrollTo(0) }
     val tamano=LocalTamanoPanelEditor.current.takeUnless { corta }
-    Column(
-        modifier
-            .fillMaxWidth()
-            .then(if (corta) Modifier else Modifier.fillMaxHeight())
-            .background(Ink.Black)
-    ) {
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
-        if(tamano!=null) Box(Modifier.fillMaxWidth().height(20.dp)
-            .pointerInput(tamano.ampliado) {
-                var distancia=0f
-                detectVerticalDragGestures(onDragStart={distancia=0f},onDragEnd={
-                    if((distancia < -16.dp.toPx() && !tamano.ampliado) || (distancia > 16.dp.toPx() && tamano.ampliado))tamano.cambiar()
-                }) { ch,dy -> distancia+=dy;ch.consume() }
+    // Tres trozos: lo de arriba (asa y zona fija), el contenido que se desliza y la barra
+    Layout(
+        content = {
+            Column(Modifier.fillMaxWidth()) {
+                Box(Modifier.fillMaxWidth().height(1.dp).background(Ink.White08))
+                if(tamano!=null) Box(Modifier.fillMaxWidth().height(20.dp)
+                    .pointerInput(tamano.ampliado) {
+                        var distancia=0f
+                        detectVerticalDragGestures(onDragStart={distancia=0f},onDragEnd={
+                            if((distancia < -16.dp.toPx() && !tamano.ampliado) || (distancia > 16.dp.toPx() && tamano.ampliado))tamano.cambiar()
+                        }) { ch,dy -> distancia+=dy;ch.consume() }
+                    }
+                    .semantics { contentDescription=if(tamano.ampliado) "Reducir panel" else "Ampliar panel" }
+                    .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tamano.cambiar() },contentAlignment=Alignment.Center) {
+                    Box(Modifier.width(30.dp).height(3.dp).clip(esquinas(2.dp)).background(Ink.White30))
+                } else Spacer(Modifier.height(10.dp))
+                if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = MARGEN_HOJA), content = fijo)
             }
-            .semantics { contentDescription=if(tamano.ampliado) "Reducir panel" else "Ampliar panel" }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) { tamano.cambiar() },contentAlignment=Alignment.Center) {
-            Box(Modifier.width(30.dp).height(3.dp).clip(esquinas(2.dp)).background(Ink.White30))
-        } else Spacer(Modifier.height(10.dp))
-        if (fijo != null) Column(Modifier.fillMaxWidth().padding(horizontal = MARGEN_HOJA), content = fijo)
-        Column(
-            Modifier
-                .fillMaxWidth()
-                .weight(1f, fill = !corta)
-                .verticalScroll(desplazamiento)
-                .padding(horizontal = MARGEN_HOJA)
-                .padding(bottom = 8.dp),
-            content = contenido
-        )
-        BarraHoja(titulo, onCerrar, acciones)
+            // Con sus medidas a mano: el contenido sabe cuanto se ve sin deslizar (ver altoRecuadro)
+            BoxWithConstraints(Modifier.fillMaxWidth(), propagateMinConstraints = true) {
+                CompositionLocalProvider(LocalAltoVistaHoja provides (if (constraints.hasBoundedHeight) maxHeight else Dp.Unspecified)) {
+                    Column(
+                        Modifier
+                            .fillMaxWidth()
+                            // Lo que sigue por arriba o por abajo se va apagando: se ve que hay mas
+                            .drawWithContent {
+                                drawContent()
+                                val borde = 18.dp.toPx()
+                                if (desplazamiento.canScrollBackward)
+                                    drawRect(Brush.verticalGradient(listOf(Ink.Black, Color.Transparent), 0f, borde), size = Size(size.width, borde))
+                                if (desplazamiento.canScrollForward)
+                                    drawRect(Brush.verticalGradient(listOf(Color.Transparent, Ink.Black), size.height - borde, size.height), Offset(0f, size.height - borde), Size(size.width, borde))
+                            }
+                            .verticalScroll(desplazamiento)
+                            .padding(horizontal = MARGEN_HOJA)
+                            .padding(bottom = 8.dp),
+                        content = contenido
+                    )
+                }
+            }
+            Column(Modifier.fillMaxWidth()) {
+                if (pie != null) Column(Modifier.fillMaxWidth().padding(horizontal = MARGEN_HOJA).padding(bottom = 8.dp), content = pie)
+                BarraHoja(titulo, onCerrar, acciones)
+            }
+        },
+        modifier = modifier.fillMaxWidth().background(Ink.Black)
+    ) { trozos, limites ->
+        val suelto = limites.copy(minHeight = 0)
+        val arriba = trozos[0].measure(suelto)
+        val barra = trozos[2].measure(suelto)
+        val sitio = (limites.maxHeight - arriba.height - barra.height).coerceAtLeast(0)
+        // Una hoja entera estira el contenido hasta la barra; una corta lo deja en lo que mide
+        val cuerpo = trozos[1].measure(limites.copy(minHeight = if (corta) 0 else sitio, maxHeight = sitio))
+        val justo = arriba.height + cuerpo.height + barra.height
+        val alto = if (corta && limites.maxHeight - justo >= LINEA_MINIMA.roundToPx()) justo else maxOf(justo, limites.maxHeight)
+        layout(limites.maxWidth, alto) {
+            arriba.place(0, 0)
+            cuerpo.place(0, arriba.height)
+            barra.place(0, alto - barra.height)
+        }
     }
 }
 
 /** Margen lateral del contenido de una hoja. */
 internal val MARGEN_HOJA = 14.dp
+
+/** Lo que se ve del contenido de la hoja sin deslizarlo. Sin hoja alrededor, [Dp.Unspecified]. */
+internal val LocalAltoVistaHoja = compositionLocalOf { Dp.Unspecified }
+
+/**
+ * El alto de un recuadro de gestos (el de la mascara, el de las luces, el del
+ * cuentagotas). Dentro de el un arrastre mueve la figura, no la hoja: si
+ * llenara todo lo que se ve, no habria por donde deslizar hasta los controles
+ * de debajo. Por eso mide lo que deja la hoja menos [encima] (lo que lleva
+ * arriba) y un trozo para que asome el control que sigue; con la hoja
+ * ampliada crece hasta ser comodo.
+ */
+@Composable
+internal fun altoRecuadro(encima: Dp = 0.dp): Dp {
+    val vista = LocalAltoVistaHoja.current
+    return if (vista == Dp.Unspecified) 124.dp else (vista - encima - 30.dp).coerceIn(84.dp, 200.dp)
+}
 
 /** La barra de abajo de una hoja: nombre, acciones y listo. */
 @Composable

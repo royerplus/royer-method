@@ -51,6 +51,7 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.sp
@@ -79,8 +80,14 @@ import kotlinx.coroutines.launch
 private val ALTO_BARRA = 52.dp
 private val ALTO_TRANSPORTE = 48.dp
 private val ALTO_HERRAMIENTAS = 62.dp
-/** Con menos alto que este la linea de tiempo no ensena ni la pista principal: mejor nada. */
-private val LINEA_MINIMA = 92.dp
+/** Hasta cuanto agranda el editor su letra con la del sistema. */
+private const val LETRA_MAXIMA = 1.2f
+
+/**
+ * Con menos alto que este la linea de tiempo no ensena ni la pista principal:
+ * mejor nada. Una hoja corta que no le deja esto ocupa todo (ver HojaPanel).
+ */
+internal val LINEA_MINIMA = 92.dp
 
 /**
  * El editor.
@@ -132,7 +139,16 @@ fun PantallaEditor(
         if (exportar.corriendo || exportar.resultado != null || exportar.fallo != null) exportando = true
     }
 
-    CompositionLocalProvider(LocalGestos provides estado, LocalRecursosEditor provides recursos, LocalDenso provides true) {
+    // La letra del sistema agranda la del editor hasta un 20 %: con mas, los
+    // nombres de las casillas se parten por la mitad y las filas no caben
+    val densidad = LocalDensity.current
+    val densidadEditor = remember(densidad) {
+        if (densidad.fontScale > LETRA_MAXIMA) Density(densidad.density, LETRA_MAXIMA) else densidad
+    }
+    CompositionLocalProvider(
+        LocalGestos provides estado, LocalRecursosEditor provides recursos, LocalDenso provides true,
+        LocalDensity provides densidadEditor
+    ) {
         BoxWithConstraints(modifier.fillMaxSize().background(Ink.Black)) {
             val panel = estado.panel
             // Toda hoja abre del alto de la linea de tiempo: la imagen se queda

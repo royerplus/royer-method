@@ -139,15 +139,14 @@ internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
                 }, Modifier.weight(1f)) { color -> iconoLuz(tipo, color) }
             }
             dibujar -> {
-                LienzoLuces(e, c, luz, true, fuenteRecorte(e, c, preciso = true), 190.dp) { agregar(TipoLuz.TRAZO, it) }
+                LienzoLuces(e, c, luz, true, fuenteRecorte(e, c, preciso = true), altoRecuadro()) { agregar(TipoLuz.TRAZO, it) }
                 Nota("Dibuja el trazo con el dedo sobre la imagen.", Modifier.padding(top = 6.dp))
             }
             luz != null -> {
                 if (animar) CurvaLuz(e, luz, curvas)
                 if (tab == 0) {
-                    // Bajo, para que la primera medida asome; con la hoja ampliada, comodo
-                    val alto = if (LocalTamanoPanelEditor.current?.ampliado == true) 200.dp else 124.dp
-                    LienzoLuces(e, c, luz, false, fuenteRecorte(e, c, preciso = true), alto) { }
+                    // Lo que deja la hoja, con la primera medida asomando por debajo
+                    LienzoLuces(e, c, luz, false, fuenteRecorte(e, c, preciso = true), altoRecuadro()) { }
                     Spacer(Modifier.height(4.dp))
                     ControlesColocarLuz(e, luz)
                 } else ControlesEstiloLuz(e, luz, animar)
