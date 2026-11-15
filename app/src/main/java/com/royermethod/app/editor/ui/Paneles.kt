@@ -374,7 +374,7 @@ internal fun FiltrosDeColor(estado: EstadoEditor) {
     Tira(Modifier.padding(top = 4.dp)) {
         Filtro.values().forEach { f ->
             val colores = muestraDe(f)
-            Mosaico(f.nombre, c.filtro == f, { estado.cambiarAspecto { if (f == Filtro.NINGUNO) it.copy(filtro = f, intensidadFiltro = 1f) else it.copy(filtro = f) } }) { _ ->
+            Mosaico(Rotulos.de(f.nombre), c.filtro == f, { estado.cambiarAspecto { if (f == Filtro.NINGUNO) it.copy(filtro = f, intensidadFiltro = 1f) else it.copy(filtro = f) } }) { _ ->
                 drawCircle(colores[0], size.minDimension * 0.34f, Offset(size.width * 0.38f, size.height * 0.5f))
                 drawCircle(colores[1].copy(alpha = 0.85f), size.minDimension * 0.34f, Offset(size.width * 0.62f, size.height * 0.5f))
             }
@@ -671,7 +671,7 @@ internal fun SelectorCurva(
         else -> ({ x: Float -> Escena.curva(curva, x) })
     }
     val nombre = deVelocidad?.nombre ?: mia?.nombre ?: PlantillasCurva.nombreDe(bezier)
-        ?: if (velocidad != null || bezier != null) "Personalizada" else curva.nombre
+        ?: if (velocidad != null || bezier != null) "Personalizada" else Rotulos.de(curva.nombre)
     Tira(Modifier.padding(top = 2.dp), hueco = 8.dp) {
         CasillaCurva("Personalizar", propia, Unit, null, {
             // Parte de la curva de ahora, ya con sus puntos para moverlos
@@ -685,7 +685,7 @@ internal fun SelectorCurva(
             CasillaCurva(pl.nombre, velocidad == pl.curva, pl.curva, { pl.curva.en(it) }, { poner(curva, null, pl.curva, false) })
         }
         for (cu in Curva.values()) {
-            CasillaCurva(cu.nombre, velocidad == null && bezier == null && curva == cu, cu, { Escena.curva(cu, it) }, { poner(cu, null, null, false) })
+            CasillaCurva(Rotulos.de(cu.nombre), velocidad == null && bezier == null && curva == cu, cu, { Escena.curva(cu, it) }, { poner(cu, null, null, false) })
         }
         for (pl in PlantillasCurva.TODAS) {
             CasillaCurva(pl.nombre, velocidad == null && bezier == pl.bezier, pl.bezier, { pl.bezier.en(it) }, { poner(curva, pl.bezier, null, false) })

@@ -226,7 +226,7 @@ internal object LogicaAnimacion {
     fun motivoNoConvertible(a: AnimacionAplicada): String? = when {
         a.convertible() -> null
         a.momento == MomentoAnimacion.SIEMPRE -> "No se puede convertir: no tiene piezas"
-        else -> "No se puede convertir: no tiene piezas ni duracion"
+        else -> "No se puede convertir: no tiene piezas ni duración"
     }
 
     // ------------------------------------------------------------------

@@ -10,11 +10,11 @@ internal fun avisoReemplazo(r: Edicion.Reemplazo, viejo: Origen): String {
         is Edicion.Reemplazo.Hecho -> {
             val que = if (video) "Video cambiado" else "Foto cambiada"
             val donde = if (r.usos > 1) " en ${r.usos} bloques" else ""
-            val final = if (r.recortados > 0) "; el nuevo dura un poco menos y se acorto el final" else ""
+            val final = if (r.recortados > 0) "; el nuevo dura un poco menos y se acortó el final" else ""
             "$que$donde$final. Puedes deshacer"
         }
         is Edicion.Reemplazo.Corto ->
-            "El video nuevo dura %.2f s y la edicion usa hasta %.2f s del anterior: no se cambio nada"
+            "El video nuevo dura %.2f s y la edición usa hasta %.2f s del anterior: no se cambió nada"
                 .format(r.duracionUs / 1e6, r.usadoUs / 1e6)
         Edicion.Reemplazo.OtroTipo -> if (video) "Elige un video: este bloque es un video" else "Elige una foto: este bloque es una foto"
         Edicion.Reemplazo.Mismo -> "Es el mismo archivo"

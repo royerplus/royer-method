@@ -218,7 +218,7 @@ private fun DrawScope.barrasEfectos(
         // Dentro deja sitio a las asas de la elegida
         val relleno = (if (esElegida) 8.dp else 4.dp).toPx()
         val estilo = TextStyle(fontSize = (letra * Estilo.letra).sp, letterSpacing = 0.2.sp)
-        val nombre = TramosEfecto.nombreCorto(e)
+        val nombre = Rotulos.de(TramosEfecto.nombreCorto(e))
         val entero = medidor.measure(nombre, estilo, maxLines = 1, softWrap = false)
         val libre = TramosEfecto.libreDerecha(barras, i, size.width) - 4.dp.toPx()
         val donde = TramosEfecto.rotulo(entero.size.width.toFloat(), ancho, relleno, libre, 18.dp.toPx())

@@ -148,7 +148,7 @@ fun PanelExportar(
             fun salida(f: (AjustesSalida) -> AjustesSalida) = estado.hacer { it.copy(salida = f(it.salida)) }
             val plan = remember(p) { PlanExportacion.de(p, conAudio = p.audios.isNotEmpty() || p.principal.any { it.esVideo && it.origen?.conAudio == true && it.volumen > 0f }) }
             Etiqueta("Calidad")
-            Segmentos(Calidad.values().toList(), s.calidad, { it.nombre }, { c -> salida { it.copy(calidad = c) } })
+            Segmentos(Calidad.values().toList(), s.calidad, { Rotulos.de(it.nombre) }, { c -> salida { it.copy(calidad = c) } })
             Etiqueta("Resolución")
             Segmentos(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
             Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

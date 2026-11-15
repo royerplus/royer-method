@@ -168,7 +168,7 @@ internal object TiempoCampo {
         val us = pegado.coerceIn(min, max)
         val nota = when {
             us != pegado -> "Va de ${TiempoPreciso.texto(min)} a ${TiempoPreciso.texto(max)}"
-            us != bruto -> "Pegado al fotograma mas cercano"
+            us != bruto -> "Pegado al fotograma más cercano"
             else -> null
         }
         return Lectura(us, nota = nota)

@@ -73,20 +73,10 @@ private val PESOS = listOf(0.5f to "Mínimo", 0.75f to "Ligero", 1f to "Normal",
  * que verse perfecto. Lo que se mueve ya se lleva mas bits solo.
  */
 @Composable
-fun PanelCompresion(estado: EstadoEditor) {
+internal fun HojaCompresion(estado: EstadoEditor, cerrar: () -> Unit) {
     val c = estado.clipElegido ?: return
     val p = estado.proyecto
-    Deslizador(
-        "Calidad", c.calidad, 0.3f, 2f,
-        { v -> estado.cambiarClip(true) { it.copy(calidad = v) } },
-        neutro = 1f, paso = 0.05f, texto = { "${(it * 100).toInt()}%" }
-    )
-    Segmentos(PESOS, PESOS.firstOrNull { kotlin.math.abs(it.first - c.calidad) < 0.01f }, { it.second }, { (v, _) ->
-        estado.cambiarClip { it.copy(calidad = v) }
-    })
-    val (bloque, total) = remember(p, c.id) { pesoDe(p, c.id) }
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Nota("Este bloque ≈ ${mb(bloque)}  ·  Video ≈ ${mb(total)}", Modifier.weight(1f))
+    HojaPanel(Panel.COMPRESION.titulo, cerrar, corta = true, acciones = {
         BotonTexto("Usar en todos", {
             val v = c.calidad
             estado.hacer { q ->
@@ -97,6 +87,17 @@ fun PanelCompresion(estado: EstadoEditor) {
             }
             estado.avisar("Todos los bloques al ${(v * 100).toInt()}%")
         }, glifo = Glifos.duplicar)
+    }) {
+        Deslizador(
+            "Calidad", c.calidad, 0.3f, 2f,
+            { v -> estado.cambiarClip(true) { it.copy(calidad = v) } },
+            neutro = 1f, paso = 0.05f, texto = { "${(it * 100).toInt()}%" }
+        )
+        Segmentos(PESOS, PESOS.firstOrNull { kotlin.math.abs(it.first - c.calidad) < 0.01f }, { it.second }, { (v, _) ->
+            estado.cambiarClip { it.copy(calidad = v) }
+        })
+        val (bloque, total) = remember(p, c.id) { pesoDe(p, c.id) }
+        Nota("Este bloque ≈ ${mb(bloque)}  ·  Video ≈ ${mb(total)}", Modifier.padding(top = 2.dp))
     }
 }
 

@@ -353,7 +353,7 @@ private fun CatalogoAnimaciones(estado: EstadoEditor, vista: VistaAnimacion, apl
     // Las categorias en una tira: tocar una ensena solo esa (otra vez, o "Todas", todas)
     Tira(Modifier.padding(top = 2.dp, bottom = 6.dp)) {
         Chip(LogicaAnimacion.TODAS, categoria == null, { vista.categoria = null })
-        nombres.forEach { n -> Chip(rotulo(n), n == categoria, { vista.categoria = if (n == categoria) null else n }, marca = n in conPuestas) }
+        nombres.forEach { n -> Chip(Rotulos.de(n), n == categoria, { vista.categoria = if (n == categoria) null else n }, marca = n in conPuestas) }
     }
     val tocar by rememberUpdatedState { o: LogicaAnimacion.Opcion? ->
         if (o == null) {
@@ -376,12 +376,6 @@ private fun CatalogoAnimaciones(estado: EstadoEditor, vista: VistaAnimacion, apl
     Casillas(momento, grupos, marcas, puestas.isEmpty(), categoria == null, alTocar)
 }
 
-/** Las categorias y las casillas se guardan sin tildes; en pantalla, con ellas. */
-private fun rotulo(nombre: String): String = when (nombre) {
-    "Basicas" -> "Básicas"
-    "Mias" -> "Mías"
-    else -> nombre
-}
 
 /**
  * Las casillas, por categorias (con su nombre solo cuando se ven todas). La
@@ -398,13 +392,13 @@ private fun Casillas(
     onTocar: (LogicaAnimacion.Opcion?) -> Unit
 ) {
     grupos.forEachIndexed { g, (nombre, opciones) ->
-        if (conNombres) Etiqueta(rotulo(nombre), if (g == 0) Modifier else Modifier.padding(top = 4.dp))
+        if (conNombres) Etiqueta(Rotulos.de(nombre), if (g == 0) Modifier else Modifier.padding(top = 4.dp))
         // null es "Ninguna": solo en la primera fila
         val celdas: List<LogicaAnimacion.Opcion?> = if (g == 0) listOf<LogicaAnimacion.Opcion?>(null) + opciones else opciones
         Cuadricula(celdas) { o, mod ->
             if (o == null) {
                 Casilla("Ninguna", if (sinNinguna) LogicaAnimacion.Marca.ELEGIDA else LogicaAnimacion.Marca.DISPONIBLE, { onTocar(null) }, mod, visto = false) { col -> dibujoNinguna(col) }
-            } else Casilla(o.nombre, marcas[o] ?: LogicaAnimacion.Marca.DISPONIBLE, { onTocar(o) }, mod) { col ->
+            } else Casilla(Rotulos.de(o.nombre), marcas[o] ?: LogicaAnimacion.Marca.DISPONIBLE, { onTocar(o) }, mod) { col ->
                 if (momento == MomentoAnimacion.SIEMPRE) {
                     if (o.continuas.isNotEmpty()) dibujoContinua(o.continuas.first().tipo, col)
                     // "Zoom y flash" se distingue de "Zoom al ritmo" por los rayos
@@ -527,7 +521,7 @@ private fun FilaAplicada(a: AnimacionAplicada, elegida: Boolean, onElegir: () ->
     ) {
         Column(Modifier.weight(1f)) {
             Text(
-                a.nombre,
+                Rotulos.de(a.nombre),
                 style = Letra.cuerpo.copy(fontWeight = FontWeight.Medium),
                 color = if (elegida) Ink.White else Ink.White90,
                 maxLines = 1,
@@ -535,8 +529,8 @@ private fun FilaAplicada(a: AnimacionAplicada, elegida: Boolean, onElegir: () ->
             )
             Nota(LogicaAnimacion.detalle(a))
         }
-        BotonIcono(Glifos.ajustes, onAjustar, color = Ink.White70, tam = 38.dp, descripcion = "Ajustar ${a.nombre}")
-        BotonIcono(Glifos.cerrar, onQuitar, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${a.nombre}")
+        BotonIcono(Glifos.ajustes, onAjustar, color = Ink.White70, tam = 38.dp, descripcion = "Ajustar ${Rotulos.de(a.nombre)}")
+        BotonIcono(Glifos.cerrar, onQuitar, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${Rotulos.de(a.nombre)}")
     }
 }
 
@@ -557,7 +551,7 @@ private fun DialogoConvertir(a: AnimacionAplicada, onCancelar: () -> Unit, onCon
             Text("Convertir en efecto", style = Letra.titulo, color = Ink.White)
             Spacer(Modifier.height(8.dp))
             Text(
-                "\"${a.nombre}\" pasa a ser un efecto con su propio tramo, que se mueve y se recorta en Efectos. " +
+                "\"${Rotulos.de(a.nombre)}\" pasa a ser un efecto con su propio tramo, que se mueve y se recorta en Efectos. " +
                     "Ahora se ve igual y no quedan dos copias. Se puede deshacer.",
                 style = Letra.cuerpo,
                 color = Ink.White90
@@ -566,7 +560,7 @@ private fun DialogoConvertir(a: AnimacionAplicada, onCancelar: () -> Unit, onCon
             limitacionesConversion(a).forEach { t ->
                 Row(Modifier.padding(vertical = 2.dp)) {
                     Nota("•", Modifier.width(14.dp), color = Ink.White70)
-                    Nota(t, Modifier.weight(1f), color = Ink.White70)
+                    Nota(Rotulos.de(t), Modifier.weight(1f), color = Ink.White70)
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -587,7 +581,7 @@ private fun AjustesElegida(estado: EstadoEditor, c: Clip, a: AnimacionAplicada, 
     // El nombre y quitar, en una fila: lo que dura ya se ve arriba
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            a.nombre,
+            Rotulos.de(a.nombre),
             style = Letra.titulo,
             color = Ink.White,
             maxLines = 1,
@@ -595,7 +589,7 @@ private fun AjustesElegida(estado: EstadoEditor, c: Clip, a: AnimacionAplicada, 
             modifier = Modifier.weight(1f)
         )
         // Quitar: un paso de deshacer, como la ✕ del desplegable
-        BotonIcono(Glifos.papelera, { LogicaAnimacion.quitar(estado, a.id) }, color = Ink.White70, tam = 38.dp, descripcion = "Quitar ${a.nombre}")
+        BotonIcono(Glifos.papelera, { LogicaAnimacion.quitar(estado, a.id) }, color = Ink.White70, tam = 38.dp, descripcion = "Quitar ${Rotulos.de(a.nombre)}")
     }
     if (a.momento == MomentoAnimacion.SIEMPRE) {
         PiezasContinuas(estado, a)
@@ -669,20 +663,20 @@ private fun Piezas(
                 Icono({ col -> dibujoPieza(m.tipo, col, false) }, tam = 22.dp, color = Ink.White90)
                 Spacer(Modifier.width(10.dp))
                 Column(Modifier.weight(1f)) {
-                    Text(m.tipo.nombre, style = Letra.cuerpo, color = Ink.White90, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(Rotulos.de(m.tipo.nombre), style = Letra.cuerpo, color = Ink.White90, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(
-                        "${(m.intensidad * 100).toInt()}%  ·  ${m.curva.nombre}" +
+                        "${(m.intensidad * 100).toInt()}%  ·  ${Rotulos.de(m.curva.nombre)}" +
                             if (m.desde > 0f || m.hasta < 1f) "  ·  ${TiempoPreciso.texto(tramo(m.desde, duracionUs))}–${TiempoPreciso.texto(tramo(m.hasta, duracionUs))}" else "",
                         style = Letra.mini, color = Ink.White50, maxLines = 1, overflow = TextOverflow.Ellipsis
                     )
                 }
-                BotonIcono(Glifos.cerrar, { onCambio(piezas.filterIndexed { j, _ -> j != i }, false); abierta = -1 }, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${m.tipo.nombre}")
+                BotonIcono(Glifos.cerrar, { onCambio(piezas.filterIndexed { j, _ -> j != i }, false); abierta = -1 }, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${Rotulos.de(m.tipo.nombre)}")
             }
             AnimatedVisibility(abierta == i) {
                 Column(Modifier.padding(horizontal = 10.dp).padding(bottom = 8.dp)) {
                     Deslizador("Cuánto", m.intensidad, 0f, 3f, { v -> cambiar(m.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
                     Tira(Modifier.padding(vertical = 3.dp)) {
-                        Curva.values().forEach { cu -> Chip(cu.nombre, cu == m.curva, { cambiar(m.copy(curva = cu), false) }) }
+                        Curva.values().forEach { cu -> Chip(Rotulos.de(cu.nombre), cu == m.curva, { cambiar(m.copy(curva = cu), false) }) }
                     }
                     if (duracionUs > 0 && visibleUs > 0) {
                         val inicio = tramo(m.desde, duracionUs)
@@ -744,8 +738,8 @@ private fun PiezasContinuas(estado: EstadoEditor, a: AnimacionAplicada) {
         fun cambiar(n: Continuo) = poner(piezas.toMutableList().also { it[i] = n }, true)
         Column(Modifier.fillMaxWidth().padding(vertical = 3.dp).clip(esquinas(10.dp)).background(Ink.White04).padding(start = 10.dp, end = 4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(k.tipo.nombre, style = Letra.cuerpo, color = Ink.White90, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                BotonIcono(Glifos.cerrar, { poner(piezas.filterIndexed { j, _ -> j != i }) }, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${k.tipo.nombre}")
+                Text(Rotulos.de(k.tipo.nombre), style = Letra.cuerpo, color = Ink.White90, modifier = Modifier.weight(1f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                BotonIcono(Glifos.cerrar, { poner(piezas.filterIndexed { j, _ -> j != i }) }, color = Ink.White50, tam = 38.dp, descripcion = "Quitar ${Rotulos.de(k.tipo.nombre)}")
             }
             Deslizador("Cuánto", k.intensidad, 0f, 3f, { v -> cambiar(k.copy(intensidad = v)) }, neutro = 1f, texto = { "${(it * 100).toInt()}%" })
             Deslizador("Rapidez", k.velocidad, 0.1f, 5f, { v -> cambiar(k.copy(velocidad = v)) }, neutro = 1f, escala = Escala.LOGARITMICA, texto = { "%.2gx".format(it) })

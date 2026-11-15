@@ -161,8 +161,10 @@ fun PantallaEditor(
                         if (maxHeight >= LINEA_MINIMA) {
                             LineaTiempo(estado, recursos, onAgregarPrincipal, onAgregarSonido, Modifier.fillMaxSize())
                             // El zoom, abajo a la derecha: donde no tapa la pista
-                            // principal ni el "+ Agregar sonido"
-                            if (maxHeight >= 150.dp)
+                            // principal ni el "+ Agregar sonido". Con una hoja
+                            // corta abierta la linea queda baja y taparia bloques:
+                            // ahi se sigue pudiendo pellizcar
+                            if (panel == null && !exportando && maxHeight >= 150.dp)
                                 ControlesZoom(estado, Modifier.align(Alignment.BottomEnd).padding(end = 8.dp, bottom = 6.dp))
                         }
                     }
@@ -207,13 +209,14 @@ fun PantallaEditor(
                                         Panel.LUCES -> HojaLuces(estado, cerrar)
                                         Panel.TRANSICION -> HojaTransicion(estado, cerrar)
                                         Panel.PIEZAS -> HojaPiezas(estado, cerrar)
+                                        Panel.COMPRESION -> HojaCompresion(estado, cerrar)
                                         Panel.CAPAS -> HojaCapas(estado, cerrar)
                                         Panel.ENCUADRE -> HojaEncuadre(estado, cerrar)
                                         Panel.PROYECTO -> HojaProyecto(estado, cerrar, onAbrirProyecto, onGuardarProyecto, onEjemplos)
                                         else -> {
                                             val dato = datoDe(estado, p)
                                             HojaPanel(
-                                                p.titulo, onCerrar = cerrar, corta = p in HOJAS_CORTAS,
+                                                p.titulo, onCerrar = cerrar, corta = p in HOJAS_CORTAS || (p == Panel.CURVA && sinTramos(estado)),
                                                 acciones = if (dato != null) ({ DatoHoja(dato) }) else null
                                             ) { ContenidoPanel(estado, p) }
                                         }
@@ -230,7 +233,11 @@ fun PantallaEditor(
 }
 
 /** Las hojas de dos o tres controles: miden lo que su contenido y dejan ver la linea de tiempo. */
-private val HOJAS_CORTAS = setOf(Panel.VELOCIDAD, Panel.VOLUMEN, Panel.FORMATO, Panel.FLUIDEZ, Panel.COMPRESION, Panel.RESOLUCION)
+private val HOJAS_CORTAS = setOf(Panel.VELOCIDAD, Panel.VOLUMEN, Panel.FORMATO, Panel.FLUIDEZ, Panel.RESOLUCION)
+
+/** Curvas sin dos keyframes solo tiene una frase que decir: no hace falta la hoja entera. */
+private fun sinTramos(estado: EstadoEditor): Boolean =
+    (estado.clipElegido?.claves?.map { it.tiempoUs }?.distinct()?.size ?: 0) < 2
 
 /** Un dato corto para la barra de la hoja: lo que dura, lo que mide, a cuantos fps va. */
 private fun datoDe(estado: EstadoEditor, p: Panel): String? = when (p) {
@@ -248,11 +255,10 @@ private fun ContenidoPanel(estado: EstadoEditor, p: Panel) {
         Panel.FORMATO -> PanelFormato(estado)
         Panel.CURVA -> PanelCurva(estado)
         Panel.FLUIDEZ -> PanelFluidez(estado)
-        Panel.COMPRESION -> PanelCompresion(estado)
         Panel.RESOLUCION -> PanelResolucion(estado)
         // Van con su propia hoja (acciones en la barra y zona fija)
         Panel.ANIMACION, Panel.EFECTOS, Panel.TEXTO, Panel.COLOR, Panel.MARCO, Panel.RECORTE, Panel.LUCES,
-        Panel.TRANSICION, Panel.PIEZAS, Panel.CAPAS, Panel.ENCUADRE, Panel.PROYECTO -> Unit
+        Panel.TRANSICION, Panel.PIEZAS, Panel.COMPRESION, Panel.CAPAS, Panel.ENCUADRE, Panel.PROYECTO -> Unit
     }
 }
 

@@ -39,6 +39,7 @@ internal object Rotulos {
         "Rapida" to "Rápida", "rapida" to "rápida", "rapidas" to "rápidas",
         "Rapido" to "Rápido", "rapido" to "rápido", "rapidos" to "rápidos",
         "recortala" to "recórtala",
+        "seguia" to "seguía",
         "Separacion" to "Separación", "separacion" to "separación",
         "tamano" to "tamaño",
         "Transicion" to "Transición", "transicion" to "transición",
