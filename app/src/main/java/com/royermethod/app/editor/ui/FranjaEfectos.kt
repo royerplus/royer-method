@@ -101,15 +101,8 @@ internal fun FranjaEfectos(
 ) {
     val efectos = vista.efectos
     val dur = vista.duracionUs
-    if (efectos.isEmpty()) {
-        Box(
-            modifier.fillMaxWidth().height(ALTO_CARRILES).clip(esquinas(8.dp)).background(Ink.White04),
-            contentAlignment = Alignment.Center
-        ) {
-            Text("Sin efectos. Toca + Agregar", style = MaterialTheme.typography.bodyMedium, color = Ink.White50)
-        }
-        return
-    }
+    // Sin efectos no hay franja: el panel ensena el catalogo
+    if (efectos.isEmpty()) return
     // Mientras se arrastra, cada barra se queda en su carril
     var fijos by remember { mutableStateOf<Map<Long, Int>?>(null) }
     val carriles = remember(efectos, fijos) { TramosEfecto.carriles(efectos, fijos) }

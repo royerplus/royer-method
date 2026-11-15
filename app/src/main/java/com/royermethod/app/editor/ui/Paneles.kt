@@ -86,13 +86,16 @@ import com.royermethod.app.ui.components.ChipInterruptor
 import com.royermethod.app.ui.components.Deslizador
 import com.royermethod.app.ui.components.Escala
 import com.royermethod.app.ui.components.Etiqueta
+import com.royermethod.app.ui.components.Fila
 import com.royermethod.app.ui.components.Glifos
 import com.royermethod.app.ui.components.Letra
 import com.royermethod.app.ui.components.LocalGestos
 import com.royermethod.app.ui.components.Mosaico
+import com.royermethod.app.ui.components.Muestras
 import com.royermethod.app.ui.components.Nota
 import com.royermethod.app.ui.components.Opciones
 import com.royermethod.app.ui.components.Pestanas
+import com.royermethod.app.ui.components.SeccionAjustes
 import com.royermethod.app.ui.components.Segmentos
 import com.royermethod.app.ui.components.Tira
 import com.royermethod.app.ui.components.esquinas
@@ -929,6 +932,23 @@ private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boole
             onCambio(CurvaVelocidad(listOf(PuntoVelocidad(0f, 1f), PuntoVelocidad(1f, 1f))), false)
             elegido = -1
         }, glifo = Glifos.reiniciar)
+    }
+}
+
+/**
+ * El color en su fila, con las muestras en una tira; el personalizado, plegado
+ * debajo. [onCambio] dice si viene de arrastrar una barra (un solo paso de
+ * deshacer) o de tocar una muestra.
+ */
+@Composable
+internal fun FilaColor(colores: List<Int>, color: Int, etiqueta: String = "Color", onCambio: (color: Int, arrastre: Boolean) -> Unit) {
+    Fila(etiqueta) { Muestras(colores, color, { onCambio(it, false) }, Modifier.weight(1f)) }
+    SeccionAjustes("Color personalizado") {
+        for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
+            Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
+                { v -> onCambio((color and (255 shl shift).inv()) or (v.roundToInt().coerceIn(0, 255) shl shift), true) },
+                texto = { it.roundToInt().toString() })
+        }
     }
 }
 

@@ -113,13 +113,7 @@ private fun tipoDe(c: Clip): String = if (c.esTexto) "Texto" else if (c.esVideo)
 internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null, desplegado: Boolean = false) {
     val c = estado.clipElegido ?: return
     var abierto by rememberSaveable(c.id) { mutableStateOf(false) }
-    val resumen = when {
-        !c.esAjuste -> "Solo este bloque"
-        c.afectaA == null -> "Todas las capas"
-        c.afectaA.isEmpty() -> "Ninguna"
-        c.afectaA.size == 1 -> "1 capa"
-        else -> "${c.afectaA.size} capas"
-    }
+    val resumen = if (c.esAjuste && c.afectaA == null) "Todas las capas" else resumenDestinos(c)
     if (!desplegado) {
         Row(
             Modifier
@@ -168,6 +162,18 @@ internal fun DestinosCapa(estado: EstadoEditor, efectoId: Long? = null, desplega
                 MiniaturaDestino(destino, AlcanceCapas.acepta(c, destino.id)) { alternarDestino(estado, destino.id, ids) }
             }
         }
+    }
+}
+
+/** A que llega [c], en dos palabras: para la fila de "Afecta a" y para la barra de una hoja. */
+internal fun resumenDestinos(c: Clip): String {
+    val ids = c.afectaA
+    return when {
+        !c.esAjuste -> "Solo este bloque"
+        ids == null -> "Todas"
+        ids.isEmpty() -> "Ninguna"
+        ids.size == 1 -> "1 capa"
+        else -> "${ids.size} capas"
     }
 }
 
