@@ -4,11 +4,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.*
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -25,11 +22,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.*
 import com.royermethod.app.ui.components.*
 import com.royermethod.app.ui.theme.Ink
@@ -62,6 +60,17 @@ internal fun ponerClaveLuz(e: EstadoEditor, quitar: Boolean) {
     e.inicioElegido?.let { e.pausarEn(it + tiempo - (e.clipElegido?.desfasePropiedadesUs ?: 0L)) }
 }
 
+/** El consejo de como se mueve una luz sale una vez por sesion. */
+private var consejoLuzVisto = false
+
+private val COLORES_DE_LUZ = listOf(0xFF70E8FF, 0xFFBD7BFF, 0xFFFF61CB, 0xFFFFE37A, 0xFF91FF9E, 0xFFFFFFFF).map { it.toInt() }
+
+/**
+ * Luces: arriba, las que tiene el bloque; debajo, la elegida en dos pestanas
+ * (donde esta y como se ve). "Animar" saca sus keyframes sin cambiar de
+ * pestana y "Agregar" ensena las cuatro clases. Sin ninguna, la hoja es solo
+ * esas cuatro casillas.
+ */
 @Composable
 internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
     val c = e.clipElegido ?: return
@@ -69,6 +78,7 @@ internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
     var dibujar by rememberSaveable(c.id) { mutableStateOf(false) }
     var agregarAbierto by rememberSaveable(c.id) { mutableStateOf(false) }
     var tab by rememberSaveable(c.id) { mutableIntStateOf(0) }
+    var animar by rememberSaveable(c.id) { mutableStateOf(false) }
     var curvas by rememberSaveable(c.id) { mutableStateOf(false) }
     val catalogo = !dibujar && (agregarAbierto || c.luces.isEmpty())
     fun agregar(tipo: TipoLuz, puntos: List<PuntoLuz>? = null) {
@@ -82,142 +92,142 @@ internal fun HojaLuces(e: EstadoEditor, cerrar: () -> Unit) {
         dibujar = false
         agregarAbierto = false
         tab = 0
+        if (!consejoLuzVisto) {
+            consejoLuzVisto = true
+            e.avisar("Mueve la luz en el recuadro")
+        }
     }
-    HojaPanel("Luces",cerrar,claveDesplazamiento=listOf(c.id,luz?.id,tab,catalogo,dibujar),acciones = {
-        if(c.luces.isNotEmpty() || dibujar) BotonBorde(
-            if(agregarAbierto || dibujar) "Cancelar" else "Añadir",
-            { if(agregarAbierto || dibujar) { agregarAbierto=false;dibujar=false } else agregarAbierto=true },
-            glifo=if(agregarAbierto || dibujar) Glifos.cerrar else Glifos.mas)
-    },fijo = {
-        if(c.luces.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                for(l in c.luces) TarjetaLuz(l,l.id==luz?.id,l.estiloEn(relojLuz(e)).color) {
-                    e.luzElegida=l.id;dibujar=false;agregarAbierto=false
+    val volver = agregarAbierto || dibujar
+    HojaPanel(Panel.LUCES.titulo, cerrar, claveDesplazamiento = listOf(c.id, luz?.id, tab, catalogo, dibujar),
+        acciones = if (c.luces.isNotEmpty() || dibujar) ({
+            if (luz != null && !volver) Chip("Animar", animar, { animar = !animar }, marca = luz.claves.isNotEmpty())
+            BotonTexto(if (volver) "Volver" else "Agregar", { if (volver) { agregarAbierto = false; dibujar = false } else agregarAbierto = true },
+                glifo = if (volver) Glifos.atras else Glifos.mas)
+        }) else null,
+        fijo = {
+            if (c.luces.isNotEmpty() && !dibujar) Tira(Modifier.padding(bottom = 2.dp)) {
+                for (l in c.luces) PastillaLuz(l, l.id == luz?.id && !catalogo, l.estiloEn(relojLuz(e)).color) {
+                    e.luzElegida = l.id; dibujar = false; agregarAbierto = false
                 }
             }
-            Spacer(Modifier.height(6.dp))
-        }
-        if(luz!=null && !catalogo && !dibujar)
-            Pestanas(listOf("Colocar","Estilo","Animar"),tab,{ tab=it })
-    }) {
-        if(catalogo) {
-            Etiqueta("Añadir una luz")
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                for(tipo in TipoLuz.values()) Mosaico(tipo.titulo,false,{
-                    if(tipo==TipoLuz.TRAZO) { dibujar=true;agregarAbierto=false } else agregar(tipo)
-                },Modifier.weight(1f)) { color -> iconoLuz(tipo,color) }
-            }
-            Spacer(Modifier.height(12.dp))
-            Nota("Traza una zona a mano o coloca un foco, destello o anillo.")
-        } else if(dibujar || tab==0) {
-            val imagen=fuenteRecorte(e,c,preciso=true)
-            if(imagen==null) Nota("Preparando fotograma…")
-            if(dibujar) Nota("Nuevo trazo · dibuja sobre la zona que quieres iluminar.")
-            LienzoLuces(e,c,luz,dibujar,imagen,{ agregar(TipoLuz.TRAZO,it) })
-            if(!dibujar) {
-                Nota("Arrastra para mover · dos dedos para ampliar y girar")
-                if(luz!=null) ControlesColocarLuz(e,luz)
-            }
-        } else if(luz!=null) {
-            if(tab==1) ControlesEstiloLuz(e,luz) else {
-                TiempoLuces(e,luz) { curvas=!curvas }
-                Spacer(Modifier.height(8.dp))
-                Etiqueta("Animación rápida")
-                AnimacionesRapidasLuz(e,luz)
-                if(curvas) {
-                    val orden=luz.claves.sortedBy { it.tiempoUs }
-                    val k=if(orden.size<2)null else orden[orden.indexOfLast { it.tiempoUs<=relojLuz(e) }.coerceIn(0,orden.size-2)]
-                    if(k==null) Nota("Añade dos claves para elegir una curva.") else
-                        SelectorCurva(k.curva,k.bezier,k.velocidad) { cu,b,vel,arr ->
-                            cambiarLuz(e,arr) { l -> l.copy(claves=l.claves.map { if(it.tiempoUs==k.tiempoUs)it.copy(curva=cu,bezier=b,velocidad=vel)else it }) }
+            if (luz != null && !catalogo && !dibujar) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Pestanas(listOf("Colocar", "Estilo"), tab, { tab = it }, Modifier.weight(1f))
+                    BotonIcono(Glifos.duplicar, {
+                        e.cambiarClip { a ->
+                            val id = (a.luces.maxOfOrNull { it.id } ?: 0L) + 1L
+                            e.luzElegida = id; a.copy(luces = a.luces + luz.copy(id = id, nombre = "${luz.nombre} copia"))
                         }
+                    }, tam = 38.dp, descripcion = "Duplicar luz")
+                    BotonIcono(Glifos.papelera, { e.cambiarClip { a -> a.copy(luces = a.luces.filter { it.id != luz.id }) } },
+                        tam = 38.dp, descripcion = "Eliminar luz")
                 }
-                if(luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO) {
-                    val v=luz.estiloEn(relojLuz(e))
-                    SeccionAjustes("Tramo visible") {
-                        Deslizador("Desde",v.inicio,0f,1f,{ x -> estiloLuz(e,true) { it.copy(inicio=x.coerceAtMost(it.fin)) } },neutro=0f)
-                        Deslizador("Hasta",v.fin,0f,1f,{ x -> estiloLuz(e,true) { it.copy(fin=x.coerceAtLeast(it.inicio)) } },neutro=1f)
-                    }
+                if (animar) TiempoLuces(e, luz, curvas) {
+                    if (!curvas && luz.claves.size < 2) e.avisar("Pon dos keyframes para elegir la curva") else curvas = !curvas
                 }
-                Nota("Pon una clave, avanza el tiempo y recoloca la luz para seguir al personaje.")
+            }
+        },
+        // Elegir la clase de luz son cuatro casillas: la hoja se queda en eso
+        corta = catalogo
+    ) {
+        when {
+            catalogo -> Row(Modifier.fillMaxWidth().padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (tipo in TipoLuz.values()) Mosaico(tipo.titulo, false, {
+                    if (tipo == TipoLuz.TRAZO) { dibujar = true; agregarAbierto = false } else agregar(tipo)
+                }, Modifier.weight(1f)) { color -> iconoLuz(tipo, color) }
+            }
+            dibujar -> {
+                LienzoLuces(e, c, luz, true, fuenteRecorte(e, c, preciso = true), 190.dp) { agregar(TipoLuz.TRAZO, it) }
+                Nota("Dibuja el trazo con el dedo sobre la imagen.", Modifier.padding(top = 6.dp))
+            }
+            luz != null -> {
+                if (animar) CurvaLuz(e, luz, curvas)
+                if (tab == 0) {
+                    // Bajo, para que la primera medida asome; con la hoja ampliada, comodo
+                    val alto = if (LocalTamanoPanelEditor.current?.ampliado == true) 200.dp else 124.dp
+                    LienzoLuces(e, c, luz, false, fuenteRecorte(e, c, preciso = true), alto) { }
+                    Spacer(Modifier.height(4.dp))
+                    ControlesColocarLuz(e, luz)
+                } else ControlesEstiloLuz(e, luz, animar)
             }
         }
     }
 }
 
+/** Una luz del bloque en la tira de arriba: su dibujo con su color, el nombre y un rombo si se mueve. */
 @Composable
-private fun TarjetaLuz(l:LuzTrazo,elegida:Boolean,color:Int,onElegir:()->Unit) {
-    Column(Modifier.width(80.dp).clip(esquinas(10.dp))
-        .background(if(elegida)Ink.White15 else Ink.White04)
-        .border(1.dp,if(elegida)Ink.White else Ink.White15,esquinas(10.dp))
-        .selectable(elegida,role=Role.RadioButton,onClick=onElegir)
-        .padding(horizontal=5.dp,vertical=7.dp),horizontalAlignment=Alignment.CenterHorizontally) {
-        Box(Modifier.size(26.dp)) {
-            Canvas(Modifier.fillMaxSize()) { iconoLuz(l.tipo,Color(color)) }
-            if(l.claves.isNotEmpty()) Icono(Glifos.romboLleno,Modifier.align(Alignment.TopEnd),tam=8.dp)
+private fun PastillaLuz(l: LuzTrazo, elegida: Boolean, color: Int, onElegir: () -> Unit) {
+    Row(
+        Modifier.heightIn(min = 34.dp).clip(esquinas(17.dp))
+            .background(if (elegida) Ink.White15 else Ink.White08)
+            .border(1.dp, if (elegida) Ink.White else Color.Transparent, esquinas(17.dp))
+            .selectable(elegida, role = Role.RadioButton, onClick = onElegir)
+            .padding(horizontal = 11.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Canvas(Modifier.size(16.dp)) { iconoLuz(l.tipo, Color(color)) }
+        Spacer(Modifier.width(7.dp))
+        Text(l.nombre, style = Letra.cuerpo, color = if (elegida) Ink.White else Ink.White70, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 120.dp))
+        if (l.claves.isNotEmpty()) {
+            Spacer(Modifier.width(5.dp))
+            Icono(Glifos.romboLleno, color = if (elegida) Ink.White else Ink.White70, tam = 8.dp)
         }
-        Spacer(Modifier.height(3.dp))
-        Text(l.nombre,style=MaterialTheme.typography.labelSmall.copy(letterSpacing=0.sp),color=if(elegida)Ink.White else Ink.White70,
-            maxLines=1,overflow=TextOverflow.Ellipsis)
     }
 }
 
+/** Colocar: tamano y giro; en las que no son un trazo, tambien el ancho y el alto de su caja. */
 @Composable
 private fun ControlesColocarLuz(e:EstadoEditor,luz:LuzTrazo) {
     val v=luz.estiloEn(relojLuz(e))
-    SeccionAjustes("Tamaño y giro") {
-        if(luz.tipo!=TipoLuz.TRAZO && luz.puntos.size>=2) {
-            val ancho=luz.puntos.maxOf { it.x }-luz.puntos.minOf { it.x }
-            val alto=luz.puntos.maxOf { it.y }-luz.puntos.minOf { it.y }
-            Deslizador("Anchura",ancho,.01f,1f,{ x -> cajaLuz(e,x,null) })
-            Deslizador("Altura",alto,.01f,1f,{ y -> cajaLuz(e,null,y) })
-        }
-        Deslizador("Tamaño",v.escala,.1f,4f,{ x -> estiloLuz(e,true) { it.copy(escala=x) } },neutro=1f,texto={ "%.2f×".format(it) })
-        Deslizador("Giro",v.giro,-180f,180f,{ x -> estiloLuz(e,true) { it.copy(giro=x) } },neutro=0f,texto={ "${it.roundToInt()}°" })
+    Deslizador("Tamaño",v.escala,.1f,4f,{ x -> estiloLuz(e,true) { it.copy(escala=x) } },neutro=1f,texto={ "%.2f×".format(it) })
+    Deslizador("Giro",v.giro,-180f,180f,{ x -> estiloLuz(e,true) { it.copy(giro=x) } },neutro=0f,texto={ "${it.roundToInt()}°" })
+    if(luz.tipo!=TipoLuz.TRAZO && luz.puntos.size>=2) {
+        val ancho=luz.puntos.maxOf { it.x }-luz.puntos.minOf { it.x }
+        val alto=luz.puntos.maxOf { it.y }-luz.puntos.minOf { it.y }
+        Deslizador("Anchura",ancho,.01f,1f,{ x -> cajaLuz(e,x,null) })
+        Deslizador("Altura",alto,.01f,1f,{ y -> cajaLuz(e,null,y) })
     }
 }
 
+/**
+ * Estilo: color, fuerza, grosor y resplandor; en trazos y anillos, que tramo se
+ * ve. Con "Animar", delante van las animaciones hechas: ponen dos keyframes
+ * desde el cabezal y luego se afinan como cualquier otro.
+ */
 @Composable
-private fun ControlesEstiloLuz(e:EstadoEditor,luz:LuzTrazo) {
+private fun ControlesEstiloLuz(e: EstadoEditor, luz: LuzTrazo, animar: Boolean) {
     val v=luz.estiloEn(relojLuz(e))
-    Etiqueta("Color de la luz")
-    Muestras(listOf(0xFF70E8FF,0xFFBD7BFF,0xFFFF61CB,0xFFFFE37A,0xFF91FF9E,0xFFFFFFFF).map { it.toInt() },v.color,
-        { color -> estiloLuz(e) { it.copy(color=color) } })
+    val porTramo = luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO
+    if (animar) Fila("Rápidas") {
+        Tira(Modifier.weight(1f)) {
+            val activo = e.localElegido != null
+            if (porTramo) {
+                BotonBorde("Revelar", { animacionLuz(e, 0) }, activo = activo)
+                BotonBorde("Recorrer", { animacionLuz(e, 1) }, activo = activo)
+                BotonBorde("Desvanecer", { animacionLuz(e, 2) }, activo = activo)
+            } else BotonBorde("Encender", { animacionLuz(e, 3) }, activo = activo)
+        }
+    }
+    FilaColor(COLORES_DE_LUZ, v.color) { color, arrastre -> estiloLuz(e, arrastre) { it.copy(color = color) } }
     Deslizador("Intensidad",v.opacidad,0f,1f,{ x -> estiloLuz(e,true) { it.copy(opacidad=x) } },neutro=1f)
     Deslizador(if(luz.tipo==TipoLuz.FOCO) "Núcleo" else "Grosor",v.grosor,.001f,.06f,{ x -> estiloLuz(e,true) { it.copy(grosor=x) } },neutro=.006f)
     Deslizador("Resplandor",v.halo,0f,.15f,{ x -> estiloLuz(e,true) { it.copy(halo=x) } },neutro=.025f)
-    SeccionAjustes("Color personalizado") {
-        for((nombre,shift) in listOf("Rojo" to 16,"Verde" to 8,"Azul" to 0))
-            Deslizador(nombre,((v.color ushr shift)and 255).toFloat(),0f,255f,{ x ->
-                estiloLuz(e,true) { it.copy(color=(it.color and (255 shl shift).inv()) or (x.roundToInt() shl shift)) }
-            },texto={ it.roundToInt().toString() })
-    }
-    SeccionAjustes("Gestionar luz") {
-        AccionesGestionLuz(e,luz)
+    if(porTramo) {
+        Etiqueta("Tramo que se ve")
+        Deslizador("Desde",v.inicio,0f,1f,{ x -> estiloLuz(e,true) { it.copy(inicio=x.coerceAtMost(it.fin)) } },neutro=0f)
+        Deslizador("Hasta",v.fin,0f,1f,{ x -> estiloLuz(e,true) { it.copy(fin=x.coerceAtLeast(it.inicio)) } },neutro=1f)
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** La curva del tramo de keyframes en el que esta el cabezal; se abre con su boton de la franja. */
 @Composable
-private fun AccionesGestionLuz(e:EstadoEditor,luz:LuzTrazo) {
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        BotonBorde("Duplicar",{
-            e.cambiarClip { a -> val id=(a.luces.maxOfOrNull { it.id }?:0L)+1L
-                e.luzElegida=id;a.copy(luces=a.luces+luz.copy(id=id,nombre="${luz.nombre} copia")) }
-        },glifo=Glifos.duplicar)
-        BotonBorde("Eliminar luz",{ e.cambiarClip { a -> a.copy(luces=a.luces.filter { it.id!=luz.id }) } },glifo=Glifos.papelera,peligro=true)
-    }
-}
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun AnimacionesRapidasLuz(e:EstadoEditor,luz:LuzTrazo) {
-    FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp),verticalArrangement=Arrangement.spacedBy(8.dp)) {
-        if(luz.tipo==TipoLuz.TRAZO || luz.tipo==TipoLuz.ANILLO) {
-            BotonBorde("Revelar",{ animacionLuz(e,0) },activo=e.localElegido!=null)
-            BotonBorde("Recorrer",{ animacionLuz(e,1) },activo=e.localElegido!=null)
-            BotonBorde("Desvanecer",{ animacionLuz(e,2) },activo=e.localElegido!=null)
-        } else BotonBorde("Encender",{ animacionLuz(e,3) },activo=e.localElegido!=null)
+private fun CurvaLuz(e: EstadoEditor, luz: LuzTrazo, curvas: Boolean) {
+    if (!curvas) return
+    val orden = luz.claves.sortedBy { it.tiempoUs }
+    val k = if (orden.size < 2) null else orden[orden.indexOfLast { it.tiempoUs <= relojLuz(e) }.coerceIn(0, orden.size - 2)]
+    if (k != null) SelectorCurva(k.curva, k.bezier, k.velocidad) { cu, b, vel, arr ->
+        cambiarLuz(e, arr) { l -> l.copy(claves = l.claves.map { if (it.tiempoUs == k.tiempoUs) it.copy(curva = cu, bezier = b, velocidad = vel) else it }) }
     }
 }
 
@@ -246,30 +256,39 @@ internal fun animacionLuz(e:EstadoEditor,modo:Int) {
     }
 }
 
+/** El tramo del bloque con los keyframes de la luz, igual que el de las demas hojas. */
 @Composable
-private fun TiempoLuces(e:EstadoEditor,l:LuzTrazo,curvas:()->Unit) {
-    val c=e.clipElegido?:return
-    val ini=e.inicioElegido?:return
-    val local=(e.tiempo-ini).coerceIn(0,c.duracionUs)
-    val ts=l.claves.map { it.tiempoUs-c.desfasePropiedadesUs }.filter { it in 0..c.duracionUs }.sorted()
-    val tol=toleranciaClaves()
-    Column(Modifier.fillMaxWidth().clip(esquinas(12.dp)).background(Ink.White04).padding(8.dp)) {
-        Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(c.duracionUs)}",style=MaterialTheme.typography.labelSmall,color=Ink.White70)
-        val buscar by rememberUpdatedState<(Float,Float)->Unit>({x,w -> e.pausarEn(ini+(x/w.coerceAtLeast(1f)).coerceIn(0f,1f).times(c.duracionUs).toLong()) })
-        Canvas(Modifier.fillMaxWidth().height(32.dp).pointerInput(c.id) { detectTapGestures { buscar(it.x,size.width.toFloat()) } }
-            .pointerInput(c.id) { detectDragGestures(onDragStart={ buscar(it.x,size.width.toFloat()) }) { ch,_ -> ch.consume();buscar(ch.position.x,size.width.toFloat()) } }) {
-            drawLine(Ink.White30,Offset(0f,size.height*.75f),Offset(size.width,size.height*.75f),3.dp.toPx())
-            for(t in ts) { val x=t.toFloat()/c.duracionUs*size.width;val y=size.height*.25f;val r=4.dp.toPx()
-                drawPath(Path().apply { moveTo(x,y-r);lineTo(x+r,y);lineTo(x,y+r);lineTo(x-r,y);close() },Ink.White70) }
-            val x=local.toFloat()/c.duracionUs*size.width
-            drawLine(Ink.White,Offset(x,0f),Offset(x,size.height),2.dp.toPx())
+private fun TiempoLuces(e: EstadoEditor, l: LuzTrazo, curvas: Boolean, onCurvas: () -> Unit) {
+    val c = e.clipElegido ?: return
+    val ini = e.inicioElegido ?: return
+    val local = (e.tiempo - ini).coerceIn(0, c.duracionUs)
+    val ts = l.claves.map { it.tiempoUs - c.desfasePropiedadesUs }.filter { it in 0..c.duracionUs }.sorted()
+    val tol = toleranciaClaves()
+    Column(Modifier.fillMaxWidth()) {
+        val buscar by rememberUpdatedState<(Float, Float) -> Unit>({ x, w -> e.pausarEn(ini + (x / w.coerceAtLeast(1f)).coerceIn(0f, 1f).times(c.duracionUs).toLong()) })
+        Canvas(Modifier.fillMaxWidth().height(30.dp).pointerInput(c.id) { detectTapGestures { buscar(it.x, size.width.toFloat()) } }
+            .pointerInput(c.id) { detectDragGestures(onDragStart = { buscar(it.x, size.width.toFloat()) }) { ch, _ -> ch.consume(); buscar(ch.position.x, size.width.toFloat()) } }) {
+            val cy = size.height * .72f
+            val yClave = size.height * .24f
+            drawLine(Ink.White15, Offset(0f, cy), Offset(size.width, cy), 3.dp.toPx(), cap = StrokeCap.Round)
+            for (t in ts) {
+                val x = t.toFloat() / c.duracionUs * size.width; val r = 4.dp.toPx()
+                drawPath(Path().apply { moveTo(x, yClave - r); lineTo(x + r, yClave); lineTo(x, yClave + r); lineTo(x - r, yClave); close() }, Ink.White70)
+            }
+            val x = local.toFloat() / c.duracionUs * size.width
+            drawLine(Ink.White, Offset(x, 0f), Offset(x, size.height), 2.dp.toPx())
+            drawCircle(Ink.White, 4.dp.toPx(), Offset(x, cy))
         }
-        Row(horizontalArrangement=Arrangement.spacedBy(4.dp),verticalAlignment=Alignment.CenterVertically) {
-            BotonIcono(Glifos.atras,{ ts.lastOrNull { it<local-tol }?.let { e.pausarEn(ini+it) } },Modifier.semantics { contentDescription="Clave anterior de la luz" },activo=ts.any { it<local-tol })
-            BotonIcono(Glifos.rombo,{ ponerClaveLuz(e,false) },Modifier.semantics { contentDescription="Poner clave de luz" },activo=e.localElegido!=null)
-            BotonIcono(Glifos.romboQuitar,{ ponerClaveLuz(e,true) },Modifier.semantics { contentDescription="Quitar clave de luz" },activo=e.localElegido!=null && ts.any { abs(it-local)<=tol })
-            BotonIcono(Glifos.siguiente,{ ts.firstOrNull { it>local+tol }?.let { e.pausarEn(ini+it) } },Modifier.semantics { contentDescription="Clave siguiente de la luz" },activo=ts.any { it>local+tol })
-            BotonIcono(Glifos.curva,curvas,Modifier.semantics { contentDescription="Editar curva de la luz" })
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("${TiempoPreciso.texto(local)} / ${TiempoPreciso.texto(c.duracionUs)}", style = Letra.chica, color = Ink.White70, modifier = Modifier.weight(1f), maxLines = 1)
+            BotonIcono(Glifos.atras, { ts.lastOrNull { it < local - tol }?.let { e.pausarEn(ini + it) } }, activo = ts.any { it < local - tol },
+                tam = 36.dp, descripcion = "Keyframe anterior de la luz")
+            BotonIcono(Glifos.rombo, { ponerClaveLuz(e, false) }, activo = e.localElegido != null, tam = 36.dp, descripcion = "Poner keyframe de luz")
+            BotonIcono(Glifos.romboQuitar, { ponerClaveLuz(e, true) }, activo = e.localElegido != null && ts.any { abs(it - local) <= tol },
+                tam = 36.dp, descripcion = "Quitar keyframe de luz")
+            BotonIcono(Glifos.siguiente, { ts.firstOrNull { it > local + tol }?.let { e.pausarEn(ini + it) } }, activo = ts.any { it > local + tol },
+                tam = 36.dp, descripcion = "Keyframe siguiente de la luz")
+            BotonIcono(Glifos.curva, onCurvas, modifier = Modifier.semantics { selected = curvas }, tam = 36.dp, descripcion = "Editar curva de la luz", encendido = curvas)
         }
     }
 }
@@ -290,7 +309,7 @@ private fun marcoLuz(w:Float,h:Float,razon:Float):Rect {
 }
 
 @Composable
-private fun LienzoLuces(e:EstadoEditor,c:Clip,luz:LuzTrazo?,dibujar:Boolean,imagen:ImageBitmap?,agregar:(List<PuntoLuz>)->Unit) {
+private fun LienzoLuces(e:EstadoEditor,c:Clip,luz:LuzTrazo?,dibujar:Boolean,imagen:ImageBitmap?,alto:Dp,agregar:(List<PuntoLuz>)->Unit) {
     val rc=c.encuadre.recorte
     val o=c.origen
     val razon=if(imagen!=null)imagen.width.toFloat()*rc.ancho/(imagen.height*rc.alto)
@@ -298,7 +317,8 @@ private fun LienzoLuces(e:EstadoEditor,c:Clip,luz:LuzTrazo?,dibujar:Boolean,imag
     var borrador by remember(c.id) { mutableStateOf<List<PuntoLuz>>(emptyList()) }
     val añadir by rememberUpdatedState(agregar)
     val actual by rememberUpdatedState(luz)
-    Canvas(Modifier.fillMaxWidth().height(190.dp).clip(esquinas(12.dp)).background(Ink.White04)
+    Canvas(Modifier.fillMaxWidth().height(alto).clip(esquinas(12.dp)).background(Ink.White04)
+        .semantics { contentDescription = if (dibujar) "Dibujar el trazo de luz" else "Mover, agrandar o girar la luz" }
         .pointerInput(c.id,dibujar,razon,luz?.id,imagen) {
             if(imagen==null)return@pointerInput
             if(dibujar) detectDragGestures(onDragStart={ p ->

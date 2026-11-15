@@ -212,27 +212,15 @@ internal fun HojaMarco(estado: EstadoEditor, cerrar: () -> Unit) {
                 Deslizador("Grosor", m.ancho, 0f, .15f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(ancho = v)) } }, texto = { "%.1f %%".format(it * 100) })
                 Deslizador("Esquinas", m.radio, 0f, .5f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(radio = v)) } })
                 Deslizador("Neón", m.neon, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(neon = v)) } })
-                ColorMarco(m.color) { v -> estado.cambiarAspecto { it.copy(marco = it.marco.copy(color = v, ancho = it.marco.ancho.takeIf { a -> a > 0f } ?: .008f)) } }
+                FilaColor(COLORES_TEXTO, m.color) { v, arrastre -> estado.cambiarAspecto(arrastre) { it.copy(marco = it.marco.copy(color = v, ancho = it.marco.ancho.takeIf { a -> a > 0f } ?: .008f)) } }
             } else {
                 // Sin distancia la sombra queda alrededor, como un halo
                 Deslizador("Opacidad", m.sombra, 0f, 1f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(sombra = v)) } })
                 Deslizador("Difusión", m.suavidad, 0f, .2f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(suavidad = v)) } })
                 Deslizador("Distancia", m.distancia, 0f, .3f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(distancia = v)) } })
                 Deslizador("Dirección", m.angulo, 0f, 360f, { v -> estado.cambiarAspecto(true) { it.copy(marco = it.marco.copy(angulo = v)) } }, texto = { "${it.toInt()}°" })
-                ColorMarco(m.colorSombra) { v -> estado.cambiarAspecto { it.copy(marco = it.marco.copy(colorSombra = v, sombra = it.marco.sombra.takeIf { a -> a > 0f } ?: .6f)) } }
+                FilaColor(COLORES_TEXTO, m.colorSombra) { v, arrastre -> estado.cambiarAspecto(arrastre) { it.copy(marco = it.marco.copy(colorSombra = v, sombra = it.marco.sombra.takeIf { a -> a > 0f } ?: .6f)) } }
             }
-        }
-    }
-}
-
-/** El color en su fila, con las muestras en una tira; el personalizado, plegado debajo. */
-@Composable
-private fun ColorMarco(color: Int, cambiar: (Int) -> Unit) {
-    Fila("Color") { Muestras(COLORES_TEXTO, color, cambiar, Modifier.weight(1f)) }
-    SeccionAjustes("Color personalizado") {
-        for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
-            Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
-                { v -> cambiar((color and (255 shl shift).inv()) or (v.toInt() shl shift)) }, texto = { it.toInt().toString() })
         }
     }
 }

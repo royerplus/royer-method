@@ -38,6 +38,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -936,19 +937,23 @@ private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boole
 }
 
 /**
- * El color en su fila, con las muestras en una tira; el personalizado, plegado
- * debajo. [onCambio] dice si viene de arrastrar una barra (un solo paso de
- * deshacer) o de tocar una muestra.
+ * El color en su fila: las muestras en una tira y, delante, el boton que abre
+ * las barras de rojo, verde y azul para hacer uno propio. [onCambio] dice si
+ * viene de arrastrar una barra (un solo paso de deshacer) o de tocar una
+ * muestra.
  */
 @Composable
 internal fun FilaColor(colores: List<Int>, color: Int, etiqueta: String = "Color", onCambio: (color: Int, arrastre: Boolean) -> Unit) {
-    Fila(etiqueta) { Muestras(colores, color, { onCambio(it, false) }, Modifier.weight(1f)) }
-    SeccionAjustes("Color personalizado") {
-        for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
-            Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
-                { v -> onCambio((color and (255 shl shift).inv()) or (v.roundToInt().coerceIn(0, 255) shl shift), true) },
-                texto = { it.roundToInt().toString() })
-        }
+    var mezcla by rememberSaveable { mutableStateOf(false) }
+    Fila(etiqueta) {
+        BotonIcono(Glifos.color, { mezcla = !mezcla }, Modifier.semantics { selected = mezcla }, tam = 38.dp,
+            descripcion = "Color personalizado", encendido = mezcla)
+        Muestras(colores, color, { onCambio(it, false) }, Modifier.weight(1f))
+    }
+    if (mezcla) for ((nombre, shift) in listOf("Rojo" to 16, "Verde" to 8, "Azul" to 0)) {
+        Deslizador(nombre, ((color ushr shift) and 255).toFloat(), 0f, 255f,
+            { v -> onCambio((color and (255 shl shift).inv()) or (v.roundToInt().coerceIn(0, 255) shl shift), true) },
+            texto = { it.roundToInt().toString() })
     }
 }
 
