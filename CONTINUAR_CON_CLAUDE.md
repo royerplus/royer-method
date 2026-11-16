@@ -687,3 +687,28 @@ Al cambiar de tamaño la vista (antes pasaba con cada panel; ahora solo al ampli
 - 339 pruebas JVM del editor (las 15 de `editor/ui`, 16 archivos de `editor/modelo` y `RelojTest`) pasan en ese arnés con el código nuevo. El resto de la batería (`motor`, `vista`, `exportar`, `audio`) no se pudo ejecutar aquí: no toca archivos cambiados, pero conviene un `testDebugUnitTest` en el PC.
 - Las tres pruebas de interfaz externas de Codex (Robolectric, fuera de git) se escribieron contra la distribución anterior y habrá que rehacerlas.
 - **Nada de esto se ha probado en el teléfono:** ni el tacto del arrastre en Orden, ni el arreglo de la superficie.
+
+## Luz de contorno y luces selectivas (2026-11-15 y 16, Claude)
+
+Pedido de Royer, con la referencia Mem-Cho: luces en el borde de un personaje ya recortado, selectivas (zona, grosor, que bajen de grosor al moverse, que puedan iluminar hacia dentro), fluidas y fáciles, con keyframes; y un «elemento de full brillo» que afecte la superposición de forma selectiva.
+
+### Uso
+
+- Luces > Agregar > **Contorno** (primera casilla). No se coloca: sigue el borde de lo que se ve del elemento (alfa de la imagen, croma y máscara de Recorte). Nace encendiendo el contorno entero, con el aspecto Línea.
+- Pestaña **Zona**: pasar el dedo por el recuadro sobre la parte del contorno que se quiere encender (sustituye a la anterior; un toque corto no la borra). «Zona: Todo | Dibujada». Amplitud (hasta dónde llega desde el trazo; la línea va entera en el 35 % central, `ZONA_LLENA`, y se afina hasta apagarse), Desde/Hasta (el tramo, lo que animan Recorrer, Revelar y Desvanecer). **De un lado** y **Ángulo**: la luz llega desde una dirección; el sol del recuadro se arrastra alrededor de la imagen y la enciende si estaba en 0. Si el elemento es un rectángulo opaco (sin transparencia, croma ni máscara) sale una nota: no tiene contorno.
+- Pestaña **Estilo**: seis aspectos hechos (Línea, Neón, Contraluz, Interior, Silueta = la figura entera encendida, Aura = solo resplandor) que cambian grosor, resplandor, adentro y relleno y dejan color, fuerza, zona y lado; color; Intensidad, Grosor, Resplandor, Adentro, Relleno.
+- **Animar** > Rápidas: **Destello** (aparece de golpe y se apaga afinándose en 0,4 s; un fotograma antes queda apagada, así que se repite en cada golpe; puesto mientras otro se apaga sale igual de fuerte), Encender y, con zona dibujada, Recorrer, Revelar y Desvanecer. Todo (zona, ángulo, adentro, relleno…) se anima con los keyframes de la luz y sus curvas.
+- Trazo, Foco, Estrella y Anillo tienen en Colocar **Se ve: Todo | Dentro | Detrás**: solo sobre la figura del elemento o solo por detrás (un halo tras la cabeza puede salirse de la imagen). Esto y Silueta son el «full brillo selectivo».
+
+### Implementación
+
+- Modelo (`LucesVisuales.kt`): `TipoLuz.CONTORNO`, `AlcanceLuz`, `EstiloLuz.dentro/relleno/zona/dirigida/angulo`, `AspectoContorno`, `LuzTrazo.entera/zonaContorno/conDestello` y `resumir`. `PersistenciaLuces`: campos opcionales; los proyectos viejos abren igual.
+- Motor: `FiguraShader` (la figura con el mismo `RECORTE_VISUAL` que CAPA; fuera del recorte sigue el pixel de la orilla para no pintar raya donde la imagen corta el cuerpo). `CampoFigura`: por elemento y fotograma, antes de tocar el destino, la silueta en una lámina de 768 de lado largo (512 en video, que se rehace cada fotograma; foto y texto se quedan hechos) que cubre el elemento más 0,25 por lado, y 7 niveles de desenfoque (σ = 1,5·2^k texeles) en tres texturas, la ancha a 1/8. Sombreador CONTORNO (en `FiguraShader`, lo dibuja `PintorLuces`): descarte lejos del borde con una lectura, línea gruesa desde el campo y fina con 16 muestras de la imagen, adentro, resplandor con tope fuera de la imagen, relleno, zona por distancia a un camino de hasta 32 puntos, luz de un lado por desplazamiento. Las luces con «Se ve» usan el sombreador de siempre con `#define FIGURA`. Los sombreadores nuevos se compilan al primer uso con try/catch: si un teléfono los rechaza solo se pierden esas luces.
+- UI (`PanelLuces.kt`): `ControlesZonaContorno`, `ControlesEstiloContorno`, `LienzoLuces` (zona y sol), `luzNueva`, `anguloSeguido`.
+
+### Validación
+
+- **Sin build de Android en la nube**; compila el CI al subir. Motor: un proyecto fuera de git compila los archivos reales de `editor/motor` (Gles, Sombreadores, VfxPantallaShader, FiguraShader, CampoFigura, PintorLuces) y `editor/modelo` contra un `GLES20` que apunta cada llamada, y las trazas se repiten en WebGL 1 (Chromium con SwiftShader): 28 escenas (contorno entero, grueso, zonas, de lado, dos lados, girado y recortado, croma, círculo, tramo, video, obturador, zona movida, los seis aspectos, el destello en 6 fotogramas, las otras luces dentro y detrás) sin errores de GL, con todos los sombreadores compilando y enlazando. Está en `/mnt/project-files/motor-luces/`.
+- Arnés JVM (`/mnt/project-files/arnes-editor/`): escenas 29d (zona con el dedo, sol, estilos, destello) y 29e (320×640, letra 1,2). 436 pruebas JVM pasan en el arnés, que ahora enlaza también Persistencia y cinco pruebas de modelo que antes no entraban, y 24 de luces junto al motor. Nuevas: `LuzContornoTest` (14) y `PanelLucesLogicaTest` (9).
+- **Sin probar en el teléfono**: ni su aspecto real ni la fluidez. Lo que cuesta: el campo de un video, 7 pasadas pequeñas por fotograma; la luz solo trabaja cerca del borde.
+- Límites conocidos: los huecos pequeños de un recorte también se contornean; Adentro deja de crecer pasado el nivel más ancho; una luz Detrás no se ve fuera de la imagen donde la figura sigue la orilla (cuerpo cortado por la imagen).

@@ -276,6 +276,11 @@ internal class PintorLuces {
             GLES20.glDrawArrays(GLES20.GL_TRIANGLES,0,6)
         }
         GLES20.glDisableVertexAttribArray(pos)
+        // El campo no se queda puesto: en el fotograma siguiente se pinta encima de esas mismas laminas
+        for(unidad in intArrayOf(GLES20.GL_TEXTURE3,GLES20.GL_TEXTURE2,GLES20.GL_TEXTURE1)) {
+            GLES20.glActiveTexture(unidad);GLES20.glBindTexture(GLES20.GL_TEXTURE_2D,0)
+        }
+        GLES20.glActiveTexture(GLES20.GL_TEXTURE0)
     }
 
     fun soltar() {
