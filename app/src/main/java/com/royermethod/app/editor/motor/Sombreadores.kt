@@ -176,80 +176,14 @@ void main() { gl_FragColor = texture2D(sTex, vPos); }
 """
 
     /**
-     * Un bloque sobre el lienzo.
+     * El recorte de un elemento: su croma y su forma. Es un bloque aparte
+     * porque no solo lo usa CAPA: las luces que siguen el borde de la figura o
+     * se quedan dentro o detras de ella (PintorLuces, CampoFigura) tienen que
+     * ver exactamente el mismo recorte que se dibuja.
      *
-     * Cada pixel del lienzo pregunta, para cada muestra del obturador, de que
-     * punto de la imagen viene (uInv), y promedia. Si el bloque se movio
-     * durante el fotograma, las muestras caen en sitios distintos y el
-     * promedio es el rastro del movimiento. Es desenfoque de movimiento
-     * exacto, no un efecto de difuminado encima.
-     *
-     * Los bordes del bloque se suavizan con lo que mide un pixel en la
-     * textura, sacado de la propia matriz: un bloque girado no sale dentado.
+     * Quien lo incluya declara antes uRecorte, uFormaTam y cajaRedonda().
      */
-    const val CAPA = """
-#ifdef GL_FRAGMENT_PRECISION_HIGH
-precision highp float;
-#else
-precision mediump float;
-#endif
-varying vec2 vPos;
-uniform vec2 uLienzo;
-uniform sampler2D sTex;
-uniform vec2 uTexel;
-uniform mat3 uInv[8];
-uniform float uOpac[8];
-uniform float uBorde[8];
-uniform float uN;
-uniform vec4 uRecorte;
-uniform float uConMascara;
-uniform vec2 uMascDir;
-uniform float uMascSuave;
-uniform float uMascRadial;
-uniform float uMascInvertida;
-uniform vec2 uMascCentro;
-uniform float uMascGrosor;
-uniform float uRadio;
-uniform vec2 uRadioDir;
-uniform float uEspejoBordes;
-uniform float uConRegionFuente;
-uniform vec4 uRegionFuente;
-uniform vec4 uBordesCompartidos;
-uniform float uNitidez;
-uniform float uBrillo;
-uniform float uContraste;
-uniform float uSaturacion;
-uniform float uExposicion;
-uniform float uCalidez;
-uniform float uTinte;
-uniform float uSombras;
-uniform float uLuces;
-uniform float uVineta;
-uniform float uNeutro;
-uniform float uLuz;
-uniform float uRgb;
-uniform float uNegativo;
-uniform float uClaridad;
-uniform float uVivacidad;
-uniform float uDesvanecer;
-uniform float uGrano;
-// Numero de fotograma de la linea de tiempo (0..63): el grano cambia en cada uno
-uniform float uSemilla;
-uniform float uConMarco;
-uniform vec2 uFormaTam;
-uniform vec4 uMarco; // ancho, radio, neon, sombra
-uniform vec4 uColorMarco;
-uniform vec4 uColorSombra;
-uniform vec4 uSombraMarco; // suavidad, desplazamiento x/y, reservado
-${VfxPantallaShader.UNIFORMES}
-
-float cajaRedonda(vec2 p, vec2 medio, float r) {
-    vec2 q = abs(p) - medio + vec2(r);
-    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
-}
-vec4 colorAlfa(vec4 c, float a) { return vec4(c.rgb * c.a * a, c.a * a); }
-
-
+    const val RECORTE_VISUAL = """
 uniform float uCromaActivo;
 uniform vec3 uCromaColor;
 uniform vec4 uCroma; // intensidad, tolerancia, suavidad, limpiar halo
@@ -324,7 +258,84 @@ float formaEn(vec2 uv, vec2 pixel) {
     float alfa = clamp(0.5 - d / max(uFormaDatos.w,aa),0.0,1.0);
     return uFormaInvertir > 0.5 ? 1.0 - alfa : alfa;
 }
+"""
 
+    /**
+     * Un bloque sobre el lienzo.
+     *
+     * Cada pixel del lienzo pregunta, para cada muestra del obturador, de que
+     * punto de la imagen viene (uInv), y promedia. Si el bloque se movio
+     * durante el fotograma, las muestras caen en sitios distintos y el
+     * promedio es el rastro del movimiento. Es desenfoque de movimiento
+     * exacto, no un efecto de difuminado encima.
+     *
+     * Los bordes del bloque se suavizan con lo que mide un pixel en la
+     * textura, sacado de la propia matriz: un bloque girado no sale dentado.
+     */
+    const val CAPA = """
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+varying vec2 vPos;
+uniform vec2 uLienzo;
+uniform sampler2D sTex;
+uniform vec2 uTexel;
+uniform mat3 uInv[8];
+uniform float uOpac[8];
+uniform float uBorde[8];
+uniform float uN;
+uniform vec4 uRecorte;
+uniform float uConMascara;
+uniform vec2 uMascDir;
+uniform float uMascSuave;
+uniform float uMascRadial;
+uniform float uMascInvertida;
+uniform vec2 uMascCentro;
+uniform float uMascGrosor;
+uniform float uRadio;
+uniform vec2 uRadioDir;
+uniform float uEspejoBordes;
+uniform float uConRegionFuente;
+uniform vec4 uRegionFuente;
+uniform vec4 uBordesCompartidos;
+uniform float uNitidez;
+uniform float uBrillo;
+uniform float uContraste;
+uniform float uSaturacion;
+uniform float uExposicion;
+uniform float uCalidez;
+uniform float uTinte;
+uniform float uSombras;
+uniform float uLuces;
+uniform float uVineta;
+uniform float uNeutro;
+uniform float uLuz;
+uniform float uRgb;
+uniform float uNegativo;
+uniform float uClaridad;
+uniform float uVivacidad;
+uniform float uDesvanecer;
+uniform float uGrano;
+// Numero de fotograma de la linea de tiempo (0..63): el grano cambia en cada uno
+uniform float uSemilla;
+uniform float uConMarco;
+uniform vec2 uFormaTam;
+uniform vec4 uMarco; // ancho, radio, neon, sombra
+uniform vec4 uColorMarco;
+uniform vec4 uColorSombra;
+uniform vec4 uSombraMarco; // suavidad, desplazamiento x/y, reservado
+${VfxPantallaShader.UNIFORMES}
+
+float cajaRedonda(vec2 p, vec2 medio, float r) {
+    vec2 q = abs(p) - medio + vec2(r);
+    return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+}
+vec4 colorAlfa(vec4 c, float a) { return vec4(c.rgb * c.a * a, c.a * a); }
+
+
+${RECORTE_VISUAL}
 const vec3 LUMA = vec3(0.2126, 0.7152, 0.0722);
 
 vec4 tomar(vec2 uv) {

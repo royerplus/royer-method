@@ -11,6 +11,7 @@ internal object PersistenciaLuces {
             put("id",luz.id);put("nombre",luz.nombre);put("tipo",luz.tipo.name)
             put("puntos",JSONArray().apply { luz.puntos.forEach { p -> put(p.x.toDouble());put(p.y.toDouble()) } })
             put("estilo",estilo(luz.estilo))
+            if(luz.alcance!=AlcanceLuz.TODO)put("alcance",luz.alcance.name)
             put("claves",JSONArray().apply { luz.claves.forEach { k -> put(JSONObject().apply {
                 put("t",k.tiempoUs);put("estilo",estilo(k.estilo));put("curva",k.curva.name)
                 k.bezier?.let { b -> put("bezier",JSONArray(listOf(b.x1,b.y1,b.x2,b.y2).map { it.toDouble() })) }
@@ -22,13 +23,16 @@ internal object PersistenciaLuces {
         val a=e.acotado()
         put("color",a.color);put("x",a.x.toDouble());put("y",a.y.toDouble());put("escala",a.escala.toDouble());put("giro",a.giro.toDouble())
         put("opacidad",a.opacidad.toDouble());put("grosor",a.grosor.toDouble());put("halo",a.halo.toDouble());put("inicio",a.inicio.toDouble());put("fin",a.fin.toDouble())
+        put("dentro",a.dentro.toDouble());put("relleno",a.relleno.toDouble());put("zona",a.zona.toDouble())
+        put("dirigida",a.dirigida.toDouble());put("angulo",a.angulo.toDouble())
     }
     private fun leerEstilo(o: JSONObject?): EstiloLuz {
         if(o==null)return EstiloLuz()
         val d=EstiloLuz()
         fun n(k:String,v:Float)=o.optDouble(k,v.toDouble()).toFloat()
         return EstiloLuz(o.optInt("color",d.color),n("x",d.x),n("y",d.y),n("escala",d.escala),n("giro",d.giro),
-            n("opacidad",d.opacidad),n("grosor",d.grosor),n("halo",d.halo),n("inicio",d.inicio),n("fin",d.fin)).acotado()
+            n("opacidad",d.opacidad),n("grosor",d.grosor),n("halo",d.halo),n("inicio",d.inicio),n("fin",d.fin),
+            n("dentro",d.dentro),n("relleno",d.relleno),n("zona",d.zona),n("dirigida",d.dirigida),n("angulo",d.angulo)).acotado()
     }
     fun leer(a: JSONArray?): List<LuzTrazo> {
         if(a==null)return emptyList()
@@ -51,7 +55,8 @@ internal object PersistenciaLuces {
                 ClaveLuz(k.optLong("t"),leerEstilo(k.optJSONObject("estilo")),Curva.values().firstOrNull { it.name==k.optString("curva") } ?: Curva.SUAVE,
                     b,Persistencia.velocidadDe(k.optJSONArray("velocidad")))
             }.sortedBy { it.tiempoUs }.distinctBy { it.tiempoUs }
-            LuzTrazo(o.optLong("id",i+1L),o.optString("nombre",tipo.titulo).take(80),tipo,puntos,leerEstilo(o.optJSONObject("estilo")),claves)
+            LuzTrazo(o.optLong("id",i+1L),o.optString("nombre",tipo.titulo).take(80),tipo,puntos,leerEstilo(o.optJSONObject("estilo")),claves,
+                AlcanceLuz.values().firstOrNull { it.name==o.optString("alcance") } ?: AlcanceLuz.TODO)
         }
     }
 }

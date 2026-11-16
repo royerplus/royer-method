@@ -21,6 +21,7 @@ import com.royermethod.app.editor.modelo.PasoLinea
 import com.royermethod.app.editor.modelo.PasoPartes
 import com.royermethod.app.editor.modelo.PasoSolido
 import com.royermethod.app.editor.modelo.Texto
+import com.royermethod.app.editor.modelo.TipoLuz
 import com.royermethod.app.editor.modelo.cortesEn
 import java.util.IdentityHashMap
 import java.util.concurrent.ConcurrentHashMap
@@ -54,6 +55,8 @@ class Compositor(
     private val linea = Programa(Sombreadores.VERTICE, Sombreadores.LINEA)
     private val pintorLuces by lazy { PintorLuces() }
     private var usoLuces = false
+    private val camposFigura by lazy { CampoFigura() }
+    private var usoCampos = false
     private val copiaExacta = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_EXACTA)
 
     private val videos = ArrayList<FuenteVideo>()
@@ -157,6 +160,10 @@ class Compositor(
             seguirCuadro = null
         }
 
+        // 1b. el campo de la figura de los elementos con luces de contorno. Tambien
+        // antes de tocar el destino, por lo mismo que las escenas aparte.
+        prepararCampos(texturas)
+
         // 2. las escenas que van aparte, cada una en su lamina. Antes que el
         // destino: en los moviles cambiar de destino a medio dibujar obliga a
         // guardar y recargar lo que ya habia.
@@ -216,6 +223,18 @@ class Compositor(
         GLES20.glDisable(GLES20.GL_BLEND)
         limpiar()
         return true
+    }
+
+    /** Ver [CampoFigura]. Solo si la luz de contorno se va a ver en este fotograma. */
+    private fun prepararCampos(texturas: Map<PasoClip, Textura>) {
+        for ((paso, t) in texturas) {
+            if (paso.esFondo || paso.clip.luces.none { it.tipo == TipoLuz.CONTORNO }) continue
+            val reloj = paso.tiempoLocalUs + paso.clip.desfasePropiedadesUs
+            if (paso.clip.luces.none { it.tipo == TipoLuz.CONTORNO && it.estiloEn(reloj).opacidad > .0001f }) continue
+            usoCampos = true
+            camposFigura.preparar(numero, paso.clip, t.id, t.ancho, t.alto,
+                estatica = paso.clip.texto != null || paso.clip.origen?.esImagen == true)
+        }
     }
 
     /**
@@ -686,6 +705,7 @@ class Compositor(
         soltarAnticipados()
         val viejos = videos.filter { numero - it.usadaEn > RETENER && it !in anticipados }
         for (v in viejos) cerrar(v)
+        if (usoCampos) camposFigura.limpiar(numero)
         val imgViejas = imagenes.filterValues { numero - it.usadaEn > RETENER }
         for ((k, v) in imgViejas) {
             v.soltar(); imagenes.remove(k)
@@ -827,7 +847,8 @@ class Compositor(
         capa.dibujar(voltear)
         if (!p.esFondo && p.clip.luces.isNotEmpty()) {
             usoLuces = true
-            pintorLuces.dibujar(p, ancho, alto, t.ancho, t.alto, voltear)
+            pintorLuces.dibujar(p, ancho, alto, t.id, t.ancho, t.alto, voltear,
+                if (usoCampos) camposFigura.de(p.clip.id, t.id, numero) else null)
         }
     }
 
@@ -926,6 +947,7 @@ class Compositor(
         fondos.clear()
         fluidez?.soltar()
         if (usoLuces) pintorLuces.soltar()
+        if (usoCampos) camposFigura.soltar()
         reduccion.soltar(); copiaPlana.soltar(); copiaExacta.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
     }
 
