@@ -150,3 +150,8 @@ if (!nube) {
         }
     }
 }
+
+tasks.register("cp") {
+    dependsOn("classes")
+    doLast { file("build/cp.txt").writeText(sourceSets["main"].runtimeClasspath.files.joinToString(File.pathSeparator)) }
+}
