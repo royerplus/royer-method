@@ -305,6 +305,7 @@ object Persistencia {
         put("hevc", s.hevc)
         put("desenfoque", s.desenfoqueMovimiento)
         put("muestras", s.muestras)
+        put("fps", s.fps)
     }
 
     internal fun continuas(l: List<Continuo>) = JSONArray().apply {
@@ -526,7 +527,8 @@ object Persistencia {
             calidad = s.enumeracion("calidad", d.calidad),
             hevc = s.optBoolean("hevc", d.hevc),
             desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
-            muestras = s.optInt("muestras", d.muestras)
+            muestras = s.optInt("muestras", d.muestras),
+            fps = Linea.fpsValido(s.optInt("fps", d.fps))
         )
     }
 

@@ -41,7 +41,7 @@ data class Informe(
  *
  * Cada fotograma se dibuja con el mismo motor que la vista previa (y que el
  * telefono), se lee de la GPU y se le da a FFmpeg con su numero: el video
- * sale exactamente a 30 fps, sin perder ni repetir ninguno. El codificador es
+ * sale exactamente a los fps del proyecto (30 o 60), sin perder ni repetir ninguno. El codificador es
  * x265 (H.265) o x264 (H.264) por programa, que a igual tamano dan mejor
  * imagen que los del telefono. El bitrate es el del plan del proyecto: la
  * media de sus tramos, con el tramo mas exigente como techo.
@@ -78,11 +78,11 @@ class Exportador(
         var bien = false
         try {
             grabador.format = "mp4"
-            grabador.frameRate = Linea.FPS.toDouble()
+            grabador.frameRate = plan.fps.toDouble()
             grabador.pixelFormat = avutil.AV_PIX_FMT_YUV420P
             grabador.videoCodecName = if (hevc) "libx265" else "libx264"
             grabador.videoBitrate = bitrateMedio.toInt()
-            grabador.gopSize = Linea.FPS * 4
+            grabador.gopSize = plan.fps * 4
             grabador.setVideoOption("preset", "medium")
             grabador.setVideoOption("maxrate", (bitrateMax * 1.5).toInt().toString())
             grabador.setVideoOption("bufsize", (bitrateMax * 2).toString())
@@ -129,7 +129,7 @@ class Exportador(
                 // El sonido hasta donde va el video
                 val m = mezclador
                 if (m != null) {
-                    val hasta = Pcm.frames(Linea.tiempoDe(n + 1)).coerceAtMost(totalAudio)
+                    val hasta = Pcm.frames(Linea.tiempoDe(n + 1, plan.fps)).coerceAtMost(totalAudio)
                     audioHecho = sonido(grabador, m, muestras, audioHecho, hasta)
                 }
                 alAvanzar(n + 1, plan.fotogramas)
@@ -137,7 +137,7 @@ class Exportador(
             mezclador?.let { audioHecho = sonido(grabador, it, muestras, audioHecho, totalAudio) }
             grabador.stop()
 
-            val verificacion = Verificacion.de(destino, plan.fotogramas)
+            val verificacion = Verificacion.de(destino, plan.fotogramas, plan.fps)
             bien = true
             return Informe(destino, destino.length(), plan.ancho, plan.alto, if (hevc) "H.265" else "H.264", verificacion, c.avisos)
         } finally {

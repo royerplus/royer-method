@@ -46,7 +46,7 @@ data class Informe(
  * Exporta un proyecto a MP4.
  *
  * Cada fotograma se dibuja con el mismo motor que la vista previa y se le
- * pone su marca de tiempo exacta (n / 30 s): el codificador no decide nada
+ * pone su marca de tiempo exacta (n / fps s, 30 o 60): el codificador no decide nada
  * de tiempos, asi que no puede salir a 29.97 ni repetir uno. Por cada
  * fotograma:
  *
@@ -159,7 +159,7 @@ class Exportador(
         var bien = false
         try {
             val cortes = Linea.cortes(proyecto)
-            val (codec, mime, sinB) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc, conB)
+            val (codec, mime, sinB) = Codificadores.video(plan.ancho, plan.alto, plan.bitrateEn(0), hevc, conB, plan.fps)
             video = codec
             // Si no se pudieron quitar los B, seria repetir lo mismo
             if (!conB && !sinB && repetible) throw Colgado("No se pudieron quitar los fotogramas B")
@@ -203,14 +203,14 @@ class Exportador(
                 }
 
                 compositor.dibujar(escena.cuadro(n))
-                egl.marcarTiempo(n * 1_000_000_000L / Linea.FPS)
+                egl.marcarTiempo(n * 1_000_000_000L / plan.fps)
                 egl.publicar()
                 drenar(codec, pistaVideo, contenedor, fin = false)
                 if (repetible && contenedor.colgados > 0) throw Colgado(COLGADO)
 
                 // Audio hasta medio segundo por delante del video
                 if (audio != null && mezclador != null) {
-                    val hasta = Pcm.frames(Linea.tiempoDe(n + 1) + 500_000).coerceAtMost(totalAudio)
+                    val hasta = Pcm.frames(Linea.tiempoDe(n + 1, plan.fps) + 500_000).coerceAtMost(totalAudio)
                     while (!audioEnvio.acabado && audioEnvio.frames < hasta) {
                         if (!alimentar(audio, mezclador, audioEnvio, hasta)) {
                             drenar(audio, pistaAudio, contenedor, fin = false)
@@ -235,7 +235,7 @@ class Exportador(
             if (audio != null) drenar(audio, pistaAudio, contenedor, fin = true)
             contenedor.cerrar()
 
-            val verificacion = Verificacion.de(destino, plan.fotogramas)
+            val verificacion = Verificacion.de(destino, plan.fotogramas, plan.fps)
             bien = true
             return Informe(
                 archivo = destino,

@@ -75,18 +75,18 @@ object Trayectoria {
 
     /**
      * Los instantes del bloque que se dibujan al exportar: el de cada
-     * fotograma de 30 fps (las luces y los flashes van ahi), las [muestras]
+     * fotograma de salida, a [fps] (las luces y los flashes van ahi), las [muestras]
      * del obturador alrededor (como [Escena]) y los tiempos de las claves,
      * todo dentro de [0, duracion) y sin repetir.
      *
      * @param inicioUs donde empieza el bloque en la linea: los fotogramas
      *   caen en instantes de la linea, no del bloque
      */
-    fun instantes(duracionUs: Long, muestras: Int, claves: List<Clave>, inicioUs: Long = 0): LongArray {
+    fun instantes(duracionUs: Long, muestras: Int, claves: List<Clave>, inicioUs: Long = 0, fps: Int = Linea.FPS): LongArray {
         if (duracionUs <= 0) return LongArray(0)
         val k = muestras.coerceIn(1, Escena.MAX_MUESTRAS)
         val ultimo = duracionUs - 1
-        val exp = 1_000_000.0 / Linea.FPS * OBTURADOR
+        val exp = 1_000_000.0 / fps * OBTURADOR
         val ini = inicioUs.coerceAtLeast(0)
         var lista = LongArray(64)
         var n = 0
@@ -94,9 +94,9 @@ object Trayectoria {
             if (n == lista.size) lista = lista.copyOf(n * 2)
             lista[n++] = v
         }
-        var f = Linea.fotogramaDe(ini)
+        var f = Linea.fotogramaDe(ini, fps)
         while (true) {
-            val t = Linea.tiempoDe(f)
+            val t = Linea.tiempoDe(f, fps)
             if (t - ini > ultimo) break
             poner((t - ini).coerceIn(0, ultimo))
             if (k > 1) for (i in 0 until k) {

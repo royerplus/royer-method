@@ -49,13 +49,13 @@ internal object Codificadores {
      * @param conB permitir fotogramas B (solo cuenta con perfil). Si no, se
      *   piden cero expresamente, por si el codificador los pusiera solo.
      */
-    fun formatoVideo(info: MediaCodecInfo, mime: String, ancho: Int, alto: Int, bitrate: Int, conPerfil: Boolean, conB: Boolean = true): MediaFormat {
+    fun formatoVideo(info: MediaCodecInfo, mime: String, ancho: Int, alto: Int, bitrate: Int, conPerfil: Boolean, conB: Boolean = true, fps: Int = 30): MediaFormat {
         val caps = info.getCapabilitiesForType(mime)
         val f = MediaFormat.createVideoFormat(mime, ancho, alto)
         f.setInteger(MediaFormat.KEY_COLOR_FORMAT, MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
         val maximo = caps.videoCapabilities?.bitrateRange?.upper ?: Int.MAX_VALUE
         f.setInteger(MediaFormat.KEY_BIT_RATE, bitrate.coerceAtMost(maximo))
-        f.setInteger(MediaFormat.KEY_FRAME_RATE, 30)
+        f.setInteger(MediaFormat.KEY_FRAME_RATE, fps)
         // Un fotograma completo cada pocos segundos, y ademas en cada corte (se
         // pide aparte). Mas separados = menos peso; los cortes ya traen el suyo.
         f.setInteger(MediaFormat.KEY_I_FRAME_INTERVAL, 4)
@@ -99,7 +99,7 @@ internal object Codificadores {
      * @param conB permitir fotogramas B (ver [formatoVideo])
      * @return el codec configurado (sin arrancar), su mime y si se le quitaron los B
      */
-    fun video(ancho: Int, alto: Int, bitrate: Int, hevc: Boolean, conB: Boolean = true): Video {
+    fun video(ancho: Int, alto: Int, bitrate: Int, hevc: Boolean, conB: Boolean = true, fps: Int = 30): Video {
         val orden = if (hevc) listOf(HEVC, AVC) else listOf(AVC)
         var ultimo: Exception? = null
         for (mime in orden) {
@@ -107,7 +107,7 @@ internal object Codificadores {
                 for (perfil in listOf(true, false)) {
                     val codec = runCatching { MediaCodec.createByCodecName(info.name) }.getOrNull() ?: continue
                     try {
-                        codec.configure(formatoVideo(info, mime, ancho, alto, bitrate, perfil, conB), null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
+                        codec.configure(formatoVideo(info, mime, ancho, alto, bitrate, perfil, conB, fps), null, null, MediaCodec.CONFIGURE_FLAG_ENCODE)
                         return Video(codec, mime, !conB && perfil && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q)
                     } catch (e: Exception) {
                         ultimo = e

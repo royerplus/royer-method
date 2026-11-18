@@ -31,7 +31,8 @@ import java.util.concurrent.TimeUnit
  * lamina, se lee y se entrega a la interfaz como imagen ([alImagen]).
  *
  * Sonando, el reloj es el sonido ([SalidaAudio]); sin sonido, el del sistema.
- * Se dibuja un fotograma solo cuando cambia el que toca (30 por segundo).
+ * Se dibuja un fotograma solo cuando cambia el que toca, a los fps del
+ * proyecto (30 o 60): lo que se ve es la fluidez del video exportado.
  */
 class Previsualizador(context: Context) {
     private val app = context.applicationContext
@@ -53,6 +54,7 @@ class Previsualizador(context: Context) {
 
     @Volatile
     private var proyecto: Proyecto = Proyecto()
+    private val fps: Int get() = Linea.fps(proyecto)
     @Volatile
     private var tiempo = 0L
     @Volatile
@@ -158,7 +160,7 @@ class Previsualizador(context: Context) {
         if (cerrado || reproduciendo) return
         val d = Linea.duracion(proyecto)
         if (d <= 0) return
-        if (tiempo >= d - Linea.tiempoDe(1)) tiempo = 0
+        if (tiempo >= d - Linea.tiempoDe(1, fps)) tiempo = 0
         reproduciendo = true
         alReproducir(true)
         enHilo { reiniciarSonido(tiempo) }
@@ -169,7 +171,7 @@ class Previsualizador(context: Context) {
         reproduciendo = false
         sonido?.pausar()
         enHilo {
-            val t = Linea.tiempoDe(Linea.fotogramaEn(tiempo))
+            val t = Linea.tiempoDe(Linea.fotogramaEn(tiempo, fps), fps)
             soltarSonido()
             tiempo = t
             alTiempo(t)
@@ -237,7 +239,7 @@ class Previsualizador(context: Context) {
         if (t >= d) {
             reproduciendo = false
             soltarSonido()
-            val fin = maxOf(0L, Linea.tiempoDe(Linea.fotogramaEn(d - 1)))
+            val fin = maxOf(0L, Linea.tiempoDe(Linea.fotogramaEn(d - 1, fps), fps))
             tiempo = fin
             alTiempo(fin)
             alReproducir(false)
@@ -245,7 +247,7 @@ class Previsualizador(context: Context) {
         }
         tiempo = t
         ultimoNs = System.nanoTime()
-        val n = Linea.fotogramaEn(t)
+        val n = Linea.fotogramaEn(t, fps)
         if (n != ultimoDibujado) {
             dibujar(t, rapido = true)
             alTiempo(t)
@@ -264,7 +266,7 @@ class Previsualizador(context: Context) {
             escenaDe = p
             escenaMuestras = muestras
         }
-        val n = Linea.fotogramaEn(t)
+        val n = Linea.fotogramaEn(t, fps)
         try {
             e.activar()
             val cuadro = escena!!.cuadroEn(t, n)

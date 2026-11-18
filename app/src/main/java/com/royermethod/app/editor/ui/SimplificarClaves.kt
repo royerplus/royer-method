@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import com.royermethod.app.editor.modelo.Clave
 import com.royermethod.app.editor.modelo.Edicion
 import com.royermethod.app.editor.modelo.Escena
+import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Proyecto
 import com.royermethod.app.editor.modelo.Simplificacion
 import com.royermethod.app.editor.modelo.TiempoPreciso
@@ -185,7 +186,7 @@ internal object Simplificador {
         val (w, h) = p.formato.medidas(p.salida.ladoCorto)
         // Las muestras del obturador al exportar, como Escena
         val k = if (p.salida.desenfoqueMovimiento) p.salida.muestras.coerceIn(1, Escena.MAX_MUESTRAS) else 1
-        val ins = Trayectoria.instantes(c.duracionUs, k, o + ahora, ini)
+        val ins = Trayectoria.instantes(c.duracionUs, k, o + ahora, ini, Linea.fps(p))
         return Trayectoria.comparar(o, ahora, ins, w.toFloat(), h.toFloat(), quitarRepetidas = d is DuenoClaves.Parte)
     }
 

@@ -78,7 +78,13 @@ data class AjustesSalida(
      */
     val desenfoqueMovimiento: Boolean = true,
     /** Muestras por fotograma para ese desenfoque. Mas = mas suave y mas lento. */
-    val muestras: Int = 8
+    val muestras: Int = 8,
+    /**
+     * Fotogramas por segundo del video (30 o 60). La vista previa va a los
+     * mismos para que se vea la fluidez de verdad. A 60 pesa mas y tarda
+     * casi el doble en exportar.
+     */
+    val fps: Int = 30
 )
 
 /**

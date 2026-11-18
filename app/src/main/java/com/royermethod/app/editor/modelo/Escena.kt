@@ -36,7 +36,9 @@ class Escena(
     private val inicios = Linea.inicios(proyecto.principal)
     private val efectosCompartidos = proyecto.capas.filter { it.clip.esAjuste && it.clip.efectos.isNotEmpty() }.sortedBy { it.fila }
     private val ajustesSelectivos = proyecto.capas.filter { it.clip.esAjuste && it.clip.afectaA != null }.sortedBy { it.fila }
-    private val duracionFotograma = 1_000_000.0 / Linea.FPS
+    /** Fotogramas por segundo de lo que se dibuja (los de salida). */
+    val fps = Linea.fps(proyecto)
+    private val duracionFotograma = 1_000_000.0 / fps
 
     /**
      * Fraccion del fotograma que se "expone". 0.5 es el obturador de 180
@@ -45,10 +47,10 @@ class Escena(
      */
     private val obturador = 0.5
 
-    fun cuadro(n: Long): Cuadro = cuadroEn(Linea.tiempoDe(n), n)
+    fun cuadro(n: Long): Cuadro = cuadroEn(Linea.tiempoDe(n, fps), n)
 
     /** Para la vista previa al arrastrar, que no cae en fotogramas exactos. */
-    fun cuadroEn(t: Long, n: Long = Linea.fotogramaEn(t)): Cuadro {
+    fun cuadroEn(t: Long, n: Long = Linea.fotogramaEn(t, fps)): Cuadro {
         val k = if (proyecto.salida.desenfoqueMovimiento) proyecto.salida.muestras.coerceIn(1, MAX_MUESTRAS) else 1
         val pasos = ArrayList<Paso>()
         val en = Linea.principalEn(proyecto.principal, inicios, t)

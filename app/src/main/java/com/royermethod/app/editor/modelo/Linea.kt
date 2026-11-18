@@ -10,21 +10,34 @@ package com.royermethod.app.editor.modelo
  */
 object Linea {
 
-    /** 30 fps fijos: es el objetivo de toda la app. */
+    /**
+     * La rejilla de edicion: 30 por segundo. Claves, cortes, transiciones y
+     * el "ajustar a fotogramas" caen en ella. Un video de salida a 60 fps
+     * tiene todos estos instantes y uno mas en medio, asi que lo editado en
+     * 30 cae igual de exacto en 60.
+     */
     const val FPS = 30
 
+    /** Lo que admite la salida. */
+    val FPS_SALIDA = listOf(30, 60)
+
+    /** Los fps de salida de [p], siempre uno de [FPS_SALIDA]. */
+    fun fps(p: Proyecto): Int = fpsValido(p.salida.fps)
+
+    fun fpsValido(f: Int): Int = if (f in FPS_SALIDA) f else FPS
+
     /** Instante exacto del fotograma [n], sin acumular error. */
-    fun tiempoDe(n: Long): Long = n * 1_000_000L / FPS
+    fun tiempoDe(n: Long, fps: Int = FPS): Long = n * 1_000_000L / fps
 
     /** Primer fotograma cuyo instante es >= [us]. */
-    fun fotogramaDe(us: Long): Long = (us * FPS + 999_999L) / 1_000_000L
+    fun fotogramaDe(us: Long, fps: Int = FPS): Long = (us * fps + 999_999L) / 1_000_000L
 
     /**
      * Fotograma que se esta viendo en [us]: el ultimo cuyo instante ya llego.
      * Hecho a mano y no como us*30/1e6 porque [tiempoDe] redondea hacia
      * abajo, y el fotograma 1 empieza en 33333, no en 33333.33.
      */
-    fun fotogramaEn(us: Long): Long = ((us + 1) * FPS - 1).floorDiv(1_000_000L)
+    fun fotogramaEn(us: Long, fps: Int = FPS): Long = ((us + 1) * fps - 1).floorDiv(1_000_000L)
 
     /**
      * Lo que dura de verdad la transicion entre [a] y [b].
@@ -74,8 +87,8 @@ object Linea {
         return fin
     }
 
-    /** Cuantos fotogramas salen en total. */
-    fun fotogramas(p: Proyecto): Long = fotogramaDe(duracion(p))
+    /** Cuantos fotogramas salen en total, a los fps de salida. */
+    fun fotogramas(p: Proyecto): Long = fotogramaDe(duracion(p), fps(p))
 
     /**
      * Que hay en la pista principal en [t].
@@ -118,8 +131,9 @@ object Linea {
     fun cortes(p: Proyecto): Set<Long> {
         val ini = inicios(p.principal)
         val r = HashSet<Long>()
+        val fps = fps(p)
         for (i in 1 until p.principal.size) {
-            if (solape(p.principal[i - 1], p.principal[i]) == 0L) r.add(fotogramaDe(ini[i]))
+            if (solape(p.principal[i - 1], p.principal[i]) == 0L) r.add(fotogramaDe(ini[i], fps))
         }
         return r
     }

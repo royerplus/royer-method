@@ -30,7 +30,8 @@ import kotlin.math.roundToLong
  *    (12 ms a 60 Hz), que no se nota.
  */
 internal class Ritmo(
-    private val fps: Int,
+    /** Fotogramas por segundo del video; cambia con el proyecto. */
+    var fps: Int,
     private val antesNs: Long = ANTES_NS,
     periodoInicialNs: Long = 16_666_667L
 ) {

@@ -107,10 +107,10 @@ private fun pesoDe(p: Proyecto, id: Long): Pair<Long, Long> {
     val c = Edicion.clip(p, id) ?: return 0L to plan.bytesEstimados
     val ini = Edicion.inicio(p, id) ?: return 0L to plan.bytesEstimados
     var bits = 0.0
-    var n = Linea.fotogramaDe(ini)
+    var n = Linea.fotogramaDe(ini, plan.fps)
     val fin = ini + c.duracionUs
-    while (Linea.tiempoDe(n) < fin && n < plan.fotogramas) {
-        bits += plan.bitrateEn(n).toDouble() / Linea.FPS
+    while (Linea.tiempoDe(n, plan.fps) < fin && n < plan.fotogramas) {
+        bits += plan.bitrateEn(n).toDouble() / plan.fps
         n++
     }
     return (bits / 8).toLong() to plan.bytesEstimados

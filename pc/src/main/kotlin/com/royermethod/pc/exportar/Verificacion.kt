@@ -14,20 +14,22 @@ data class Verificacion(
     val fps: Double,
     val irregulares: Int,
     val duracionVideoUs: Long,
-    val duracionAudioUs: Long
+    val duracionAudioUs: Long,
+    /** Los fps que se pidieron al exportar. */
+    val pedidos: Int = 30
 ) {
     val perfecta: Boolean
-        get() = fotogramas.toLong() == esperados && irregulares == 0 && kotlin.math.abs(fps - 30.0) < 0.01
+        get() = fotogramas.toLong() == esperados && irregulares == 0 && kotlin.math.abs(fps - pedidos) < 0.01
 
     fun resumen(): String =
         if (perfecta) "$fotogramas fotogramas a ${"%.2f".format(fps)} fps, ninguno perdido"
         else "$fotogramas de $esperados fotogramas, ${"%.2f".format(fps)} fps, $irregulares saltos irregulares"
 
     companion object {
-        private const val PASO_MIN = 33_332L
-        private const val PASO_MAX = 33_335L
-
-        fun de(archivo: File, esperados: Long): Verificacion {
+        fun de(archivo: File, esperados: Long, pedidos: Int = 30): Verificacion {
+            // Separacion de un fotograma, con el redondeo a microsegundos
+            val pasoMin = 1_000_000L / pedidos - 1
+            val pasoMax = (1_000_000L + pedidos - 1) / pedidos + 1
             val g = FFmpegFrameGrabber(archivo)
             try {
                 g.start()
@@ -55,11 +57,11 @@ data class Verificacion(
                 var irregulares = 0
                 for (i in 1 until tiempos.size) {
                     val d = tiempos[i] - tiempos[i - 1]
-                    if (d < PASO_MIN || d > PASO_MAX) irregulares++
+                    if (d < pasoMin || d > pasoMax) irregulares++
                 }
                 val fps = if (tiempos.size > 1) (tiempos.size - 1) * 1_000_000.0 / (tiempos.last() - tiempos.first()) else 0.0
-                val finVideo = if (tiempos.isEmpty()) 0L else tiempos.last() + 33_333L
-                return Verificacion(tiempos.size, esperados, fps, irregulares, finVideo, finAudio)
+                val finVideo = if (tiempos.isEmpty()) 0L else tiempos.last() + 1_000_000L / pedidos
+                return Verificacion(tiempos.size, esperados, fps, irregulares, finVideo, finAudio, pedidos)
             } finally {
                 runCatching { g.release() }
             }

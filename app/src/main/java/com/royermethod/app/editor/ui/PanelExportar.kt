@@ -156,7 +156,7 @@ fun PanelExportar(
                     Text("≈ ${peso(plan.bytesEstimados)}", style = Letra.titulo.copy(fontSize = 18.sp, lineHeight = 24.sp), color = Ink.White, maxLines = 1, softWrap = false)
                     Spacer(Modifier.size(12.dp))
                     Nota(
-                        "${plan.ancho}×${plan.alto}  ·  30 fps  ·  ${reloj(plan.duracionUs)}" +
+                        "${plan.ancho}×${plan.alto}  ·  ${plan.fps} fps  ·  ${reloj(plan.duracionUs)}" +
                             (if (fluidos > 0) "\n" + (if (fluidos == 1) "1 bloque" else "$fluidos bloques") + " con Fluido: tarda más" else ""),
                         Modifier.weight(1f)
                     )
@@ -169,6 +169,11 @@ fun PanelExportar(
                 Segmentos(Calidad.values().toList(), s.calidad, { Rotulos.de(it.nombre) }, { c -> salida { it.copy(calidad = c) } })
                 Etiqueta("Resolución")
                 Segmentos(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
+                Etiqueta("Fotogramas por segundo")
+                Segmentos(Linea.FPS_SALIDA, Linea.fpsValido(s.fps), { "$it fps" }, { f ->
+                    salida { it.copy(fps = f) }
+                    if (f > Linea.FPS) estado.avisar("60 fps: más fluido, la vista previa también va a 60. Pesa más y tarda casi el doble en exportar")
+                })
                 Tira(Modifier.padding(top = 8.dp), hueco = 8.dp) {
                     ChipInterruptor("H.265", s.hevc, { v ->
                         salida { it.copy(hevc = v) }
@@ -176,7 +181,7 @@ fun PanelExportar(
                     })
                     ChipInterruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v ->
                         salida { it.copy(desenfoqueMovimiento = v) }
-                        if (v) estado.avisar("El rastro que hace que las transiciones a 30 fps se vean fluidas")
+                        if (v) estado.avisar("El rastro que hace que las transiciones se vean fluidas")
                     })
                 }
             }

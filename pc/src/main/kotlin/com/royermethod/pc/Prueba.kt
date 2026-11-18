@@ -29,6 +29,8 @@ object Prueba {
         var p = AjustesEditor.proyectoNuevo()
         val visuales = origenes.filter { !it.tipo.name.equals("AUDIO") }
         p = Edicion.agregarPrincipal(p, visuales, Long.MAX_VALUE).first
+        // PRUEBA_FPS=60 prueba la salida a 60
+        System.getenv("PRUEBA_FPS")?.toIntOrNull()?.let { f -> p = p.copy(salida = p.salida.copy(fps = f)) }
         visuales.firstOrNull { it.esVideo }?.let { p = Edicion.agregarSuperpuesto(p, it, 500_000L).first }
         Proyectos.guardar(p)
         val d = Linea.duracion(p)

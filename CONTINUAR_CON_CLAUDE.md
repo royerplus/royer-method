@@ -722,3 +722,14 @@ Pedido de Royer (2026-11-17): "lo mismo pero en PC". Es una compilacion de Gradl
 - Lo propio del PC en `com.royermethod.pc`: `Main.kt` (ventana; Espacio, Ctrl+Z/Y, Esc), `EditorPc.kt` (lo que en el telefono es EditorScreen), `vista/Previsualizador` (dibuja en una lamina, la lee y la ensena como imagen; reloj del sonido con javax.sound), `exportar/Exportador` (x265/x264 por programa, 30 fps exactos, verificacion por paquetes), `medios/Importar` y `RecursosPc`. Exporta a `Videos\Royer Method`; datos en `%APPDATA%\RoyerMethod`.
 - CI: `.github/workflows/pc.yml` (windows-latest) publica en la release `pc`: `RoyerMethodPC.msi` y `RoyerMethodPC.zip`.
 - En la nube de Claude: `cd pc && gradle -Pnube=true --max-workers=1 compileKotlin` (Compose 1.5.12 de Linux, sin el repositorio de Google, bloqueado; si dice "Could not find", repetir). `gradle -Pnube=true cp` y `xvfb-run java -cp "$(cat build/cp.txt)" com.royermethod.pc.Prueba <salida> <videos...>` prueba el motor sin ventana (vista previa a PNG y exportacion). Probado el 2026-11-17: 390 de 390 fotogramas a 30 fps, H.265 con audio.
+
+## Salida a 30 o 60 fps (2026-11-18)
+
+Pedido de Royer: exportar tambien a 60 fps, por proyecto, y que la vista previa vaya a los mismos fps para ver la fluidez real.
+
+- `AjustesSalida.fps` (30 o 60, se guarda como `"fps"` en el proyecto; los viejos abren a 30). Selector en Exportar y en Personalizar (por defecto de proyectos nuevos).
+- `Linea.FPS = 30` sigue siendo la rejilla de edicion (claves, cortes, transiciones, ajustar a fotogramas): todos sus instantes estan tambien en la de 60. Lo que dibuja y exporta usa `Linea.fps(p)`: `tiempoDe/fotogramaDe/fotogramaEn` aceptan `fps`, `Escena.fps` (obturador del desenfoque), `PlanExportacion.fps`, `Linea.fotogramas/cortes`, `Trayectoria.instantes` (simplificador), exportadores y `Verificacion` (tolerancia de paso segun fps).
+- Peso a 60: 0.65 de los bits por fotograma de 30, o sea ~1.3 veces el de 30 (PlanExportacion).
+- Vista previa: telefono, `Ritmo.fps` cambia con el proyecto; PC, el bucle dibuja al cambiar el fotograma de 60.
+- Probado en la nube (PC, `PRUEBA_FPS=60` en `Prueba`): 780 de 780 a 60.00 fps sin saltos, 1.66 MB contra 1.32 MB a 30. No probado en el telefono.
+- Pendiente si hace falta: Fluido (interpolacion) sigue rellenando solo hasta 30; un clip de 30 a 60 repite cada fotograma.

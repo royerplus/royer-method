@@ -21,7 +21,8 @@ data class PlanExportacion(
     val tramos: List<Tramo>,
     val audioKbps: Int,
     val conAudio: Boolean,
-    val duracionUs: Long
+    val duracionUs: Long,
+    val fps: Int = Linea.FPS
 ) {
     /**
      * Bitrate para el fotograma [n].
@@ -32,7 +33,7 @@ data class PlanExportacion(
      * adelanta; al bajar se espera a que el tramo caro haya pasado.
      */
     fun bitrateEn(n: Long): Int {
-        val t = Linea.tiempoDe(n)
+        val t = Linea.tiempoDe(n, fps)
         val f = maxOf(factorEn(t) ?: 1f, factorEn(t + ANTICIPO_US) ?: 0f)
         return (bitrateBase * f).toInt().coerceAtLeast(MINIMO)
     }
@@ -42,7 +43,7 @@ data class PlanExportacion(
     /** Peso aproximado del archivo, para ensenarlo antes de exportar. */
     val bytesEstimados: Long by lazy {
         var bits = 0.0
-        for (n in 0 until fotogramas) bits += bitrateEn(n).toDouble() / Linea.FPS
+        for (n in 0 until fotogramas) bits += bitrateEn(n).toDouble() / fps
         if (conAudio) bits += duracionUs / 1_000_000.0 * audioKbps * 1000
         // Lo que ocupa el contenedor (cabeceras, indices): poco, pero algo
         (bits / 8 * 1.01).toLong()
@@ -58,7 +59,12 @@ data class PlanExportacion(
         fun de(p: Proyecto, hevc: Boolean = p.salida.hevc, conAudio: Boolean = true): PlanExportacion {
             val (w, h) = p.formato.medidas(p.salida.ladoCorto)
             val bpp = if (hevc) p.salida.calidad.bppHevc else p.salida.calidad.bppAvc
-            val base = (bpp.toDouble() * w * h * Linea.FPS).toInt()
+            val fps = Linea.fps(p)
+            // Bits por pixel por fotograma, pero a 60 no el doble: cuanto mas
+            // juntos los fotogramas, mas se parecen y menos cuesta cada uno.
+            // Con 0.65 por fotograma, 60 fps pesa 1.3 veces lo de 30.
+            val porFotograma = if (fps > Linea.FPS) 0.65 else 1.0
+            val base = (bpp.toDouble() * porFotograma * w * h * fps).toInt()
             return PlanExportacion(
                 ancho = w,
                 alto = h,
@@ -68,7 +74,8 @@ data class PlanExportacion(
                 tramos = Linea.tramos(p, normalizar = false),
                 audioKbps = p.salida.calidad.audioKbps,
                 conAudio = conAudio,
-                duracionUs = Linea.duracion(p)
+                duracionUs = Linea.duracion(p),
+                fps = fps
             )
         }
     }

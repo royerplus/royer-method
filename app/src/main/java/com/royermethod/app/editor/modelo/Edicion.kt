@@ -682,7 +682,7 @@ object Edicion {
         if (c.claves.isEmpty()) return null
         val ini = inicio(p, id) ?: return null
         val (w, h) = medidasSalida(p)
-        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), c.claves, ini)
+        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), c.claves, ini, Linea.fps(p))
         val s = Trayectoria.simplificar(c.claves, ins, w, h, tol, quitarRepetidas = false)
         if (s.claves == c.claves) return p to s
         return cambiar(p, id) { it.copy(claves = s.claves, clavesOriginales = it.clavesOriginales ?: it.claves) } to s
@@ -713,7 +713,7 @@ object Edicion {
         if (pieza.claves.isEmpty()) return null
         val ini = inicio(p, id) ?: return null
         val (w, h) = medidasSalida(p)
-        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), pieza.claves, ini)
+        val ins = Trayectoria.instantes(c.duracionUs, muestrasSalida(p), pieza.claves, ini, Linea.fps(p))
         val s = Trayectoria.simplificar(pieza.claves, ins, w, h, tol, quitarRepetidas = true)
         if (s.claves == pieza.claves) return p to s
         return cambiarPieza(p, id, indice) {

@@ -107,6 +107,9 @@ class Previsualizador(context: Context) {
     private var busquedaDelBucle = 0
     /** Que fotograma va en cada refresco y cuando se ensena (ver Ritmo). */
     private val ritmo = Ritmo(Linea.FPS, periodoInicialNs = periodoPantalla(context))
+
+    /** Los fps del proyecto (30 o 60): la vista previa va a los mismos que el video. */
+    private val fps: Int get() = Linea.fps(proyecto)
     /** La lectura anterior del reloj en el bucle: si no cambia, el sonido no avanza. */
     private var relojAnterior = Long.MIN_VALUE
     private val ordenes = AtomicInteger(0)
@@ -299,6 +302,12 @@ class Previsualizador(context: Context) {
         h.post {
             // Llega otro detras: ese hace el trabajo
             if (p !== proyecto) return@post
+            if (ritmo.fps != fps) {
+                // Los numeros de fotograma cambian de escala: se empieza de cero
+                ritmo.fps = fps
+                ultimoDibujado = -1
+                ritmo.reiniciar(null)
+            }
             if (reproduciendo) {
                 val segs = PlanAudio.de(p)
                 if (segs != segmentosSonando || PlanAudio.total(p) != totalSonando) {
@@ -371,7 +380,7 @@ class Previsualizador(context: Context) {
             // uno que ya casi esta se acaba y se ensena: si no, arrastrando
             // seguido cada uno cortaba al anterior y la imagen no se movia
             val desdeNs = System.nanoTime()
-            dibujar(destino, Linea.fotogramaEn(destino), rapido = reproduciendo) {
+            dibujar(destino, Linea.fotogramaEn(destino, fps), rapido = reproduciendo) {
                 !cerrado && (busqueda == busquedas ||
                     !reproduciendo && System.nanoTime() - desdeNs < TERMINAR_ARRASTRE_NS)
             }
@@ -389,7 +398,7 @@ class Previsualizador(context: Context) {
         // Desde el final, vuelve a empezar
         val orden = ordenes.incrementAndGet()
         synchronized(controlTiempo) {
-            if (tiempo >= d - Linea.tiempoDe(1)) tiempo = 0
+            if (tiempo >= d - Linea.tiempoDe(1, fps)) tiempo = 0
             instante.reiniciar(tiempo)
             reproduciendo = true
         }
@@ -402,7 +411,7 @@ class Previsualizador(context: Context) {
             empezarSesion("play", pedidoNs)
             val b = busquedas
             val t0 = tiempo
-            val n0 = Linea.fotogramaEn(t0)
+            val n0 = Linea.fotogramaEn(t0, fps)
             if (!seguirPausado(t0, orden, b)) reiniciarSonido(t0, orden, b, arrancarYa = false)
             // La imagen primero y luego el sonido: que no entre el sonido con la
             // imagen quieta. Lo de la pausa ya esta en pantalla y no se repite:
@@ -662,10 +671,10 @@ class Previsualizador(context: Context) {
             val turno = ritmo.turno(frameTimeNanos, leidoNs, t, avanza)
             val esperaba = esperandoImagen
             if (turno != null) {
-                val n = minOf(turno.fotograma, Linea.fotogramaEn(maxOf(0L, d - 1L)))
+                val n = minOf(turno.fotograma, Linea.fotogramaEn(maxOf(0L, d - 1L), fps))
                 if (n != ultimoDibujado) {
                     if (!esperaba) principal.postDelayed(vigia, ESPERA_IMAGEN_MS)
-                    val publicado = dibujar(Linea.tiempoDe(n), n, rapido = true, presentarNs = turno.presentarNs,
+                    val publicado = dibujar(Linea.tiempoDe(n, fps), n, rapido = true, presentarNs = turno.presentarNs,
                         limiteNs = turno.limiteNs) { ordenes.get() == orden && busquedas == b && !cerrado }
                     principal.removeCallbacks(vigia)
                     if (publicado) avisarTiempo(t, b, orden)
@@ -703,7 +712,7 @@ class Previsualizador(context: Context) {
      */
     private fun anticiparVideos(p: Proyecto, t: Long, c: Compositor) {
         val esc = escena ?: return
-        val unCuadro = Linea.tiempoDe(1)
+        val unCuadro = Linea.tiempoDe(1, fps)
         if (videosMiradosDe !== esc || t > videosMiradosHasta || t < videosMiradosHasta - ANTICIPO_VIDEO_US - unCuadro) {
             videosMiradosDe = esc
             videosMiradosHasta = t
@@ -741,7 +750,7 @@ class Previsualizador(context: Context) {
      */
     private fun dibujarAhora(seguir: (() -> Boolean)? = null) {
         val t = tiempo
-        dibujar(t, Linea.fotogramaEn(t), rapido = false, seguir = seguir)
+        dibujar(t, Linea.fotogramaEn(t, fps), rapido = false, seguir = seguir)
     }
 
     /**
@@ -856,8 +865,8 @@ class Previsualizador(context: Context) {
         if (!registrar(Log.DEBUG)) { sesion = null; return }
         gcAntes = gc()
         val p = proyecto
-        val comienzos = (Linea.inicios(p.principal).map { Linea.fotogramaEn(it) } +
-            p.capas.map { Linea.fotogramaEn(it.inicioUs) }).distinct().sorted().toLongArray()
+        val comienzos = (Linea.inicios(p.principal).map { Linea.fotogramaEn(it, fps) } +
+            p.capas.map { Linea.fotogramaEn(it.inicioUs, fps) }).distinct().sorted().toLongArray()
         sesion = SesionVista(motivo, pedidoNs, ancho, alto, minOf(4, p.salida.muestras), registrar(Log.VERBOSE), comienzos)
     }
 

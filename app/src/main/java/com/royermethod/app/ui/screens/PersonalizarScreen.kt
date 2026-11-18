@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.royermethod.app.editor.modelo.AjustesSalida
+import com.royermethod.app.editor.modelo.Linea
 import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Fondo
 import com.royermethod.app.editor.modelo.Formato
@@ -173,9 +174,10 @@ private fun ColumnScope.Editor() {
     val s = AjustesEditor.salida
     Opciones(Calidad.values().toList(), s.calidad, { it.nombre }, { c -> salida { it.copy(calidad = c) } })
     Opciones(RESOLUCIONES, s.ladoCorto, { "${it}p" }, { l -> salida { it.copy(ladoCorto = l) } })
+    Opciones(Linea.FPS_SALIDA, Linea.fpsValido(s.fps), { "$it fps" }, { f -> salida { it.copy(fps = f) } })
     Interruptor("H.265", s.hevc, { v -> salida { it.copy(hevc = v) } }, "Misma calidad con bastante menos peso. Si el telefono no lo tiene, sale en H.264")
     Interruptor("Desenfoque de movimiento", s.desenfoqueMovimiento, { v -> salida { it.copy(desenfoqueMovimiento = v) } },
-        "El rastro que hace que las transiciones a 30 fps se vean fluidas")
+        "El rastro que hace que las transiciones se vean fluidas")
 
     Spacer(Modifier.height(10.dp))
     Etiqueta("Mis animaciones")
