@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -45,6 +46,7 @@ fun main() {
             onCloseRequest = ::exitApplication,
             state = ventana,
             title = "Royer Method",
+            icon = icono,
             onPreviewKeyEvent = { e ->
                 if (e.type != KeyEventType.KeyDown) false
                 else when {
@@ -67,6 +69,14 @@ fun main() {
             }
         }
     }
+}
+
+/** El icono de la app (el del telefono) para la ventana y la barra de tareas. */
+private val icono: androidx.compose.ui.graphics.painter.Painter? by lazy {
+    runCatching {
+        val img = Thread.currentThread().contextClassLoader.getResourceAsStream("icono.png")!!.use { javax.imageio.ImageIO.read(it) }
+        androidx.compose.ui.graphics.painter.BitmapPainter(img.toComposeImageBitmap())
+    }.getOrNull()
 }
 
 /** Con el foco en un campo de texto, el espacio es un espacio. */
