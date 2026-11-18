@@ -223,7 +223,7 @@ fun EditorPc(estado: EstadoEditor, dialogos: Dialogos, onVolver: () -> Unit) {
     ) { modificador ->
         Box(modificador.background(Color.Black).onSizeChanged { prev.cambiarTamano(it.width, it.height) }) {
             imagen?.let {
-                Image(it, null, contentScale = ContentScale.FillBounds, filterQuality = FilterQuality.None, modifier = Modifier.matchParentSize())
+                Image(it, null, contentScale = ContentScale.FillBounds, filterQuality = FilterQuality.Low, modifier = Modifier.matchParentSize())
             }
         }
     }

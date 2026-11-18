@@ -40,7 +40,7 @@ object Prueba {
         val imagenes = ArrayBlockingQueue<ImageBitmap>(16)
         prev.alImagen = { imagenes.offer(it) }
         prev.proyecto(p)
-        prev.cambiarTamano(540, 540)
+        prev.cambiarTamano(System.getenv("PRUEBA_LADO")?.toIntOrNull() ?: 540, System.getenv("PRUEBA_LADO")?.toIntOrNull() ?: 540)
         for ((i, t) in listOf(0L, 1_000_000L, d / 2, d - 100_000L).withIndex()) {
             imagenes.clear()
             val t0 = System.nanoTime()

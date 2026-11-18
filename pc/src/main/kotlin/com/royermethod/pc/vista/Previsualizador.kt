@@ -101,9 +101,17 @@ class Previsualizador(context: Context) {
         soltarGl()
     }
 
-    /** La vista cambio de tamano (pixeles). */
-    fun cambiarTamano(w: Int, h: Int) {
-        if (w <= 0 || h <= 0) return
+    /**
+     * La vista cambio de tamano (pixeles). Se dibuja como mucho a
+     * [LADO_MAXIMO] de lado y la interfaz la estira: en pantalla completa
+     * dibujar, leer de la GPU y copiar 4 millones de pixeles 60 veces por
+     * segundo no llega, y a esa distancia no se nota la diferencia.
+     */
+    fun cambiarTamano(anchoVista: Int, altoVista: Int) {
+        if (anchoVista <= 0 || altoVista <= 0) return
+        val escala = minOf(1.0, LADO_MAXIMO.toDouble() / maxOf(anchoVista, altoVista))
+        val w = maxOf(2, (anchoVista * escala).toInt() and 1.inv())
+        val h = maxOf(2, (altoVista * escala).toInt() and 1.inv())
         enHilo {
             if (w == ancho && h == alto && compositor != null) return@enHilo
             val e = egl ?: Egl().also { egl = it }
@@ -280,8 +288,10 @@ class Previsualizador(context: Context) {
         alImagen(imagen(buf, ancho, alto))
     }
 
+    private var bytes = ByteArray(0)
+
     private fun imagen(buf: ByteBuffer, w: Int, h: Int): ImageBitmap {
-        val bytes = ByteArray(w * h * 4)
+        if (bytes.size != w * h * 4) bytes = ByteArray(w * h * 4)
         buf.position(0)
         buf.get(bytes)
         buf.position(0)
@@ -297,5 +307,10 @@ class Previsualizador(context: Context) {
         lamina = null
         runCatching { egl?.soltar() }
         egl = null
+    }
+
+    companion object {
+        /** Lado mas largo al que se dibuja la vista previa. */
+        const val LADO_MAXIMO = 960
     }
 }
