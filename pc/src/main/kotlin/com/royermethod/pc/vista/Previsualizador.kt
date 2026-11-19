@@ -101,31 +101,50 @@ class Previsualizador(context: Context) {
         soltarGl()
     }
 
+    // Lo que mide la vista en la interfaz, en pixeles
+    @Volatile
+    private var anchoVista = 0
+    @Volatile
+    private var altoVista = 0
+
+    /** La vista cambio de tamano (pixeles). */
+    fun cambiarTamano(w: Int, h: Int) {
+        if (w <= 0 || h <= 0) return
+        anchoVista = w; altoVista = h
+        enHilo { ajustarTamano() }
+    }
+
     /**
-     * La vista cambio de tamano (pixeles). Se dibuja como mucho a
-     * [LADO_MAXIMO] de lado y la interfaz la estira: en pantalla completa
-     * dibujar, leer de la GPU y copiar 4 millones de pixeles 60 veces por
-     * segundo no llega, y a esa distancia no se nota la diferencia.
+     * Las medidas a las que se dibuja. El lienzo nunca a mas pixeles que el
+     * video exportado (576 de lado corto por defecto), ni a mas de
+     * [LADO_CORTO_MAXIMO]: la interfaz lo estira. En pantalla grande dibujar,
+     * leer de la GPU y copiar un lienzo de 1000 pixeles 60 veces por segundo
+     * no llega, y lo que se ve es justo lo que va a salir. Hilo de dibujo.
      */
-    fun cambiarTamano(anchoVista: Int, altoVista: Int) {
-        if (anchoVista <= 0 || altoVista <= 0) return
-        val escala = minOf(1.0, LADO_MAXIMO.toDouble() / maxOf(anchoVista, altoVista))
-        val w = maxOf(2, (anchoVista * escala).toInt() and 1.inv())
-        val h = maxOf(2, (altoVista * escala).toInt() and 1.inv())
-        enHilo {
-            if (w == ancho && h == alto && compositor != null) return@enHilo
-            val e = egl ?: Egl().also { egl = it }
-            e.activar()
-            runCatching { compositor?.soltar() }
-            lamina?.soltar()
-            ancho = w; alto = h
-            compositor = Compositor(app, w, h, vista = true).also { it.zoom = zoomVista }
-            lamina = Lamina(w, h)
-            pixeles = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder())
-            escena = null
-            ultimoDibujado = -1
-            dibujar(tiempo)
-        }
+    private fun ajustarTamano() {
+        val vw = anchoVista; val vh = altoVista
+        if (vw <= 0 || vh <= 0) return
+        val p = proyecto
+        val (ew, eh) = p.formato.medidas(p.salida.ladoCorto)
+        // El lienzo dentro de la vista, ajustado sin recortar
+        val lienzo = minOf(vw.toDouble() / ew, vh.toDouble() / eh)
+        val corto = minOf(ew, eh) * lienzo
+        val objetivo = minOf(minOf(ew, eh), LADO_CORTO_MAXIMO).toDouble()
+        val escala = minOf(1.0, objetivo / corto)
+        val w = maxOf(2, (vw * escala).toInt() and 1.inv())
+        val h = maxOf(2, (vh * escala).toInt() and 1.inv())
+        if (w == ancho && h == alto && compositor != null) return
+        val e = egl ?: Egl().also { egl = it }
+        e.activar()
+        runCatching { compositor?.soltar() }
+        lamina?.soltar()
+        ancho = w; alto = h
+        compositor = Compositor(app, w, h, vista = true).also { it.zoom = zoomVista }
+        lamina = Lamina(w, h)
+        pixeles = ByteBuffer.allocateDirect(w * h * 4).order(ByteOrder.nativeOrder())
+        escena = null
+        ultimoDibujado = -1
+        dibujar(tiempo)
     }
 
     fun zoom(z: ZoomVista) {
@@ -140,6 +159,8 @@ class Previsualizador(context: Context) {
         proyecto = p
         enHilo {
             if (p !== proyecto) return@enHilo
+            // Otra resolucion o proporcion de salida: otras medidas de dibujo
+            ajustarTamano()
             if (reproduciendo) {
                 val segs = PlanAudio.de(p)
                 if (segs != segmentosSonando) reiniciarSonido(relojAhora())
@@ -310,7 +331,7 @@ class Previsualizador(context: Context) {
     }
 
     companion object {
-        /** Lado mas largo al que se dibuja la vista previa. */
-        const val LADO_MAXIMO = 960
+        /** Lado corto del lienzo como mucho, aunque se exporte a mas. */
+        const val LADO_CORTO_MAXIMO = 720
     }
 }
