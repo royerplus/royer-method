@@ -196,6 +196,16 @@ private fun avisoElegidas(n: Int): String = when (n) {
 /** Un bloque cogido para llevarlo a otro sitio de la pista principal. */
 private class Cogido(val pieza: Pieza, val x: Float, val y: Float, val destino: Int)
 
+/**
+ * Un bloque de la principal que se recorta por la izquierda. En el modelo
+ * su inicio no se mueve (va pegado al anterior) y lo que se acorta es el
+ * final, asi que el asa que se arrastra no seguiria al dedo. Mientras dura
+ * el gesto, el bloque y los de detras se dibujan corridos [us] a la
+ * derecha: el borde izquierdo va con el dedo y el final se queda quieto.
+ * Al soltar se pega al anterior, como queda de verdad.
+ */
+private class RecorteIzquierdo(val id: Long, val us: Long)
+
 /** Una clave que se esta arrastrando: el bloque y donde va a quedar (tiempo del bloque). */
 private class ClaveCogida(val id: Long, val local: Long)
 
@@ -220,6 +230,7 @@ fun LineaTiempo(
     var cogido by remember { mutableStateOf<Cogido?>(null) }
     // Se lee solo al dibujar: arrastrar una clave repinta, no recompone
     var claveCogida by remember { mutableStateOf<ClaveCogida?>(null) }
+    var recorteIzquierdo by remember { mutableStateOf<RecorteIzquierdo?>(null) }
     var inercia by remember { mutableStateOf<Job?>(null) }
 
     // Sonando, el cabezal avanza en cada refresco de pantalla con el reloj de
@@ -465,8 +476,14 @@ fun LineaTiempo(
                                         val borde = if (asa.derecha) pz.hasta else pz.desde
                                         d = pegar(borde + d, puntos) - borde
                                         estado.ajustar { recorte(base, pz, asa.derecha, d) }
+                                        if (!asa.derecha && pz.pista == Pista.PRINCIPAL) {
+                                            val antes = base.principal.firstOrNull { it.id == pz.id }?.duracionUs
+                                            val ahora = estado.proyecto.principal.firstOrNull { it.id == pz.id }?.duracionUs
+                                            if (antes != null && ahora != null) recorteIzquierdo = RecorteIzquierdo(pz.id, antes - ahora)
+                                        }
                                     }
                                 } finally {
+                                    recorteIzquierdo = null
                                     estado.terminarGesto()
                                 }
                             } else if (bloque != null) {
@@ -555,7 +572,7 @@ fun LineaTiempo(
                 }
             }
     ) {
-        dibujar(estado, geo, recursos, medidor, desplazamientoY, cogido, claveCogida)
+        dibujar(estado, geo, recursos, medidor, desplazamientoY, cogido, claveCogida, recorteIzquierdo)
     }
 }
 
@@ -632,7 +649,8 @@ private fun DrawScope.dibujar(
     medidor: TextMeasurer,
     desplazamientoY: Float,
     cogido: Cogido?,
-    claveCogida: ClaveCogida?
+    claveCogida: ClaveCogida?,
+    recorteIzquierdo: RecorteIzquierdo? = null
 ) {
     val pxUs = estado.dpPorSegundo.dp.toPx() / 1_000_000f
     val centro = size.width / 2f
@@ -680,10 +698,13 @@ private fun DrawScope.dibujar(
         drawLine(Ink.Black, Offset(cx, cy - cruz), Offset(cx, cy + cruz), 2.2.dp.toPx(), StrokeCap.Round)
         texto(medidor, "Agregar video o foto", Offset(x0 + 46.dp.toPx(), cy), Ink.Black, 13f, negrita = true)
     }
-    for (pz in g.piezas) {
-        if (pz.pista != Pista.PRINCIPAL) continue
+    // Recortando por la izquierda: ese bloque y los de detras, corridos (ver RecorteIzquierdo)
+    val corridoDesde = recorteIzquierdo?.let { r -> p.principal.indexOfFirst { it.id == r.id } } ?: -1
+    val corrido = if (corridoDesde >= 0) recorteIzquierdo!!.us * pxUs else 0f
+    for ((i, pz) in g.piezas.filter { it.pista == Pista.PRINCIPAL }.withIndex()) {
         if (cogido?.pieza?.id == pz.id) continue
-        val x0 = x(pz.desde); val x1 = x(pz.hasta)
+        val mas = if (corridoDesde in 0..i) corrido else 0f
+        val x0 = x(pz.desde) + mas; val x1 = x(pz.hasta) + mas
         if (x1 < -50 || x0 > size.width + 50) continue
         val cogida = claveCogida?.takeIf { it.id == pz.id }?.local
         bloque(pz, x0, x1, y0, y1, radio, pxUs, recursos, medidor, pz.id == elegido, cogida = cogida, elegidas = elegidasDe(estado, pz))
@@ -692,9 +713,11 @@ private fun DrawScope.dibujar(
     val elegidoPaso = (estado.seleccion as? Seleccion.Paso)?.id
     // Las del bloque elegido se esconden: ahi van sus asas
     val vecinos = p.principal.indexOfFirst { it.id == elegido }.let { i -> if (i < 0) emptySet() else setOfNotNull(elegido, p.principal.getOrNull(i - 1)?.id) }
-    for ((c, t) in g.pasos) {
+    for ((k, par) in g.pasos.withIndex()) {
+        val (c, t) = par
         if (c.id in vecinos && elegidoPaso == null) continue
-        val cx = x(t)
+        // El paso k va detras del bloque k
+        val cx = x(t) + if (corridoDesde in 0..k) corrido else 0f
         if (cx < -30 || cx > size.width + 30) continue
         val r = BOTON_PASO.dp.toPx() / 2
         val cy = (y0 + y1) / 2
