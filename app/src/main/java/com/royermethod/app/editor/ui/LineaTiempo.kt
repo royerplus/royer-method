@@ -35,6 +35,7 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
@@ -66,6 +67,7 @@ import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
+import kotlin.math.pow
 import kotlin.math.min
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
@@ -251,6 +253,20 @@ fun LineaTiempo(
     Canvas(
         modifier
             .clipToBounds()
+            // La rueda del raton (PC) acerca o aleja la linea, como pellizcar
+            .pointerInput(Unit) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val ev = awaitPointerEvent()
+                        if (ev.type != PointerEventType.Scroll) continue
+                        val dy = ev.changes.sumOf { it.scrollDelta.y.toDouble() }
+                        if (dy != 0.0) {
+                            estado.ponerZoom(estado.dpPorSegundo * 1.15.pow(-dy).toFloat())
+                            ev.changes.forEach { it.consume() }
+                        }
+                    }
+                }
+            }
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val abajo = awaitFirstDown(requireUnconsumed = false)
