@@ -148,6 +148,7 @@ object Persistencia {
         put("desde", c.desdeUs)
         put("hasta", c.hastaUs)
         put("velocidad", c.velocidad.toDouble())
+        c.rampa?.let { put("rampa", velocidad(it.curva)) }
         put("volumen", c.volumen.toDouble())
         put("mantenerTono", c.mantenerTono)
         put("fundidoEntrada", c.fundidoEntradaUs)
@@ -482,6 +483,7 @@ object Persistencia {
             desdeUs = o.optLong("desde", d.desdeUs),
             hastaUs = o.optLong("hasta", d.hastaUs),
             velocidad = o.f("velocidad", 1f).coerceIn(0.1f, 10f),
+            rampa = velocidadDe(o.optJSONArray("rampa"))?.let { Rampa(it) },
             volumen = o.f("volumen", 1f),
             mantenerTono = o.optBoolean("mantenerTono", true),
             fundidoEntradaUs = o.optLong("fundidoEntrada"),

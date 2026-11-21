@@ -322,7 +322,7 @@ class Escena(
             clip = clip,
             tiempoArchivoUs = clip.tiempoArchivo(localCentro),
             tiempoLocalUs = localCentro,
-            exposicionUs = if (ts.size > 1 || clip.fluido) (duracionFotograma * obturador * clip.velocidad).toLong() else 0,
+            exposicionUs = if (ts.size > 1 || clip.fluido) (duracionFotograma * obturador * clip.velocidadEn(localCentro)).toLong() else 0,
             muestrasFluido = proyecto.salida.generadosFluido,
             estelaFluido = proyecto.salida.estelaFluido,
             matrices = matrices,

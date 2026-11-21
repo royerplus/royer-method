@@ -112,8 +112,9 @@ object PlanAudio {
         }
     }
 
+    /** Con rampa de velocidad el sonido del bloque se calla (por ahora): solo suena la musica. */
     private fun suena(c: Clip): Boolean =
-        c.esVideo && c.origen?.conAudio == true && c.volumen > 0f
+        c.esVideo && c.origen?.conAudio == true && c.volumen > 0f && c.rampa == null
 
     private fun segmento(c: Clip, inicio: Long, frames: Long, cruceAntes: Long, cruceDespues: Long): Segmento {
         val fundidoEntrada = Pcm.frames(c.fundidoEntradaUs)

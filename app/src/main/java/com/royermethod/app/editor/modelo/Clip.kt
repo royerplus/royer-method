@@ -22,6 +22,8 @@ data class Clip(
     val hastaUs: Long = origen?.duracionUs?.takeIf { it > 0 } ?: IMAGEN_POR_DEFECTO_US,
     /** 0.1 a 10. Solo en video. Para cambiarla, [conVelocidad]. */
     val velocidad: Float = 1f,
+    /** Rampa de velocidad por puntos (ralentizar un momento). Solo en video; se multiplica por [velocidad]. */
+    val rampa: Rampa? = null,
     /** 0 a 2: se puede subir por encima del original. */
     val volumen: Float = 1f,
     /**
@@ -117,8 +119,21 @@ data class Clip(
 
     /** Lo que ocupa en la linea de tiempo. */
     val duracionUs: Long
-        get() = if (esVideo) ((hastaUs - desdeUs) / velocidad.toDouble()).toLong()
+        get() = if (esVideo) ((hastaUs - desdeUs) / velocidad.toDouble() * (rampa?.total ?: 1.0)).toLong()
         else hastaUs - desdeUs
+
+    /** Con rampa, la posicion del trozo del archivo (0 a 1) a [localUs] del inicio. */
+    private fun posicionRampa(r: Rampa, localUs: Long): Float {
+        val largo = (hastaUs - desdeUs).coerceAtLeast(1).toDouble()
+        return r.posicionEn(localUs.coerceAtLeast(0) * velocidad.toDouble() / largo)
+    }
+
+    /** La velocidad de verdad a [localUs] del inicio: la del bloque por la de la rampa. */
+    fun velocidadEn(localUs: Long): Float {
+        val r = rampa ?: return velocidad
+        if (!esVideo) return velocidad
+        return velocidad * r.velocidad(posicionRampa(r, localUs))
+    }
 
     /**
      * Instante del archivo que toca mostrar a [localUs] del inicio del clip.
@@ -129,7 +144,9 @@ data class Clip(
      */
     fun tiempoArchivo(localUs: Long): Long {
         if (!esVideo) return 0
-        val t = desdeUs + (localUs.coerceAtLeast(0) * velocidad.toDouble()).toLong()
+        val r = rampa
+        val t = if (r != null) desdeUs + (posicionRampa(r, localUs) * (hastaUs - desdeUs).toDouble()).toLong()
+        else desdeUs + (localUs.coerceAtLeast(0) * velocidad.toDouble()).toLong()
         return t.coerceIn(desdeUs, (hastaUs - 1).coerceAtLeast(desdeUs))
     }
 

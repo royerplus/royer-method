@@ -69,6 +69,14 @@ object PruebaDesenfoque {
                     fl.copy(salida = fl.salida.copy(estelaFluido = true, generadosFluido = n, obturador = o)))
             }
         }
+        // Rampa de velocidad: golpe lento a 0.2x, con y sin estela
+        if ("rampa" in casos) {
+            val r = com.royermethod.app.editor.modelo.Rampa.PLANTILLAS.first { it.first == "Golpe lento" }.second
+            val rp = v.copy(principal = v.principal.map { it.copy(rampa = r) })
+            exportar("rampa-sin", rp.copy(salida = rp.salida.copy(desenfoqueMovimiento = false)))
+            val fl = rp.copy(principal = rp.principal.map { it.copy(fluido = true) })
+            exportar("rampa-estela-n16", fl.copy(salida = fl.salida.copy(estelaFluido = true, generadosFluido = 16)))
+        }
         File(salida, "tiempos.txt").writeText(informe.toString())
         System.exit(0)
     }

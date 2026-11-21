@@ -176,12 +176,15 @@ object Edicion {
         if (local < Clip.MINIMO_US || c.duracionUs - local < Clip.MINIMO_US) return null
         val (nid, q) = p.conId()
         // En el archivo, para video; en duracion, para imagen y texto
-        val corte = if (c.esVideo) c.desdeUs + (local * c.velocidad.toDouble()).toLong() else c.desdeUs + local
+        val corte = if (c.esVideo) c.tiempoArchivo(local) else c.desdeUs + local
+        // La rampa se parte por la misma imagen: cada mitad lleva su trozo
+        val uCorte = ((corte - c.desdeUs).toDouble() / (c.hastaUs - c.desdeUs).coerceAtLeast(1)).toFloat()
         val (clavesA, clavesB) = partirClaves(c, c.claves, local)
         // Las de antes de simplificar se parten igual, para poder volver a ellas en cada mitad
         val originales = c.clavesOriginales?.let { partirClaves(c, it, local) }
         val a = c.copy(
             hastaUs = corte,
+            rampa = c.rampa?.parte(0f, uCorte),
             claves = clavesA,
             clavesOriginales = originales?.first,
             efectos = c.efectos.mapNotNull { it.recortado(0, local) },
@@ -194,6 +197,7 @@ object Edicion {
         val b = c.copy(
             id = nid,
             desdeUs = corte,
+            rampa = c.rampa?.parte(uCorte, 1f),
             desfasePropiedadesUs = c.desfasePropiedadesUs + local,
             claves = clavesB,
             clavesOriginales = originales?.second,
@@ -241,11 +245,11 @@ object Edicion {
                 claves = clavesDesde(it, it.claves, corrimiento),
                 clavesOriginales = it.clavesOriginales?.let { o -> clavesDesde(it, o, corrimiento) },
                 efectos = it.efectos.mapNotNull { ef ->
-                    val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
+                    val duracion = it.copy(desdeUs = d, hastaUs = h).duracionUs
                     ef.recortado(corrimiento, corrimiento + duracion)
                 },
                 piezas = it.piezas.map { pieza ->
-                    val duracion = if (it.esVideo) ((h - d) / it.velocidad.toDouble()).toLong() else h - d
+                    val duracion = it.copy(desdeUs = d, hastaUs = h).duracionUs
                     pieza.recortada(corrimiento, corrimiento + duracion)
                 }
             )

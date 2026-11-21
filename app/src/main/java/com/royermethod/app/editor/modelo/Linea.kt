@@ -238,7 +238,7 @@ object Linea {
             seMueve(en.primero, en.localPrimero) -> 0.8f
             else -> 0.45f
         }
-        if (en != null && en.primero.velocidad < 0.9f && en.primero.fluido) f *= 1.15f
+        if (en != null && en.primero.velocidadEn(en.localPrimero) < 0.9f && en.primero.fluido) f *= 1.15f
         // Un flash o un negativo cambia todos los pixeles de golpe: el
         // codificador no puede aprovechar el fotograma anterior
         if (en != null && (golpea(en.primero, en.localPrimero) ||

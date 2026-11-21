@@ -81,6 +81,7 @@ import com.royermethod.app.editor.modelo.Curva
 import com.royermethod.app.editor.modelo.CurvaMia
 import com.royermethod.app.editor.modelo.CurvaVelocidad
 import com.royermethod.app.editor.modelo.PlantillasVelocidad
+import com.royermethod.app.editor.modelo.Rampa
 import com.royermethod.app.editor.modelo.PuntoVelocidad
 import com.royermethod.app.editor.modelo.PlantillasCurva
 import com.royermethod.app.editor.modelo.Edicion
@@ -304,6 +305,25 @@ fun PanelVelocidad(estado: EstadoEditor) {
             estado.cambiarClip { it.copy(fluido = v) }
             if (v) estado.avisar("Fluido: se generan los fotogramas que faltan, sin tirones. Exporta más despacio")
         })
+    }
+    // Rampa: ralentizar un momento sin partir el bloque
+    Etiqueta("Rampa")
+    Tira(Modifier.padding(vertical = 3.dp)) {
+        Chip("Ninguna", c.rampa == null, { estado.cambiarClip { it.copy(rampa = null) } })
+        Rampa.PLANTILLAS.forEach { (nombre, r) ->
+            Chip(nombre, c.rampa == r, {
+                estado.cambiarClip { it.copy(rampa = r, fluido = true) }
+                estado.avisar("Rampa: con Fluido encendido para que lo lento no vaya a tirones. El sonido del bloque se calla")
+            })
+        }
+        if (c.rampa == null) Chip("Propia", false, {
+            estado.cambiarClip { it.copy(rampa = Rampa(CurvaVelocidad(listOf(PuntoVelocidad(0f, 1f), PuntoVelocidad(0.5f, 0.3f), PuntoVelocidad(1f, 1f)))), fluido = true) }
+        })
+    }
+    c.rampa?.let { r ->
+        EditorVelocidad(r.curva, absoluta = true) { cv, arrastre ->
+            estado.cambiarClip(arrastre = arrastre) { it.copy(rampa = Rampa(cv).takeUnless { x -> x.esPareja }) }
+        }
     }
 }
 
@@ -881,7 +901,7 @@ private fun GraficaVelocidad(f: (Float) -> Float) {
  * cae cerca: si no, el panel se sigue desplazando.
  */
 @Composable
-private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boolean) -> Unit) {
+private fun EditorVelocidad(cv: CurvaVelocidad, absoluta: Boolean = false, onCambio: (CurvaVelocidad, Boolean) -> Unit) {
     val gestos = LocalGestos.current
     val actual by androidx.compose.runtime.rememberUpdatedState(cv)
     val cambio by androidx.compose.runtime.rememberUpdatedState(onCambio)
@@ -988,7 +1008,8 @@ private fun EditorVelocidad(cv: CurvaVelocidad, onCambio: (CurvaVelocidad, Boole
     // Una sola linea debajo: lo que vale el punto elegido o, sin ninguno, como se usa
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Nota(
-            if (p != null && media > 1e-3f) "%d %% del tramo · %.1f× la velocidad pareja".format((p.x * 100).roundToInt(), p.v / media)
+            if (p != null && absoluta) "%d %% del bloque · %.2g×".format((p.x * 100).roundToInt(), p.v.coerceAtLeast(Rampa.MINIMA))
+            else if (p != null && media > 1e-3f) "%d %% del tramo · %.1f× la velocidad pareja".format((p.x * 100).roundToInt(), p.v / media)
             else "Arrastra los puntos · toca un hueco para añadir otro",
             Modifier.weight(1f)
         )
