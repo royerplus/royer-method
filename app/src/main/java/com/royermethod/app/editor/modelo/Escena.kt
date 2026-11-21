@@ -45,7 +45,7 @@ class Escena(
      * grados del cine: rastro suficiente para que el movimiento sea continuo
      * sin que se vuelva una mancha.
      */
-    private val obturador = 0.5
+    private val obturador = proyecto.salida.obturador.toDouble().coerceIn(0.05, 1.0)
 
     fun cuadro(n: Long): Cuadro = cuadroEn(Linea.tiempoDe(n, fps), n)
 
@@ -323,6 +323,8 @@ class Escena(
             tiempoArchivoUs = clip.tiempoArchivo(localCentro),
             tiempoLocalUs = localCentro,
             exposicionUs = if (ts.size > 1 || clip.fluido) (duracionFotograma * obturador * clip.velocidad).toLong() else 0,
+            muestrasFluido = proyecto.salida.generadosFluido,
+            estelaFluido = proyecto.salida.estelaFluido,
             matrices = matrices,
             opacidades = opacidades,
             mascara = mascara,
@@ -402,6 +404,8 @@ class Escena(
             // La misma exposicion que el clip de delante: si es fluido, los dos
             // piden el mismo fotograma generado y se calcula una sola vez.
             exposicionUs = delante.exposicionUs,
+            muestrasFluido = delante.muestrasFluido,
+            estelaFluido = delante.estelaFluido,
             matrices = listOf(m),
             opacidades = floatArrayOf(1f),
             mascara = null,
@@ -1325,7 +1329,7 @@ class Escena(
     }
 
     companion object {
-        const val MAX_MUESTRAS = 8
+        const val MAX_MUESTRAS = 32
 
         /** Medio segundo por golpe: 120 por minuto, lo de casi toda la musica de edits. */
         const val GOLPE = 0.5f
@@ -1571,6 +1575,10 @@ data class PasoClip(
      * promedia: desenfoque de movimiento del contenido, no solo del encuadre.
      */
     val exposicionUs: Long,
+    /** Cuantos fotogramas genera Fluidez por ese tramo para promediarlos. */
+    val muestrasFluido: Int = 5,
+    /** Fluido por estela de flujo optico en vez de RIFE. */
+    val estelaFluido: Boolean = false,
     /** Una matriz (3x3 por columnas) por muestra: del lienzo a la textura. */
     val matrices: List<FloatArray>,
     val opacidades: FloatArray,

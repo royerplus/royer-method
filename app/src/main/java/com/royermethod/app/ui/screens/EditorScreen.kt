@@ -339,7 +339,7 @@ private fun estadoExportar(): EstadoExportar {
         restanteMs = restante,
         resultado = Exportacion.informe?.let {
             val codec = it.codec + (it.ajuste?.let { a -> "  ·  $a" } ?: "")
-            ResultadoExportar(it.bytes, it.ancho, it.alto, codec, it.verificacion.resumen(), it.verificacion.perfecta, it.avisos)
+            ResultadoExportar(it.bytes, it.ancho, it.alto, codec, it.verificacion.resumen(), it.verificacion.perfecta, it.avisos, it.costo)
         },
         fallo = Exportacion.fallo
     )

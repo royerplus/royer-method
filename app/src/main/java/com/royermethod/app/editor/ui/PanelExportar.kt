@@ -21,6 +21,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlin.math.roundToInt
 import com.royermethod.app.editor.modelo.AjustesSalida
 import com.royermethod.app.editor.modelo.Calidad
 import com.royermethod.app.editor.modelo.Linea
@@ -58,7 +59,9 @@ data class ResultadoExportar(
     val verificacion: String,
     val perfecta: Boolean,
     /** Fotogramas en los que algun archivo no se pudo leer y salio en negro. */
-    val avisos: Int = 0
+    val avisos: Int = 0,
+    /** Lo que tardo y el procesador que gasto (prueba del desenfoque). */
+    val costo: String? = null
 )
 
 /** Lados cortos que se ofrecen al exportar. */
@@ -122,6 +125,10 @@ fun PanelExportar(
                 style = Letra.cuerpo,
                 color = if (r.perfecta) Ink.White70 else Ink.Peligro
             )
+            r.costo?.let {
+                Spacer(Modifier.height(6.dp))
+                Text(it, style = Letra.cuerpo, color = Ink.White70)
+            }
             if (r.avisos > 0) {
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -184,10 +191,31 @@ fun PanelExportar(
                         if (v) estado.avisar("El rastro que hace que las transiciones se vean fluidas")
                     })
                 }
+                // Prueba: cuantos subcuadros se promedian y cuanto del
+                // fotograma se expone. Lo de siempre es 8 a 180°.
+                if (s.desenfoqueMovimiento) {
+                    Etiqueta("Subcuadros por fotograma (prueba)")
+                    Segmentos(SUBCUADROS, s.muestras, { "$it" }, { m -> salida { it.copy(muestras = m) } })
+                    Etiqueta("Obturador")
+                    Segmentos(OBTURADORES, s.obturador, { "${(it * 360).roundToInt()}°" }, { o -> salida { it.copy(obturador = o) } })
+                    Nota("≈ como grabar a ${equivalente(s.muestras, s.obturador, plan.fps)} fps y juntar a ${plan.fps}")
+                }
+                Etiqueta("Fluido en videos (prueba)")
+                Segmentos(listOf(false, true), s.estelaFluido, { if (it) "Estela rápida" else "RIFE" }, { v -> salida { it.copy(estelaFluido = v) } })
+                Etiqueta(if (s.estelaFluido) "Tomas a lo largo del movimiento" else "Fotogramas generados por cada uno")
+                Segmentos(GENERADOS, s.generadosFluido, { "$it" }, { g -> salida { it.copy(generadosFluido = g) } })
             }
         }
     }
 }
+
+private val SUBCUADROS = listOf(1, 4, 8, 16, 32)
+private val OBTURADORES = listOf(0.25f, 0.5f, 0.75f, 1f)
+private val GENERADOS = listOf(5, 8, 16, 32)
+
+/** Los fps de un video que, promediado de a [muestras] en [obturador] del fotograma, da lo mismo. */
+private fun equivalente(muestras: Int, obturador: Float, fps: Int): Int =
+    (muestras * fps / obturador.coerceAtLeast(0.05f)).roundToInt()
 
 @Composable
 private fun Barra(f: Float) {

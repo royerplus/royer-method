@@ -186,7 +186,7 @@ internal object Simplificador {
         val (w, h) = p.formato.medidas(p.salida.ladoCorto)
         // Las muestras del obturador al exportar, como Escena
         val k = if (p.salida.desenfoqueMovimiento) p.salida.muestras.coerceIn(1, Escena.MAX_MUESTRAS) else 1
-        val ins = Trayectoria.instantes(c.duracionUs, k, o + ahora, ini, Linea.fps(p))
+        val ins = Trayectoria.instantes(c.duracionUs, k, o + ahora, ini, Linea.fps(p), p.salida.obturador.toDouble())
         return Trayectoria.comparar(o, ahora, ins, w.toFloat(), h.toFloat(), quitarRepetidas = d is DuenoClaves.Parte)
     }
 

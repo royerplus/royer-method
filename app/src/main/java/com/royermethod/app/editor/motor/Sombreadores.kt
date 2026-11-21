@@ -282,9 +282,9 @@ varying vec2 vPos;
 uniform vec2 uLienzo;
 uniform sampler2D sTex;
 uniform vec2 uTexel;
-uniform mat3 uInv[8];
-uniform float uOpac[8];
-uniform float uBorde[8];
+uniform mat3 uInv[32];
+uniform float uOpac[32];
+uniform float uBorde[32];
 uniform float uN;
 uniform vec4 uRecorte;
 uniform float uConMascara;
@@ -644,7 +644,7 @@ void main() {
     vec4 suma = vec4(0.0);
     vec4 marcoSuma = vec4(0.0);
     vec2 uvPrimero = vec2(0.5);
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 32; i++) {
         if (float(i) >= uN) break;
         mat3 m = uInv[i];
         // Con perspectiva la matriz no es afin: se divide por z (sin ella z es 1)
@@ -775,7 +775,7 @@ precision mediump float;
 varying vec2 vPos;
 uniform vec2 uLienzo;
 uniform vec2 uDir;
-uniform float uBorde[8];
+uniform float uBorde[32];
 uniform float uN;
 uniform float uGrosor;
 uniform vec3 uColor;
@@ -787,7 +787,7 @@ void main() {
     float aLoLargo = dot(p / max(uLienzo.x, uLienzo.y), vec2(-uDir.y, uDir.x));
     float v = 0.0;
     vec3 rgb = vec3(0.0);
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 32; i++) {
         if (float(i) >= uN) break;
         float d = abs(d0 - uBorde[i]);
         float nucleo = (1.0 - smoothstep(uGrosor * 0.5 - 0.75, uGrosor * 0.5 + 0.75, d)) * uLuz.y;

@@ -5,6 +5,8 @@ import android.media.MediaCodec
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Process
+import android.os.SystemClock
 import android.util.Log
 import android.view.Surface
 import com.royermethod.app.editor.audio.DecodificadorAudio
@@ -39,7 +41,9 @@ data class Informe(
      * null si el codificador se uso como siempre; si no, que se le quito
      * para que los cortes salieran bien (ver [VigiaColgados]).
      */
-    val ajuste: String? = null
+    val ajuste: String? = null,
+    /** Lo que costo: tiempo, ms por fotograma y procesador (prueba del desenfoque). */
+    val costo: String? = null
 )
 
 /**
@@ -172,7 +176,7 @@ class Exportador(
 
             egl = Egl(superficie, plan.ancho, plan.alto, paraCodificador = true)
             egl.activar()
-            val fluido = (proyecto.principal + proyecto.capas.map { it.clip }).any { it.fluido }
+            val fluido = (proyecto.principal + proyecto.capas.map { it.clip }).any { it.fluido } && !proyecto.salida.estelaFluido
             compositor = Compositor(context, plan.ancho, plan.alto, if (fluido) Fluidez(context) else null)
             val escena = Escena(proyecto, plan.ancho, plan.alto, compositor.medidor)
 
@@ -190,6 +194,10 @@ class Exportador(
 
             // -1: el primero siempre se manda, por si el plan cambio tras configurar
             var bitrate = -1
+            // Prueba del desenfoque: cuanto cuesta cada ajuste de muestras
+            val inicioMs = SystemClock.elapsedRealtime()
+            val cpuInicioMs = Process.getElapsedCpuTime()
+            var peorMs = 0L
             for (n in 0 until plan.fotogramas) {
                 if (cancelado()) throw Cancelado()
 
@@ -202,9 +210,11 @@ class Exportador(
                     codec.setParameters(Bundle().apply { putInt(MediaCodec.PARAMETER_KEY_REQUEST_SYNC_FRAME, 0) })
                 }
 
+                val antesMs = SystemClock.elapsedRealtime()
                 compositor.dibujar(escena.cuadro(n))
                 egl.marcarTiempo(n * 1_000_000_000L / plan.fps)
                 egl.publicar()
+                peorMs = maxOf(peorMs, SystemClock.elapsedRealtime() - antesMs)
                 drenar(codec, pistaVideo, contenedor, fin = false)
                 if (repetible && contenedor.colgados > 0) throw Colgado(COLGADO)
 
@@ -234,6 +244,14 @@ class Exportador(
             if (repetible && contenedor.colgados > 0) throw Colgado(COLGADO)
             if (audio != null) drenar(audio, pistaAudio, contenedor, fin = true)
             contenedor.cerrar()
+            val totalMs = SystemClock.elapsedRealtime() - inicioMs
+            val cpuMs = Process.getElapsedCpuTime() - cpuInicioMs
+            val s = proyecto.salida
+            val costo = "Tardó ${"%.1f".format(totalMs / 1000.0)} s  ·  ${totalMs / plan.fotogramas} ms por fotograma " +
+                "(peor $peorMs)  ·  procesador ${"%.1f".format(cpuMs / 1000.0)} s"
+            Log.i(TAG, "Costo: muestras=${if (s.desenfoqueMovimiento) s.muestras else 1} obturador=${s.obturador} " +
+                "generados=${s.generadosFluido} ${plan.ancho}x${plan.alto}@${plan.fps} fotogramas=${plan.fotogramas} " +
+                "totalMs=$totalMs msPorFotograma=${totalMs / plan.fotogramas} peorMs=$peorMs cpuMs=$cpuMs")
 
             val verificacion = Verificacion.de(destino, plan.fotogramas, plan.fps)
             bien = true
@@ -245,7 +263,8 @@ class Exportador(
                 codec = if (mime == Codificadores.HEVC) "H.265" else "H.264",
                 verificacion = verificacion,
                 avisos = compositor.avisos,
-                ajuste = if (cortes.isEmpty() && conB) null else modo.ajuste
+                ajuste = if (cortes.isEmpty() && conB) null else modo.ajuste,
+                costo = costo
             )
         } finally {
             mezclador?.cerrar()

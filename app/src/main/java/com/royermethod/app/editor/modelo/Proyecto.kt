@@ -80,6 +80,25 @@ data class AjustesSalida(
     /** Muestras por fotograma para ese desenfoque. Mas = mas suave y mas lento. */
     val muestras: Int = 8,
     /**
+     * Fraccion del fotograma que se expone para ese desenfoque: 0.5 es el
+     * obturador de 180 grados del cine, 1 es 360 (mezclar el fotograma
+     * entero, como promediar un video de muchos fps). Prueba: se elige en
+     * Exportar junto con las muestras.
+     */
+    val obturador: Float = 0.5f,
+    /**
+     * Fotogramas que genera Fluidez (RIFE) por cada uno de salida en los
+     * videos con Fluido, para promediarlos. Cada uno es otra pasada del
+     * modelo: es lo que mas cuesta. Prueba, como el obturador.
+     */
+    val generadosFluido: Int = 5,
+    /**
+     * Fluido sin RIFE: estela por flujo optico (ver motor/Estela). Mucho mas
+     * barata y mas tosca. [generadosFluido] pasa a ser cuantas tomas se
+     * promedian a lo largo de cada vector. Prueba.
+     */
+    val estelaFluido: Boolean = false,
+    /**
      * Fotogramas por segundo del video (30 o 60). La vista previa va a los
      * mismos para que se vea la fluidez de verdad. A 60 pesa mas y tarda
      * casi el doble en exportar.

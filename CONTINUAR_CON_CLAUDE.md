@@ -733,3 +733,14 @@ Pedido de Royer: exportar tambien a 60 fps, por proyecto, y que la vista previa 
 - Vista previa: telefono, `Ritmo.fps` cambia con el proyecto; PC, el bucle dibuja al cambiar el fotograma de 60.
 - Probado en la nube (PC, `PRUEBA_FPS=60` en `Prueba`): 780 de 780 a 60.00 fps sin saltos, 1.66 MB contra 1.32 MB a 30. No probado en el telefono.
 - Pendiente si hace falta: Fluido (interpolacion) sigue rellenando solo hasta 30; un clip de 30 a 60 repite cada fotograma.
+
+## Prueba de desenfoque de movimiento: subcuadros, obturador y estela (2026-11-21, Claude)
+
+Royer quiere medir en su teléfono cuánto cuesta y cuánto se nota simular un video de muchos fps promediado a 30 (él nota mejora hasta "500 a 30", unos 16 subcuadros). Es una prueba, no una función terminada. En Exportar, debajo de "Desenfoque de movimiento":
+
+- **Subcuadros por fotograma (prueba)**: 1, 4, 8, 16, 32 (`AjustesSalida.muestras`; antes fijo en 8). `Escena.MAX_MUESTRAS` y los arreglos de CAPA y LINEA en `Sombreadores` pasan de 8 a 32.
+- **Obturador**: 90°, 180°, 270°, 360° (`AjustesSalida.obturador`, fracción; 0.5 por defecto). Lo usan `Escena`, `Trayectoria.instantes`, `Edicion` y `SimplificarClaves`. `TramosEfecto.seVeAlExportar` (solo un aviso) sigue con 0.5. La nota "≈ como grabar a X fps" es muestras × fps / obturador.
+- **Fluido en videos**: RIFE (como siempre) o **Estela rápida** (`AjustesSalida.estelaFluido`), y cuántos generados (RIFE) o tomas (estela): 5, 8, 16, 32 (`generadosFluido`, 5 por defecto como el `MUESTRAS` fijo de antes). Va en `PasoClip.muestrasFluido` / `estelaFluido`.
+- **Estela** (`motor/Estela.kt`): flujo óptico en la GPU entre el fotograma A y el siguiente B (brillo a 1/4 y 1/16, búsqueda por bloques 3x3 de ±4 a 1/16 y ±2 a 1/4, suavizado 3x3, vector dominante de 12x12 a 1/16) y estiramiento con pesos tipo McGuire (sin profundidad). Solo al exportar (`!vista`). Llega a unos 70 px por fotograma; tosca en oclusiones y bordes. Compila también en `pc/`.
+- **Costo**: al exportar, el informe dice cuánto tardó, ms por fotograma (y el peor) y el tiempo de procesador del proceso (`Process.getElapsedCpuTime`, no cuenta la GPU ni el codificador). En logcat: `RoyerExportar: Costo: muestras=… obturador=… generados=… totalMs=… cpuMs=…`.
+- Prueba en la nube: `pc/src/main/kotlin/com/royermethod/pc/PruebaDesenfoque.kt` (`xvfb-run java -cp "$(cat build/cp.txt)" com.royermethod.pc.PruebaDesenfoque <salida> <imagen> <video>`, `CASOS=anim|video`). Con Mesa por software los tiempos no valen; las imágenes sí. Comprobado: 4 subcuadros dejan copias escalonadas, 8 ya es continuo, 360° deja el doble de rastro; la estela con 8 tomas a 360° y 50 px por fotograma aún escalona, con 16 o más es continua.

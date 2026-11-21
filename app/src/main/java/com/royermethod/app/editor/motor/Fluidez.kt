@@ -35,7 +35,7 @@ class Fluidez(context: Context) {
         val mezcla: ByteBuffer = Rife.buffer(ancho, alto)
         val acumulador: ByteBuffer = Rife.acumuladorPara(ancho, alto)
         val salida = Lamina(ancho, alto)
-        var claveSalida: Pair<Long, Long>? = null
+        var claveSalida: Triple<Long, Long, Int>? = null
 
         fun soltar() = salida.soltar()
     }
@@ -56,12 +56,12 @@ class Fluidez(context: Context) {
             e = Estado(ancho, alto)
             estados[fuente] = e
         }
-        val clave = paso.tiempoArchivoUs to paso.exposicionUs
+        val clave = Triple(paso.tiempoArchivoUs, paso.exposicionUs, paso.muestrasFluido)
         if (e.claveSalida == clave) return e.salida
 
         val centro = paso.tiempoArchivoUs
         val exp = paso.exposicionUs
-        val n = if (exp > 0) MUESTRAS else 1
+        val n = if (exp > 0) paso.muestrasFluido.coerceIn(1, MAX_GENERADOS) else 1
         val instantes = LongArray(n) { i ->
             if (n == 1) centro else centro + ((i + 0.5) / n - 0.5).times(exp).toLong()
         }
@@ -144,10 +144,9 @@ class Fluidez(context: Context) {
 
     private companion object {
         /**
-         * Instantes generados por fotograma de salida. Con el obturador a la
-         * mitad, cinco por fotograma equivalen a muestrear a 300 fps durante
-         * la exposicion: el rastro sale continuo, sin escalones.
+         * Tope de instantes generados por fotograma de salida (cuantos pide
+         * cada paso lo dice AjustesSalida.generadosFluido, 5 por defecto). El acumulador es de 16 bits: 32 x 255 entra de sobra.
          */
-        const val MUESTRAS = 5
+        const val MAX_GENERADOS = 32
     }
 }

@@ -305,6 +305,9 @@ object Persistencia {
         put("hevc", s.hevc)
         put("desenfoque", s.desenfoqueMovimiento)
         put("muestras", s.muestras)
+        put("obturador", s.obturador.toDouble())
+        put("generadosFluido", s.generadosFluido)
+        put("estelaFluido", s.estelaFluido)
         put("fps", s.fps)
     }
 
@@ -528,6 +531,9 @@ object Persistencia {
             hevc = s.optBoolean("hevc", d.hevc),
             desenfoqueMovimiento = s.optBoolean("desenfoque", d.desenfoqueMovimiento),
             muestras = s.optInt("muestras", d.muestras),
+            obturador = s.optDouble("obturador", d.obturador.toDouble()).toFloat().coerceIn(0.05f, 1f),
+            generadosFluido = s.optInt("generadosFluido", d.generadosFluido).coerceIn(1, 32),
+            estelaFluido = s.optBoolean("estelaFluido", d.estelaFluido),
             fps = Linea.fpsValido(s.optInt("fps", d.fps))
         )
     }

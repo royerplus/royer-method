@@ -82,11 +82,12 @@ object Trayectoria {
      * @param inicioUs donde empieza el bloque en la linea: los fotogramas
      *   caen en instantes de la linea, no del bloque
      */
-    fun instantes(duracionUs: Long, muestras: Int, claves: List<Clave>, inicioUs: Long = 0, fps: Int = Linea.FPS): LongArray {
+    fun instantes(duracionUs: Long, muestras: Int, claves: List<Clave>, inicioUs: Long = 0, fps: Int = Linea.FPS,
+                  obturador: Double = OBTURADOR): LongArray {
         if (duracionUs <= 0) return LongArray(0)
         val k = muestras.coerceIn(1, Escena.MAX_MUESTRAS)
         val ultimo = duracionUs - 1
-        val exp = 1_000_000.0 / fps * OBTURADOR
+        val exp = 1_000_000.0 / fps * obturador
         val ini = inicioUs.coerceAtLeast(0)
         var lista = LongArray(64)
         var n = 0

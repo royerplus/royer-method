@@ -59,6 +59,7 @@ val compartido = tasks.register<Sync>("compartido") {
             "com/royermethod/app/editor/motor/Reduccion.kt",
             "com/royermethod/app/editor/motor/EntradaVideo.kt",
             "com/royermethod/app/editor/motor/Compositor.kt",
+            "com/royermethod/app/editor/motor/Estela.kt",
             "com/royermethod/app/editor/exportar/SincronizacionVideo.kt",
             "com/royermethod/app/editor/vista/RelojAudio.kt",
             "com/royermethod/app/ui/components/Controles.kt",

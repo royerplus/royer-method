@@ -58,6 +58,7 @@ class Compositor(
     private val camposFigura by lazy { CampoFigura() }
     private var usoCampos = false
     private val copiaExacta = Programa(Sombreadores.VERTICE, Sombreadores.COPIA_EXACTA)
+    private var estela: Estela? = null
 
     private val videos = ArrayList<FuenteVideo>()
     /** Archivos que no se pudieron abrir, con el cuadro en que fallaron. */
@@ -502,7 +503,15 @@ class Compositor(
 
         // Modo fluido: los fotogramas que faltan los pone el modelo. Si no esta
         // disponible, sigue por el camino normal en vez de fallar.
-        if (clip.fluido && fluidez != null) {
+        // Estela por flujo optico: solo al exportar (necesita el fotograma
+        // siguiente, y la vista previa salta y abandona lecturas)
+        if (clip.fluido && paso.estelaFluido && !vista) {
+            val l = (estela ?: Estela().also { estela = it }).fotograma(fuente, paso, w, h, reduccion)
+            if (l != null) {
+                return if (paso.esFondo) fondo(fuente, l.textura, l.ancho, l.alto, paso.tiempoArchivoUs)
+                else Textura(l.textura, l.ancho, l.alto)
+            }
+        } else if (clip.fluido && fluidez != null) {
             val l = fluidez.fotograma(fuente, paso, w, h, reduccion)
             if (l != null) {
                 return if (paso.esFondo) fondo(fuente, l.textura, l.ancho, l.alto, paso.tiempoArchivoUs)
@@ -685,6 +694,7 @@ class Compositor(
 
     private fun cerrar(v: FuenteVideo) {
         fluidez?.olvidar(v)
+        estela?.olvidar(v)
         fondos.remove(v)?.second?.forEach { it.soltar() }
         videos.remove(v)
         val hilo = cerrador ?: Executors.newSingleThreadExecutor { r -> Thread(r, "cerrar-video") }
@@ -946,6 +956,7 @@ class Compositor(
         fondos.values.forEach { par -> par.second.forEach { it.soltar() } }
         fondos.clear()
         fluidez?.soltar()
+        estela?.soltar(); estela = null
         if (usoLuces) pintorLuces.soltar()
         if (usoCampos) camposFigura.soltar()
         reduccion.soltar(); copiaPlana.soltar(); copiaExacta.soltar(); capa.soltar(); solido.soltar(); linea.soltar()
