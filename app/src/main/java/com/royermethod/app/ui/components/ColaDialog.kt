@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.royermethod.app.procesado.Procesador
 import com.royermethod.app.ui.theme.Ink
+import com.royermethod.app.ui.theme.radio
 
 /**
  * Ajustes de como trabaja la app, no del archivo.
@@ -50,16 +51,16 @@ fun ColaDialog(onIniciar: () -> Unit, onCerrar: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(radio(24.dp)))
                 .drawBehind {
-                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(24.dp.toPx()))
+                    drawRoundRect(color = Ink.Black, cornerRadius = CornerRadius(radio(24.dp).toPx()))
                     drawRoundRect(
                         color = Ink.White, alpha = 0.06f,
-                        cornerRadius = CornerRadius(24.dp.toPx())
+                        cornerRadius = CornerRadius(radio(24.dp).toPx())
                     )
                     drawRoundRect(
                         color = Ink.White, alpha = 0.20f,
-                        cornerRadius = CornerRadius(24.dp.toPx()),
+                        cornerRadius = CornerRadius(radio(24.dp).toPx()),
                         style = Stroke(width = 1.dp.toPx())
                     )
                 }
@@ -173,7 +174,7 @@ private fun Interruptor(activo: Boolean, onCambio: (Boolean) -> Unit) {
     Box(
         Modifier
             .size(width = 46.dp, height = 26.dp)
-            .clip(RoundedCornerShape(13.dp))
+            .clip(RoundedCornerShape(radio(13.dp)))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null

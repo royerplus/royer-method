@@ -116,3 +116,6 @@ object Procesador {
         cancelado = false
     }
 }
+
+/** Lo que se dice si se intenta mejorar algo mientras el editor exporta. */
+const val ESPERA_EXPORTACION = "El editor esta exportando un video. Espera a que termine y vuelve a intentarlo."

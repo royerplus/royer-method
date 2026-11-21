@@ -1,4 +1,4 @@
-﻿package com.royermethod.app.ui.logo
+package com.royermethod.app.ui.logo
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.size
